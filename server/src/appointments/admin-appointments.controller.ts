@@ -1,0 +1,50 @@
+import {
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminGuard } from '../stores/admin.guard';
+import { AppointmentsService } from './appointments.service';
+
+/** 管理端：预约订单管理（需 admin 角色） */
+@Controller('admin/appointments')
+@UseGuards(JwtAuthGuard, AdminGuard)
+export class AdminAppointmentsController {
+  constructor(private readonly appointments: AppointmentsService) {}
+
+  /** 所有预约列表（可按状态/门店/日期筛选） */
+  @Get()
+  list(
+    @Query('status') status?: string,
+    @Query('storeId') storeId?: string,
+    @Query('date') date?: string,
+  ) {
+    // 复用现有 service 能力，直接返回全量列表
+    // 管理端不需要 userId 过滤
+    return this.appointments.findAll({ status, storeId, date });
+  }
+
+  /** 核销（店员代操作） */
+  @Post(':id/checkin')
+  checkIn(@Param('id', ParseIntPipe) id: number) {
+    // 管理端核销暂按 ID 直接操作（店员身份通过 admin guard 验证）
+    return this.appointments.adminCheckIn(id);
+  }
+
+  /** 上钟（店员代操作） */
+  @Post(':id/clockin')
+  clockIn(@Param('id', ParseIntPipe) id: number) {
+    return this.appointments.adminClockIn(id);
+  }
+
+  /** 下钟（店员代操作） */
+  @Post(':id/clockout')
+  clockOut(@Param('id', ParseIntPipe) id: number) {
+    return this.appointments.adminClockOut(id);
+  }
+}

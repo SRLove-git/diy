@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../core/auth_service.dart';
+import 'profile/order_list_page.dart';
 
 /// 我的：资料区 + 功能列表（卡包/点赞收藏/作品/历史/订单）
 /// 对齐《第一阶段UI设计指导》§七
@@ -60,46 +61,66 @@ class ProfilePage extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              // 资料区
               InkWell(
                 onTap: () => _editNickname(context),
                 borderRadius: BorderRadius.circular(12),
-                child: Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 32,
-                      backgroundColor: Color(0xFFE8633A),
-                      child: Icon(Icons.person, color: Colors.white),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            user?.nickname.isNotEmpty == true
-                                ? user!.nickname
-                                : '手作新人',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            user?.phone ?? '',
-                            style:
-                                const TextStyle(color: Color(0xFF8A8A8A)),
-                          ),
-                        ],
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const CircleAvatar(
+                        radius: 32,
+                        backgroundColor: Color(0xFFE8633A),
+                        child: Icon(Icons.person, color: Colors.white),
                       ),
-                    ),
-                    const Icon(Icons.edit_outlined, color: Color(0xFF8A8A8A)),
-                  ],
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user?.nickname.isNotEmpty == true
+                                  ? user!.nickname
+                                  : '手作新人',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              user?.phone ?? '',
+                              style:
+                                  const TextStyle(color: Color(0xFF8A8A8A)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.edit_outlined, color: Color(0xFF8A8A8A)),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
-              const _MenuTile(icon: Icons.confirmation_number_outlined, label: '卡包'),
+              // 功能列表
+              const _MenuTile(
+                icon: Icons.confirmation_number_outlined,
+                label: '卡包',
+              ),
               const _MenuTile(icon: Icons.favorite_border, label: '点赞与收藏'),
               const _MenuTile(icon: Icons.photo_library_outlined, label: '个人作品'),
               const _MenuTile(icon: Icons.history, label: '观看历史'),
-              const _MenuTile(icon: Icons.receipt_long_outlined, label: '我的订单'),
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const OrderListPage()),
+                ),
+                child: const _MenuTile(
+                  icon: Icons.receipt_long_outlined,
+                  label: '我的订单',
+                ),
+              ),
               const SizedBox(height: 20),
               OutlinedButton(
                 onPressed: () => AuthService.instance.logout(),

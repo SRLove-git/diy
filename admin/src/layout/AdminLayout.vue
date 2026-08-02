@@ -16,11 +16,12 @@ function logout() {
       <div class="logo">DIY 手作工坊 · 后台</div>
       <nav>
         <RouterLink to="/stores">门店管理</RouterLink>
+        <RouterLink to="/orders">订单管理</RouterLink>
       </nav>
     </aside>
     <main>
       <header>
-        <span>门店 / 桌位 / 时段配置</span>
+        <span>{{ $route.meta.title || '后台管理' }}</span>
         <button @click="logout">退出登录</button>
       </header>
       <div class="content">

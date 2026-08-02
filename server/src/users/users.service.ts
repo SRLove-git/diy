@@ -37,4 +37,8 @@ export class UsersService {
   updateProfile(id: number, patch: { nickname?: string; avatar?: string }) {
     return this.users.update({ id }, patch);
   }
+
+  setRole(id: number, role: 'admin' | 'user') {
+    return this.users.update({ id }, { role });
+  }
 }

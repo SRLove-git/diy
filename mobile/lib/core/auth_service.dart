@@ -61,8 +61,10 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> sendCode(String phone) async {
-    await ApiClient.instance.post('/auth/sms-code', data: {'phone': phone});
+  /// 发送验证码，返回 code（开发环境），生产环境返回 null
+  Future<String?> sendCode(String phone) async {
+    final resp = await ApiClient.instance.post('/auth/sms-code', data: {'phone': phone});
+    return (resp.data as Map<String, dynamic>)['code'] as String?;
   }
 
   Future<void> login(String phone, String code) async {

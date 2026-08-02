@@ -15,6 +15,11 @@ const router = createRouter({
           component: () => import('../views/StoresView.vue'),
           meta: { title: '门店管理' },
         },
+        {
+          path: 'orders',
+          component: () => import('../views/OrdersView.vue'),
+          meta: { title: '订单管理' },
+        },
       ],
     },
   ],

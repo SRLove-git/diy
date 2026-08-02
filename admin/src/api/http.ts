@@ -16,6 +16,11 @@ http.interceptors.response.use(
       localStorage.removeItem('admin_token')
       window.location.hash = '#/login'
     }
+    if (err.response?.status === 403) {
+      alert(err.response?.data?.message ?? '无管理权限，请使用管理员账号登录')
+      localStorage.removeItem('admin_token')
+      window.location.hash = '#/login'
+    }
     return Promise.reject(err)
   },
 )

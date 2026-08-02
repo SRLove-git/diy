@@ -47,9 +47,21 @@ class _LoginPageState extends State<LoginPage> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _sendingCode = true);
     try {
-      await AuthService.instance.sendCode(_phoneCtrl.text);
+      final code = await AuthService.instance.sendCode(_phoneCtrl.text);
       if (!mounted) return;
       _startCountdown();
+      // 开发环境：自动填入验证码
+      if (code != null) {
+        _codeCtrl.text = code;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('验证码已填入：$code'),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
     } on DioException catch (e) {
       _showError(_message(e));
     } finally {

@@ -48,7 +48,10 @@ export class AuthService {
     const code = String(Math.floor(100000 + Math.random() * 900000));
     await this.redis.set(`sms:code:${phone}`, code, 'EX', SMS_CODE_TTL);
     await this.sms.send(phone, `【DIY手作工坊】您的验证码是 ${code}，5 分钟内有效。`);
-    return { sent: true };
+
+    // 开发环境：返回验证码便于联调，生产环境不返回
+    const isDev = this.config.get<string>('NODE_ENV') !== 'production';
+    return isDev ? { sent: true, code } : { sent: true };
   }
 
   /** 验证码登录（未注册自动注册） */

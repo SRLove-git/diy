@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AppointmentsModule } from './appointments/appointments.module';
 import { AuthModule } from './auth/auth.module';
 import { BootstrapService } from './bootstrap/bootstrap.service';
 import { GlobalJwtModule } from './common/global-jwt.module';
@@ -33,6 +34,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     AuthModule,
     StoresModule,
+    AppointmentsModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService, BootstrapService],

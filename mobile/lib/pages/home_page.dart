@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'booking/booking_flow_page.dart';
+import 'checkin/checkin_page.dart';
+
 /// 首页：品牌名 + 拼豆三入口（预约/到店/会员套餐）+ 敬请期待
 /// 对齐《第一阶段UI设计指导》§五
 class HomePage extends StatelessWidget {
@@ -21,12 +24,38 @@ class HomePage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Row(
-            children: const [
-              Expanded(child: _EntryCard(icon: Icons.event_available, label: '预约')),
-              SizedBox(width: 12),
-              Expanded(child: _EntryCard(icon: Icons.qr_code_scanner, label: '到店')),
-              SizedBox(width: 12),
-              Expanded(child: _EntryCard(icon: Icons.card_membership, label: '会员套餐')),
+            children: [
+              Expanded(
+                child: _EntryCard(
+                  icon: Icons.event_available,
+                  label: '预约',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const BookingFlowPage(),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _EntryCard(
+                  icon: Icons.qr_code_scanner,
+                  label: '到店',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const CheckInPage(),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: _EntryCard(
+                  icon: Icons.card_membership,
+                  label: '会员套餐',
+                  onTap: null,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -48,25 +77,30 @@ class HomePage extends StatelessWidget {
 }
 
 class _EntryCard extends StatelessWidget {
-  const _EntryCard({required this.icon, required this.label});
+  const _EntryCard({required this.icon, required this.label, this.onTap});
 
   final IconData icon;
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 28, color: const Color(0xFFE8633A)),
-          const SizedBox(height: 8),
-          Text(label, style: Theme.of(context).textTheme.bodyMedium),
-        ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            children: [
+              Icon(icon, size: 28, color: const Color(0xFFE8633A)),
+              const SizedBox(height: 8),
+              Text(label, style: Theme.of(context).textTheme.bodyMedium),
+            ],
+          ),
+        ),
       ),
     );
   }

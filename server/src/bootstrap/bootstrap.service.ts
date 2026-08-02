@@ -11,13 +11,17 @@ export class BootstrapService implements OnApplicationBootstrap {
 
   async onApplicationBootstrap() {
     if (process.env.NODE_ENV === 'production') return;
-    if (!(await this.users.findByPhone(this.ADMIN_PHONE))) {
+    const admin = await this.users.findByPhone(this.ADMIN_PHONE);
+    if (!admin) {
       await this.users.create({
         phone: this.ADMIN_PHONE,
         role: 'admin',
         nickname: '管理员',
       });
       this.logger.log(`已创建开发管理员账号：${this.ADMIN_PHONE}（admin）`);
+    } else if (admin.role !== 'admin') {
+      await this.users.setRole(admin.id, 'admin');
+      this.logger.log(`已将 ${this.ADMIN_PHONE} 角色更新为 admin`);
     }
   }
 }
