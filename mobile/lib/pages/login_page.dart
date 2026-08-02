@@ -44,7 +44,13 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _sendCode() async {
-    if (!_formKey.currentState!.validate()) return;
+    // 只校验手机号：获取验证码时验证码框为空是正常的，不能全表单校验
+    final phoneValid = RegExp(r'^1[3-9]\d{9}$').hasMatch(_phoneCtrl.text);
+    if (!phoneValid) {
+      // 触发手机号字段的错误显示
+      _formKey.currentState!.validate();
+      return;
+    }
     setState(() => _sendingCode = true);
     try {
       final code = await AuthService.instance.sendCode(_phoneCtrl.text);
@@ -138,28 +144,39 @@ class _LoginPageState extends State<LoginPage> {
                           : null,
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
-                  controller: _codeCtrl,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  decoration: InputDecoration(
-                    labelText: '验证码',
-                    counterText: '',
-                    prefixIcon: const Icon(Icons.sms_outlined),
-                    suffixIcon: TextButton(
-                      onPressed: (_countdown > 0 || _sendingCode)
-                          ? null
-                          : _sendCode,
-                      child: Text(
-                        _countdown > 0 ? '$_countdown 秒后重发' : '获取验证码',
-                        style: const TextStyle(color: Color(0xFFE8633A)),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _codeCtrl,
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        decoration: const InputDecoration(
+                          labelText: '验证码',
+                          counterText: '',
+                          prefixIcon: Icon(Icons.sms_outlined),
+                        ),
+                        validator: (v) =>
+                            (v == null || !RegExp(r'^\d{6}$').hasMatch(v))
+                                ? '请输入 6 位验证码'
+                                : null,
                       ),
                     ),
-                  ),
-                  validator: (v) =>
-                      (v == null || !RegExp(r'^\d{6}$').hasMatch(v))
-                          ? '请输入 6 位验证码'
-                          : null,
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: TextButton(
+                        onPressed: (_countdown > 0 || _sendingCode)
+                            ? null
+                            : _sendCode,
+                        child: Text(
+                          _countdown > 0 ? '$_countdown 秒后重发' : '获取验证码',
+                          style: const TextStyle(color: Color(0xFFE8633A)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 32),
                 FilledButton(
