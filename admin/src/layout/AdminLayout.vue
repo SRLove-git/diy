@@ -1,0 +1,87 @@
+<script setup lang="ts">
+import { useRouter } from 'vue-router'
+import { auth } from '../stores/auth'
+
+const router = useRouter()
+
+function logout() {
+  auth.clear()
+  router.push('/login')
+}
+</script>
+
+<template>
+  <div class="layout">
+    <aside>
+      <div class="logo">DIY 手作工坊 · 后台</div>
+      <nav>
+        <RouterLink to="/stores">门店管理</RouterLink>
+      </nav>
+    </aside>
+    <main>
+      <header>
+        <span>门店 / 桌位 / 时段配置</span>
+        <button @click="logout">退出登录</button>
+      </header>
+      <div class="content">
+        <RouterView />
+      </div>
+    </main>
+  </div>
+</template>
+
+<style scoped>
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+aside {
+  width: 200px;
+  background: #2b2b2b;
+  color: #fff;
+  padding: 16px;
+}
+.logo {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+nav a {
+  display: block;
+  color: #ddd;
+  text-decoration: none;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+nav a.router-link-active {
+  background: #e8633a;
+  color: #fff;
+}
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+header {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: #fff;
+  border-bottom: 1px solid #eceae6;
+  font-size: 14px;
+}
+header button {
+  border: 1px solid #eceae6;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+.content {
+  padding: 20px;
+  flex: 1;
+}
+</style>

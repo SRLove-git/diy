@@ -1,0 +1,29 @@
+# 开发环境：仅基础设施容器化，Node 服务在宿主机直接运行（热更新）
+# 用法：docker compose -f docker/compose.dev.yml up -d
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: diy-mysql-dev
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: diy
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-dev-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: diy-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-dev-data:/data
+
+volumes:
+  mysql-dev-data:
+  redis-dev-data:

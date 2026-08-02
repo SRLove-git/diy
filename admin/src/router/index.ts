@@ -1,0 +1,28 @@
+import { createRouter, createWebHashHistory } from 'vue-router'
+import { auth } from '../stores/auth'
+
+const router = createRouter({
+  history: createWebHashHistory(),
+  routes: [
+    { path: '/login', component: () => import('../views/LoginView.vue') },
+    {
+      path: '/',
+      component: () => import('../layout/AdminLayout.vue'),
+      children: [
+        { path: '', redirect: '/stores' },
+        {
+          path: 'stores',
+          component: () => import('../views/StoresView.vue'),
+          meta: { title: '门店管理' },
+        },
+      ],
+    },
+  ],
+})
+
+router.beforeEach((to) => {
+  if (to.path !== '/login' && !auth.loggedIn) return '/login'
+  if (to.path === '/login' && auth.loggedIn) return '/'
+})
+
+export default router

@@ -1,0 +1,21 @@
+# 测试环境：CI / 回归测试用独立实例，端口与开发环境区分，避免冲突
+# 用法：docker compose -f docker/compose.test.yml up -d
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: diy-mysql-test
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: diy_test
+    ports:
+      - "13306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: diy-redis-test
+    ports:
+      - "16379:6379"

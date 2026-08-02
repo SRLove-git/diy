@@ -1,0 +1,62 @@
+# 生产环境：全链路容器化（MySQL + Redis + server + admin）
+# 用法：docker compose -f docker/compose.prod.yml up -d --build
+# 注意：正式部署时以环境变量/密钥管理注入 DB 密码与 JWT_SECRET
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: diy-mysql-prod
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-change-me}
+      MYSQL_DATABASE: diy
+    volumes:
+      - mysql-prod-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD:-change-me}"]
+      interval: 10s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: diy-redis-prod
+    restart: unless-stopped
+    volumes:
+      - redis-prod-data:/data
+
+  server:
+    build:
+      context: ../server
+    container_name: diy-server-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-change-me}
+      DB_NAME: diy
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-change-me}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "3000:3000"
+
+  admin:
+    build:
+      context: ../admin
+    container_name: diy-admin-prod
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "8080:80"
+
+volumes:
+  mysql-prod-data:
+  redis-prod-data:

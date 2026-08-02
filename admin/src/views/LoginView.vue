@@ -1,0 +1,145 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import http from '../api/http'
+import { auth } from '../stores/auth'
+
+const router = useRouter()
+const phone = ref('')
+const code = ref('')
+const countdown = ref(0)
+const sending = ref(false)
+const loading = ref(false)
+const error = ref('')
+
+let timer: number | undefined
+
+function startCountdown() {
+  countdown.value = 60
+  timer = window.setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) clearInterval(timer)
+  }, 1000)
+}
+
+async function sendCode() {
+  error.value = ''
+  sending.value = true
+  try {
+    await http.post('/auth/sms-code', { phone: phone.value })
+    startCountdown()
+  } catch (e: any) {
+    error.value = e.response?.data?.message || '发送失败'
+  } finally {
+    sending.value = false
+  }
+}
+
+async function login() {
+  if (!/^1[3-9]\d{9}$/.test(phone.value) || !/^\d{6}$/.test(code.value)) {
+    error.value = '请输入正确的手机号和 6 位验证码'
+    return
+  }
+  loading.value = true
+  error.value = ''
+  try {
+    const { data } = await http.post('/auth/login', {
+      phone: phone.value,
+      code: code.value,
+    })
+    auth.setToken(data.accessToken)
+    router.push('/stores')
+  } catch (e: any) {
+    error.value = e.response?.data?.message || '登录失败'
+  } finally {
+    loading.value = false
+  }
+}
+</script>
+
+<template>
+  <div class="login-wrap">
+    <form class="login-card" @submit.prevent="login">
+      <h1>DIY 手作工坊 · 管理后台</h1>
+      <input v-model="phone" placeholder="管理员手机号" maxlength="11" />
+      <div class="code-row">
+        <input v-model="code" placeholder="验证码" maxlength="6" />
+        <button type="button" :disabled="countdown > 0 || sending" @click="sendCode">
+          {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
+        </button>
+      </div>
+      <p v-if="error" class="error">{{ error }}</p>
+      <button type="submit" :disabled="loading">{{ loading ? '登录中…' : '登录' }}</button>
+      <p class="hint">开发环境管理员：13800000000（验证码见后端日志）</p>
+    </form>
+  </div>
+</template>
+
+<style scoped>
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f7f5f2;
+}
+.login-card {
+  width: 360px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+h1 {
+  font-size: 18px;
+  text-align: center;
+  margin: 0 0 12px;
+}
+input {
+  height: 44px;
+  border: 1px solid #eceae6;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 15px;
+}
+.code-row {
+  display: flex;
+  gap: 8px;
+}
+.code-row input {
+  flex: 1;
+}
+button {
+  height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: #e8633a;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.code-row button {
+  width: 120px;
+  background: #fff0e8;
+  color: #e8633a;
+  font-size: 14px;
+}
+.error {
+  color: #d9453e;
+  font-size: 13px;
+  margin: 0;
+}
+.hint {
+  color: #8a8a8a;
+  font-size: 12px;
+  text-align: center;
+  margin: 0;
+}
+</style>
