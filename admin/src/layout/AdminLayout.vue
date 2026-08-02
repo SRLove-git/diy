@@ -17,6 +17,7 @@ function logout() {
       <nav>
         <RouterLink to="/stores">门店管理</RouterLink>
         <RouterLink to="/orders">订单管理</RouterLink>
+        <RouterLink to="/posts">作品审核</RouterLink>
       </nav>
     </aside>
     <main>

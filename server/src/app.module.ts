@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { AuthModule } from './auth/auth.module';
+import { CommunityModule } from './community/community.module';
 import { BootstrapService } from './bootstrap/bootstrap.service';
 import { GlobalJwtModule } from './common/global-jwt.module';
 import { HealthController } from './health/health.controller';
@@ -35,6 +36,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     StoresModule,
     AppointmentsModule,
+    CommunityModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService, BootstrapService],
