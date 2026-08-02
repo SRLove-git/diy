@@ -2,6 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../core/auth_service.dart';
+import 'profile/my_favorites_page.dart';
+import 'profile/my_history_page.dart';
+import 'profile/my_works_page.dart';
 import 'profile/order_list_page.dart';
 
 /// 我的：资料区 + 功能列表（卡包/点赞收藏/作品/历史/订单）
@@ -109,9 +112,33 @@ class ProfilePage extends StatelessWidget {
                 icon: Icons.confirmation_number_outlined,
                 label: '卡包',
               ),
-              const _MenuTile(icon: Icons.favorite_border, label: '点赞与收藏'),
-              const _MenuTile(icon: Icons.photo_library_outlined, label: '个人作品'),
-              const _MenuTile(icon: Icons.history, label: '观看历史'),
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MyFavoritesPage()),
+                ),
+                child: const _MenuTile(
+                  icon: Icons.favorite_border,
+                  label: '点赞与收藏',
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MyWorksPage()),
+                ),
+                child: const _MenuTile(
+                  icon: Icons.photo_library_outlined,
+                  label: '个人作品',
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MyHistoryPage()),
+                ),
+                child: const _MenuTile(
+                  icon: Icons.history,
+                  label: '观看历史',
+                ),
+              ),
               GestureDetector(
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const OrderListPage()),

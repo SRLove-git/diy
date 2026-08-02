@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { CreatePostDto } from './post.dto';
+import { CreateCommentDto } from './comment.dto';
 import { CommunityService } from './community.service';
 
 /** 客户端：社区作品（发布/列表/详情） */
@@ -49,9 +50,124 @@ export class PostsController {
     return this.community.myPosts(user.id, page);
   }
 
+  /** 批量检查当前用户点赞状态（必须在 :id 路由前） */
+  @Get('liked')
+  @UseGuards(JwtAuthGuard)
+  async batchLiked(
+    @CurrentUser() user: AuthUser,
+    @Query('ids') ids: string,
+  ) {
+    const postIds = (ids || '').split(',').map(Number).filter(Boolean);
+    const likedSet = await this.community.hasUserLikedMultiple(user.id, postIds);
+    const result: Record<number, boolean> = {};
+    for (const id of postIds) {
+      result[id] = likedSet.has(id);
+    }
+    return result;
+  }
+
+  /** 我的收藏列表（必须在 :id 路由前） */
+  @Get('favorites')
+  @UseGuards(JwtAuthGuard)
+  myFavorites(
+    @CurrentUser() user: AuthUser,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+  ) {
+    return this.community.getMyCollections(user.id, page);
+  }
+
   /** 作品详情 */
   @Get(':id')
   detail(@Param('id', ParseIntPipe) id: number) {
     return this.community.detail(id);
+  }
+
+  // ──── Likes ────
+
+  /** 切换点赞 */
+  @Post(':id/like')
+  @UseGuards(JwtAuthGuard)
+  toggleLike(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.community.toggleLike(user.id, id);
+  }
+
+  /** 检查是否已点赞 */
+  @Get(':id/like')
+  @UseGuards(JwtAuthGuard)
+  isLiked(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.community.isLiked(user.id, id).then((liked) => ({ liked }));
+  }
+
+  // ──── Collections ────
+
+  /** 切换收藏 */
+  @Post(':id/collect')
+  @UseGuards(JwtAuthGuard)
+  toggleCollect(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.community.toggleCollect(user.id, id);
+  }
+
+  /** 检查是否已收藏 */
+  @Get(':id/collect')
+  @UseGuards(JwtAuthGuard)
+  isCollected(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.community.isCollected(user.id, id).then((collected) => ({ collected }));
+  }
+
+  // ──── Comments ────
+
+  /** 获取评论列表 */
+  @Get(':id/comments')
+  getComments(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+  ) {
+    return this.community.getComments(id, page);
+  }
+
+  /** 添加评论 */
+  @Post(':id/comments')
+  @UseGuards(JwtAuthGuard)
+  addComment(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateCommentDto,
+  ) {
+    return this.community.addComment(user.id, id, dto.content);
+  }
+
+  // ──── History ────
+
+  /** 添加浏览历史 */
+  @Post(':id/history')
+  @UseGuards(JwtAuthGuard)
+  addHistory(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.community.addHistory(user.id, id);
+  }
+
+  // ──── User profile posts ────
+
+  /** 查看某个用户发布的作品 */
+  @Get('users/:userId/posts')
+  userPosts(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+  ) {
+    return this.community.userPosts(userId, page);
   }
 }

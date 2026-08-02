@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { User } from './user.entity';
 
 @Injectable()
@@ -40,5 +40,23 @@ export class UsersService {
 
   setRole(id: number, role: 'admin' | 'user') {
     return this.users.update({ id }, { role });
+  }
+
+  /** 管理端：用户列表（分页，可选手机号搜索） */
+  async findAll(page = 1, phone?: string, pageSize = 20): Promise<[User[], number]> {
+    const where: any = {};
+    if (phone) where.phone = Like(`%${phone}%`);
+    return this.users.findAndCount({
+      where,
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+  }
+
+  /** 管理端：封禁/解封用户 */
+  async toggleBan(id: number, isBanned: boolean): Promise<User> {
+    await this.users.update({ id }, { isBanned });
+    return this.users.findOneBy({ id }) as Promise<User>;
   }
 }

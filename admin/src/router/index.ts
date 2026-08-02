@@ -25,6 +25,16 @@ const router = createRouter({
           component: () => import('../views/PostsView.vue'),
           meta: { title: '作品审核' },
         },
+        {
+          path: 'users',
+          component: () => import('../views/UsersView.vue'),
+          meta: { title: '用户管理' },
+        },
+        {
+          path: 'reports',
+          component: () => import('../views/ReportsView.vue'),
+          meta: { title: '举报处理' },
+        },
       ],
     },
   ],
