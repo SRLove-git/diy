@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/post_api.dart';
+import '../../widgets/state_widgets.dart';
 import '../community/post_detail_page.dart';
 
 /// 我的收藏列表
@@ -65,7 +66,7 @@ class _MyFavoritesPageState extends State<MyFavoritesPage> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingWidget();
     }
 
     if (_error != null) {
@@ -73,16 +74,7 @@ class _MyFavoritesPageState extends State<MyFavoritesPage> {
         children: [
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.6,
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.wifi_off, size: 48, color: Color(0xFF8A8A8A)),
-                  const SizedBox(height: 12),
-                  Text(_error!, style: const TextStyle(color: Color(0xFF8A8A8A))),
-                ],
-              ),
-            ),
+            child: AppErrorWidget(message: _error!, onRetry: _load),
           ),
         ],
       );
@@ -93,15 +85,9 @@ class _MyFavoritesPageState extends State<MyFavoritesPage> {
         children: [
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.6,
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.bookmark_border, size: 64, color: Color(0xFFD0D0D0)),
-                  SizedBox(height: 12),
-                  Text('还没有收藏作品', style: TextStyle(color: Color(0xFF8A8A8A))),
-                ],
-              ),
+            child: const EmptyWidget(
+              icon: Icons.bookmark_border,
+              message: '还没有收藏作品',
             ),
           ),
         ],

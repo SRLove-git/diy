@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/post_api.dart';
+import '../../widgets/state_widgets.dart';
 import 'post_detail_page.dart';
 
 /// 作者主页：查看他人的作品列表
@@ -67,7 +68,7 @@ class _AuthorProfilePageState extends State<AuthorProfilePage> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingWidget();
     }
 
     if (_error != null) {
@@ -75,16 +76,7 @@ class _AuthorProfilePageState extends State<AuthorProfilePage> {
         children: [
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.6,
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.wifi_off, size: 48, color: Color(0xFF8A8A8A)),
-                  const SizedBox(height: 12),
-                  Text(_error!, style: const TextStyle(color: Color(0xFF8A8A8A))),
-                ],
-              ),
-            ),
+            child: AppErrorWidget(message: _error!, onRetry: _load),
           ),
         ],
       );
@@ -95,15 +87,9 @@ class _AuthorProfilePageState extends State<AuthorProfilePage> {
         children: [
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.6,
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.brush_outlined, size: 64, color: Color(0xFF8A8A8A)),
-                  SizedBox(height: 12),
-                  Text('该用户暂无作品', style: TextStyle(color: Color(0xFF8A8A8A))),
-                ],
-              ),
+            child: const EmptyWidget(
+              icon: Icons.brush_outlined,
+              message: '该用户暂无作品',
             ),
           ),
         ],

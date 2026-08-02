@@ -9,7 +9,12 @@ const router = createRouter({
       path: '/',
       component: () => import('../layout/AdminLayout.vue'),
       children: [
-        { path: '', redirect: '/stores' },
+        { path: '', redirect: '/dashboard' },
+        {
+          path: 'dashboard',
+          component: () => import('../views/DashboardView.vue'),
+          meta: { title: '数据看板' },
+        },
         {
           path: 'stores',
           component: () => import('../views/StoresView.vue'),
@@ -34,6 +39,11 @@ const router = createRouter({
           path: 'reports',
           component: () => import('../views/ReportsView.vue'),
           meta: { title: '举报处理' },
+        },
+        {
+          path: 'notifications',
+          component: () => import('../views/NotificationsView.vue'),
+          meta: { title: '通知管理' },
         },
       ],
     },

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+
 import { Post } from './post.entity';
 import { Like } from './like.entity';
 import { Comment } from './comment.entity';
@@ -237,6 +238,29 @@ export class CommunityService {
     } else {
       await this.histories.save(this.histories.create({ userId, postId }));
     }
+  }
+
+  /** 获取用户浏览历史，按浏览时间倒序 */
+  async fetchHistory(userId: number, page = 1, pageSize = 20): Promise<[Post[], number]> {
+    const [records, total] = await this.histories.findAndCount({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+
+    if (records.length === 0) return [[], total];
+
+    const postIds = records.map((r) => r.postId);
+    const posts = await this.posts.findBy({ id: In(postIds) });
+
+    // 按浏览时间排序
+    const postMap = new Map(posts.map((p) => [p.id, p]));
+    const ordered = postIds
+      .map((id) => postMap.get(id))
+      .filter((p): p is Post => !!p);
+
+    return [ordered, total];
   }
 
   // ──── Report operations ────

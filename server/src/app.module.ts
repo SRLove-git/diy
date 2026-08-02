@@ -6,6 +6,8 @@ import { AppService } from './app.service';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { AuthModule } from './auth/auth.module';
 import { CommunityModule } from './community/community.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { BootstrapService } from './bootstrap/bootstrap.service';
 import { GlobalJwtModule } from './common/global-jwt.module';
 import { HealthController } from './health/health.controller';
@@ -37,6 +39,8 @@ import { UsersModule } from './users/users.module';
     StoresModule,
     AppointmentsModule,
     CommunityModule,
+    NotificationsModule,
+    DashboardModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService, BootstrapService],

@@ -210,6 +210,16 @@ class PostApi {
     await ApiClient.instance.post('/posts/$postId/history');
   }
 
+  /// 获取我的浏览历史
+  static Future<({List<Post> items, int total})> fetchHistory({int page = 1}) async {
+    final resp = await ApiClient.instance.get('/posts/history', queryParameters: {'page': page});
+    final data = resp.data;
+    final items = ((data[0] ?? []) as List)
+        .map((e) => Post.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return (items: items, total: data[1] as int);
+  }
+
   /// 提取后端错误信息
   static String messageOf(DioException e) {
     final data = e.response?.data;

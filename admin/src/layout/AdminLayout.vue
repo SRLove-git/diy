@@ -15,11 +15,13 @@ function logout() {
     <aside>
       <div class="logo">DIY 手作工坊 · 后台</div>
       <nav>
+        <RouterLink to="/dashboard">数据看板</RouterLink>
         <RouterLink to="/stores">门店管理</RouterLink>
         <RouterLink to="/orders">订单管理</RouterLink>
         <RouterLink to="/posts">作品审核</RouterLink>
         <RouterLink to="/users">用户管理</RouterLink>
         <RouterLink to="/reports">举报处理</RouterLink>
+        <RouterLink to="/notifications">通知管理</RouterLink>
       </nav>
     </aside>
     <main>

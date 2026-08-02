@@ -1,0 +1,149 @@
+import 'package:flutter/material.dart';
+
+/// 通用状态控件库
+/// 对齐《第一阶段UI设计指导》§八：加载/空态/错误状态规范
+
+/// 加载中组件
+class LoadingWidget extends StatelessWidget {
+  const LoadingWidget({super.key, this.message});
+
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(color: Color(0xFFE8633A)),
+          if (message != null) ...[
+            const SizedBox(height: 12),
+            Text(message!, style: const TextStyle(color: Color(0xFF8A8A8A))),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 空态组件
+class EmptyWidget extends StatelessWidget {
+  const EmptyWidget({
+    super.key,
+    required this.icon,
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final IconData icon;
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 64, color: const Color(0xFFD0D0D0)),
+          const SizedBox(height: 12),
+          Text(message, style: const TextStyle(fontSize: 15, color: Color(0xFF8A8A8A))),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: onAction,
+              child: Text(actionLabel!),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 错误态组件
+class AppErrorWidget extends StatelessWidget {
+  const AppErrorWidget({
+    super.key,
+    this.message = '加载失败',
+    this.onRetry,
+  });
+
+  final String message;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.wifi_off, size: 48, color: Color(0xFF8A8A8A)),
+          const SizedBox(height: 12),
+          Text(message, style: const TextStyle(color: Color(0xFF8A8A8A))),
+          if (onRetry != null) ...[
+            const SizedBox(height: 16),
+            OutlinedButton(
+              onPressed: onRetry,
+              child: const Text('重试'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 通用列表状态构建器：根据 loading / error / items 返回对应状态控件
+class StateListBuilder extends StatelessWidget {
+  const StateListBuilder({
+    super.key,
+    required this.loading,
+    this.error,
+    required this.isEmpty,
+    required this.emptyIcon,
+    required this.emptyMessage,
+    this.emptyActionLabel,
+    this.onRefresh,
+    this.onRetry,
+    required this.builder,
+  });
+
+  final bool loading;
+  final String? error;
+  final bool isEmpty;
+  final IconData emptyIcon;
+  final String emptyMessage;
+  final String? emptyActionLabel;
+  final Future<void> Function()? onRefresh;
+  final VoidCallback? onRetry;
+  final Widget Function() builder;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget body;
+
+    if (loading) {
+      body = const LoadingWidget();
+    } else if (error != null) {
+      body = AppErrorWidget(message: error!, onRetry: onRetry);
+    } else if (isEmpty) {
+      body = EmptyWidget(
+        icon: emptyIcon,
+        message: emptyMessage,
+        actionLabel: emptyActionLabel,
+        onAction: onRetry,
+      );
+    } else {
+      body = builder();
+    }
+
+    if (onRefresh != null) {
+      return RefreshIndicator(onRefresh: onRefresh!, child: body is ListView ? body : ListView(children: [SizedBox(height: MediaQuery.of(context).size.height * 0.7, child: body)]));
+    }
+
+    return body;
+  }
+}

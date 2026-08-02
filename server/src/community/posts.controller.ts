@@ -160,6 +160,16 @@ export class PostsController {
     return this.community.addHistory(user.id, id);
   }
 
+  /** 获取我的浏览历史 */
+  @Get('history')
+  @UseGuards(JwtAuthGuard)
+  fetchHistory(
+    @CurrentUser() user: AuthUser,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+  ) {
+    return this.community.fetchHistory(user.id, page);
+  }
+
   // ──── User profile posts ────
 
   /** 查看某个用户发布的作品 */
