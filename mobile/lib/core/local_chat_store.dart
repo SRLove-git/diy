@@ -75,28 +75,42 @@ class LocalChatStore {
 
   Future<Database> get _database => _dbFuture ??= _open();
 
+  /// 建表 SQL（onCreate/onUpgrade 共用）
+  String get _createSql => '''
+    CREATE TABLE $_table (
+      client_msg_id TEXT PRIMARY KEY,
+      server_id INTEGER,
+      conversation_id INTEGER NOT NULL,
+      sender_id INTEGER NOT NULL,
+      content TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'text',
+      send_time INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'sending'
+    )
+  ''';
+
+  /// 索引 SQL：SQLite 索引不能引用隐藏列 rowid，只能使用实际列
+  String get _createIndexSql => '''
+    CREATE INDEX idx_msg_conv_time
+    ON $_table(conversation_id, send_time DESC)
+  ''';
+
   Future<Database> _open() async {
     final dir = await getDatabasesPath();
     return openDatabase(
       p.join(dir, _dbName),
-      version: 1,
+      version: 2,
       onCreate: (db, _) async {
-        await db.execute('''
-          CREATE TABLE $_table (
-            client_msg_id TEXT PRIMARY KEY,
-            server_id INTEGER,
-            conversation_id INTEGER NOT NULL,
-            sender_id INTEGER NOT NULL,
-            content TEXT NOT NULL,
-            type TEXT NOT NULL DEFAULT 'text',
-            send_time INTEGER NOT NULL,
-            status TEXT NOT NULL DEFAULT 'sending'
-          )
-        ''');
-        await db.execute('''
-          CREATE INDEX idx_msg_conv_time
-          ON $_table(conversation_id, send_time DESC, rowid DESC)
-        ''');
+        await db.execute(_createSql);
+        await db.execute(_createIndexSql);
+      },
+      onUpgrade: (db, oldVersion, _) async {
+        // v1 索引引用了隐藏列 rowid 导致建表失败，这里重建表修复
+        if (oldVersion < 2) {
+          await db.execute('DROP TABLE IF EXISTS $_table');
+          await db.execute(_createSql);
+          await db.execute(_createIndexSql);
+        }
       },
     );
   }

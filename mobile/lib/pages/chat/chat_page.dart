@@ -440,6 +440,10 @@ class _ChatPageState extends State<ChatPage> {
         return _MessageBubble(
           vm: vm,
           meId: _meId,
+          meAvatar: AuthService.instance.user?.avatar ?? '',
+          meNickname: AuthService.instance.user?.nickname ?? '',
+          peerAvatar: widget.conversation.peerAvatar,
+          peerNickname: widget.conversation.peerNickname,
           onResend: () => _resend(vm),
         );
       },
@@ -566,11 +570,19 @@ class _MessageBubble extends StatelessWidget {
     required this.vm,
     required this.meId,
     required this.onResend,
+    this.meAvatar = '',
+    this.meNickname = '',
+    this.peerAvatar = '',
+    this.peerNickname = '',
   });
 
   final _ViewMsg vm;
   final int meId;
   final VoidCallback onResend;
+  final String meAvatar;
+  final String meNickname;
+  final String peerAvatar;
+  final String peerNickname;
 
   @override
   Widget build(BuildContext context) {
@@ -578,41 +590,59 @@ class _MessageBubble extends StatelessWidget {
     final mine = m.senderId == meId;
     final isImage = m.contentType == 'image';
     final colors = AppColors.of(context);
-    return Align(
-      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Column(
-        crossAxisAlignment:
-            mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            padding: isImage
-                ? EdgeInsets.zero
-                : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            constraints: isImage
-                ? null
-                : BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.72,
-                  ),
-            decoration: isImage
-                ? null
-                : BoxDecoration(
-                    color: mine ? colors.primary : colors.surface,
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(16),
-                      topRight: const Radius.circular(16),
-                      bottomLeft: Radius.circular(mine ? 16 : 4),
-                      bottomRight: Radius.circular(mine ? 4 : 16),
-                    ),
-                  ),
-            child: isImage ? _buildImage(context, colors) : _buildText(colors),
-          ),
-          if (mine)
-            Padding(
-              padding: const EdgeInsets.only(right: 4, bottom: 2),
-              child: _buildStatus(colors),
+    final bubble = Container(
+      padding: isImage
+          ? EdgeInsets.zero
+          : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      constraints: isImage
+          ? null
+          : BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.72,
             ),
+      decoration: isImage
+          ? null
+          : BoxDecoration(
+              color: mine ? colors.primary : colors.surface,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(16),
+                topRight: const Radius.circular(16),
+                bottomLeft: Radius.circular(mine ? 16 : 4),
+                bottomRight: Radius.circular(mine ? 4 : 16),
+              ),
+            ),
+      child: isImage ? _buildImage(context, colors) : _buildText(colors),
+    );
+    // 微信风格：对方头像在左，自己头像在右
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment:
+            mine ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!mine) ...[
+            _AvatarBubble(avatar: peerAvatar, nickname: peerNickname),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Column(
+              crossAxisAlignment:
+                  mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                bubble,
+                if (mine)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4, bottom: 2),
+                    child: _buildStatus(colors),
+                  ),
+              ],
+            ),
+          ),
+          if (mine) ...[
+            const SizedBox(width: 8),
+            _AvatarBubble(avatar: meAvatar, nickname: meNickname),
+          ],
         ],
       ),
     );
@@ -709,5 +739,52 @@ class _MessageBubble extends StatelessWidget {
           style: TextStyle(fontSize: 10, color: colors.textSecondary),
         );
     }
+  }
+}
+
+/// 消息头像：支持 http(s)/本地相对路径网络图，缺失时显示昵称首字占位
+class _AvatarBubble extends StatelessWidget {
+  const _AvatarBubble({required this.avatar, required this.nickname});
+
+  final String avatar;
+  final String nickname;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final url = avatar.trim();
+    final hasImage = url.startsWith('http://') ||
+        url.startsWith('https://') ||
+        url.startsWith('/uploads/');
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: colors.placeholder,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: hasImage
+          ? Image.network(
+              ChatApi.resolveUrl(url),
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => _initial(colors),
+            )
+          : _initial(colors),
+    );
+  }
+
+  /// 首字占位：中文按字符取首字，避免 String[0] 截断多字节字符
+  Widget _initial(AppColors colors) {
+    final name = nickname.trim();
+    final initial = name.isEmpty
+        ? '?'
+        : String.fromCharCode(name.runes.first);
+    return Center(
+      child: Text(
+        initial,
+        style: TextStyle(fontSize: 16, color: colors.textSecondary),
+      ),
+    );
   }
 }
