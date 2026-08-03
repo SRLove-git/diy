@@ -127,12 +127,6 @@ const tplForm = ref({
   category: 'system' as 'system' | 'booking' | 'community' | 'activity',
 })
 
-function openCreateTpl() {
-  editingTpl.value = null
-  tplForm.value = { name: '', titleTemplate: '', contentTemplate: '', category: 'system' }
-  showTplModal.value = true
-}
-
 function openEditTpl(tpl: NotificationTemplate) {
   editingTpl.value = tpl
   tplForm.value = {
