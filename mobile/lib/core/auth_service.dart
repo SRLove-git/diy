@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'api_client.dart';
@@ -146,7 +147,22 @@ class AuthService extends ChangeNotifier {
   Future<void> _saveTokens(String access, String refresh) async {
     _accessToken = access;
     _refreshToken = refresh;
-    await _storage.write(key: _kAccess, value: access);
-    await _storage.write(key: _kRefresh, value: refresh);
+    await _secureWrite(_kAccess, access);
+    await _secureWrite(_kRefresh, refresh);
+  }
+
+  /// Keychain 写入容错：iOS 对已存在的项直接 write 会报 -25299（item already exists），
+  /// 遇到时先删除再写入。
+  Future<void> _secureWrite(String key, String value) async {
+    try {
+      await _storage.write(key: key, value: value);
+    } on PlatformException catch (e) {
+      if (e.code == '-25299' || (e.message ?? '').contains('already exists')) {
+        await _storage.delete(key: key);
+        await _storage.write(key: key, value: value);
+      } else {
+        rethrow;
+      }
+    }
   }
 }
