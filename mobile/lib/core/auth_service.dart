@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'api_client.dart';
+import 'chat_service.dart';
 
 class User {
   const User({
@@ -145,6 +146,7 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    ChatService.instance.disconnect();
     _user = null;
     _accessToken = null;
     _refreshToken = null;

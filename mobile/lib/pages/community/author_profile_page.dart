@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_colors.dart';
+import '../../core/auth_service.dart';
+import '../../core/chat_api.dart';
+import '../../core/chat_service.dart';
 import '../../core/post_api.dart';
 import '../../widgets/state_widgets.dart';
+import '../chat/chat_page.dart';
 import 'post_detail_page.dart';
 
 /// 作者主页：查看他人的作品列表
@@ -56,10 +60,39 @@ class _AuthorProfilePageState extends State<AuthorProfilePage> {
     }
   }
 
+  /// 发起会话并进入聊天页（不看自己的主页时显示入口）
+  Future<void> _openChat() async {
+    ChatService.instance.ensureConnected();
+    try {
+      final conv = await ChatApi.createConversation(widget.userId);
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ChatPage(conversation: conv)),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('发起会话失败，请稍后再试')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isSelf = AuthService.instance.user?.id == widget.userId;
     return Scaffold(
-      appBar: AppBar(title: Text('用户 #${widget.userId}')),
+      appBar: AppBar(
+        title: Text('用户 #${widget.userId}'),
+        actions: [
+          if (!isSelf)
+            IconButton(
+              icon: const Icon(Icons.chat_bubble_outline),
+              tooltip: '发消息',
+              onPressed: _openChat,
+            ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: _load,
         child: _buildBody(),
