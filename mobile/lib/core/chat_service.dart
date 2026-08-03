@@ -1,8 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
+import 'package:msgpack_dart/msgpack_dart.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'auth_service.dart';
@@ -110,15 +111,17 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     _heartbeat?.cancel();
     _heartbeat = Timer.periodic(
       const Duration(seconds: 25),
-      (_) => _sendJson({'type': 'ping'}),
+      (_) => _sendBin({'type': 'ping'}),
     );
   }
 
   void _onFrame(dynamic raw) {
-    if (raw is! String) return;
+    // 二进制帧：msgpack 解码
+    if (raw is! List<int>) return;
     final Map<String, dynamic> frame;
     try {
-      frame = jsonDecode(raw) as Map<String, dynamic>;
+      frame = Map<String, dynamic>.from(
+          deserialize(Uint8List.fromList(raw)) as Map);
     } catch (_) {
       return;
     }
@@ -212,11 +215,11 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
-  void _sendJson(Map<String, dynamic> frame) {
+  void _sendBin(Map<String, dynamic> frame) {
     final channel = _channel;
     if (channel == null) return;
     try {
-      channel.sink.add(jsonEncode(frame));
+      channel.sink.add(serialize(frame));
     } catch (_) {
       // 写入失败由 onDone/onError 触发重连
     }
@@ -276,7 +279,7 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     final completer = Completer<ChatMessage?>();
     _pendingSends[clientMsgId] = completer;
     if (connected) {
-      _sendJson({
+      _sendBin({
         'type': 'send',
         'conversationId': conversationId,
         'clientMsgId': clientMsgId,
@@ -285,7 +288,7 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     }
     ChatMessage? confirmed;
     try {
-      confirmed = await completer.future.timeout(const Duration(seconds: 8));
+      confirmed = await completer.future.timeout(const Duration(seconds: 3));
     } on TimeoutException {
       confirmed = null;
     } finally {
@@ -308,7 +311,7 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
       conversations = list;
       notifyListeners();
     }
-    _sendJson({'type': 'read', 'conversationId': conversationId});
+    _sendBin({'type': 'read', 'conversationId': conversationId});
     try {
       await ChatApi.markRead(conversationId);
     } catch (_) {

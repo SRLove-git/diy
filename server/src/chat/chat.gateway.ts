@@ -6,6 +6,7 @@ import {
   OnGatewayDisconnect,
   WebSocketGateway,
 } from '@nestjs/websockets';
+import { decode, encode } from '@msgpack/msgpack';
 import type { IncomingMessage } from 'http';
 import { WebSocket } from 'ws';
 import type { JwtPayload } from '../auth/auth.service';
@@ -64,6 +65,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     set.add(client);
 
+    // 禁用 Nagle 算法：聊天帧都是小数据包，应立即发送不做合并缓冲
+    const sock = (client as any)._socket;
+    if (sock && typeof sock.setNoDelay === 'function') {
+      sock.setNoDelay(true);
+    }
+
     // 手动挂消息监听：ws adapter 的 @SubscribeMessage 回调拿不到 client，无法定向回复
     client.on('message', (buffer: Buffer) =>
       this.handleFrame(userId, client, buffer),
@@ -84,7 +91,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private handleFrame(userId: number, client: WebSocket, buffer: Buffer): void {
     let frame: ChatFrame;
     try {
-      frame = JSON.parse(buffer.toString()) as ChatFrame;
+      frame = decode(buffer) as ChatFrame;
     } catch {
       return;
     }
@@ -121,7 +128,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         Number(conversationId),
         content,
       );
-      this.reply(client, {
+      // 通过 sendToUser 发给发送方自己的所有连接（比 reply(client) 更可靠，后者可能因单连接状态异常丢帧）
+      this.sendToUser(userId, {
         type: 'sent',
         clientMsgId: clientMsgId ?? null,
         message,
@@ -175,17 +183,25 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private reply(client: WebSocket, payload: unknown): void {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(payload));
-    }
+    if (client.readyState !== WebSocket.OPEN) return;
+    client.send(Buffer.from(encode(payload)), (err) => {
+      if (err) console.warn('[ChatGateway] reply send error:', err.message);
+    });
   }
 
   private sendToUser(userId: number, payload: unknown): void {
     const set = this.clients.get(userId);
     if (!set) return;
-    const data = JSON.stringify(payload);
+    const data = Buffer.from(encode(payload));
     for (const client of set) {
-      if (client.readyState === WebSocket.OPEN) client.send(data);
+      if (client.readyState !== WebSocket.OPEN) continue;
+      client.send(data, (err) => {
+        if (err)
+          console.warn(
+            `[ChatGateway] sendToUser ${userId} error:`,
+            err.message,
+          );
+      });
     }
   }
 }

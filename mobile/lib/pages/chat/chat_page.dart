@@ -88,9 +88,16 @@ class _ChatPageState extends State<ChatPage> {
       final r = await ChatApi.fetchMessages(widget.conversation.id);
       if (mounted) {
         setState(() {
+          // 保留正在发送中的本地消息（避免竞态被清除）
+          final pending = _msgs.where((vm) => vm.state == _SendState.pending).toList();
           _msgs
             ..clear()
             ..addAll(r.items.reversed.map((m) => _ViewMsg(message: m)));
+          for (final p in pending.reversed) {
+            if (!_msgs.any((vm) => vm.message.clientMsgId == p.message.clientMsgId)) {
+              _msgs.insert(0, p);
+            }
+          }
           _nextCursor = r.nextCursor;
         });
       }
@@ -149,8 +156,14 @@ class _ChatPageState extends State<ChatPage> {
     setState(() {
       final idx = _msgs.indexWhere((vm) => vm.message.clientMsgId == clientMsgId);
       if (idx >= 0) {
+        // 保留 ReadEvent 已设置的 readAt（可能是 _onEvent 在处理期间写入的）
+        final preservedReadAt = _msgs[idx].message.readAt;
         _msgs[idx] = confirmed != null
-            ? _ViewMsg(message: confirmed)
+            ? _ViewMsg(
+                message: preservedReadAt != null
+                    ? confirmed.copyWith(readAt: preservedReadAt)
+                    : confirmed,
+              )
             : _ViewMsg(message: local, state: _SendState.failed);
       }
     });
@@ -183,8 +196,13 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         final i = _msgs.indexWhere((m) => m.message.clientMsgId == clientMsgId);
         if (i >= 0) {
+          final preservedReadAt = _msgs[i].message.readAt;
           _msgs[i] = confirmed != null
-              ? _ViewMsg(message: confirmed)
+              ? _ViewMsg(
+                  message: preservedReadAt != null
+                      ? confirmed.copyWith(readAt: preservedReadAt)
+                      : confirmed,
+                )
               : _ViewMsg(message: retry, state: _SendState.failed);
         }
       });
@@ -284,7 +302,7 @@ class _ChatPageState extends State<ChatPage> {
           ),
           const SizedBox(width: 8),
           FilledButton(
-            onPressed: _send,
+            onPressed: _loading ? null : _send,
             style: FilledButton.styleFrom(
               minimumSize: const Size(0, 44),
               padding: const EdgeInsets.symmetric(horizontal: 18),
