@@ -104,19 +104,37 @@ class ChatMessage {
         clientMsgId: clientMsgId,
       );
 
-  factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
-        id: json['id'] as int?,
-        conversationId: json['conversationId'] as int,
-        senderId: json['senderId'] as int,
-        contentType: (json['contentType'] ?? 'text') as String,
-        content: (json['content'] ?? '') as String,
-        readAt: json['readAt'] != null
-            ? DateTime.tryParse(json['readAt'] as String)
-            : null,
-        createdAt: json['createdAt'] != null
-            ? DateTime.tryParse(json['createdAt'] as String)
-            : null,
-      );
+  factory ChatMessage.fromJson(Map<String, dynamic> json) {
+    // 使用 num.tryParse 等安全转换，避免 msgpack/jwt 等场景下的类型强制转换异常
+    int? safeInt(dynamic v) {
+      if (v == null) return null;
+      if (v is int) return v;
+      if (v is double) return v.toInt();
+      if (v is num) return v.toInt();
+      if (v is String) return int.tryParse(v);
+      return null;
+    }
+
+    int safeIntOr(dynamic v, int fallback) => safeInt(v) ?? fallback;
+
+    return ChatMessage(
+      id: safeInt(json['id']),
+      conversationId: safeIntOr(json['conversationId'], 0),
+      senderId: safeIntOr(json['senderId'], 0),
+      contentType: (json['contentType'] ?? 'text').toString(),
+      content: (json['content'] ?? '').toString(),
+      readAt: _coerceDateTime(json['readAt']),
+      createdAt: _coerceDateTime(json['createdAt']),
+    );
+  }
+
+  /// 兼容 JSON 字符串与 msgpack 解码后的 DateTime 对象
+  static DateTime? _coerceDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
 }
 
 /// 聊天 REST API（历史/兜底发送/已读）

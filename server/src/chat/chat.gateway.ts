@@ -132,9 +132,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.sendToUser(userId, {
         type: 'sent',
         clientMsgId: clientMsgId ?? null,
-        message,
+        message: this.serializeMessage(message),
       });
-      this.sendToUser(peerId, { type: 'newMessage', message });
+      this.sendToUser(peerId, {
+        type: 'newMessage',
+        message: this.serializeMessage(message),
+      });
     } catch (e) {
       this.reply(client, {
         type: 'error',
@@ -160,7 +163,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         type: 'read',
         conversationId,
         readerId: userId,
-        readAt,
+        readAt: readAt?.toISOString?.() ?? readAt,
       });
     } catch {
       // 无权访问或会话不存在：静默忽略
@@ -169,7 +172,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   /** REST 发消息后的实时转发 */
   broadcastNewMessage(message: Message, peerId: number): void {
-    this.sendToUser(peerId, { type: 'newMessage', message });
+    this.sendToUser(peerId, {
+      type: 'newMessage',
+      message: this.serializeMessage(message),
+    });
   }
 
   /** REST 标记已读后的实时转发 */
@@ -179,7 +185,25 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     readerId: number,
     readAt: Date,
   ): void {
-    this.sendToUser(peerId, { type: 'read', conversationId, readerId, readAt });
+    this.sendToUser(peerId, {
+      type: 'read',
+      conversationId,
+      readerId,
+      readAt: readAt?.toISOString?.() ?? readAt,
+    });
+  }
+
+  /** 将 Message 实体转为可安全 msgpack 编码的纯对象（Date → ISO 字符串） */
+  private serializeMessage(message: Message): Record<string, unknown> {
+    return {
+      id: message.id,
+      conversationId: message.conversationId,
+      senderId: message.senderId,
+      contentType: message.contentType,
+      content: message.content,
+      readAt: message.readAt?.toISOString?.() ?? message.readAt ?? null,
+      createdAt: message.createdAt?.toISOString?.() ?? message.createdAt ?? null,
+    };
   }
 
   private reply(client: WebSocket, payload: unknown): void {

@@ -125,33 +125,38 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     } catch (_) {
       return;
     }
-    switch (frame['type']) {
-      case 'sent':
-        final clientMsgId = (frame['clientMsgId'] ?? '') as String;
-        final message =
-            ChatMessage.fromJson(frame['message'] as Map<String, dynamic>);
-        _pendingSends.remove(clientMsgId)?.complete(message);
-        break;
-      case 'newMessage':
-        final message =
-            ChatMessage.fromJson(frame['message'] as Map<String, dynamic>);
-        _onNewMessage(message);
-        break;
-      case 'read':
-        _events.add(ReadEvent(
-          (frame['conversationId'] as num).toInt(),
-          (frame['readerId'] as num).toInt(),
-          frame['readAt'] != null
-              ? DateTime.tryParse(frame['readAt'] as String)
-              : null,
-        ));
-        break;
-      case 'error':
-        if (frame['code'] == 'send_failed') {
+    try {
+      switch (frame['type']) {
+        case 'sent':
           final clientMsgId = (frame['clientMsgId'] ?? '') as String;
-          _pendingSends.remove(clientMsgId)?.complete(null);
-        }
-        break;
+          final message =
+              ChatMessage.fromJson(frame['message'] as Map<String, dynamic>);
+          _pendingSends.remove(clientMsgId)?.complete(message);
+          break;
+        case 'newMessage':
+          final rawMsg = frame['message'];
+          if (rawMsg is! Map) return;
+          final message = ChatMessage.fromJson(Map<String, dynamic>.from(rawMsg));
+          _onNewMessage(message);
+          break;
+        case 'read':
+          _events.add(ReadEvent(
+            (frame['conversationId'] as num).toInt(),
+            (frame['readerId'] as num).toInt(),
+            frame['readAt'] != null
+                ? DateTime.tryParse(frame['readAt'] as String)
+                : null,
+          ));
+          break;
+        case 'error':
+          if (frame['code'] == 'send_failed') {
+            final clientMsgId = (frame['clientMsgId'] ?? '') as String;
+            _pendingSends.remove(clientMsgId)?.complete(null);
+          }
+          break;
+      }
+    } catch (_) {
+      // 单帧解析失败不影响 WebSocket 连接
     }
   }
 
