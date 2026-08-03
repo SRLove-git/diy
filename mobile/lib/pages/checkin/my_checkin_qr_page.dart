@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_colors.dart';
 import '../../core/appointment_api.dart';
 
 /// 到店二维码核销页：展示待核销（booked）预约的二维码，到店出示由店员扫码核销
@@ -66,21 +67,31 @@ class _MyCheckInQrPageState extends State<MyCheckInQrPage> {
               const SizedBox(height: 4),
               Text(
                 '${appt.date} ${appt.startTime}-${appt.endTime} · 桌位 ${appt.tableName}',
-                style: const TextStyle(color: Color(0xFF8A8A8A), fontSize: 13),
+                style: TextStyle(
+                  color: AppColors.of(ctx).textSecondary,
+                  fontSize: 13,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               _QrCode(code: appt.code, size: 240),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 '到店出示此二维码，由店员扫码核销',
-                style: TextStyle(color: Color(0xFF8A8A8A), fontSize: 13),
+                style: TextStyle(
+                  color: AppColors.of(ctx).textSecondary,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () => Navigator.of(ctx).pop(),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.of(ctx).textPrimary,
+                    foregroundColor: AppColors.of(ctx).surface,
+                  ),
                   child: const Text('关闭'),
                 ),
               ),
@@ -93,6 +104,7 @@ class _MyCheckInQrPageState extends State<MyCheckInQrPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('到店核销')),
       body: _loading
@@ -104,30 +116,34 @@ class _MyCheckInQrPageState extends State<MyCheckInQrPage> {
                     children: [
                       Text(
                         _error!,
-                        style: const TextStyle(color: Color(0xFF8A8A8A)),
+                        style: TextStyle(color: colors.textSecondary),
                       ),
                       const SizedBox(height: 12),
                       OutlinedButton(
                         onPressed: _load,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: colors.textPrimary,
+                          side: BorderSide(color: colors.textPrimary),
+                        ),
                         child: const Text('重试'),
                       ),
                     ],
                   ),
                 )
               : _booked.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.qr_code_2,
                             size: 64,
                             color: Color(0xFFD0D0D0),
                           ),
-                          SizedBox(height: 12),
+                          const SizedBox(height: 12),
                           Text(
                             '暂无待核销的预约',
-                            style: TextStyle(color: Color(0xFF8A8A8A)),
+                            style: TextStyle(color: colors.textSecondary),
                           ),
                         ],
                       ),
@@ -146,7 +162,7 @@ class _MyCheckInQrPageState extends State<MyCheckInQrPage> {
                             child: Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: colors.surface,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
@@ -184,9 +200,9 @@ class _MyCheckInQrPageState extends State<MyCheckInQrPage> {
                                       ],
                                     ),
                                   ),
-                                  const Icon(
+                                  Icon(
                                     Icons.chevron_right,
-                                    color: Color(0xFF8A8A8A),
+                                    color: colors.textSecondary,
                                   ),
                                 ],
                               ),
@@ -207,12 +223,13 @@ class _QrCode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        border: Border.all(color: colors.divider),
       ),
       child: QrImageView(
         data: code,
@@ -232,14 +249,15 @@ class _InfoLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Row(
       children: [
-        Icon(icon, size: 14, color: const Color(0xFF8A8A8A)),
+        Icon(icon, size: 14, color: colors.textSecondary),
         const SizedBox(width: 4),
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(color: Color(0xFF8A8A8A), fontSize: 14),
+            style: TextStyle(color: colors.textSecondary, fontSize: 14),
           ),
         ),
       ],

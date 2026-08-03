@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_colors.dart';
 import '../../core/appointment_api.dart';
 import 'checkin_page.dart';
 import 'service_timer_page.dart';
@@ -82,13 +83,16 @@ class _ScanCheckInPageState extends State<ScanCheckInPage> {
               '${appt['date']} ${appt['startTime']}-${appt['endTime']}\n'
               '桌位 ${appt['tableName']} · ${appt['peopleCount']} 人\n'
               '预约码 ${appt['code']}',
-              style: const TextStyle(color: Color(0xFF2B2B2B), height: 1.6),
+              style: TextStyle(
+                color: AppColors.of(ctx).textPrimary,
+                height: 1.6,
+              ),
             ),
             if (!booked) ...[
               const SizedBox(height: 8),
               Text(
                 _statusLabel(status),
-                style: const TextStyle(color: Color(0xFFD9453E)),
+                style: TextStyle(color: AppColors.of(ctx).danger),
               ),
             ],
           ],
@@ -96,6 +100,9 @@ class _ScanCheckInPageState extends State<ScanCheckInPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.of(ctx).textPrimary,
+            ),
             child: Text(booked ? '取消' : '关闭'),
           ),
           if (booked)
@@ -104,6 +111,10 @@ class _ScanCheckInPageState extends State<ScanCheckInPage> {
                 Navigator.of(ctx).pop();
                 await _doCheckIn(appt['code'] as String);
               },
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.of(ctx).textPrimary,
+                foregroundColor: AppColors.of(ctx).surface,
+              ),
               child: const Text('确认核销'),
             ),
         ],
@@ -155,10 +166,17 @@ class _ScanCheckInPageState extends State<ScanCheckInPage> {
                 ),
               );
             },
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.of(ctx).textPrimary,
+            ),
             child: const Text('开始上钟'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.of(ctx).textPrimary,
+              foregroundColor: AppColors.of(ctx).surface,
+            ),
             child: const Text('继续扫码'),
           ),
         ],
@@ -191,6 +209,7 @@ class _ScanCheckInPageState extends State<ScanCheckInPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('扫码核销'),
@@ -211,12 +230,14 @@ class _ScanCheckInPageState extends State<ScanCheckInPage> {
                 MobileScanner(
                   controller: _controller,
                   onDetect: _onDetect,
-                  errorBuilder: (context, error) => const Center(
+                  errorBuilder: (context, error) => Center(
                     child: Padding(
-                      padding: EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(24),
                       child: Text(
                         '无法访问相机，请检查相机权限后重试',
-                        style: TextStyle(color: Color(0xFF8A8A8A)),
+                        style: TextStyle(
+                          color: AppColors.of(context).textSecondary,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -246,25 +267,28 @@ class _ScanCheckInPageState extends State<ScanCheckInPage> {
             ),
           ),
           Container(
-            color: Colors.white,
+            color: colors.surface,
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                const Text(
+                Text(
                   '将顾客预约二维码对准扫描框',
-                  style: TextStyle(color: Color(0xFF2B2B2B)),
+                  style: TextStyle(color: colors.textPrimary),
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 8),
                   Text(
                     _error!,
-                    style: const TextStyle(color: Color(0xFFD9453E), fontSize: 14),
+                    style: TextStyle(color: colors.danger, fontSize: 14),
                   ),
                 ],
                 const SizedBox(height: 12),
                 TextButton.icon(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const CheckInPage()),
+                  ),
+                  style: TextButton.styleFrom(
+                    foregroundColor: colors.textPrimary,
                   ),
                   icon: const Icon(Icons.keyboard),
                   label: const Text('手动输入预约码'),

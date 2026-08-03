@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_colors.dart';
 import '../../core/appointment_api.dart';
 import 'experience_summary_page.dart';
 
@@ -101,10 +102,17 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.of(ctx).textPrimary,
+            ),
             child: const Text('取消'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.of(ctx).textPrimary,
+              foregroundColor: AppColors.of(ctx).surface,
+            ),
             child: const Text('确认下钟'),
           ),
         ],
@@ -171,6 +179,7 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     if (_loading) {
       return Scaffold(
         appBar: AppBar(title: const Text('体验中')),
@@ -188,16 +197,16 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
             if (_storeName.isNotEmpty) ...[
               Text(
                 _storeName,
-                style: const TextStyle(
-                  color: Color(0xFF8A8A8A),
+                style: TextStyle(
+                  color: colors.textSecondary,
                   fontSize: 15,
                 ),
               ),
               if (_tableName.isNotEmpty)
                 Text(
                   '桌位 $_tableName',
-                  style: const TextStyle(
-                    color: Color(0xFF8A8A8A),
+                  style: TextStyle(
+                    color: colors.textSecondary,
                     fontSize: 13,
                   ),
                 ),
@@ -207,7 +216,7 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
             Icon(
               _inService ? Icons.access_time_filled : Icons.login,
               size: 64,
-              color: _inService ? const Color(0xFFE8633A) : const Color(0xFF2E9E5B),
+              color: _inService ? colors.textPrimary : const Color(0xFF2E9E5B),
             ),
             const SizedBox(height: 20),
             // 状态文字
@@ -220,37 +229,37 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
               _inService
                   ? '尽情享受手作时光'
                   : '准备好后点击下方按钮开始体验',
-              style: const TextStyle(color: Color(0xFF8A8A8A)),
+              style: TextStyle(color: colors.textSecondary),
             ),
             const SizedBox(height: 32),
             if (_inService && _startTime != null) ...[
               // 上钟时间
-              const Text(
+              Text(
                 '上钟时间',
-                style: TextStyle(color: Color(0xFF8A8A8A), fontSize: 13),
+                style: TextStyle(color: colors.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 4),
               Text(
                 _formatTime(_startTime!),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2B2B2B),
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 20),
               // 使用时长（页面焦点）
-              const Text(
+              Text(
                 '使用时长',
-                style: TextStyle(color: Color(0xFF8A8A8A), fontSize: 13),
+                style: TextStyle(color: colors.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 4),
               Text(
                 _formatDuration(_elapsed),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 48,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFFE8633A),
+                  color: colors.textPrimary,
                   letterSpacing: 4,
                 ),
               ),
@@ -259,7 +268,7 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
             if (_error != null) ...[
               Text(
                 _error!,
-                style: const TextStyle(color: Color(0xFFD9453E), fontSize: 14),
+                style: TextStyle(color: colors.danger, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
@@ -283,8 +292,8 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
                 child: OutlinedButton(
                   onPressed: _submitting ? null : _clockOut,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFD9453E),
-                    side: const BorderSide(color: Color(0xFFD9453E)),
+                    foregroundColor: colors.danger,
+                    side: BorderSide(color: colors.danger),
                   ),
                   child: Text(_submitting ? '处理中…' : '下钟 · 结束体验'),
                 ),

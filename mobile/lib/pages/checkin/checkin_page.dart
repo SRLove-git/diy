@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_colors.dart';
 import '../../core/appointment_api.dart';
 import 'service_timer_page.dart';
 
@@ -60,6 +61,7 @@ class _CheckInPageState extends State<CheckInPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('手动核销')),
       body: Padding(
@@ -67,10 +69,10 @@ class _CheckInPageState extends State<CheckInPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.confirmation_number_outlined,
               size: 64,
-              color: Color(0xFFE8633A),
+              color: colors.textPrimary,
             ),
             const SizedBox(height: 24),
             Text(
@@ -78,9 +80,9 @@ class _CheckInPageState extends State<CheckInPage> {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               '输入顾客预约码完成核销',
-              style: TextStyle(color: Color(0xFF8A8A8A)),
+              style: TextStyle(color: colors.textSecondary),
             ),
             const SizedBox(height: 32),
             SizedBox(
@@ -126,7 +128,7 @@ class _CheckInPageState extends State<CheckInPage> {
               const SizedBox(height: 12),
               Text(
                 _error!,
-                style: const TextStyle(color: Color(0xFFD9453E), fontSize: 14),
+                style: TextStyle(color: colors.danger, fontSize: 14),
               ),
             ],
             const SizedBox(height: 32),
@@ -137,6 +139,10 @@ class _CheckInPageState extends State<CheckInPage> {
                 onPressed: _submitting || _controller.text.trim().length != 6
                     ? null
                     : _submit,
+                style: FilledButton.styleFrom(
+                  backgroundColor: colors.textPrimary,
+                  foregroundColor: colors.surface,
+                ),
                 child: Text(_submitting ? '核销中…' : '确认核销'),
               ),
             ),

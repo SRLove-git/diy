@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'core/app_colors.dart';
 import 'core/auth_service.dart';
 import 'pages/community_page.dart';
 import 'pages/home_page.dart';
@@ -24,27 +25,40 @@ class DiyApp extends StatelessWidget {
     return MaterialApp(
       title: 'DIY 手作工坊',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE8633A)),
-        scaffoldBackgroundColor: const Color(0xFFF7F5F2),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: Color(0xFF2B2B2B),
-          elevation: 0,
-          centerTitle: true,
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFFE8633A),
-            foregroundColor: Colors.white,
-            minimumSize: const Size.fromHeight(48),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+      theme: _buildTheme(Brightness.light),
+      darkTheme: _buildTheme(Brightness.dark),
+      themeMode: ThemeMode.system,
+      home: const AuthGate(),
+    );
+  }
+
+  /// 按亮/暗模式构建主题，配色对齐《个人页面设计初稿》颜色规范
+  ThemeData _buildTheme(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    return ThemeData(
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF465FFF),
+        brightness: brightness,
+      ),
+      scaffoldBackgroundColor:
+          isDark ? const Color(0xFF000000) : const Color(0xFFFFFFFF),
+      appBarTheme: AppBarTheme(
+        backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,
+        foregroundColor: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF000000),
+        elevation: 0,
+        centerTitle: true,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: const Color(0xFF465FFF),
+          foregroundColor: Colors.white,
+          minimumSize: const Size.fromHeight(48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
         ),
       ),
-      home: const AuthGate(),
+      extensions: [isDark ? AppColors.dark : AppColors.light],
     );
   }
 }
@@ -63,7 +77,7 @@ class AuthGate extends StatelessWidget {
   }
 }
 
-/// 底部 3 Tab：首页 / 社区 / 我的（对齐 UI 指导 §四，不加第四个）
+/// 底部 3 Tab：首页 / 社区 / 我的（悬浮胶囊样式，对齐《个人页面设计初稿》§7）
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -76,31 +90,49 @@ class _MainShellState extends State<MainShell> {
 
   static const _pages = [HomePage(), CommunityPage(), ProfilePage()];
 
+  static const _icons = [
+    (outline: Icons.home_outlined, filled: Icons.home),
+    (outline: Icons.grid_view_outlined, filled: Icons.grid_view),
+    (outline: Icons.person_outline, filled: Icons.person),
+  ];
+
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
       body: IndexedStack(index: _index, children: _pages),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        backgroundColor: Colors.white,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: '首页',
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+        child: Container(
+          height: 60,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x14000000),
+                blurRadius: 16,
+                offset: Offset(0, 6),
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.grid_view_outlined),
-            selectedIcon: Icon(Icons.grid_view),
-            label: '社区',
+          child: Row(
+            children: List.generate(3, (i) {
+              final active = _index == i;
+              return Expanded(
+                child: IconButton(
+                  icon: Icon(
+                    active ? _icons[i].filled : _icons[i].outline,
+                    size: 26,
+                  ),
+                  color: active ? colors.textPrimary : colors.textSecondary,
+                  onPressed: () => setState(() => _index = i),
+                ),
+              );
+            }),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: '我的',
-          ),
-        ],
+        ),
       ),
     );
   }

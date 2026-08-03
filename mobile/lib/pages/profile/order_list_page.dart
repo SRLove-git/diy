@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_colors.dart';
 import '../../core/appointment_api.dart';
 
 /// 我的订单列表：全部 / 待核销 / 进行中 / 已完成 / 已取消
@@ -70,10 +71,17 @@ class _OrderListPageState extends State<OrderListPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.of(ctx).textPrimary,
+            ),
             child: const Text('返回'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.of(ctx).textPrimary,
+              foregroundColor: AppColors.of(ctx).surface,
+            ),
             child: const Text('确认取消'),
           ),
         ],
@@ -128,24 +136,26 @@ class _OrderListPageState extends State<OrderListPage>
   }
 
   Color _statusColor(String status) {
+    final colors = AppColors.of(context);
     switch (status) {
       case 'booked':
-        return const Color(0xFFE8633A);
+        return colors.textPrimary;
       case 'checked_in':
         return const Color(0xFFE6A23C);
       case 'in_service':
         return const Color(0xFF2E9E5B);
       case 'completed':
-        return const Color(0xFF8A8A8A);
+        return colors.textSecondary;
       case 'cancelled':
-        return const Color(0xFFD9453E);
+        return colors.danger;
       default:
-        return const Color(0xFF8A8A8A);
+        return colors.textSecondary;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('我的订单'),
@@ -153,10 +163,10 @@ class _OrderListPageState extends State<OrderListPage>
           controller: _tabController,
           isScrollable: true,
           tabAlignment: TabAlignment.start,
-          labelColor: const Color(0xFFE8633A),
-          unselectedLabelColor: const Color(0xFF8A8A8A),
+          labelColor: colors.textPrimary,
+          unselectedLabelColor: colors.textSecondary,
           dividerColor: Colors.transparent,
-          indicatorColor: const Color(0xFFE8633A),
+          indicatorColor: colors.textPrimary,
           tabs: _tabs.map((t) => Tab(text: t)).toList(),
         ),
       ),
@@ -169,11 +179,15 @@ class _OrderListPageState extends State<OrderListPage>
                     children: [
                       Text(
                         _error!,
-                        style: const TextStyle(color: Color(0xFF8A8A8A)),
+                        style: TextStyle(color: colors.textSecondary),
                       ),
                       const SizedBox(height: 12),
                       OutlinedButton(
                         onPressed: _loadOrders,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: colors.textPrimary,
+                          side: BorderSide(color: colors.textPrimary),
+                        ),
                         child: const Text('重试'),
                       ),
                     ],
@@ -190,9 +204,9 @@ class _OrderListPageState extends State<OrderListPage>
                             color: Color(0xFFD0D0D0),
                           ),
                           const SizedBox(height: 12),
-                          const Text(
+                          Text(
                             '暂无订单',
-                            style: TextStyle(color: Color(0xFF8A8A8A)),
+                            style: TextStyle(color: colors.textSecondary),
                           ),
                         ],
                       ),
@@ -235,10 +249,11 @@ class _OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -272,22 +287,22 @@ class _OrderCard extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.calendar_today, size: 14, color: Color(0xFF8A8A8A)),
+              Icon(Icons.calendar_today, size: 14, color: colors.textSecondary),
               const SizedBox(width: 4),
               Text(
                 '${order.date}  ${order.startTime}-${order.endTime}',
-                style: const TextStyle(color: Color(0xFF8A8A8A), fontSize: 14),
+                style: TextStyle(color: colors.textSecondary, fontSize: 14),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Row(
             children: [
-              const Icon(Icons.table_bar, size: 14, color: Color(0xFF8A8A8A)),
+              Icon(Icons.table_bar, size: 14, color: colors.textSecondary),
               const SizedBox(width: 4),
               Text(
                 '桌位 ${order.tableName} · ${order.peopleCount} 人',
-                style: const TextStyle(color: Color(0xFF8A8A8A), fontSize: 14),
+                style: TextStyle(color: colors.textSecondary, fontSize: 14),
               ),
             ],
           ),
@@ -295,12 +310,12 @@ class _OrderCard extends StatelessWidget {
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(Icons.qr_code, size: 14, color: Color(0xFF8A8A8A)),
+                Icon(Icons.qr_code, size: 14, color: colors.textSecondary),
                 const SizedBox(width: 4),
                 Text(
                   '预约码 ${order.code}',
-                  style: const TextStyle(
-                    color: Color(0xFF8A8A8A),
+                  style: TextStyle(
+                    color: colors.textSecondary,
                     fontSize: 14,
                   ),
                 ),
@@ -314,8 +329,8 @@ class _OrderCard extends StatelessWidget {
               child: OutlinedButton(
                 onPressed: onCancel,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFD9453E),
-                  side: const BorderSide(color: Color(0xFFD9453E)),
+                  foregroundColor: colors.danger,
+                  side: BorderSide(color: colors.danger),
                   minimumSize: const Size(0, 32),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                 ),

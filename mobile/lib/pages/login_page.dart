@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
+import '../core/app_colors.dart';
 import '../core/auth_service.dart';
 import 'set_password_page.dart';
 
@@ -131,6 +132,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -141,7 +143,7 @@ class _LoginPageState extends State<LoginPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 48),
-                const Icon(Icons.handyman, size: 64, color: Color(0xFFE8633A)),
+                Icon(Icons.handyman, size: 64, color: colors.primary),
                 const SizedBox(height: 12),
                 Text(
                   'DIY 手作工坊',
@@ -149,16 +151,16 @@ class _LoginPageState extends State<LoginPage> {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   '未注册手机号将自动创建账号',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF8A8A8A)),
+                  style: TextStyle(color: colors.textSecondary),
                 ),
                 const SizedBox(height: 24),
                 TabBar(
-                  labelColor: const Color(0xFFE8633A),
-                  unselectedLabelColor: const Color(0xFF8A8A8A),
-                  indicatorColor: const Color(0xFFE8633A),
+                  labelColor: colors.textPrimary,
+                  unselectedLabelColor: colors.textSecondary,
+                  indicatorColor: colors.textPrimary,
                   indicatorSize: TabBarIndicatorSize.label,
                   labelStyle: const TextStyle(
                     fontSize: 16,
@@ -234,7 +236,7 @@ class _LoginPageState extends State<LoginPage> {
                       : _sendCode,
                   child: Text(
                     _countdown > 0 ? '$_countdown 秒后重发' : '获取验证码',
-                    style: const TextStyle(color: Color(0xFFE8633A)),
+                    style: TextStyle(color: AppColors.of(context).textSecondary),
                   ),
                 ),
               ),
@@ -304,9 +306,9 @@ class _LoginPageState extends State<LoginPage> {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: _goSetPassword,
-              child: const Text(
+              child: Text(
                 '忘记密码？',
-                style: TextStyle(color: Color(0xFFE8633A)),
+                style: TextStyle(color: AppColors.of(context).textSecondary),
               ),
             ),
           ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/app_colors.dart';
+
 /// 体验总结页：上钟时间 / 下钟时间 / 使用时长
 class ExperienceSummaryPage extends StatelessWidget {
   const ExperienceSummaryPage({
@@ -31,6 +33,7 @@ class ExperienceSummaryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('体验总结')),
       body: Padding(
@@ -45,9 +48,9 @@ class ExperienceSummaryPage extends StatelessWidget {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               '感谢您的光临，期待再次相遇',
-              style: TextStyle(color: Color(0xFF8A8A8A)),
+              style: TextStyle(color: colors.textSecondary),
             ),
             const SizedBox(height: 40),
             // 信息卡片
@@ -55,19 +58,19 @@ class ExperienceSummaryPage extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
                 children: [
                   _InfoRow(label: '上钟时间', value: _formatTime(startTime)),
-                  const Divider(height: 24, color: Color(0xFFECEAE6)),
+                  Divider(height: 24, color: colors.divider),
                   _InfoRow(label: '下钟时间', value: _formatTime(endTime)),
-                  const Divider(height: 24, color: Color(0xFFECEAE6)),
+                  Divider(height: 24, color: colors.divider),
                   _InfoRow(
                     label: '使用时长',
                     value: _formatDuration(elapsed),
-                    valueColor: const Color(0xFFE8633A),
+                    valueColor: colors.textPrimary,
                     valueBold: true,
                   ),
                 ],
@@ -81,6 +84,10 @@ class ExperienceSummaryPage extends StatelessWidget {
                 onPressed: () {
                   Navigator.of(context).popUntil((route) => route.isFirst);
                 },
+                style: FilledButton.styleFrom(
+                  backgroundColor: colors.textPrimary,
+                  foregroundColor: colors.surface,
+                ),
                 child: const Text('完成'),
               ),
             ),
@@ -107,19 +114,20 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
-          style: const TextStyle(color: Color(0xFF8A8A8A), fontSize: 15),
+          style: TextStyle(color: colors.textSecondary, fontSize: 15),
         ),
         Text(
           value,
           style: TextStyle(
             fontSize: 17,
             fontWeight: valueBold ? FontWeight.bold : FontWeight.normal,
-            color: valueColor ?? const Color(0xFF2B2B2B),
+            color: valueColor ?? colors.textPrimary,
           ),
         ),
       ],

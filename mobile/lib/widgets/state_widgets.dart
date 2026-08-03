@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../core/app_colors.dart';
+
 /// 通用状态控件库
 /// 对齐《第一阶段UI设计指导》§八：加载/空态/错误状态规范
 
@@ -11,14 +13,15 @@ class LoadingWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(color: Color(0xFFE8633A)),
+          CircularProgressIndicator(color: colors.primary),
           if (message != null) ...[
             const SizedBox(height: 12),
-            Text(message!, style: const TextStyle(color: Color(0xFF8A8A8A))),
+            Text(message!, style: TextStyle(color: colors.textSecondary)),
           ],
         ],
       ),
@@ -43,13 +46,14 @@ class EmptyWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, size: 64, color: const Color(0xFFD0D0D0)),
           const SizedBox(height: 12),
-          Text(message, style: const TextStyle(fontSize: 15, color: Color(0xFF8A8A8A))),
+          Text(message, style: TextStyle(fontSize: 15, color: colors.textSecondary)),
           if (actionLabel != null && onAction != null) ...[
             const SizedBox(height: 16),
             FilledButton(
@@ -76,13 +80,14 @@ class AppErrorWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.wifi_off, size: 48, color: Color(0xFF8A8A8A)),
+          Icon(Icons.wifi_off, size: 48, color: colors.textSecondary),
           const SizedBox(height: 12),
-          Text(message, style: const TextStyle(color: Color(0xFF8A8A8A))),
+          Text(message, style: TextStyle(color: colors.textSecondary)),
           if (onRetry != null) ...[
             const SizedBox(height: 16),
             OutlinedButton(

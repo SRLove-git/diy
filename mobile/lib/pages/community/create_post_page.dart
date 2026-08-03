@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/app_colors.dart';
 import '../../core/post_api.dart';
 
 /// 作品发布页：图文 ≤9 图、文案、标签
@@ -118,6 +119,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('发布作品'),
@@ -130,7 +132,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('发布', style: TextStyle(color: Color(0xFFE8633A), fontWeight: FontWeight.w600)),
+                : Text('发布', style: TextStyle(color: colors.primary, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -185,10 +187,10 @@ class _CreatePostPageState extends State<CreatePostPage> {
                       height: 100,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFECEAE6), width: 1.5),
-                        color: const Color(0xFFF7F5F2),
+                        border: Border.all(color: colors.divider, width: 1.5),
+                        color: colors.surface,
                       ),
-                      child: const Icon(Icons.add_photo_alternate_outlined, color: Color(0xFF8A8A8A)),
+                      child: Icon(Icons.add_photo_alternate_outlined, color: colors.textSecondary),
                     ),
                   ),
               ],

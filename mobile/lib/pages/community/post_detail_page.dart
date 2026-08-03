@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/app_colors.dart';
 import '../../core/post_api.dart';
 import 'author_profile_page.dart';
 
@@ -182,6 +183,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     if (_loading) {
       return Scaffold(
         appBar: AppBar(title: const Text('作品详情')),
@@ -196,9 +198,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Color(0xFF8A8A8A)),
+              Icon(Icons.error_outline, size: 48, color: colors.textSecondary),
               const SizedBox(height: 12),
-              Text(_error ?? '作品不存在', style: const TextStyle(color: Color(0xFF8A8A8A))),
+              Text(_error ?? '作品不存在', style: TextStyle(color: colors.textSecondary)),
               const SizedBox(height: 12),
               OutlinedButton(onPressed: _load, child: const Text('重试')),
             ],
@@ -231,10 +233,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: Row(
                         children: [
-                          const CircleAvatar(
+                          CircleAvatar(
                             radius: 16,
-                            backgroundColor: Color(0xFFE8633A),
-                            child: Icon(Icons.person, color: Colors.white, size: 18),
+                            backgroundColor: colors.primary,
+                            child: const Icon(Icons.person, color: Colors.white, size: 18),
                           ),
                           const SizedBox(width: 8),
                           Text(
@@ -242,7 +244,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                           ),
                           const Spacer(),
-                          const Icon(Icons.chevron_right, color: Color(0xFF8A8A8A), size: 20),
+                          Icon(Icons.chevron_right, color: colors.textSecondary, size: 20),
                         ],
                       ),
                     ),
@@ -256,7 +258,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         AspectRatio(
                           aspectRatio: 16 / 10,
                           child: Container(
-                            color: const Color(0xFFF7F5F2),
+                            color: colors.surface,
                             child: Image.network(post.images.first, fit: BoxFit.cover, width: double.infinity),
                           ),
                         ),
@@ -298,7 +300,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                       ),
                                       child: Text(
                                         '#$t',
-                                        style: const TextStyle(fontSize: 12, color: Color(0xFFE8633A)),
+                                        style: TextStyle(fontSize: 12, color: colors.textSecondary),
                                       ),
                                     ))
                                 .toList(),
@@ -307,7 +309,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         const SizedBox(height: 8),
                         Text(
                           _formatTime(post.createdAt),
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF8A8A8A)),
+                          style: TextStyle(fontSize: 12, color: colors.textSecondary),
                         ),
                       ],
                     ),
@@ -352,10 +354,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
                     )
                   else if (_comments.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(16),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
                       child: Center(
-                        child: Text('暂无评论', style: TextStyle(color: Color(0xFF8A8A8A))),
+                        child: Text('暂无评论', style: TextStyle(color: colors.textSecondary)),
                       ),
                     )
                   else
@@ -370,10 +372,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const CircleAvatar(
+                            CircleAvatar(
                               radius: 14,
-                              backgroundColor: Color(0xFFE8633A),
-                              child: Icon(Icons.person, color: Colors.white, size: 16),
+                              backgroundColor: colors.primary,
+                              child: const Icon(Icons.person, color: Colors.white, size: 16),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
@@ -384,18 +386,18 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                     children: [
                                       Text(
                                         '用户 #${c.userId}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
-                                          color: Color(0xFF2B2B2B),
+                                          color: colors.textPrimary,
                                         ),
                                       ),
                                       const Spacer(),
                                       Text(
                                         _formatTime(c.createdAt),
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 11,
-                                          color: Color(0xFF8A8A8A),
+                                          color: colors.textSecondary,
                                         ),
                                       ),
                                     ],
@@ -423,7 +425,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
           // 底部评论输入栏
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: colors.surface,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withAlpha(13),
@@ -454,7 +456,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   ),
                   const SizedBox(width: 8),
                   IconButton(
-                    icon: const Icon(Icons.send, color: Color(0xFFE8633A)),
+                    icon: Icon(Icons.send, color: colors.primary),
                     onPressed: _sendComment,
                   ),
                 ],
@@ -482,6 +484,7 @@ class _ActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Row(
@@ -490,13 +493,13 @@ class _ActionChip extends StatelessWidget {
           Icon(
             icon,
             size: 20,
-            color: active ? const Color(0xFFE8633A) : const Color(0xFF8A8A8A),
+            color: active ? colors.primary : colors.textSecondary,
           ),
           const SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
-              color: active ? const Color(0xFFE8633A) : const Color(0xFF8A8A8A),
+              color: active ? colors.primary : colors.textSecondary,
             ),
           ),
         ],

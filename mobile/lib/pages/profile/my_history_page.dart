@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/app_colors.dart';
 import '../../core/post_api.dart';
 import '../../widgets/state_widgets.dart';
 import '../community/post_detail_page.dart';
@@ -128,12 +129,13 @@ class _PostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       elevation: 0,
-      color: Colors.white,
+      color: colors.surface,
       child: InkWell(
         onTap: onTap,
         child: Column(
@@ -163,7 +165,7 @@ class _PostCard extends StatelessWidget {
                       children: post.tags
                           .map((t) => Text(
                                 '#$t',
-                                style: const TextStyle(fontSize: 11, color: Color(0xFFE8633A)),
+                                style: TextStyle(fontSize: 11, color: colors.textSecondary),
                               ))
                           .toList(),
                     ),
@@ -173,7 +175,7 @@ class _PostCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(formatTime(post.createdAt),
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF8A8A8A))),
+                          style: TextStyle(fontSize: 11, color: colors.textSecondary)),
                       Row(
                         children: [
                           _CountChip(const Icon(Icons.favorite_border, size: 14), '${post.likeCount}'),
@@ -200,12 +202,13 @@ class _CountChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         icon,
         const SizedBox(width: 2),
-        Text(text, style: const TextStyle(fontSize: 11, color: Color(0xFF8A8A8A))),
+        Text(text, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
       ],
     );
   }

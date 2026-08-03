@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/app_colors.dart';
 import '../../core/appointment_api.dart';
 
 /// 预约流程：选店 → 日期/时段 → 人数/桌位 → 确认 → 生成预约单
@@ -181,6 +182,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(_step == 4 ? '预约成功' : '预约（${_step + 1}/4）'),
@@ -208,6 +210,10 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: _goBack,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: colors.textPrimary,
+                            side: BorderSide(color: colors.textPrimary),
+                          ),
                           child: const Text('上一步'),
                         ),
                       ),
@@ -218,6 +224,10 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                         onPressed: _canNext
                             ? (_step == 3 ? _submit : _onNext)
                             : null,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: colors.textPrimary,
+                          foregroundColor: colors.surface,
+                        ),
                         child: Text(
                           _step == 3
                               ? (_submitting ? '提交中…' : '确认预约')
@@ -250,14 +260,18 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
   // ===== 步骤 0：选店 =====
 
   Widget _buildStoreStep(BuildContext context) {
+    final colors = AppColors.of(context);
     if (_storesLoading) return const Center(child: CircularProgressIndicator());
     if (_storesError != null) {
       return _ErrorRetry(message: _storesError!, onRetry: _loadStores);
     }
     final stores = _stores ?? [];
     if (stores.isEmpty) {
-      return const Center(
-        child: Text('暂无可预约门店', style: TextStyle(color: Color(0xFF8A8A8A))),
+      return Center(
+        child: Text(
+          '暂无可预约门店',
+          style: TextStyle(color: colors.textSecondary),
+        ),
       );
     }
     return ListView.separated(
@@ -282,7 +296,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                     ),
                   ),
                   if (selected)
-                    const Icon(Icons.check_circle, color: Color(0xFFE8633A)),
+                    Icon(Icons.check_circle, color: colors.textPrimary),
                 ],
               ),
               const SizedBox(height: 6),
@@ -292,7 +306,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                   const SizedBox(width: 2),
                   Text(
                     '${s.rating}',
-                    style: const TextStyle(color: Color(0xFF8A8A8A)),
+                    style: TextStyle(color: colors.textSecondary),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -300,7 +314,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                       s.address,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Color(0xFF8A8A8A)),
+                      style: TextStyle(color: colors.textSecondary),
                     ),
                   ),
                 ],
@@ -308,15 +322,15 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
               const SizedBox(height: 4),
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.schedule,
                     size: 16,
-                    color: Color(0xFF8A8A8A),
+                    color: colors.textSecondary,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     s.businessHours,
-                    style: const TextStyle(color: Color(0xFF8A8A8A)),
+                    style: TextStyle(color: colors.textSecondary),
                   ),
                 ],
               ),
@@ -330,6 +344,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
   // ===== 步骤 1：日期 + 时段 =====
 
   Widget _buildSlotStep(BuildContext context) {
+    final colors = AppColors.of(context);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -351,12 +366,10 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                 child: Container(
                   width: 64,
                   decoration: BoxDecoration(
-                    color: selected ? const Color(0xFFE8633A) : Colors.white,
+                    color: selected ? colors.textPrimary : colors.surface,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: selected
-                          ? const Color(0xFFE8633A)
-                          : const Color(0xFFE0E0E0),
+                      color: selected ? colors.textPrimary : colors.divider,
                     ),
                   ),
                   child: Column(
@@ -365,9 +378,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                       Text(
                         _weekday(d),
                         style: TextStyle(
-                          color: selected
-                              ? Colors.white
-                              : const Color(0xFF8A8A8A),
+                          color: selected ? colors.surface : colors.textSecondary,
                           fontSize: 12,
                         ),
                       ),
@@ -375,9 +386,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                       Text(
                         '${d.day}',
                         style: TextStyle(
-                          color: selected
-                              ? Colors.white
-                              : const Color(0xFF2B2B2B),
+                          color: selected ? colors.surface : colors.textPrimary,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -386,9 +395,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                         Text(
                           '今天',
                           style: TextStyle(
-                            color: selected
-                                ? Colors.white70
-                                : const Color(0xFFE8633A),
+                            color: selected ? colors.surface : colors.textPrimary,
                             fontSize: 10,
                           ),
                         ),
@@ -403,7 +410,10 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
         Text('选择时段', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 12),
         if (_slots.isEmpty)
-          const Text('该门店暂未配置可约时段', style: TextStyle(color: Color(0xFF8A8A8A)))
+          Text(
+            '该门店暂未配置可约时段',
+            style: TextStyle(color: colors.textSecondary),
+          )
         else
           Wrap(
             spacing: 10,
@@ -415,9 +425,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                 selected: selected,
                 selectedColor: const Color(0xFFFFE4DA),
                 labelStyle: TextStyle(
-                  color: selected
-                      ? const Color(0xFFE8633A)
-                      : const Color(0xFF2B2B2B),
+                  color: colors.textPrimary,
                   fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                 ),
                 onSelected: (_) => _selectSlot(slot),
@@ -431,6 +439,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
   // ===== 步骤 2：人数 + 桌位 =====
 
   Widget _buildTableStep(BuildContext context) {
+    final colors = AppColors.of(context);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -462,9 +471,9 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
             ),
           )
         else if (_availableTables.isEmpty)
-          const Text(
+          Text(
             '该时段无满足人数的可用桌位，请更换时段',
-            style: TextStyle(color: Color(0xFF8A8A8A)),
+            style: TextStyle(color: colors.textSecondary),
           )
         else
           Column(
@@ -485,13 +494,13 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                       ),
                       Text(
                         '可容纳 ${t.capacity} 人',
-                        style: const TextStyle(color: Color(0xFF8A8A8A)),
+                        style: TextStyle(color: colors.textSecondary),
                       ),
                       const SizedBox(width: 8),
                       if (selected)
-                        const Icon(
+                        Icon(
                           Icons.check_circle,
-                          color: Color(0xFFE8633A),
+                          color: colors.textPrimary,
                         ),
                     ],
                   ),
@@ -506,6 +515,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
   // ===== 步骤 3：确认 =====
 
   Widget _buildConfirmStep(BuildContext context) {
+    final colors = AppColors.of(context);
     final store = _store!;
     final slot = _slot!;
     final table = _table!;
@@ -521,9 +531,9 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
           value: '桌位 ${table.name}（可容纳 ${table.capacity} 人）',
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           '提交后将生成预约码，到店出示即可核销。',
-          style: TextStyle(color: Color(0xFF8A8A8A), fontSize: 13),
+          style: TextStyle(color: colors.textSecondary, fontSize: 13),
         ),
       ],
     );
@@ -532,6 +542,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
   // ===== 步骤 4：成功 =====
 
   Widget _buildSuccessStep(BuildContext context) {
+    final colors = AppColors.of(context);
     final appt = _appointment!;
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -542,7 +553,10 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
           const SizedBox(height: 16),
           Text('预约成功', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
-          const Text('到店出示预约码即可核销', style: TextStyle(color: Color(0xFF8A8A8A))),
+          Text(
+            '到店出示预约码即可核销',
+            style: TextStyle(color: colors.textSecondary),
+          ),
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
@@ -552,29 +566,33 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
             ),
             child: Text(
               appt.code,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 40,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 8,
-                color: Color(0xFFE8633A),
+                color: colors.textPrimary,
               ),
             ),
           ),
           const SizedBox(height: 24),
           Text(
             '${appt.storeName} · ${appt.date} ${appt.startTime}-${appt.endTime}',
-            style: const TextStyle(color: Color(0xFF2B2B2B)),
+            style: TextStyle(color: colors.textPrimary),
           ),
           const SizedBox(height: 4),
           Text(
             '桌位 ${appt.tableName} · ${appt.peopleCount} 人',
-            style: const TextStyle(color: Color(0xFF8A8A8A)),
+            style: TextStyle(color: colors.textSecondary),
           ),
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,
             child: FilledButton(
               onPressed: () => Navigator.of(context).pop(),
+              style: FilledButton.styleFrom(
+                backgroundColor: colors.textPrimary,
+                foregroundColor: colors.surface,
+              ),
               child: const Text('完成'),
             ),
           ),
@@ -617,6 +635,7 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -624,10 +643,10 @@ class _Card extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? const Color(0xFFE8633A) : const Color(0xFFE0E0E0),
+            color: selected ? colors.textPrimary : colors.divider,
             width: selected ? 1.5 : 1,
           ),
         ),
@@ -645,6 +664,7 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -654,13 +674,13 @@ class _InfoRow extends StatelessWidget {
             width: 72,
             child: Text(
               label,
-              style: const TextStyle(color: Color(0xFF8A8A8A)),
+              style: TextStyle(color: colors.textSecondary),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(color: Color(0xFF2B2B2B)),
+              style: TextStyle(color: colors.textPrimary),
             ),
           ),
         ],
@@ -677,6 +697,7 @@ class _StepperBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -694,7 +715,7 @@ class _StepperBtn extends StatelessWidget {
           size: 20,
           color: onTap == null
               ? const Color(0xFFBDBDBD)
-              : const Color(0xFFE8633A),
+              : colors.textPrimary,
         ),
       ),
     );
@@ -709,13 +730,21 @@ class _ErrorRetry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(message, style: const TextStyle(color: Color(0xFF8A8A8A))),
+          Text(message, style: TextStyle(color: colors.textSecondary)),
           const SizedBox(height: 12),
-          OutlinedButton(onPressed: onRetry, child: const Text('重试')),
+          OutlinedButton(
+            onPressed: onRetry,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: colors.textPrimary,
+              side: BorderSide(color: colors.textPrimary),
+            ),
+            child: const Text('重试'),
+          ),
         ],
       ),
     );

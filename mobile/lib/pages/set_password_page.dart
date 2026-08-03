@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
+import '../core/app_colors.dart';
 import '../core/auth_service.dart';
 
 /// 设置 / 重置密码：手机号 + 短信验证码校验后设置新密码。
@@ -115,6 +116,7 @@ class _SetPasswordPageState extends State<SetPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('设置密码')),
       body: SafeArea(
@@ -126,9 +128,9 @@ class _SetPasswordPageState extends State<SetPasswordPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   '通过短信验证码校验身份后设置新密码',
-                  style: TextStyle(color: Color(0xFF8A8A8A)),
+                  style: TextStyle(color: colors.textSecondary),
                 ),
                 const SizedBox(height: 24),
                 TextFormField(
@@ -174,7 +176,7 @@ class _SetPasswordPageState extends State<SetPasswordPage> {
                             : _sendCode,
                         child: Text(
                           _countdown > 0 ? '$_countdown 秒后重发' : '获取验证码',
-                          style: const TextStyle(color: Color(0xFFE8633A)),
+                          style: TextStyle(color: colors.textSecondary),
                         ),
                       ),
                     ),
