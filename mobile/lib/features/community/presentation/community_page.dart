@@ -2,12 +2,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../core/app_colors.dart';
 import '../../../widgets/state_widgets.dart';
 import '../data/mock_community_datasource.dart';
 import '../../../pages/community/create_post_page.dart';
 import '../data/mock_community_repository.dart';
 import '../domain/community_models.dart';
 import '../domain/community_repository.dart';
+import 'community_palette.dart';
 import 'widgets/community_sheets.dart';
 import 'widgets/feed_card.dart';
 
@@ -122,12 +124,13 @@ class _CommunityPageState extends State<CommunityPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          color: const Color(0xFF465FFF),
+          color: colors.primary,
           onRefresh: _load,
           child: _buildBody(),
         ),
@@ -190,9 +193,11 @@ class _CommunityPageState extends State<CommunityPage> {
 
   /// 顶部 Header：70px，左侧 40x40 头像 + 「频道」，右侧 用户/收藏 icon
   Widget _buildAppBar() {
+    final palette = CommunityPalette.of(context);
+    final colors = AppColors.of(context);
     return SliverAppBar(
       pinned: true,
-      backgroundColor: Colors.white,
+      backgroundColor: palette.pageBackground,
       scrolledUnderElevation: 0,
       elevation: 0,
       toolbarHeight: 70,
@@ -214,7 +219,7 @@ class _CommunityPageState extends State<CommunityPage> {
                 errorBuilder: (_, _, _) => Container(
                   width: 40,
                   height: 40,
-                  color: const Color(0xFF465FFF),
+                  color: colors.primary,
                   child: const Icon(Icons.person_rounded,
                       color: Colors.white, size: 24),
                 ),
@@ -223,20 +228,20 @@ class _CommunityPageState extends State<CommunityPage> {
           ),
         ),
       ),
-      title: const Text(
+      title: Text(
         '社区',
         style: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.bold,
-          color: Color(0xFF1F1F24),
+          color: colors.textPrimary,
         ),
       ),
       actions: [
         Padding(
           padding: const EdgeInsets.only(right: 8),
           child: IconButton(
-            icon: const Icon(Icons.add_rounded,
-                size: 28, color: Color(0xFF1F1F24)),
+            icon: Icon(Icons.add_rounded,
+                size: 28, color: colors.textPrimary),
             tooltip: '发布',
             onPressed: _onPublish,
           ),
@@ -245,8 +250,9 @@ class _CommunityPageState extends State<CommunityPage> {
     );
   }
 
-  /// 搜索栏：48 高，圆角 24，灰底 #F5F6FC
+  /// 搜索栏：48 高，圆角 24
   Widget _buildSearchBar() {
+    final colors = AppColors.of(context);
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
@@ -255,18 +261,21 @@ class _CommunityPageState extends State<CommunityPage> {
           child: Container(
             height: 48,
             decoration: BoxDecoration(
-              color: const Color(0xFFF5F6FC),
+              color: colors.placeholder,
               borderRadius: BorderRadius.circular(24),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                SizedBox(width: 16),
+                const SizedBox(width: 16),
                 Icon(Icons.search_rounded,
-                    color: Color(0xFF999999), size: 22),
-                SizedBox(width: 8),
+                    color: colors.textSecondary, size: 22),
+                const SizedBox(width: 8),
                 Text(
                   '找频道/找内容',
-                  style: TextStyle(fontSize: 14, color: Color(0xFF999999)),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: colors.textSecondary,
+                  ),
                 ),
               ],
             ),

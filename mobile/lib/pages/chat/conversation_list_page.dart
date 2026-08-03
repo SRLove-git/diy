@@ -191,23 +191,27 @@ class _ConversationListPageState extends State<ConversationListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: _buildAvatar(),
-        title: const Text('聊天'),
-        actions: [_buildFilterButton()],
-      ),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          Expanded(
-            child: ListenableBuilder(
-              listenable: ChatService.instance,
-              builder: (context, _) => _buildList(
-                _visible(ChatService.instance.conversations),
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            AppBar(
+              leading: _buildAvatar(),
+              title: const Text('聊天'),
+              actions: [_buildFilterButton()],
+            ),
+            _buildSearchBar(),
+            Expanded(
+              child: ListenableBuilder(
+                listenable: ChatService.instance,
+                builder: (context, _) => _buildList(
+                  _visible(ChatService.instance.conversations),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

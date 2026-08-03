@@ -51,7 +51,7 @@ class EmptyWidget extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 64, color: const Color(0xFFD0D0D0)),
+          Icon(icon, size: 64, color: colors.textSecondary.withValues(alpha: 0.5)),
           const SizedBox(height: 12),
           Text(message, style: TextStyle(fontSize: 15, color: colors.textSecondary)),
           if (actionLabel != null && onAction != null) ...[

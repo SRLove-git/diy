@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/app_colors.dart';
 import '../../domain/community_models.dart';
 import '../community_palette.dart';
 import 'community_avatar.dart';
@@ -68,6 +69,7 @@ class _FeedCardState extends State<FeedCard>
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final post = widget.post;
     final author = CommunityUser(
       id: post.id,
@@ -79,29 +81,29 @@ class _FeedCardState extends State<FeedCard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(author),
+          _buildHeader(author, colors),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
             child: Text(
               post.content,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 height: 1.45,
-                color: Color(0xFF2B2B33),
+                color: colors.textPrimary,
               ),
             ),
           ),
           const SizedBox(height: 12),
           if (post.medias.isNotEmpty) MediaGrid(medias: post.medias),
-          _buildReactions(),
-          _buildFooter(),
+          _buildReactions(colors),
+          _buildFooter(colors),
         ],
       ),
     );
   }
 
   /// 作者行：头像 / 昵称 / 频道标签
-  Widget _buildHeader(CommunityUser author) {
+  Widget _buildHeader(CommunityUser author, AppColors colors) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
       child: Row(
@@ -116,10 +118,10 @@ class _FeedCardState extends State<FeedCard>
                   author.nickname,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1F1F24),
+                    color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -127,7 +129,10 @@ class _FeedCardState extends State<FeedCard>
                   widget.post.channelTag,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12.5, color: Color(0xFF8A8A94)),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: colors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -138,7 +143,7 @@ class _FeedCardState extends State<FeedCard>
   }
 
   /// Reaction 标签：胶囊 Wrap
-  Widget _buildReactions() {
+  Widget _buildReactions(AppColors colors) {
     final reactions = widget.post.reactions;
     if (reactions.isEmpty) return const SizedBox.shrink();
     return Padding(
@@ -159,7 +164,10 @@ class _FeedCardState extends State<FeedCard>
                 ),
                 child: Text(
                   r,
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF565662)),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: colors.textSecondary,
+                  ),
                 ),
               ),
             ),
@@ -168,17 +176,16 @@ class _FeedCardState extends State<FeedCard>
     );
   }
 
-  /// 底部数据栏：左「浏览 xxx」右「点赞 / 评论 / 分享」（#999999）
-  Widget _buildFooter() {
+  /// 底部数据栏：左「浏览 xxx」右「点赞 / 评论 / 分享」
+  Widget _buildFooter(AppColors colors) {
     final post = widget.post;
-    const muted = Color(0xFF999999);
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
       child: Row(
         children: [
           Text(
             '浏览 ${formatCount(post.viewCount)}',
-            style: const TextStyle(fontSize: 12.5, color: muted),
+            style: TextStyle(fontSize: 12.5, color: colors.textSecondary),
           ),
           const Spacer(),
           // 点赞
@@ -195,13 +202,13 @@ class _FeedCardState extends State<FeedCard>
                         ? Icons.favorite_rounded
                         : Icons.favorite_border_rounded,
                     size: 22,
-                    color: _liked ? CommunityPalette.love : muted,
+                    color: _liked ? CommunityPalette.love : colors.textSecondary,
                   ),
                 ),
                 const SizedBox(width: 4),
                 Text(
                   formatCount(post.likeCount),
-                  style: const TextStyle(fontSize: 12.5, color: muted),
+                  style: TextStyle(fontSize: 12.5, color: colors.textSecondary),
                 ),
               ],
             ),
@@ -214,12 +221,12 @@ class _FeedCardState extends State<FeedCard>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.chat_bubble_outline_rounded,
-                    size: 22, color: muted),
+                Icon(Icons.chat_bubble_outline_rounded,
+                    size: 22, color: colors.textSecondary),
                 const SizedBox(width: 4),
                 Text(
                   formatCount(post.commentCount),
-                  style: const TextStyle(fontSize: 12.5, color: muted),
+                  style: TextStyle(fontSize: 12.5, color: colors.textSecondary),
                 ),
               ],
             ),
@@ -232,11 +239,11 @@ class _FeedCardState extends State<FeedCard>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.send_rounded, size: 22, color: muted),
+                Icon(Icons.send_rounded, size: 22, color: colors.textSecondary),
                 const SizedBox(width: 4),
                 Text(
                   formatCount(post.shareCount),
-                  style: const TextStyle(fontSize: 12.5, color: muted),
+                  style: TextStyle(fontSize: 12.5, color: colors.textSecondary),
                 ),
               ],
             ),

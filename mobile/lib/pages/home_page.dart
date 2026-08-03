@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../core/api_client.dart';
+import '../core/app_colors.dart';
 import '../core/appointment_api.dart';
 import '../core/auth_service.dart';
 import 'admin/admin_dashboard_page.dart';
@@ -20,15 +21,11 @@ import 'checkin/scan_checkin_page.dart';
 import 'checkin/service_timer_page.dart';
 
 // ────────────────────────────────────────────
-// 页面专属配色（简洁年轻风）
+// 卡片白底（覆盖在浅灰背景上保持对比）
 // ────────────────────────────────────────────
-const _accent = Color(0xFFFF6B6B);
-const _bgLight = Color(0xFFF8F9FC);
-const _textDark = Color(0xFF1A1A2E);
-const _textHint = Color(0xFFA0A0B0);
 const _cardWhite = Colors.white;
 
-/// 快捷功能的多彩配色
+/// 快捷功能的多彩配色（装饰性，不随主题变化）
 const _shortcutColors = [
   Color(0xFFFF6B6B),
   Color(0xFF4ECDC4),
@@ -104,8 +101,9 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bgLight,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
+        bottom: false,
         child: ListenableBuilder(
           listenable: AuthService.instance,
           builder: (context, _) {
@@ -213,12 +211,13 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w700,
-        color: _textDark,
+        color: colors.textPrimary,
         letterSpacing: 0.5,
       ),
     );
@@ -434,6 +433,7 @@ class _ToggleChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -457,7 +457,7 @@ class _ToggleChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: active ? _textDark : Colors.white.withValues(alpha: 0.8),
+            color: active ? colors.textPrimary : Colors.white.withValues(alpha: 0.8),
           ),
         ),
       ),
@@ -479,6 +479,7 @@ class _BannerEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Material(
       color: Colors.white.withValues(alpha: 0.85),
       borderRadius: BorderRadius.circular(16),
@@ -490,14 +491,14 @@ class _BannerEntry extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 28, color: _textDark),
+              Icon(icon, size: 28, color: colors.textPrimary),
               const SizedBox(height: 8),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: _textDark,
+                  color: colors.textPrimary,
                 ),
               ),
             ],
@@ -564,6 +565,7 @@ class _ShortcutBarState extends State<_ShortcutBar> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(_pages.length, (i) {
             final active = i == _pageIndex;
+            final colors = AppColors.of(context);
             return GestureDetector(
               onTap: () => setState(() => _pageIndex = i),
               child: AnimatedContainer(
@@ -572,7 +574,7 @@ class _ShortcutBarState extends State<_ShortcutBar> {
                 width: active ? 18 : 6,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: active ? _accent : const Color(0xFFDDDDE0),
+                  color: active ? colors.primary : const Color(0xFFDDDDE0),
                   borderRadius: BorderRadius.circular(3),
                 ),
               ),
@@ -597,6 +599,7 @@ class _ShortcutItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return GestureDetector(
       onTap: () {},
       child: Column(
@@ -614,10 +617,10 @@ class _ShortcutItem extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: _textDark,
+              color: colors.textPrimary,
             ),
           ),
         ],
@@ -635,6 +638,7 @@ class _ProductAdBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final cardWidth = constraints.maxWidth;
@@ -687,7 +691,7 @@ class _ProductAdBanner extends StatelessWidget {
                   height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _accent.withValues(alpha: 0.1),
+                    color: colors.primary.withValues(alpha: 0.1),
                   ),
                 ),
               ),
@@ -752,7 +756,7 @@ class _ProductAdBanner extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: _accent,
+                        color: colors.primary,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text(
@@ -797,7 +801,7 @@ class _ProductAdBanner extends StatelessWidget {
                       child: const Text(
                         '立即预约',
                         style: TextStyle(
-                          color: _accent,
+                          color: Color(0xFFFF6B6B),
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
                         ),
@@ -835,6 +839,7 @@ class _AdminEntryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -856,13 +861,14 @@ class _AdminEntryGrid extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(e.icon, size: 26, color: _textDark),
+                Icon(e.icon, size: 26, color: colors.textPrimary),
                 const SizedBox(height: 8),
                 Text(
                   e.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
+                    color: colors.textPrimary,
                   ),
                 ),
               ],
@@ -893,6 +899,7 @@ class _ActiveServiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
       decoration: BoxDecoration(
         color: _cardWhite,
@@ -926,7 +933,7 @@ class _ActiveServiceCard extends StatelessWidget {
                   ),
                   child: Icon(
                     inService ? Icons.timer_outlined : Icons.login_rounded,
-                    color: inService ? const Color(0xFF20B868) : _textDark,
+                    color: inService ? const Color(0xFF20B868) : colors.textPrimary,
                     size: 22,
                   ),
                 ),
@@ -937,16 +944,16 @@ class _ActiveServiceCard extends StatelessWidget {
                     children: [
                       Text(
                         appt.storeName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
-                          color: _textDark,
+                          color: colors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 3),
                       Text(
                         '${appt.date} ${appt.startTime}-${appt.endTime} · 桌位 ${appt.tableName}',
-                        style: const TextStyle(color: _textHint, fontSize: 13),
+                        style: TextStyle(color: colors.textSecondary, fontSize: 13),
                       ),
                     ],
                   ),
@@ -965,27 +972,27 @@ class _ActiveServiceCard extends StatelessWidget {
                           letterSpacing: 1,
                         ),
                       ),
-                      const Text(
+                      Text(
                         '服务中',
-                        style: TextStyle(color: _textHint, fontSize: 12),
+                        style: TextStyle(color: colors.textSecondary, fontSize: 12),
                       ),
                     ] else ...[
-                      const Text(
+                      Text(
                         '已核销',
                         style: TextStyle(
-                          color: _textDark,
+                          color: colors.textPrimary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const Text(
+                      Text(
                         '待上钟',
-                        style: TextStyle(color: _textHint, fontSize: 12),
+                        style: TextStyle(color: colors.textSecondary, fontSize: 12),
                       ),
                     ],
                   ],
                 ),
                 const SizedBox(width: 4),
-                const Icon(Icons.chevron_right, color: _textHint, size: 20),
+                Icon(Icons.chevron_right, color: colors.textSecondary, size: 20),
               ],
             ),
           ),

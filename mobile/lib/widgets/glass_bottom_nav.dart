@@ -2,6 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../core/app_colors.dart';
+
 /// 玻璃拟态底部导航：半透明模糊背景 + 圆角 30 + 阴影
 ///
 /// 四个入口：首页 / 发现 / 消息 / 个人主页，仅图标。
@@ -104,7 +106,8 @@ class _NavSlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = const Color(0xFF465FFF);
+    final colors = AppColors.of(context);
+    final primary = colors.primary;
     final inactive = Theme.of(context).brightness == Brightness.dark
         ? const Color(0xFF8E8E9A)
         : const Color(0xFF9A9AA4);

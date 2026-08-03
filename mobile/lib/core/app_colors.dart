@@ -37,26 +37,26 @@ class AppColors extends ThemeExtension<AppColors> {
   /// 危险操作（退出登录等）
   final Color danger;
 
-  /// 白色模式（默认）
+  /// 白色模式（默认）—— 简洁年轻风
   static const light = AppColors(
-    primary: Color(0xFF465FFF),
-    surface: Color(0xFFF7F5F2),
-    textPrimary: Color(0xFF000000),
-    textSecondary: Color(0xFF737373),
-    divider: Color(0xFFDBDBDB),
-    placeholder: Color(0xFFEFEFEF),
+    primary: Color(0xFFFF6B6B),
+    surface: Color(0xFFF8F9FC),
+    textPrimary: Color(0xFF1A1A2E),
+    textSecondary: Color(0xFFA0A0B0),
+    divider: Color(0xFFE8E8EC),
+    placeholder: Color(0xFFF0F0F4),
     danger: Color(0xFFD9453E),
   );
 
   /// 黑色模式
   static const dark = AppColors(
-    primary: Color(0xFF465FFF),
-    surface: Color(0xFF121212),
-    textPrimary: Color(0xFFF5F5F5),
-    textSecondary: Color(0xFFA8A8A8),
-    divider: Color(0xFF262626),
-    placeholder: Color(0xFF262626),
-    danger: Color(0xFFD9453E),
+    primary: Color(0xFFFF6B6B),
+    surface: Color(0xFF12121A),
+    textPrimary: Color(0xFFF0F0F5),
+    textSecondary: Color(0xFF888896),
+    divider: Color(0xFF2A2A35),
+    placeholder: Color(0xFF1E1E28),
+    danger: Color(0xFFFF6B6B),
   );
 
   static AppColors of(BuildContext context) =>

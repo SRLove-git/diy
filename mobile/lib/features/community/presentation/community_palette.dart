@@ -13,8 +13,8 @@ class CommunityPalette {
 
   final bool isDark;
 
-  /// 页面背景（浅色米白 / 深色近黑）
-  Color get pageBackground => isDark ? const Color(0xFF0B0B0F) : const Color(0xFFF6F5F1);
+  /// 页面背景
+  Color get pageBackground => isDark ? const Color(0xFF0B0B0F) : const Color(0xFFF8F9FC);
 
   /// 信息流卡片底色
   Color get card => isDark ? const Color(0xFF18181F) : Colors.white;
