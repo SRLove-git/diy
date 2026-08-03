@@ -3,12 +3,15 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
+  OnModuleDestroy,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { randomInt } from 'crypto';
 import Redis from 'ioredis';
-import { DataSource, EntityManager, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { Store } from '../stores/store.entity';
 import { StoreTable } from '../stores/store-table.entity';
@@ -17,7 +20,11 @@ import { Appointment } from './appointment.entity';
 import { CreateAppointmentDto } from './appointment.dto';
 
 @Injectable()
-export class AppointmentsService {
+export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(AppointmentsService.name);
+  private autoClockoutTimer: NodeJS.Timeout | null = null;
+  private autoClockoutRunning = false;
+
   constructor(
     @InjectRepository(Appointment)
     private readonly appointments: Repository<Appointment>,
@@ -30,6 +37,71 @@ export class AppointmentsService {
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
+
+  /** 启动后周期兜底：预约时段到点后自动下钟（未在读操作中即时结束的预约） */
+  onModuleInit() {
+    this.autoClockoutTimer = setInterval(async () => {
+      if (this.autoClockoutRunning) return;
+      this.autoClockoutRunning = true;
+      try {
+        await this.autoClockoutExpired();
+      } catch (e) {
+        this.logger.warn(`自动下钟失败：${(e as Error).message}`);
+      } finally {
+        this.autoClockoutRunning = false;
+      }
+    }, 30_000);
+  }
+
+  onModuleDestroy() {
+    if (this.autoClockoutTimer) clearInterval(this.autoClockoutTimer);
+  }
+
+  /** 预约时段开始时刻（date + startTime，本地时区） */
+  private scheduledStart(appt: Appointment): Date {
+    return new Date(`${appt.date}T${appt.startTime}:00`);
+  }
+
+  /** 预约时段结束时刻（date + endTime，本地时区） */
+  private scheduledEnd(appt: Appointment): Date {
+    return new Date(`${appt.date}T${appt.endTime}:00`);
+  }
+
+  /** 校验核销时间：仅可在预约时段（date + startTime ~ endTime）内核销 */
+  private assertCheckInTime(appt: Appointment): void {
+    const now = new Date();
+    if (now < this.scheduledStart(appt)) {
+      throw new BadRequestException(
+        `未到预约时段（${appt.startTime}-${appt.endTime}），请于开始时间后到店核销`,
+      );
+    }
+    if (now > this.scheduledEnd(appt)) {
+      throw new BadRequestException(
+        `预约时段（${appt.startTime}-${appt.endTime}）已结束，无法核销`,
+      );
+    }
+  }
+
+  /**
+   * 自动下钟：将预约时段已结束但仍处于服务中的预约置为已完成，
+   * 下钟时间记为预约时段结束时刻（而不是任务执行时刻）。
+   */
+  async autoClockoutExpired(): Promise<number> {
+    const now = new Date();
+    const expired = await this.appointments.findBy({ status: 'in_service' });
+    let count = 0;
+    for (const appt of expired) {
+      const end = this.scheduledEnd(appt);
+      if (end <= now) {
+        appt.status = 'completed';
+        appt.serviceEndTime = end;
+        await this.appointments.save(appt);
+        count++;
+      }
+    }
+    if (count > 0) this.logger.log(`自动下钟 ${count} 条预约`);
+    return count;
+  }
 
   /**
    * 创建预约：门店/时段/人数校验 → Redis 分布式锁 → 事务内冲突校验 + 落库。
@@ -83,7 +155,7 @@ export class AppointmentsService {
             tableId: dto.tableId,
             date: dto.date,
             slotId: dto.slotId,
-            status: Not('cancelled'),
+            status: Not(In(['cancelled', 'completed'])),
           },
         });
         if (conflict) {
@@ -126,6 +198,12 @@ export class AppointmentsService {
     if (appt.userId !== userId && appt.checkedInBy !== userId) {
       throw new ForbiddenException('无权查看该预约单');
     }
+    // 自动下钟：预约时段到点后，读详情时即时结束服务，无需等定时任务
+    if (appt.status === 'in_service' && this.scheduledEnd(appt) <= new Date()) {
+      appt.status = 'completed';
+      appt.serviceEndTime = this.scheduledEnd(appt);
+      await this.appointments.save(appt);
+    }
     return appt;
   }
 
@@ -139,7 +217,7 @@ export class AppointmentsService {
     return this.appointments.save(appt);
   }
 
-  /** 输码核销：通过预约码核销，状态 booked → checked_in */
+  /** 扫码/输码核销：顾客到店核销即上钟，状态 booked → in_service（上钟时间以扫码时刻为准） */
   async checkIn(code: string, operatorId?: number): Promise<Appointment> {
     const appt = await this.appointments.findOneBy({ code });
     if (!appt) throw new NotFoundException('预约码无效');
@@ -158,14 +236,19 @@ export class AppointmentsService {
         `预约日期为 ${appt.date}，仅可在预约当天核销`,
       );
     }
+    // 校验核销时间：仅可在预约时段内核销
+    this.assertCheckInTime(appt);
 
-    appt.status = 'checked_in';
-    appt.checkInTime = new Date();
+    // 核销即上钟：无需用户端再手动启动，计时从扫码时刻开始
+    const now = new Date();
+    appt.status = 'in_service';
+    appt.checkInTime = now;
+    appt.serviceStartTime = now;
     if (operatorId) appt.checkedInBy = operatorId;
     return this.appointments.save(appt);
   }
 
-  /** 上钟：状态 checked_in → in_service，记录开始时间 */
+  /** 上钟：checked_in → in_service（兼容路径：历史数据/管理端核销后单独上钟） */
   async clockIn(userId: number, id: number): Promise<Appointment> {
     const appt = await this.appointments.findOneBy({ id });
     if (!appt) throw new NotFoundException('预约单不存在');
@@ -236,6 +319,13 @@ export class AppointmentsService {
           : '该预约码已核销，不可重复核销',
       );
     }
+    // 校验核销日期/时间：仅可在预约当天且预约时段内核销
+    if (appt.date !== this.todayStr()) {
+      throw new BadRequestException(
+        `预约日期为 ${appt.date}，仅可在预约当天核销`,
+      );
+    }
+    this.assertCheckInTime(appt);
     appt.status = 'checked_in';
     appt.checkInTime = new Date();
     return this.appointments.save(appt);
@@ -280,8 +370,14 @@ export class AppointmentsService {
       where: { storeId, enabled: true },
       order: { id: 'ASC' },
     });
+    // 占用桌位的预约：待核销/已核销/服务中；已完成（已下钟）与已取消不占位
     const taken = await this.appointments.find({
-      where: { storeId, date, slotId, status: Not('cancelled') },
+      where: {
+        storeId,
+        date,
+        slotId,
+        status: Not(In(['cancelled', 'completed'])),
+      },
     });
     const takenTableIds = new Set(taken.map((t) => t.tableId));
 

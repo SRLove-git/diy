@@ -470,26 +470,45 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
               child: CircularProgressIndicator(),
             ),
           )
-        else if (_availableTables.isEmpty)
+        else if (_availability.isEmpty)
           Text(
-            '该时段无满足人数的可用桌位，请更换时段',
+            '该时段暂无桌位',
             style: TextStyle(color: colors.textSecondary),
           )
         else
           Column(
-            children: _availableTables.map((t) {
-              final selected = _table?.id == t.id;
+            children: _availability.map((t) {
+              final selectable = t.available && t.capacity >= _people;
+              final selected = _table?.id == t.id && selectable;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _Card(
                   selected: selected,
+                  enabled: selectable,
                   onTap: () => setState(() => _table = t),
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          '桌位 ${t.name}',
-                          style: Theme.of(context).textTheme.titleMedium,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '桌位 ${t.name}',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            if (!selectable) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                !t.available
+                                    ? '已被预约或使用中'
+                                    : '最多容纳 ${t.capacity} 人',
+                                style: TextStyle(
+                                  color: colors.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                       Text(
@@ -627,30 +646,35 @@ class _Card extends StatelessWidget {
     required this.selected,
     required this.onTap,
     required this.child,
+    this.enabled = true,
   });
 
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final Widget child;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     return InkWell(
-      onTap: onTap,
+      onTap: enabled ? onTap : null,
       borderRadius: BorderRadius.circular(12),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: colors.surface,
+          color: enabled ? colors.surface : const Color(0xFFF0EEEA),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? colors.textPrimary : colors.divider,
             width: selected ? 1.5 : 1,
           ),
         ),
-        child: child,
+        child: Opacity(
+          opacity: enabled ? 1 : 0.55,
+          child: child,
+        ),
       ),
     );
   }

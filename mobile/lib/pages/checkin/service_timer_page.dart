@@ -21,8 +21,11 @@ class ServiceTimerPage extends StatefulWidget {
 class _ServiceTimerPageState extends State<ServiceTimerPage> {
   bool _inService = false; // false = 等待上钟, true = 服务中
   DateTime? _startTime;
+  DateTime? _scheduledEnd; // 预约时段结束时刻（date + endTime），即下钟时间
   Timer? _timer;
+  Timer? _pollTimer; // 轮询预约状态，检测服务端自动下钟
   Duration _elapsed = Duration.zero;
+  Duration _remaining = Duration.zero; // 剩余时长（到预约时段结束）
   bool _loading = true;
   String? _error;
   bool _submitting = false;
@@ -46,6 +49,13 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
 
       final status = appt['status'] as String;
       final startStr = appt['serviceStartTime'] as String?;
+      final endStr = appt['serviceEndTime'] as String?;
+
+      // 服务端已自动下钟（预约时段到点），直接进入体验总结
+      if (status == 'completed' && startStr != null && endStr != null) {
+        _goToSummary(DateTime.parse(startStr), DateTime.parse(endStr));
+        return;
+      }
 
       setState(() {
         _storeName = appt['storeName'] as String? ?? '';
@@ -55,8 +65,11 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
         if (status == 'in_service' && startStr != null) {
           _inService = true;
           _startTime = DateTime.parse(startStr);
+          _scheduledEnd = _parseScheduledEnd(appt);
           _elapsed = DateTime.now().difference(_startTime!);
+          _remaining = _computeRemaining();
           _startTicking();
+          _startAutoClockoutPolling();
         }
       });
     } on DioException catch (e) {
@@ -80,10 +93,13 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
       setState(() {
         _inService = true;
         _startTime = DateTime.parse(startStr);
+        _scheduledEnd = _parseScheduledEnd(appt);
         _elapsed = Duration.zero;
+        _remaining = _computeRemaining();
         _submitting = false;
       });
       _startTicking();
+      _startAutoClockoutPolling();
     } on DioException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -153,13 +169,76 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (_startTime == null || !mounted) return;
-      setState(() => _elapsed = DateTime.now().difference(_startTime!));
+      setState(() {
+        _elapsed = DateTime.now().difference(_startTime!);
+        _remaining = _computeRemaining();
+      });
     });
+  }
+
+  /// 解析预约时段结束时刻（date + endTime）
+  DateTime? _parseScheduledEnd(Map<String, dynamic> appt) {
+    final date = appt['date'] as String?;
+    final endTime = appt['endTime'] as String?;
+    if (date == null || endTime == null) return null;
+    return DateTime.parse('${date}T$endTime:00');
+  }
+
+  /// 距预约时段结束的剩余时长（已到点则返回 0）
+  Duration _computeRemaining() {
+    final end = _scheduledEnd;
+    if (end == null) return Duration.zero;
+    final left = end.difference(DateTime.now());
+    return left.isNegative ? Duration.zero : left;
+  }
+
+  /// 上钟后轮询预约状态：服务端到点自动下钟后，本页自动跳转体验总结
+  void _startAutoClockoutPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _checkAutoClockout(),
+    );
+  }
+
+  Future<void> _checkAutoClockout() async {
+    if (!mounted || _submitting || !_inService) return;
+    try {
+      final resp =
+          await ApiClient.instance.get('/appointments/${widget.appointmentId}');
+      if (!mounted) return;
+      final appt = resp.data as Map<String, dynamic>;
+      final startStr = appt['serviceStartTime'] as String?;
+      final endStr = appt['serviceEndTime'] as String?;
+      if (appt['status'] == 'completed' && startStr != null && endStr != null) {
+        _timer?.cancel();
+        _pollTimer?.cancel();
+        _goToSummary(DateTime.parse(startStr), DateTime.parse(endStr));
+      }
+    } on DioException {
+      // 轮询失败忽略，等待下一次
+    }
+  }
+
+  /// 跳转体验总结页
+  void _goToSummary(DateTime start, DateTime end) {
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => ExperienceSummaryPage(
+          appointmentId: widget.appointmentId,
+          elapsed: end.difference(start),
+          startTime: start,
+          endTime: end,
+        ),
+      ),
+    );
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _pollTimer?.cancel();
     super.dispose();
   }
 
@@ -233,21 +312,21 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
             ),
             const SizedBox(height: 32),
             if (_inService && _startTime != null) ...[
-              // 上钟时间
-              Text(
-                '上钟时间',
-                style: TextStyle(color: colors.textSecondary, fontSize: 13),
+              // 上钟时间 / 下钟时间
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _TimeInfo(label: '上钟时间', value: _formatTime(_startTime!)),
+                  if (_scheduledEnd != null) ...[
+                    const SizedBox(width: 48),
+                    _TimeInfo(
+                      label: '下钟时间',
+                      value: _formatTime(_scheduledEnd!),
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                _formatTime(_startTime!),
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               // 使用时长（页面焦点）
               Text(
                 '使用时长',
@@ -263,6 +342,26 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
                   letterSpacing: 4,
                 ),
               ),
+              if (_scheduledEnd != null) ...[
+                const SizedBox(height: 16),
+                // 剩余时长（到预约时段结束）
+                Text(
+                  '剩余时长',
+                  style: TextStyle(color: colors.textSecondary, fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _formatDuration(_remaining),
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: _remaining <= const Duration(minutes: 10)
+                        ? colors.danger
+                        : colors.textPrimary,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ],
             ],
             const Spacer(),
             if (_error != null) ...[
@@ -302,6 +401,36 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 上钟时间 / 下钟时间 信息列
+class _TimeInfo extends StatelessWidget {
+  const _TimeInfo({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(color: colors.textSecondary, fontSize: 13),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: colors.textPrimary,
+          ),
+        ),
+      ],
     );
   }
 }

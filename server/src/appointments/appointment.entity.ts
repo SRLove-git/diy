@@ -7,7 +7,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-/** 预约单状态机：待核销 → 已核销 → 服务中 → 已完成；待核销可取消 */
+/** 预约单状态机：待核销 → 服务中 → 已完成；扫码核销即上钟。checked_in 为兼容状态（历史数据/管理端单独上钟） */
 export type AppointmentStatus =
   | 'booked'
   | 'checked_in'
