@@ -47,6 +47,7 @@ dependencies:
   record: ^7.1.1
   audioplayers: ^6.8.1
   path_provider: ^2.1.6
+  flutter_dotenv: ^5.2.1
 
 dev_dependencies:
   flutter_test:
@@ -70,10 +71,9 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  # 后端 IP 等运行配置（编辑 .env 后热重启生效）
+  assets:
+    - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

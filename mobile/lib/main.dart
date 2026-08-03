@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'core/app_colors.dart';
 import 'core/auth_service.dart';
@@ -11,6 +12,8 @@ import 'pages/profile_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 加载 .env（后端 IP 配置），需在首次请求 API 前完成
+  await dotenv.load(fileName: '.env');
   runApp(const DiyApp());
   // 冷启动延时 300ms，等原生插件（Keychain）就绪后再恢复登录态
   Future.delayed(const Duration(milliseconds: 300), () {
