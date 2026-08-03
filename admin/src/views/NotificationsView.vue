@@ -52,7 +52,7 @@ const sendForm = ref({
   targetType: 'all' as 'all' | 'role' | 'user',
   targetRole: 'user' as 'user' | 'admin',
   targetUserIds: '',
-  channels: 'push',
+  channels: [] as string[],
 })
 const sending = ref(false)
 
@@ -67,7 +67,7 @@ function openSendFromTemplate(tpl?: NotificationTemplate) {
   sendForm.value.targetType = 'all'
   sendForm.value.targetRole = 'user'
   sendForm.value.targetUserIds = ''
-  sendForm.value.channels = 'push'
+  sendForm.value.channels = []
   showSendModal.value = true
 }
 
@@ -82,7 +82,7 @@ async function doSend() {
       title: sendForm.value.title,
       content: sendForm.value.content,
       targetType: sendForm.value.targetType,
-      channels: sendForm.value.channels,
+      channels: sendForm.value.channels.join(',') || 'push',
     }
     if (sendForm.value.targetType === 'role') {
       body.targetRole = sendForm.value.targetRole
