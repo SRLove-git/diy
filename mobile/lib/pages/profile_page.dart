@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../core/auth_service.dart';
+import 'profile/card_pack_page.dart';
 import 'profile/my_favorites_page.dart';
 import 'profile/my_history_page.dart';
 import 'profile/my_works_page.dart';
@@ -108,9 +109,14 @@ class ProfilePage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               // 功能列表
-              const _MenuTile(
-                icon: Icons.confirmation_number_outlined,
-                label: '卡包',
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CardPackPage()),
+                ),
+                child: const _MenuTile(
+                  icon: Icons.confirmation_number_outlined,
+                  label: '卡包',
+                ),
               ),
               GestureDetector(
                 onTap: () => Navigator.of(context).push(
