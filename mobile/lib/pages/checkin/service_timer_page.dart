@@ -115,11 +115,10 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
     _timer?.cancel();
     setState(() => _submitting = true);
     try {
-      final resp = await ApiClient.instance
+      await ApiClient.instance
           .post('/appointments/${widget.appointmentId}/clockout');
       if (!mounted) return;
 
-      final appt = resp.data as Map<String, dynamic>;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => ExperienceSummaryPage(

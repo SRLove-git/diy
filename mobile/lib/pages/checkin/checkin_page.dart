@@ -8,7 +8,7 @@ import '../../core/api_client.dart';
 import '../../core/appointment_api.dart';
 import 'service_timer_page.dart';
 
-/// 输码核销页：大号验证码输入（6 位数字），核销成功自动进入上钟/计时
+/// 手动核销页（店员）：大号验证码输入（6 位数字），核销成功自动进入上钟/计时
 class CheckInPage extends StatefulWidget {
   const CheckInPage({super.key});
 
@@ -61,7 +61,7 @@ class _CheckInPageState extends State<CheckInPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('到店核销')),
+      appBar: AppBar(title: const Text('手动核销')),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -79,7 +79,7 @@ class _CheckInPageState extends State<CheckInPage> {
             ),
             const SizedBox(height: 8),
             const Text(
-              '到店出示预约码即可核销',
+              '输入顾客预约码完成核销',
               style: TextStyle(color: Color(0xFF8A8A8A)),
             ),
             const SizedBox(height: 32),

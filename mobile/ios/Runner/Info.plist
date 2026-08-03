@@ -13,6 +13,8 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>需要访问本地网络以连接开发服务器</string>
+	<key>NSCameraUsageDescription</key>
+	<string>需要使用相机扫描顾客预约二维码完成核销</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

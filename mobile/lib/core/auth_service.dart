@@ -8,18 +8,28 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api_client.dart';
 
 class User {
-  const User({required this.id, required this.phone, required this.nickname, required this.avatar});
+  const User({
+    required this.id,
+    required this.phone,
+    required this.nickname,
+    required this.avatar,
+    required this.role,
+  });
 
   final int id;
   final String phone;
   final String nickname;
   final String avatar;
+  final String role;
+
+  bool get isAdmin => role == 'admin';
 
   factory User.fromJson(Map<String, dynamic> json) => User(
         id: json['id'] as int,
         phone: json['phone'] as String,
         nickname: (json['nickname'] ?? '') as String,
         avatar: (json['avatar'] ?? '') as String,
+        role: (json['role'] ?? 'user') as String,
       );
 }
 
@@ -57,6 +67,7 @@ class AuthService extends ChangeNotifier {
   User? get user => _user;
   String? get accessToken => _accessToken;
   bool get isLoggedIn => _accessToken != null;
+  bool get isAdmin => _user?.isAdmin ?? false;
 
   /// 启动时恢复登录态；token 失效则尝试用 refresh token 续期
   Future<void> init() async {

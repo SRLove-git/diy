@@ -119,11 +119,13 @@ export class AppointmentsService {
     });
   }
 
-  /** 预约详情（仅本人） */
+  /** 预约详情（仅本人或核销人） */
   async detail(userId: number, id: number): Promise<Appointment> {
     const appt = await this.appointments.findOneBy({ id });
     if (!appt) throw new NotFoundException('预约单不存在');
-    if (appt.userId !== userId) throw new ForbiddenException('无权查看该预约单');
+    if (appt.userId !== userId && appt.checkedInBy !== userId) {
+      throw new ForbiddenException('无权查看该预约单');
+    }
     return appt;
   }
 
