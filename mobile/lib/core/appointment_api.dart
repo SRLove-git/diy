@@ -187,6 +187,14 @@ class AppointmentApi {
     return Appointment.fromJson(resp.data as Map<String, dynamic>);
   }
 
+  /// 我的预约列表
+  static Future<List<Appointment>> fetchMyList() async {
+    final resp = await ApiClient.instance.get('/appointments');
+    return (resp.data as List)
+        .map((e) => Appointment.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   /// 提取后端错误信息（与登录页一致的格式）
   static String messageOf(DioException e) {
     final data = e.response?.data;

@@ -262,6 +262,9 @@ onMounted(() => {
 
     <!-- 消息模板 -->
     <template v-if="tab === 'templates'">
+      <div class="toolbar">
+        <button class="btn" @click="openCreateTpl">+ 新建模板</button>
+      </div>
       <div v-if="tplLoading" class="state">加载中…</div>
       <div v-else-if="tplError" class="state error">{{ tplError }}</div>
       <div v-else-if="templates.length === 0" class="state">暂无消息模板</div>
