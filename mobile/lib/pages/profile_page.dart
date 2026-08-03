@@ -5,6 +5,7 @@ import '../core/app_colors.dart';
 import '../core/auth_service.dart';
 import '../core/post_api.dart';
 import '../widgets/state_widgets.dart';
+import 'admin/admin_home_page.dart';
 import 'community/create_post_page.dart';
 import 'community/post_detail_page.dart';
 
@@ -121,6 +122,19 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // 管理员专属：管理后台入口
+            if (AuthService.instance.isAdmin)
+              ListTile(
+                leading: const Icon(Icons.admin_panel_settings_outlined),
+                title: const Text('管理后台'),
+                trailing: const Icon(Icons.chevron_right, size: 20),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AdminHomePage()),
+                  );
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.settings_outlined),
               title: const Text('账号设置'),

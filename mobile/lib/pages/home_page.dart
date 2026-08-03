@@ -7,6 +7,13 @@ import '../core/api_client.dart';
 import '../core/app_colors.dart';
 import '../core/appointment_api.dart';
 import '../core/auth_service.dart';
+import 'admin/admin_dashboard_page.dart';
+import 'admin/admin_notifications_page.dart';
+import 'admin/admin_orders_page.dart';
+import 'admin/admin_posts_page.dart';
+import 'admin/admin_reports_page.dart';
+import 'admin/admin_stores_page.dart';
+import 'admin/admin_users_page.dart';
 import 'booking/booking_flow_page.dart';
 import 'checkin/my_checkin_qr_page.dart';
 import 'checkin/scan_checkin_page.dart';
@@ -142,6 +149,23 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ],
                 ),
+                // 管理员专属：管理后台全部功能入口
+                if (isAdmin) ...[
+                  const SizedBox(height: 20),
+                  Text(
+                    '管理后台',
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _AdminEntryGrid(
+                    onTap: (page) => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => page),
+                    ),
+                  ),
+                ],
                 // 进行中的服务（可多个并行）：已核销待上钟 / 服务中实时时长
                 if (_activeAppts.isNotEmpty) ...[
                   const SizedBox(height: 20),
@@ -276,6 +300,61 @@ class _EntryCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 管理员专属：管理后台功能宫格（7 大模块，点击进入对应管理页）
+class _AdminEntryGrid extends StatelessWidget {
+  const _AdminEntryGrid({required this.onTap});
+
+  final ValueChanged<Widget> onTap;
+
+  static const _entries = [
+    (icon: Icons.dashboard_outlined, label: '数据看板', page: AdminDashboardPage()),
+    (icon: Icons.store_outlined, label: '门店管理', page: AdminStoresPage()),
+    (icon: Icons.receipt_long_outlined, label: '订单管理', page: AdminOrdersPage()),
+    (icon: Icons.article_outlined, label: '作品审核', page: AdminPostsPage()),
+    (icon: Icons.people_outline, label: '用户管理', page: AdminUsersPage()),
+    (icon: Icons.report_outlined, label: '举报处理', page: AdminReportsPage()),
+    (icon: Icons.notifications_outlined, label: '通知管理', page: AdminNotificationsPage()),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _entries.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 1.15,
+      ),
+      itemBuilder: (context, i) {
+        final e = _entries[i];
+        return Material(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: () => onTap(e.page),
+            borderRadius: BorderRadius.circular(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(e.icon, size: 28, color: colors.textPrimary),
+                const SizedBox(height: 8),
+                Text(
+                  e.label,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
