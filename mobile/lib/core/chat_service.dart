@@ -29,6 +29,13 @@ class ReadEvent extends ChatEvent {
   final DateTime? readAt;
 }
 
+/// 用户在线状态变化
+class PresenceEvent extends ChatEvent {
+  const PresenceEvent(this.userId, this.online);
+  final int userId;
+  final bool online;
+}
+
 /// 连接状态
 enum ChatConnectionState { disconnected, connecting, connected }
 
@@ -50,9 +57,15 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
   /// 会话列表缓存（列表页/入口角标共用）
   List<Conversation> conversations = const [];
 
+  /// 在线状态缓存：userId -> 在线（presence 事件更新）
+  final Map<int, bool> _presence = {};
+
   ChatConnectionState get state => _state;
   bool get connected => _state == ChatConnectionState.connected;
   Stream<ChatEvent> get events => _events.stream;
+
+  /// 查询指定用户是否在线（缺省回退到会话列表缓存）
+  bool isPeerOnline(int userId) => _presence[userId] ?? false;
 
   /// 未读总数（供入口角标）
   int get totalUnread => conversations.fold(0, (sum, c) => sum + c.unreadCount);
@@ -148,10 +161,24 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
                 : null,
           ));
           break;
+        case 'presence':
+          _applyPresence(
+            (frame['userId'] as num).toInt(),
+            frame['online'] == true,
+          );
+          break;
         case 'error':
           if (frame['code'] == 'send_failed') {
             final clientMsgId = (frame['clientMsgId'] ?? '') as String;
             _pendingSends.remove(clientMsgId)?.complete(null);
+          } else if (frame['code'] == 'unauthorized' ||
+              frame['code'] == 'token_expired') {
+            // token 过期：断开当前连接，刷新后重连
+            _closeChannel();
+            _setState(ChatConnectionState.disconnected);
+            AuthService.instance.tryRefresh().then((ok) {
+              if (ok && !_manualClose) _connect();
+            });
           }
           break;
       }
@@ -166,8 +193,9 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     if (idx >= 0) {
       final old = conversations[idx];
       final list = [...conversations];
+      final prefix = message.contentType == 'image' ? 'image:' : 'text:';
       list[idx] = old.copyWith(
-        lastMessagePreview: 'text:${message.content}',
+        lastMessagePreview: '$prefix${message.content}',
         lastMessageAt: message.createdAt,
         unreadCount: old.unreadCount + 1,
       );
@@ -176,6 +204,22 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     }
     notifyListeners();
     _events.add(NewMessageEvent(message));
+  }
+
+  /// 在线状态变化：更新缓存 + 同步会话列表中的对端在线标记
+  void _applyPresence(int userId, bool online) {
+    _presence[userId] = online;
+    var changed = false;
+    final list = [...conversations];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].peerId == userId && list[i].peerOnline != online) {
+        list[i] = list[i].copyWith(peerOnline: online);
+        changed = true;
+      }
+    }
+    if (changed) conversations = list;
+    notifyListeners();
+    _events.add(PresenceEvent(userId, online));
   }
 
   /// 置顶会话在前，组内按最后消息时间倒序（与服务端排序一致）
@@ -197,8 +241,14 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     _reconnectTimer?.cancel();
     final delay = Duration(seconds: min(30, 1 << _reconnectAttempt));
     _reconnectAttempt++;
-    _reconnectTimer = Timer(delay, () {
-      if (!_manualClose && AuthService.instance.isLoggedIn) _connect();
+    _reconnectTimer = Timer(delay, () async {
+      if (!_manualClose && AuthService.instance.isLoggedIn) {
+        // 重连前尝试刷新 token，避免用过期的 token 连接
+        if (AuthService.instance.accessToken != null) {
+          await AuthService.instance.tryRefresh();
+        }
+        if (AuthService.instance.isLoggedIn) _connect();
+      }
     });
   }
 
@@ -276,10 +326,12 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
 
   /// 发消息：WebSocket 优先（等 sent 回执），超时/失败走 REST 兜底。
   /// 返回服务端确认后的消息；彻底失败返回 null（由页面标记失败态）。
+  /// [contentType] 支持 text（文本/表情）与 image（content 为上传后的相对路径）。
   Future<ChatMessage?> sendMessage({
     required int conversationId,
     required String content,
     required String clientMsgId,
+    String contentType = 'text',
   }) async {
     final completer = Completer<ChatMessage?>();
     _pendingSends[clientMsgId] = completer;
@@ -288,6 +340,7 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
         'type': 'send',
         'conversationId': conversationId,
         'clientMsgId': clientMsgId,
+        'contentType': contentType,
         'content': content,
       });
     }
@@ -301,7 +354,8 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     }
     if (confirmed != null) return confirmed;
     try {
-      return await ChatApi.sendMessage(conversationId, content);
+      return await ChatApi.sendMessage(conversationId, content,
+          contentType: contentType);
     } catch (_) {
       return null;
     }

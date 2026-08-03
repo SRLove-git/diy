@@ -92,9 +92,10 @@ export class ChatController {
     const { message, peerId } = await this.chat.sendMessage(
       user.id,
       id,
+      dto.contentType ?? 'text',
       dto.content,
     );
-    this.gateway.broadcastNewMessage(message, peerId);
+    await this.gateway.broadcastNewMessage(message, peerId);
     return message;
   }
 

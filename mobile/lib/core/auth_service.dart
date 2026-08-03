@@ -37,7 +37,7 @@ class User {
 /// 登录态管理：token 安全存储（Keychain/Keystore）+ 登录/刷新/登出。
 class AuthService extends ChangeNotifier {
   AuthService._() {
-    // 统一注入鉴权头
+    // 统一注入鉴权头 + 401 自动刷新重试
     ApiClient.instance.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
@@ -46,6 +46,34 @@ class AuthService extends ChangeNotifier {
             options.headers['Authorization'] = 'Bearer $token';
           }
           handler.next(options);
+        },
+        onError: (error, handler) async {
+          if (error.response?.statusCode != 401) {
+            handler.next(error);
+            return;
+          }
+          // 避免并发 401 时重复刷新
+          if (_isRefreshing) {
+            // 等待刷新完成后用新 token 重试
+            await _waitForRefresh();
+            if (_accessToken != null) {
+              handler.resolve(await _retry(error.requestOptions));
+            } else {
+              handler.next(error);
+            }
+            return;
+          }
+          _isRefreshing = true;
+          try {
+            final ok = await tryRefresh();
+            if (ok) {
+              handler.resolve(await _retry(error.requestOptions));
+            } else {
+              handler.next(error);
+            }
+          } finally {
+            _isRefreshing = false;
+          }
         },
       ),
     );
@@ -64,6 +92,7 @@ class AuthService extends ChangeNotifier {
   User? _user;
   String? _accessToken;
   String? _refreshToken;
+  bool _isRefreshing = false;
 
   User? get user => _user;
   String? get accessToken => _accessToken;
@@ -138,6 +167,19 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// 等待其他并发请求完成 token 刷新
+  Future<void> _waitForRefresh() async {
+    while (_isRefreshing) {
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
+  /// 用新 token 重试原请求
+  Future<Response<dynamic>> _retry(RequestOptions options) {
+    options.headers['Authorization'] = 'Bearer $_accessToken';
+    return ApiClient.instance.fetch(options);
+  }
+
   Future<void> updateNickname(String nickname) async {
     final resp = await ApiClient.instance
         .patch('/users/me', data: {'nickname': nickname});
@@ -158,20 +200,14 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 拉取当前用户；401 时自动 refresh 一次再重试
+  /// 拉取当前用户；401 已由全局拦截器统一处理，此处只清空登录态
   Future<void> _fetchMe() async {
     try {
       final resp = await ApiClient.instance.get('/auth/me');
       _user = User.fromJson(resp.data as Map<String, dynamic>);
     } on DioException catch (e) {
-      if (e.response?.statusCode == 401 && await tryRefresh()) {
-        final resp = await ApiClient.instance.get('/auth/me');
-        _user = User.fromJson(resp.data as Map<String, dynamic>);
-      } else {
-        // 401 且 refresh 失败才清空登录态；网络不通则保留 token 等下次重试
-        if (e.response?.statusCode == 401) {
-          await logout();
-        }
+      if (e.response?.statusCode == 401) {
+        await logout();
       }
     } catch (_) {
       // 网络不通或数据格式异常，保留 token 等下次重试

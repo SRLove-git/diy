@@ -14,6 +14,7 @@ import { GlobalJwtModule } from './common/global-jwt.module';
 import { HealthController } from './health/health.controller';
 import { RedisModule } from './redis/redis.module';
 import { StoresModule } from './stores/stores.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -41,6 +42,7 @@ import { UsersModule } from './users/users.module';
     AppointmentsModule,
     CommunityModule,
     ChatModule,
+    UploadsModule,
     NotificationsModule,
     DashboardModule,
   ],

@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { HttpException, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import {
@@ -8,9 +8,11 @@ import {
 } from '@nestjs/websockets';
 import { decode, encode } from '@msgpack/msgpack';
 import type { IncomingMessage } from 'http';
+import type Redis from 'ioredis';
 import { WebSocket } from 'ws';
 import type { JwtPayload } from '../auth/auth.service';
-import { ChatService } from './chat.service';
+import { REDIS_CLIENT } from '../redis/redis.module';
+import { ChatService, type MessageContentType } from './chat.service';
 import type { Message } from './message.entity';
 
 interface ChatFrame {
@@ -18,14 +20,23 @@ interface ChatFrame {
   [key: string]: unknown;
 }
 
+/** Redis 在线状态 TTL（秒）：客户端 25s 心跳续期，60s 未续期视为离线 */
+const PRESENCE_TTL = 60;
+
 /**
  * 用户间聊天 WebSocket 网关。
  *
  * 连接：ws(s)://<host>/ws?token=<accessToken>，握手时用 JWT_SECRET 校验。
- * 帧协议（JSON 文本帧）：
- *   客户端 → { type:'ping' } / { type:'send', conversationId, clientMsgId, content } / { type:'read', conversationId }
+ * 帧协议（msgpack 二进制帧）：
+ *   客户端 → { type:'ping' } / { type:'send', conversationId, clientMsgId, contentType, content }
+ *            / { type:'read', conversationId }
  *   服务端 → { type:'pong' } / { type:'sent', clientMsgId, message } / { type:'newMessage', message }
- *            / { type:'read', conversationId, readerId, readAt } / { type:'error', code, message }
+ *            / { type:'read', conversationId, readerId, readAt }
+ *            / { type:'presence', userId, online } / { type:'error', code, message }
+ *
+ * 在线状态：连接建立时 Redis 计数 +1 并向其会话对端广播上线；心跳刷新 TTL；
+ * 断开时计数 -1（归零删键）并广播下线。推送前用 Redis 判断对端是否在线，
+ * 离线消息不实时推送（已落库，下次上线拉取历史可见）。
  */
 @WebSocketGateway({ path: '/ws' })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -36,6 +47,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly chat: ChatService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    @Inject(REDIS_CLIENT)
+    private readonly redis: Redis,
   ) {}
 
   handleConnection(client: WebSocket, request?: IncomingMessage): void {
@@ -71,6 +84,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       sock.setNoDelay(true);
     }
 
+    // Redis 在线计数 +1 并广播上线（异步，不影响握手）
+    void this.onUserConnected(userId);
+
     // 手动挂消息监听：ws adapter 的 @SubscribeMessage 回调拿不到 client，无法定向回复
     client.on('message', (buffer: Buffer) =>
       this.handleFrame(userId, client, buffer),
@@ -84,7 +100,45 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     for (const [uid, set] of this.clients) {
       if (set.delete(client) && set.size === 0) {
         this.clients.delete(uid);
+        // Redis 在线计数 -1 并广播下线（异步）
+        void this.onUserDisconnected(uid);
       }
+    }
+  }
+
+  /** 用户接入：在线计数 +1 + 续期，并向其会话对端广播"上线" */
+  private async onUserConnected(userId: number): Promise<void> {
+    try {
+      const key = `chat:online:${userId}`;
+      await this.redis.incr(key);
+      await this.redis.expire(key, PRESENCE_TTL);
+      await this.broadcastPresence(userId, true);
+    } catch {
+      // Redis 异常不影响连接
+    }
+  }
+
+  /** 用户断开：在线计数 -1（归零删键），并向其会话对端广播"下线" */
+  private async onUserDisconnected(userId: number): Promise<void> {
+    try {
+      const key = `chat:online:${userId}`;
+      const left = await this.redis.decr(key);
+      if (left <= 0) await this.redis.del(key);
+      await this.broadcastPresence(userId, false);
+    } catch {
+      // Redis 异常忽略
+    }
+  }
+
+  /** 向该用户所有会话对端广播在线状态变化 */
+  private async broadcastPresence(userId: number, online: boolean) {
+    try {
+      const peerIds = await this.chat.conversationPeerIds(userId);
+      for (const pid of peerIds) {
+        this.sendToUser(pid, { type: 'presence', userId, online });
+      }
+    } catch {
+      // 广播失败忽略
     }
   }
 
@@ -97,7 +151,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     switch (frame?.type) {
       case 'ping':
+        // 心跳应答 + 刷新 Redis 在线 TTL
         this.reply(client, { type: 'pong' });
+        void this.redis
+          .expire(`chat:online:${userId}`, PRESENCE_TTL)
+          .catch(() => {});
         break;
       case 'send':
         void this.onSend(userId, client, frame);
@@ -114,6 +172,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     frame: ChatFrame,
   ): Promise<void> {
     const { conversationId, clientMsgId, content } = frame;
+    const contentType = frame.contentType as MessageContentType | undefined;
     if (!conversationId || typeof content !== 'string' || !content.trim()) {
       this.reply(client, {
         type: 'error',
@@ -126,6 +185,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const { message, peerId } = await this.chat.sendMessage(
         userId,
         Number(conversationId),
+        contentType === 'image' ? 'image' : 'text',
         content,
       );
       // 通过 sendToUser 发给发送方自己的所有连接（比 reply(client) 更可靠，后者可能因单连接状态异常丢帧）
@@ -134,14 +194,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         clientMsgId: clientMsgId ?? null,
         message: this.serializeMessage(message),
       });
-      this.sendToUser(peerId, {
-        type: 'newMessage',
-        message: this.serializeMessage(message),
-      });
+      // Redis 判断在线：在线才实时推送；离线走"离线消息"（已落库，下次上线拉历史可见）
+      if (await this.chat.isUserOnline(peerId)) {
+        this.sendToUser(peerId, {
+          type: 'newMessage',
+          message: this.serializeMessage(message),
+        });
+      }
     } catch (e) {
       this.reply(client, {
         type: 'error',
         code: 'send_failed',
+        clientMsgId: clientMsgId ?? null,
         message: e instanceof HttpException ? e.message : '发送失败',
       });
     }
@@ -170,12 +234,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  /** REST 发消息后的实时转发 */
-  broadcastNewMessage(message: Message, peerId: number): void {
-    this.sendToUser(peerId, {
-      type: 'newMessage',
-      message: this.serializeMessage(message),
-    });
+  /** REST 发消息后的实时转发（同样以 Redis 在线状态判断是否推送） */
+  async broadcastNewMessage(message: Message, peerId: number): Promise<void> {
+    if (await this.chat.isUserOnline(peerId)) {
+      this.sendToUser(peerId, {
+        type: 'newMessage',
+        message: this.serializeMessage(message),
+      });
+    }
   }
 
   /** REST 标记已读后的实时转发 */
@@ -202,7 +268,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       contentType: message.contentType,
       content: message.content,
       readAt: message.readAt?.toISOString?.() ?? message.readAt ?? null,
-      createdAt: message.createdAt?.toISOString?.() ?? message.createdAt ?? null,
+      createdAt:
+        message.createdAt?.toISOString?.() ?? message.createdAt ?? null,
     };
   }
 

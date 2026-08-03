@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import 'api_client.dart';
+import 'config.dart';
 
 /// 会话模型
 class Conversation {
@@ -13,6 +14,7 @@ class Conversation {
     this.lastMessageAt,
     this.unreadCount = 0,
     this.pinned = false,
+    this.peerOnline = false,
   });
 
   final int id;
@@ -25,6 +27,9 @@ class Conversation {
 
   /// 是否置顶
   final bool pinned;
+
+  /// 对端是否在线（服务端 Redis 在线状态）
+  final bool peerOnline;
 
   /// 去掉 "text:" 等类型前缀后的预览文本
   String get lastMessageText {
@@ -40,6 +45,7 @@ class Conversation {
     DateTime? lastMessageAt,
     int? unreadCount,
     bool? pinned,
+    bool? peerOnline,
   }) =>
       Conversation(
         id: id,
@@ -50,6 +56,7 @@ class Conversation {
         lastMessageAt: lastMessageAt ?? this.lastMessageAt,
         unreadCount: unreadCount ?? this.unreadCount,
         pinned: pinned ?? this.pinned,
+        peerOnline: peerOnline ?? this.peerOnline,
       );
 
   factory Conversation.fromJson(Map<String, dynamic> json) {
@@ -65,6 +72,7 @@ class Conversation {
           : null,
       unreadCount: (json['unreadCount'] ?? 0) as int,
       pinned: (json['pinned'] ?? false) as bool,
+      peerOnline: (peer['online'] ?? false) as bool,
     );
   }
 }
@@ -93,15 +101,21 @@ class ChatMessage {
   /// 本地生成的发送流水号（服务端消息无此字段）
   final String? clientMsgId;
 
-  ChatMessage copyWith({DateTime? readAt}) => ChatMessage(
+  ChatMessage copyWith({
+    DateTime? readAt,
+    String? content,
+    String? contentType,
+    String? clientMsgId,
+  }) =>
+      ChatMessage(
         id: id,
         conversationId: conversationId,
         senderId: senderId,
-        contentType: contentType,
-        content: content,
+        contentType: contentType ?? this.contentType,
+        content: content ?? this.content,
         readAt: readAt ?? this.readAt,
         createdAt: createdAt,
-        clientMsgId: clientMsgId,
+        clientMsgId: clientMsgId ?? this.clientMsgId,
       );
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -178,12 +192,36 @@ class ChatApi {
   }
 
   /// REST 发消息（WebSocket 兜底）
-  static Future<ChatMessage> sendMessage(int conversationId, String content) async {
+  static Future<ChatMessage> sendMessage(
+    int conversationId,
+    String content, {
+    String contentType = 'text',
+  }) async {
     final resp = await ApiClient.instance.post(
       '/conversations/$conversationId/messages',
-      data: {'content': content},
+      data: {'content': content, 'contentType': contentType},
     );
     return ChatMessage.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  /// 上传聊天图片，返回可访问的相对路径（如 /uploads/chat/2026/08/xxx.jpg）
+  static Future<String> uploadImage(String filePath) async {
+    final form = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath),
+    });
+    final resp = await ApiClient.instance.post(
+      '/uploads/images',
+      data: form,
+      options: Options(contentType: Headers.multipartFormDataContentType),
+    );
+    return (resp.data as Map<String, dynamic>)['url'] as String;
+  }
+
+  /// 相对路径（/uploads/...）转绝对 URL（聊天图片展示用）
+  static String resolveUrl(String path) {
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    final api = Uri.parse(AppConfig.apiBaseUrl);
+    return '${api.scheme}://${api.authority}$path';
   }
 
   /// 标记已读

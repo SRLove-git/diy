@@ -13,5 +13,7 @@ ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
+# 聊天图片上传目录（compose 挂载持久卷 /app/uploads）
+RUN mkdir -p /app/uploads
 EXPOSE 3000
 CMD ["node", "dist/main.js"]

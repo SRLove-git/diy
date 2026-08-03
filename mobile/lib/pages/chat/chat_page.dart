@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/auth_service.dart';
@@ -12,12 +14,34 @@ import '../../widgets/state_widgets.dart';
 enum _SendState { pending, sent, failed }
 
 class _ViewMsg {
-  _ViewMsg({required this.message, this.state = _SendState.sent});
+  _ViewMsg({required this.message, this.state = _SendState.sent, this.localPath});
   ChatMessage message;
   _SendState state;
+
+  /// 图片本地路径：上传/确认前用于本地预览，发送失败重发时复用
+  String? localPath;
 }
 
-/// 聊天页：单聊会话
+/// 常用表情（微信风格：表情作为文本消息的一部分发送）
+const _emojis = [
+  '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆',
+  '😉', '😊', '😋', '😎', '😍', '😘', '🥰', '😗',
+  '🙂', '🤗', '🤩', '🤔', '🤨', '😐', '😑', '😶',
+  '🙄', '😏', '😣', '😥', '😮', '🤐', '😯', '😪',
+  '😫', '😴', '😌', '😛', '😜', '😝', '🤤', '😒',
+  '😓', '😔', '😕', '🙃', '🤑', '😲', '☹️', '🙁',
+  '😖', '😞', '😟', '😤', '😢', '😭', '😦', '😧',
+  '😨', '😩', '🤯', '😬', '😰', '😱', '🥵', '🥶',
+  '😳', '🤪', '😵', '😡', '😠', '🤬', '😷', '🤒',
+  '🤕', '🤢', '🤮', '🤧', '😇', '🥳', '🥺', '🤠',
+  '🤡', '🤥', '🤫', '🤭', '🧐', '🤓', '😈', '👿',
+  '💀', '👻', '❤️', '🧡', '💛', '💚', '💙', '💜',
+  '🖤', '🤍', '💔', '💕', '💞', '💓', '💗', '💖',
+  '💘', '💝', '👍', '👎', '👌', '🤝', '👏', '🙌',
+  '🙏', '💪', '✌️', '🤞', '👊', '🤛', '🤜', '🤟',
+];
+
+/// 聊天页：单聊会话（文本/表情/图片消息）
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key, required this.conversation});
 
@@ -30,12 +54,14 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final _msgs = <_ViewMsg>[]; // 新的在前（配合 reverse ListView）
   final _input = TextEditingController();
+  final _inputFocus = FocusNode();
   final _rand = Random();
   StreamSubscription<ChatEvent>? _sub;
   bool _loading = true;
   String? _error;
   int? _nextCursor;
   bool _loadingMore = false;
+  bool _showEmoji = false;
   late final int _meId;
 
   @override
@@ -52,6 +78,7 @@ class _ChatPageState extends State<ChatPage> {
   void dispose() {
     _sub?.cancel();
     _input.dispose();
+    _inputFocus.dispose();
     super.dispose();
   }
 
@@ -130,10 +157,43 @@ class _ChatPageState extends State<ChatPage> {
   String _genMsgId() =>
       '${DateTime.now().microsecondsSinceEpoch}-${_rand.nextInt(1 << 32)}';
 
+  /// 本地待发送消息上屏
+  void _insertPending(ChatMessage local, {String? localPath}) {
+    setState(() =>
+        _msgs.insert(0, _ViewMsg(message: local, state: _SendState.pending, localPath: localPath)));
+  }
+
+  /// 发送结果回写：confirmed 非空替换为服务端消息；否则标记失败（保留本地预览/路径）
+  void _applyResult(String clientMsgId, ChatMessage? confirmed, ChatMessage fallback) {
+    if (!mounted) return;
+    setState(() {
+      final idx = _msgs.indexWhere((vm) => vm.message.clientMsgId == clientMsgId);
+      if (idx < 0) return;
+      // 保留 ReadEvent 已设置的 readAt 与图片本地路径（可能是 _onEvent 期间写入的）
+      final preservedReadAt = _msgs[idx].message.readAt;
+      final localPath = _msgs[idx].localPath;
+      _msgs[idx] = confirmed != null
+          ? _ViewMsg(
+              message: preservedReadAt != null
+                  ? confirmed.copyWith(readAt: preservedReadAt)
+                  : confirmed,
+              localPath: localPath,
+            )
+          : _ViewMsg(message: fallback, state: _SendState.failed, localPath: localPath);
+    });
+  }
+
+  void _replaceMsg(_ViewMsg old, _ViewMsg neu) {
+    final idx = _msgs.indexWhere((m) => identical(m, old));
+    if (idx >= 0) setState(() => _msgs[idx] = neu);
+  }
+
+  /// 发送文本消息（含表情）
   Future<void> _send() async {
     final text = _input.text.trim();
     if (text.isEmpty) return;
     _input.clear();
+    setState(() => _showEmoji = false);
     final clientMsgId = _genMsgId();
     final local = ChatMessage(
       id: null,
@@ -143,76 +203,94 @@ class _ChatPageState extends State<ChatPage> {
       createdAt: DateTime.now(),
       clientMsgId: clientMsgId,
     );
-    setState(
-      () => _msgs.insert(0, _ViewMsg(message: local, state: _SendState.pending)),
-    );
-
+    _insertPending(local);
     final confirmed = await ChatService.instance.sendMessage(
       conversationId: widget.conversation.id,
       content: text,
       clientMsgId: clientMsgId,
     );
-    if (!mounted) return;
-    setState(() {
-      final idx = _msgs.indexWhere((vm) => vm.message.clientMsgId == clientMsgId);
-      if (idx >= 0) {
-        // 保留 ReadEvent 已设置的 readAt（可能是 _onEvent 在处理期间写入的）
-        final preservedReadAt = _msgs[idx].message.readAt;
-        _msgs[idx] = confirmed != null
-            ? _ViewMsg(
-                message: preservedReadAt != null
-                    ? confirmed.copyWith(readAt: preservedReadAt)
-                    : confirmed,
-              )
-            : _ViewMsg(message: local, state: _SendState.failed);
-      }
-    });
+    _applyResult(clientMsgId, confirmed, local);
   }
 
-  void _resend(_ViewMsg vm) {
+  /// 选择图片并发送：本地预览 → 上传 → 发消息
+  Future<void> _sendImage() async {
+    final XFile? picked;
+    try {
+      picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+    } catch (_) {
+      return;
+    }
+    if (picked == null || !mounted) return;
+    setState(() => _showEmoji = false);
     final clientMsgId = _genMsgId();
-    final retry = ChatMessage(
+    final local = ChatMessage(
       id: null,
       conversationId: widget.conversation.id,
       senderId: _meId,
-      content: vm.message.content,
+      contentType: 'image',
+      content: '',
       createdAt: DateTime.now(),
       clientMsgId: clientMsgId,
     );
-    final idx = _msgs.indexWhere((m) => identical(m, vm));
-    setState(() {
-      if (idx >= 0) {
-        _msgs[idx] = _ViewMsg(message: retry, state: _SendState.pending);
-      }
-    });
+    _insertPending(local, localPath: picked.path);
+    await _uploadAndSend(clientMsgId, picked.path, local);
+  }
+
+  /// 上传图片并发送（失败时以 fallback 标记失败态）
+  Future<void> _uploadAndSend(
+    String clientMsgId,
+    String filePath,
+    ChatMessage fallback,
+  ) async {
+    String? url;
+    try {
+      url = await ChatApi.uploadImage(filePath);
+    } catch (_) {
+      url = null;
+    }
+    if (url == null) {
+      _applyResult(clientMsgId, null, fallback);
+      return;
+    }
+    final confirmed = await ChatService.instance.sendMessage(
+      conversationId: widget.conversation.id,
+      content: url,
+      clientMsgId: clientMsgId,
+      contentType: 'image',
+    );
+    _applyResult(clientMsgId, confirmed, fallback.copyWith(content: url));
+  }
+
+  /// 失败消息重发：上传失败的图片重新走 上传→发送；其余直接重发
+  void _resend(_ViewMsg vm) {
+    final clientMsgId = _genMsgId();
+    if (vm.message.contentType == 'image' && vm.message.content.isEmpty && vm.localPath != null) {
+      final retry = vm.message.copyWith(clientMsgId: clientMsgId, content: '');
+      _replaceMsg(vm, _ViewMsg(message: retry, state: _SendState.pending, localPath: vm.localPath));
+      _uploadAndSend(clientMsgId, vm.localPath!, retry);
+      return;
+    }
+    final retry = vm.message.copyWith(clientMsgId: clientMsgId);
+    _replaceMsg(vm, _ViewMsg(message: retry, state: _SendState.pending, localPath: vm.localPath));
     ChatService.instance
         .sendMessage(
           conversationId: widget.conversation.id,
           content: vm.message.content,
           clientMsgId: clientMsgId,
+          contentType: vm.message.contentType,
         )
-        .then((confirmed) {
-      if (!mounted) return;
-      setState(() {
-        final i = _msgs.indexWhere((m) => m.message.clientMsgId == clientMsgId);
-        if (i >= 0) {
-          final preservedReadAt = _msgs[i].message.readAt;
-          _msgs[i] = confirmed != null
-              ? _ViewMsg(
-                  message: preservedReadAt != null
-                      ? confirmed.copyWith(readAt: preservedReadAt)
-                      : confirmed,
-                )
-              : _ViewMsg(message: retry, state: _SendState.failed);
-        }
-      });
-    });
+        .then((confirmed) => _applyResult(clientMsgId, confirmed, retry));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_title())),
+      appBar: AppBar(title: _buildTitle()),
       body: SafeArea(
         child: Column(
           children: [
@@ -221,6 +299,40 @@ class _ChatPageState extends State<ChatPage> {
           ],
         ),
       ),
+    );
+  }
+
+  /// 标题 + 在线状态圆点（presence 实时刷新）
+  Widget _buildTitle() {
+    final colors = AppColors.of(context);
+    return ListenableBuilder(
+      listenable: ChatService.instance,
+      builder: (context, _) {
+        final online =
+            ChatService.instance.isPeerOnline(widget.conversation.peerId);
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                _title(),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: online
+                    ? const Color(0xFF34C759)
+                    : colors.textSecondary.withValues(alpha: 0.35),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -270,49 +382,113 @@ class _ChatPageState extends State<ChatPage> {
   Widget _buildInputBar() {
     final colors = AppColors.of(context);
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
         color: colors.surface,
         border: Border(top: BorderSide(color: colors.divider)),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: TextField(
-              controller: _input,
-              minLines: 1,
-              maxLines: 4,
-              textInputAction: TextInputAction.newline,
-              decoration: InputDecoration(
-                hintText: '发消息…',
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 6, 12, 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.image_outlined, color: colors.textSecondary),
+                  tooltip: '发送图片',
+                  onPressed: _loading ? null : _sendImage,
                 ),
-                filled: true,
-                fillColor: colors.placeholder.withValues(alpha: 0.5),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(22),
-                  borderSide: BorderSide.none,
+                IconButton(
+                  icon: Icon(
+                    _showEmoji
+                        ? Icons.keyboard_alt_outlined
+                        : Icons.emoji_emotions_outlined,
+                    color: colors.textSecondary,
+                  ),
+                  tooltip: '表情',
+                  onPressed: () {
+                    setState(() => _showEmoji = !_showEmoji);
+                  },
                 ),
-              ),
+                Expanded(
+                  child: TextField(
+                    controller: _input,
+                    focusNode: _inputFocus,
+                    minLines: 1,
+                    maxLines: 4,
+                    textInputAction: TextInputAction.newline,
+                    decoration: InputDecoration(
+                      hintText: '发消息…',
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      filled: true,
+                      fillColor: colors.placeholder.withValues(alpha: 0.5),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(22),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _loading ? null : _send,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 44),
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                  ),
+                  child: const Text('发送'),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
-          FilledButton(
-            onPressed: _loading ? null : _send,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(0, 44),
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(22),
-              ),
-            ),
-            child: const Text('发送'),
-          ),
+          if (_showEmoji) _buildEmojiPanel(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEmojiPanel() {
+    final colors = AppColors.of(context);
+    return Container(
+      height: 184,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(top: BorderSide(color: colors.divider)),
+      ),
+      child: GridView.builder(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 8,
+        ),
+        itemCount: _emojis.length,
+        itemBuilder: (_, i) => InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () {
+            // 追加到输入框末尾（表情作为文本消息内容发送）
+            // selection 在无光标时可能为无效值（offset=-1），此时回退到文本末尾
+            final sel = _input.selection;
+            final pos = (sel.isValid && sel.extentOffset >= 0)
+                ? sel.extentOffset
+                : _input.text.length;
+            final text = _input.text;
+            _input.text = text.substring(0, pos) + _emojis[i] + text.substring(pos);
+            _input.selection = TextSelection.fromPosition(
+              TextPosition(offset: pos + _emojis[i].length),
+            );
+            _inputFocus.requestFocus();
+          },
+          child: Center(
+            child: Text(_emojis[i], style: const TextStyle(fontSize: 24)),
+          ),
+        ),
       ),
     );
   }
@@ -333,42 +509,107 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final m = vm.message;
     final mine = m.senderId == meId;
+    final isImage = m.contentType == 'image';
     final colors = AppColors.of(context);
     return Align(
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.72,
-        ),
-        decoration: BoxDecoration(
-          color: mine ? colors.primary : colors.surface,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(mine ? 16 : 4),
-            bottomRight: Radius.circular(mine ? 4 : 16),
+      child: Column(
+        crossAxisAlignment:
+            mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            padding: isImage
+                ? EdgeInsets.zero
+                : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            constraints: isImage
+                ? null
+                : BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.72,
+                  ),
+            decoration: isImage
+                ? null
+                : BoxDecoration(
+                    color: mine ? colors.primary : colors.surface,
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(16),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: Radius.circular(mine ? 16 : 4),
+                      bottomRight: Radius.circular(mine ? 4 : 16),
+                    ),
+                  ),
+            child: isImage ? _buildImage(context, colors) : _buildText(colors),
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              m.content,
-              style: TextStyle(
-                fontSize: 15,
-                height: 1.4,
-                color: mine ? Colors.white : colors.textPrimary,
-              ),
+          if (mine)
+            Padding(
+              padding: const EdgeInsets.only(right: 4, bottom: 2),
+              child: _buildStatus(colors),
             ),
-            if (mine) ...[
-              const SizedBox(height: 2),
-              _buildStatus(colors),
-            ],
-          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildText(AppColors colors) {
+    final mine = vm.message.senderId == meId;
+    return Text(
+      vm.message.content,
+      style: TextStyle(
+        fontSize: 15,
+        height: 1.4,
+        color: mine ? Colors.white : colors.textPrimary,
+      ),
+    );
+  }
+
+  Widget _buildImage(BuildContext context, AppColors colors) {
+    final m = vm.message;
+    Widget image;
+    if (m.content.isNotEmpty) {
+      image = Image.network(
+        ChatApi.resolveUrl(m.content),
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, progress) => progress == null
+            ? child
+            : Container(
+                width: 120,
+                height: 120,
+                color: colors.placeholder,
+                child: const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              ),
+        errorBuilder: (_, _, _) => Container(
+          width: 120,
+          height: 120,
+          color: colors.placeholder,
+          child: Icon(Icons.broken_image_outlined, color: colors.textSecondary),
         ),
+      );
+    } else if (vm.localPath != null) {
+      // 上传中/失败：展示本地文件预览
+      image = Image.file(File(vm.localPath!), fit: BoxFit.cover);
+    } else {
+      image = Container(
+        width: 120,
+        height: 120,
+        color: colors.placeholder,
+        child: Icon(Icons.image_outlined, color: colors.textSecondary),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: 220,
+          maxHeight: 280,
+        ),
+        child: image,
       ),
     );
   }
@@ -378,7 +619,7 @@ class _MessageBubble extends StatelessWidget {
       case _SendState.pending:
         return Text(
           '发送中…',
-          style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.8)),
+          style: TextStyle(fontSize: 10, color: colors.textSecondary),
         );
       case _SendState.failed:
         return InkWell(
@@ -390,7 +631,7 @@ class _MessageBubble extends StatelessWidget {
               const SizedBox(width: 3),
               Text(
                 '发送失败，点击重发',
-                style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.8)),
+                style: TextStyle(fontSize: 10, color: colors.textSecondary),
               ),
             ],
           ),
@@ -398,7 +639,7 @@ class _MessageBubble extends StatelessWidget {
       case _SendState.sent:
         return Text(
           vm.message.readAt != null ? '已读' : '已发送',
-          style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.8)),
+          style: TextStyle(fontSize: 10, color: colors.textSecondary),
         );
     }
   }

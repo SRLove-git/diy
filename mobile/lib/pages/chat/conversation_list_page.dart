@@ -479,21 +479,43 @@ class _ConversationTile extends StatelessWidget {
   Widget _avatar(BuildContext context, String nickname, String avatar) {
     final colors = AppColors.of(context);
     final valid = avatar.startsWith('http://') || avatar.startsWith('https://');
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: colors.placeholder,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: valid
-          ? Image.network(
-              avatar,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _initial(nickname),
-            )
-          : _initial(nickname),
+    // 对端在线状态（presence 事件实时更新）
+    final online = ChatService.instance.isPeerOnline(conversation.peerId) ||
+        conversation.peerOnline;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: colors.placeholder,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: valid
+              ? Image.network(
+                  avatar,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => _initial(nickname),
+                )
+              : _initial(nickname),
+        ),
+        // 右下角在线小圆点
+        Positioned(
+          right: 0,
+          bottom: 0,
+          child: Container(
+            width: 13,
+            height: 13,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: online ? const Color(0xFF34C759) : colors.placeholder,
+              border: Border.all(color: colors.surface, width: 2),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

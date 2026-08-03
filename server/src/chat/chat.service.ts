@@ -1,14 +1,24 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Repository } from 'typeorm';
+import type Redis from 'ioredis';
+import { REDIS_CLIENT } from '../redis/redis.module';
 import { User } from '../users/user.entity';
 import { Conversation } from './conversation.entity';
 import { Message } from './message.entity';
+import { MessageStatus } from './message_status.entity';
+
+/** 消息内容类型：text 文本/表情；image 图片（content 存 /uploads/chat/... 相对路径） */
+export type MessageContentType = 'text' | 'image';
+
+/** 聊天图片内容必须是本站上传的相对路径 */
+const IMAGE_URL_RE = /^\/uploads\/chat\/[\w./-]+$/;
 
 @Injectable()
 export class ChatService {
@@ -17,8 +27,12 @@ export class ChatService {
     private readonly conversations: Repository<Conversation>,
     @InjectRepository(Message)
     private readonly messages: Repository<Message>,
+    @InjectRepository(MessageStatus)
+    private readonly messageStatus: Repository<MessageStatus>,
     @InjectRepository(User)
     private readonly users: Repository<User>,
+    @Inject(REDIS_CLIENT)
+    private readonly redis: Redis,
   ) {}
 
   private peerIdOf(conv: Conversation, userId: number): number {
@@ -62,7 +76,26 @@ export class ChatService {
     }
   }
 
-  /** 会话列表：对方信息 + 最后一条预览 + 未读数（置顶在前，再按最后消息时间） */
+  /** 当前用户全部会话的对端用户 ID（在线状态广播用） */
+  async conversationPeerIds(userId: number): Promise<number[]> {
+    const convs = await this.conversations.find({
+      where: [{ userAId: userId }, { userBId: userId }],
+    });
+    return convs.map((c) => this.peerIdOf(c, userId));
+  }
+
+  /** Redis 在线判断：chat:online:{userId} 连接计数 > 0 视为在线（心跳续期） */
+  async isUserOnline(userId: number): Promise<boolean> {
+    try {
+      const v = await this.redis.get(`chat:online:${userId}`);
+      return Number(v) > 0;
+    } catch {
+      // Redis 异常时回退为进程内连接表判断
+      return false;
+    }
+  }
+
+  /** 会话列表：对方信息（含在线状态）+ 最后一条预览 + 未读数 */
   async listConversations(userId: number, page = 1, pageSize = 20) {
     const [convs, total] = await this.conversations.findAndCount({
       where: [{ userAId: userId }, { userBId: userId }],
@@ -81,15 +114,28 @@ export class ChatService {
       ]),
     );
 
-    // 每个会话的未读条数（对方发来且我未读）
-    // 注意：项目未启用 snake_case 命名策略，列名为实体属性名（camelCase）
-    const unreadRows = await this.messages
-      .createQueryBuilder('m')
+    // Redis 在线集合（mget 一次取回全部对端状态）
+    const online = new Set<number>();
+    try {
+      const counts = await this.redis.mget(
+        peerIds.map((id) => `chat:online:${id}`),
+      );
+      counts.forEach((c, i) => {
+        if (Number(c) > 0) online.add(peerIds[i]);
+      });
+    } catch {
+      // Redis 异常时降级为全离线
+    }
+
+    // 每个会话的未读条数：message_status 为单一数据源（对方发来且我未读）
+    const unreadRows = await this.messageStatus
+      .createQueryBuilder('ms')
       .select('m.conversationId', 'conversationId')
       .addSelect('COUNT(*)', 'cnt')
+      .innerJoin('messages', 'm', 'm.id = ms.messageId')
       .where('m.conversationId IN (:...ids)', { ids: convs.map((c) => c.id) })
-      .andWhere('m.senderId != :userId', { userId })
-      .andWhere('m.readAt IS NULL')
+      .andWhere('ms.userId = :userId', { userId })
+      .andWhere('ms.readAt IS NULL')
       .groupBy('m.conversationId')
       .getRawMany<{ conversationId: string; cnt: string }>();
     const unreadMap = new Map<number, number>(
@@ -97,13 +143,15 @@ export class ChatService {
     );
 
     const items = convs.map((c) => {
-      const peer = userMap.get(this.peerIdOf(c, userId));
+      const peerId = this.peerIdOf(c, userId);
+      const peer = userMap.get(peerId);
       return {
         id: c.id,
         peer: {
-          id: this.peerIdOf(c, userId),
+          id: peerId,
           nickname: peer?.nickname ?? '',
           avatar: peer?.avatar ?? '',
+          online: online.has(peerId),
         },
         lastMessagePreview: c.lastMessagePreview,
         lastMessageAt: c.lastMessageAt,
@@ -135,6 +183,15 @@ export class ChatService {
   ): Promise<void> {
     await this.findConversationForUser(conversationId, userId);
     await this.messages.manager.transaction(async (em) => {
+      await em
+        .createQueryBuilder()
+        .delete()
+        .from(MessageStatus)
+        .where(
+          'messageId IN (SELECT id FROM messages WHERE conversationId = :cid)',
+          { cid: conversationId },
+        )
+        .execute();
       await em.delete(Message, { conversationId });
       await em.delete(Conversation, { id: conversationId });
     });
@@ -161,28 +218,48 @@ export class ChatService {
     return { items: rows, nextCursor };
   }
 
-  /** 发送消息：落库并更新会话冗余字段（同事务） */
-  async sendMessage(userId: number, conversationId: number, content: string) {
+  /** 发送消息：落库 + 双端已读状态 + 更新会话冗余字段（同事务） */
+  async sendMessage(
+    userId: number,
+    conversationId: number,
+    contentType: MessageContentType,
+    content: string,
+  ) {
     const conv = await this.findConversationForUser(conversationId, userId);
     const peerId = this.peerIdOf(conv, userId);
     const peer = await this.users.findOneBy({ id: peerId });
     if (peer?.isBanned) throw new BadRequestException('对方账号已被禁用');
 
-    const text = content.trim();
+    const type: MessageContentType = contentType === 'image' ? 'image' : 'text';
+    const body = content.trim();
+    if (type === 'image') {
+      // 图片消息内容必须是本站上传的相对路径
+      if (!IMAGE_URL_RE.test(body))
+        throw new BadRequestException('图片地址不合法');
+    } else if (!body) {
+      throw new BadRequestException('消息内容不能为空');
+    }
+
     const message = this.messages.create({
       conversationId,
       senderId: userId,
-      contentType: 'text',
-      content: text,
+      contentType: type,
+      content: body,
     });
     await this.messages.manager.transaction(async (em) => {
       const saved = await em.save(message);
+      // 参与者的各自已读状态：发送方立即已读，接收方待读
+      await em.insert(MessageStatus, [
+        { messageId: saved.id, userId, readAt: saved.createdAt },
+        { messageId: saved.id, userId: peerId, readAt: null },
+      ]);
+      const preview = type === 'image' ? 'image:' : `text:${body.slice(0, 50)}`;
       await em.update(
         Conversation,
         { id: conversationId },
         {
           lastMessageId: String(saved.id),
-          lastMessagePreview: `text:${text.slice(0, 50)}`,
+          lastMessagePreview: preview,
           lastMessageAt: saved.createdAt,
         },
       );
@@ -196,6 +273,19 @@ export class ChatService {
     const conv = await this.findConversationForUser(conversationId, userId);
     const peerId = this.peerIdOf(conv, userId);
     const readAt = new Date();
+    // message_status 为已读单一数据源（UPDATE 不支持别名前缀，列名直接引用）
+    await this.messageStatus
+      .createQueryBuilder()
+      .update()
+      .set({ readAt })
+      .where('userId = :userId', { userId })
+      .andWhere('readAt IS NULL')
+      .andWhere(
+        'messageId IN (SELECT m.id FROM messages m WHERE m.conversationId = :cid)',
+        { cid: conversationId },
+      )
+      .execute();
+    // 兼容字段：供历史接口直接返回 readAt
     await this.messages.update(
       { conversationId, senderId: peerId, readAt: IsNull() },
       { readAt },

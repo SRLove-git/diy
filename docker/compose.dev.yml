@@ -1,5 +1,8 @@
 # 开发环境：仅基础设施容器化，Node 服务在宿主机直接运行（热更新）
 # 用法：docker compose -f docker/compose.dev.yml up -d
+# 注意：聊天 WebSocket 与 HTTP 共用宿主 server 的 3000 端口（path /ws），
+#       该端口由宿主 Node 进程直接监听，无需在 compose 中额外暴露；
+#       在线状态依赖 Redis（chat:online:*），已包含在本编排中。
 services:
   mysql:
     image: mysql:8.0
