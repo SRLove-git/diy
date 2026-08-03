@@ -299,7 +299,7 @@ button.primary:disabled { opacity: 0.5; }
   gap: 8px;
   margin-top: 16px;
 }
-.actions button {
+.actions button:not(.primary) {
   border: 1px solid #eceae6;
   background: #fff;
   border-radius: 8px;
