@@ -4,11 +4,12 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/app_colors.dart';
 import 'core/auth_service.dart';
 import 'core/chat_service.dart';
+import 'features/community/presentation/community_page.dart';
 import 'pages/chat/conversation_list_page.dart';
-import 'pages/community_page.dart';
 import 'pages/home_page.dart';
 import 'pages/login_page.dart';
 import 'pages/profile_page.dart';
+import 'widgets/glass_bottom_nav.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -82,7 +83,7 @@ class AuthGate extends StatelessWidget {
   }
 }
 
-/// 底部 4 Tab：首页 / 社区 / 消息 / 我的（悬浮胶囊样式，对齐《个人页面设计初稿》§7）
+/// 底部 4 Tab：首页 / 发现 / 消息 / 个人主页（玻璃拟态胶囊样式）
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -91,6 +92,7 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
+  /// 页面索引：0 首页 / 1 发现(社区) / 2 消息 / 3 个人主页
   int _index = 0;
   late final List<Widget> _pages;
 
@@ -99,79 +101,29 @@ class _MainShellState extends State<MainShell> {
     super.initState();
     // 登录后建立聊天 WebSocket 连接
     ChatService.instance.ensureConnected();
-    // 消息 Tab 常驻；导航栏头像点击切到"我的"
+    // 消息 Tab 常驻；导航栏头像点击切到"个人主页"
     _pages = [
       const HomePage(),
-      const CommunityPage(),
+      CommunityPage(
+        onSwitchTab: (navIndex) => setState(() => _index = navIndex),
+      ),
       ConversationListPage(onTapAvatar: () => setState(() => _index = 3)),
       const ProfilePage(),
     ];
   }
 
-  static const _icons = [
-    (outline: Icons.home_outlined, filled: Icons.home),
-    (outline: Icons.grid_view_outlined, filled: Icons.grid_view),
-    (outline: Icons.chat_bubble_outline, filled: Icons.chat_bubble),
-    (outline: Icons.person_outline, filled: Icons.person),
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
     return Scaffold(
       body: IndexedStack(index: _index, children: _pages),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-        child: Container(
-          height: 60,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x14000000),
-                blurRadius: 16,
-                offset: Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Row(
-            children: List.generate(4, (i) {
-              final active = _index == i;
-              return Expanded(
-                child: IconButton(
-                  icon: _buildTabIcon(i, active, colors),
-                  color: active ? colors.textPrimary : colors.textSecondary,
-                  onPressed: () => setState(() => _index = i),
-                ),
-              );
-            }),
-          ),
+      bottomNavigationBar: ListenableBuilder(
+        listenable: ChatService.instance,
+        builder: (context, _) => GlassBottomNav(
+          currentIndex: _index,
+          onSelect: (i) => setState(() => _index = i),
+          chatUnread: ChatService.instance.totalUnread,
         ),
       ),
-    );
-  }
-
-  Widget _buildTabIcon(int i, bool active, AppColors colors) {
-    final icon = Icon(
-      active ? _icons[i].filled : _icons[i].outline,
-      size: 26,
-      color: active ? colors.textPrimary : colors.textSecondary,
-    );
-    // 消息 Tab：未读总数徽章（模块级数字徽章，对齐《聊天页面设计初稿》）
-    if (i != 2) return icon;
-    return ListenableBuilder(
-      listenable: ChatService.instance,
-      builder: (context, _) {
-        final unread = ChatService.instance.totalUnread;
-        return Badge(
-          isLabelVisible: unread > 0,
-          label: Text(unread > 99 ? '99+' : '$unread'),
-          backgroundColor: colors.primary,
-          child: icon,
-        );
-      },
     );
   }
 }
