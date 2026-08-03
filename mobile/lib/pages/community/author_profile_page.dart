@@ -6,6 +6,7 @@ import '../../core/auth_service.dart';
 import '../../core/chat_api.dart';
 import '../../core/chat_service.dart';
 import '../../core/post_api.dart';
+import '../../widgets/image_viewer.dart';
 import '../../widgets/state_widgets.dart';
 import '../chat/chat_page.dart';
 import 'post_detail_page.dart';
@@ -177,9 +178,20 @@ class _PostCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (post.images.isNotEmpty)
-              AspectRatio(
-                aspectRatio: 16 / 10,
-                child: Image.network(post.images.first, fit: BoxFit.cover, width: double.infinity),
+              Hero(
+                tag: 'post-img-${post.id}-0',
+                child: GestureDetector(
+                  onTap: () => showImageViewer(
+                    context,
+                    image: networkViewerImage(post.images.first),
+                    heroTag: 'post-img-${post.id}-0',
+                    precache: NetworkImage(post.images.first),
+                  ),
+                  child: AspectRatio(
+                    aspectRatio: 16 / 10,
+                    child: Image.network(post.images.first, fit: BoxFit.cover, width: double.infinity),
+                  ),
+                ),
               ),
             Padding(
               padding: const EdgeInsets.all(12),

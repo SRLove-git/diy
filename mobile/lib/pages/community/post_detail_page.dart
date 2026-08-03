@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/post_api.dart';
+import '../../widgets/image_viewer.dart';
 import 'author_profile_page.dart';
 
 /// 作品详情页
@@ -255,11 +256,22 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   if (post.images.isNotEmpty)
                     Column(
                       children: [
-                        AspectRatio(
-                          aspectRatio: 16 / 10,
-                          child: Container(
-                            color: colors.surface,
-                            child: Image.network(post.images.first, fit: BoxFit.cover, width: double.infinity),
+                        Hero(
+                          tag: 'post-detail-${post.id}-main',
+                          child: GestureDetector(
+                            onTap: () => showImageViewer(
+                              context,
+                              image: networkViewerImage(post.images.first),
+                              heroTag: 'post-detail-${post.id}-main',
+                              precache: NetworkImage(post.images.first),
+                            ),
+                            child: AspectRatio(
+                              aspectRatio: 16 / 10,
+                              child: Container(
+                                color: colors.surface,
+                                child: Image.network(post.images.first, fit: BoxFit.cover, width: double.infinity),
+                              ),
+                            ),
                           ),
                         ),
                         if (post.images.length > 1)
@@ -270,9 +282,20 @@ class _PostDetailPageState extends State<PostDetailPage> {
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               itemCount: post.images.length,
                               separatorBuilder: (ctx, i) => const SizedBox(width: 6),
-                              itemBuilder: (_, i) => ClipRRect(
-                                borderRadius: BorderRadius.circular(6),
-                                child: Image.network(post.images[i], width: 54, height: 54, fit: BoxFit.cover),
+                              itemBuilder: (_, i) => Hero(
+                                tag: 'post-detail-${post.id}-thumb-$i',
+                                child: GestureDetector(
+                                  onTap: () => showImageViewer(
+                                    context,
+                                    image: networkViewerImage(post.images[i]),
+                                    heroTag: 'post-detail-${post.id}-thumb-$i',
+                                    precache: NetworkImage(post.images[i]),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Image.network(post.images[i], width: 54, height: 54, fit: BoxFit.cover),
+                                  ),
+                                ),
                               ),
                             ),
                           ),

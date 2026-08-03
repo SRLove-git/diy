@@ -15,6 +15,7 @@ import '../../core/auth_service.dart';
 import '../../core/chat_api.dart';
 import '../../core/chat_service.dart';
 import '../../core/local_chat_store.dart';
+import '../../widgets/image_viewer.dart';
 import '../../widgets/state_widgets.dart';
 
 enum _SendState { pending, sent, failed }
@@ -386,6 +387,56 @@ class _ChatPageState extends State<ChatPage> {
       contentType: 'image',
     );
     _applyResult(clientMsgId, confirmed, fallback.copyWith(content: url));
+  }
+
+  /// 点击图片气泡：全屏查看（共享元素动画，从原图放大铺满全屏）
+  Future<void> _openImageViewer(_ViewMsg vm) async {
+    final m = vm.message;
+    final heroTag = 'chat-img-${m.id ?? m.clientMsgId}';
+    ImageProvider? precache;
+    final Widget image;
+    if (m.content.isNotEmpty) {
+      final url = ChatApi.resolveUrl(m.content);
+      precache = NetworkImage(url);
+      image = Image.network(
+        url,
+        fit: BoxFit.contain,
+        loadingBuilder: (context, child, progress) => progress == null
+            ? child
+            : const Center(
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white54,
+                  ),
+                ),
+              ),
+        errorBuilder: (_, _, _) => const Center(
+          child: Icon(
+            Icons.broken_image_outlined,
+            color: Colors.white54,
+            size: 56,
+          ),
+        ),
+      );
+    } else if (vm.localPath != null) {
+      // 上传中/失败：查看本地文件原图
+      final path = vm.localPath!;
+      precache = FileImage(File(path));
+      image = Image.file(File(path), fit: BoxFit.contain);
+    } else {
+      image = const Center(
+        child: Icon(Icons.image_outlined, color: Colors.white54, size: 56),
+      );
+    }
+    await showImageViewer(
+      context,
+      image: image,
+      heroTag: heroTag,
+      precache: precache,
+    );
   }
 
   /// 失败消息重发：上传失败的图片/语音重新走 上传→发送；其余直接重发
@@ -768,6 +819,8 @@ class _ChatPageState extends State<ChatPage> {
           playing: _playingKey == _msgKey(vm),
           onPlay: () => _togglePlay(vm),
           onResend: () => _resend(vm),
+          onTapImage: () => _openImageViewer(vm),
+          imageHeroTag: 'chat-img-${vm.message.id ?? vm.message.clientMsgId}',
         );
       },
     );
@@ -1078,6 +1131,8 @@ class _MessageBubble extends StatelessWidget {
     required this.onResend,
     required this.playing,
     required this.onPlay,
+    required this.onTapImage,
+    required this.imageHeroTag,
     this.meAvatar = '',
     this.meNickname = '',
     this.peerAvatar = '',
@@ -1091,6 +1146,12 @@ class _MessageBubble extends StatelessWidget {
   /// 语音消息是否正在播放
   final bool playing;
   final VoidCallback onPlay;
+
+  /// 点击图片气泡：全屏查看
+  final VoidCallback onTapImage;
+
+  /// 图片共享元素动画的 Hero tag（与查看器内 Hero 配对）
+  final Object imageHeroTag;
   final String meAvatar;
   final String meNickname;
   final String peerAvatar;
@@ -1251,14 +1312,20 @@ class _MessageBubble extends StatelessWidget {
         child: Icon(Icons.image_outlined, color: colors.textSecondary),
       );
     }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: 220,
-          maxHeight: 280,
+    return Hero(
+      tag: imageHeroTag,
+      child: GestureDetector(
+        onTap: onTapImage,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 220,
+              maxHeight: 280,
+            ),
+            child: image,
+          ),
         ),
-        child: image,
       ),
     );
   }

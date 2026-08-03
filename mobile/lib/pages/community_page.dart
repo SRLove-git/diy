@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../core/app_colors.dart';
 import '../core/post_api.dart';
+import '../widgets/image_viewer.dart';
 import '../widgets/state_widgets.dart';
 import 'community/create_post_page.dart';
 import 'community/post_detail_page.dart';
@@ -218,11 +219,22 @@ class _PostCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 图片（显示第一张或暂无图片占位）
+            // 图片（显示第一张或暂无图片占位），点击放大查看
             if (post.images.isNotEmpty)
-              AspectRatio(
-                aspectRatio: 16 / 10,
-                child: Image.network(post.images.first, fit: BoxFit.cover, width: double.infinity),
+              Hero(
+                tag: 'post-img-${post.id}-0',
+                child: GestureDetector(
+                  onTap: () => showImageViewer(
+                    context,
+                    image: networkViewerImage(post.images.first),
+                    heroTag: 'post-img-${post.id}-0',
+                    precache: NetworkImage(post.images.first),
+                  ),
+                  child: AspectRatio(
+                    aspectRatio: 16 / 10,
+                    child: Image.network(post.images.first, fit: BoxFit.cover, width: double.infinity),
+                  ),
+                ),
               ),
             Padding(
               padding: const EdgeInsets.all(12),
