@@ -6,9 +6,8 @@ import '../../core/api_client.dart';
 import '../../core/app_colors.dart';
 import '../../core/appointment_api.dart';
 import 'checkin_page.dart';
-import 'service_timer_page.dart';
 
-/// 扫码核销页（管理员/店员）：扫描顾客二维码 → 确认核销 → 上钟/下钟
+/// 扫码核销页（管理员/店员）：扫描顾客二维码 → 确认核销 → 顾客端自动进入上钟
 class ScanCheckInPage extends StatefulWidget {
   const ScanCheckInPage({super.key});
 
@@ -21,6 +20,8 @@ class _ScanCheckInPageState extends State<ScanCheckInPage> {
   bool _processing = false;
   bool _torchOn = false;
   String? _error;
+  String? _lastScannedCode;
+  DateTime? _lastScannedAt;
 
   @override
   void dispose() {
@@ -34,6 +35,12 @@ class _ScanCheckInPageState extends State<ScanCheckInPage> {
       final raw = barcode.rawValue;
       // 仅接受 6 位数字预约码（二维码内容即预约码）
       if (raw != null && RegExp(r'^\d{6}$').hasMatch(raw)) {
+        // 核销成功后短暂冷却，避免同一二维码被立即重复识别
+        if (raw == _lastScannedCode &&
+            DateTime.now().difference(_lastScannedAt ?? DateTime(0)) <
+                const Duration(seconds: 3)) {
+          return;
+        }
         _previewAndConfirm(raw);
         return;
       }
@@ -45,27 +52,39 @@ class _ScanCheckInPageState extends State<ScanCheckInPage> {
       _processing = true;
       _error = null;
     });
+    // 处理期间暂停相机，避免同一二维码在弹窗期间被重复识别
+    await _controller.stop();
     try {
       final resp = await ApiClient.instance.get('/appointments/code/$code');
       if (!mounted) return;
-      setState(() => _processing = false);
-      _showConfirm(resp.data as Map<String, dynamic>);
+      final confirmed = await _showConfirm(resp.data as Map<String, dynamic>);
+      if (!mounted) return;
+      if (confirmed == true) {
+        await _doCheckIn(code);
+      } else {
+        // 用户取消核销，恢复扫码
+        setState(() => _processing = false);
+        await _controller.start();
+      }
     } on DioException catch (e) {
       if (!mounted) return;
       setState(() {
         _processing = false;
         _error = AppointmentApi.messageOf(e);
       });
-      // 短暂提示后自动消失，避免阻塞继续扫码
+      // 短暂提示后自动消失，并恢复扫码
       await Future.delayed(const Duration(seconds: 2));
-      if (mounted && _error != null) setState(() => _error = null);
+      if (!mounted) return;
+      if (_error != null) setState(() => _error = null);
+      await _controller.start();
     }
   }
 
-  Future<void> _showConfirm(Map<String, dynamic> appt) async {
+  /// 返回 true 表示确认核销；false/null 表示取消
+  Future<bool?> _showConfirm(Map<String, dynamic> appt) async {
     final status = appt['status'] as String;
     final booked = status == 'booked';
-    await showDialog<void>(
+    return showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
@@ -99,7 +118,7 @@ class _ScanCheckInPageState extends State<ScanCheckInPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
+            onPressed: () => Navigator.of(ctx).pop(false),
             style: TextButton.styleFrom(
               foregroundColor: AppColors.of(ctx).textPrimary,
             ),
@@ -107,10 +126,7 @@ class _ScanCheckInPageState extends State<ScanCheckInPage> {
           ),
           if (booked)
             FilledButton(
-              onPressed: () async {
-                Navigator.of(ctx).pop();
-                await _doCheckIn(appt['code'] as String);
-              },
+              onPressed: () => Navigator.of(ctx).pop(true),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.of(ctx).textPrimary,
                 foregroundColor: AppColors.of(ctx).surface,
@@ -125,14 +141,27 @@ class _ScanCheckInPageState extends State<ScanCheckInPage> {
   Future<void> _doCheckIn(String code) async {
     setState(() => _processing = true);
     try {
-      final resp = await ApiClient.instance.post(
+      await ApiClient.instance.post(
         '/appointments/checkin',
         data: {'code': code},
       );
       if (!mounted) return;
-      setState(() => _processing = false);
-      final appt = resp.data as Map<String, dynamic>;
-      await _showSuccess(appt['id'] as int);
+      // 核销成功后停留在扫码页继续接待，顾客端会自动跳转到上钟页
+      setState(() {
+        _processing = false;
+        _error = null;
+      });
+      // 记录冷却信息，避免恢复扫码后同一二维码被立即重复识别
+      _lastScannedCode = code;
+      _lastScannedAt = DateTime.now();
+      await _controller.start();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('核销成功，顾客手机将自动进入上钟页'),
+          duration: Duration(seconds: 2),
+        ),
+      );
     } on DioException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -140,48 +169,10 @@ class _ScanCheckInPageState extends State<ScanCheckInPage> {
         _error = AppointmentApi.messageOf(e);
       });
       await Future.delayed(const Duration(seconds: 2));
-      if (mounted && _error != null) setState(() => _error = null);
+      if (!mounted) return;
+      if (_error != null) setState(() => _error = null);
+      await _controller.start();
     }
-  }
-
-  Future<void> _showSuccess(int appointmentId) async {
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        icon: const Icon(
-          Icons.check_circle,
-          size: 48,
-          color: Color(0xFF2E9E5B),
-        ),
-        title: const Text('核销成功'),
-        content: const Text('已核销，可开始上钟。'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => ServiceTimerPage(appointmentId: appointmentId),
-                ),
-              );
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.of(ctx).textPrimary,
-            ),
-            child: const Text('开始上钟'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.of(ctx).textPrimary,
-              foregroundColor: AppColors.of(ctx).surface,
-            ),
-            child: const Text('继续扫码'),
-          ),
-        ],
-      ),
-    );
   }
 
   String _statusLabel(String status) {

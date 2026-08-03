@@ -1,10 +1,16 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
+import '../core/api_client.dart';
 import '../core/app_colors.dart';
+import '../core/appointment_api.dart';
 import '../core/auth_service.dart';
 import 'booking/booking_flow_page.dart';
 import 'checkin/my_checkin_qr_page.dart';
 import 'checkin/scan_checkin_page.dart';
+import 'checkin/service_timer_page.dart';
 
 /// 首页：品牌名 + 顶部居中分段控件（拼豆 / 敬请期待）
 /// 拼豆：三入口（预约/到店/会员套餐）；敬请期待：浅色占位卡片
@@ -19,6 +25,59 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _tabIndex = 0; // 0=拼豆，1=敬请期待
+
+  // 进行中的服务（可多个并行）：退出上钟页后回到主页仍可看到实时时长
+  List<Appointment> _activeAppts = [];
+  Timer? _tickTimer;
+  Timer? _pollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadActive();
+    // 每秒刷新已上钟时长
+    _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted &&
+          _activeAppts.any(
+            (a) => a.status == 'in_service' && a.serviceStartTime != null,
+          )) {
+        setState(() {});
+      }
+    });
+    // 轮询预约状态：核销/上钟/下钟后主页状态自动更新
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) => _loadActive());
+  }
+
+  @override
+  void dispose() {
+    _tickTimer?.cancel();
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  /// 拉取当前用户进行中的服务（已核销待上钟 / 服务中），支持多个并行
+  Future<void> _loadActive() async {
+    try {
+      final resp = await ApiClient.instance.get('/appointments');
+      if (!mounted) return;
+      final active = (resp.data as List)
+          .map((e) => Appointment.fromJson(e as Map<String, dynamic>))
+          .where((a) => a.status == 'in_service' || a.status == 'checked_in')
+          .toList();
+      setState(() => _activeAppts = active);
+    } on DioException {
+      // 拉取失败忽略，保持上一次状态
+    }
+  }
+
+  Future<void> _openActiveService(Appointment appt) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ServiceTimerPage(appointmentId: appt.id),
+      ),
+    );
+    _loadActive();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,6 +142,30 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ],
                 ),
+                // 进行中的服务（可多个并行）：已核销待上钟 / 服务中实时时长
+                if (_activeAppts.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  Text(
+                    '进行中的服务',
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  for (final appt in _activeAppts) ...[
+                    _ActiveServiceCard(
+                      appt: appt,
+                      inService: appt.status == 'in_service',
+                      elapsed: appt.serviceStartTime != null
+                          ? DateTime.now()
+                              .difference(DateTime.parse(appt.serviceStartTime!))
+                          : Duration.zero,
+                      onTap: () => _openActiveService(appt),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ],
               ] else
                 // 敬请期待：浅色占位卡片，不给按钮、不引导，保持简洁
                 Container(
@@ -195,4 +278,124 @@ class _EntryCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 首页进行中的服务卡片：已核销（待上钟）或服务中（实时时长），点击回到上钟页
+class _ActiveServiceCard extends StatelessWidget {
+  const _ActiveServiceCard({
+    required this.appt,
+    required this.inService,
+    required this.elapsed,
+    required this.onTap,
+  });
+
+  final Appointment appt;
+  final bool inService;
+  final Duration elapsed;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Material(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: inService
+                      ? const Color(0xFF2E9E5B)
+                      : colors.placeholder,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  inService ? Icons.timer_outlined : Icons.login,
+                  color: inService ? Colors.white : colors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      appt.storeName,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${appt.date} ${appt.startTime}-${appt.endTime} · 桌位 ${appt.tableName}',
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (inService) ...[
+                    Text(
+                      _formatDuration(elapsed),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2E9E5B),
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '服务中',
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ] else ...[
+                    Text(
+                      '已核销',
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '待上钟',
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right, color: colors.textSecondary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// HH:mm:ss 时长格式化（与上钟页一致）
+String _formatDuration(Duration d) {
+  final h = d.inHours.toString().padLeft(2, '0');
+  final m = (d.inMinutes % 60).toString().padLeft(2, '0');
+  final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+  return '$h:$m:$s';
 }

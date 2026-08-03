@@ -98,6 +98,7 @@ class Appointment {
     required this.peopleCount,
     required this.code,
     required this.status,
+    this.serviceStartTime,
   });
 
   final int id;
@@ -110,6 +111,9 @@ class Appointment {
   final String code;
   final String status;
 
+  /// 上钟（开始服务）时间，in_service 状态下存在
+  final String? serviceStartTime;
+
   factory Appointment.fromJson(Map<String, dynamic> json) => Appointment(
         id: json['id'] as int,
         storeName: json['storeName'] as String,
@@ -120,6 +124,7 @@ class Appointment {
         peopleCount: json['peopleCount'] as int,
         code: json['code'] as String,
         status: json['status'] as String,
+        serviceStartTime: json['serviceStartTime'] as String?,
       );
 }
 

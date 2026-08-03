@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -5,6 +7,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/api_client.dart';
 import '../../core/app_colors.dart';
 import '../../core/appointment_api.dart';
+import 'service_timer_page.dart';
 
 /// 到店二维码核销页：展示待核销（booked）预约的二维码，到店出示由店员扫码核销
 class MyCheckInQrPage extends StatefulWidget {
@@ -19,10 +22,24 @@ class _MyCheckInQrPageState extends State<MyCheckInQrPage> {
   bool _loading = true;
   String? _error;
 
+  // 用户端自动跳转：轮询预约状态，店员核销成功后自动进入上钟页
+  final Set<int> _seenBookedIds = {};
+  Timer? _timer;
+  bool _navigating = false;
+  bool _qrDialogOpen = false;
+
   @override
   void initState() {
     super.initState();
     _load();
+    // 服务端无推送机制，采用轮询检测核销状态变化
+    _timer = Timer.periodic(const Duration(seconds: 2), (_) => _checkStatus());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -34,13 +51,18 @@ class _MyCheckInQrPageState extends State<MyCheckInQrPage> {
       final resp = await ApiClient.instance.get('/appointments');
       final list = resp.data as List;
       if (!mounted) return;
+      final booked = list
+          .map((e) => Appointment.fromJson(e as Map<String, dynamic>))
+          .where((a) => a.status == 'booked')
+          .toList();
       setState(() {
-        _booked = list
-            .map((e) => Appointment.fromJson(e as Map<String, dynamic>))
-            .where((a) => a.status == 'booked')
-            .toList();
+        _booked = booked;
         _loading = false;
       });
+      // 记录本次会话中展示过的待核销预约，用于轮询检测核销状态变化
+      for (final a in booked) {
+        _seenBookedIds.add(a.id);
+      }
     } on DioException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -50,7 +72,43 @@ class _MyCheckInQrPageState extends State<MyCheckInQrPage> {
     }
   }
 
+  /// 轮询预约状态：原待核销预约被核销/上钟后，用户端自动跳转到上钟页
+  Future<void> _checkStatus() async {
+    if (_navigating || !mounted) return;
+    try {
+      final resp = await ApiClient.instance.get('/appointments');
+      if (!mounted || _navigating) return;
+      final list = resp.data as List;
+      for (final e in list) {
+        final appt = Appointment.fromJson(e as Map<String, dynamic>);
+        if (_seenBookedIds.contains(appt.id) &&
+            (appt.status == 'checked_in' || appt.status == 'in_service')) {
+          _navigating = true;
+          _timer?.cancel();
+          _goToService(appt.id);
+          return;
+        }
+      }
+    } on DioException {
+      // 轮询失败忽略，等待下一次
+    }
+  }
+
+  void _goToService(int appointmentId) {
+    // 若二维码弹窗处于打开状态，先关闭再跳转
+    if (_qrDialogOpen) {
+      Navigator.of(context, rootNavigator: true).pop();
+      _qrDialogOpen = false;
+    }
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => ServiceTimerPage(appointmentId: appointmentId),
+      ),
+    );
+  }
+
   void _showQrDetail(Appointment appt) {
+    setState(() => _qrDialogOpen = true);
     showDialog<void>(
       context: context,
       builder: (ctx) => Dialog(
@@ -99,7 +157,9 @@ class _MyCheckInQrPageState extends State<MyCheckInQrPage> {
           ),
         ),
       ),
-    );
+    ).whenComplete(() {
+      if (mounted) setState(() => _qrDialogOpen = false);
+    });
   }
 
   @override
