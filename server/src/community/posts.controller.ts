@@ -76,6 +76,16 @@ export class PostsController {
     return this.community.getMyCollections(user.id, page);
   }
 
+  /** 获取我的浏览历史（需在 @Get(':id') 之前声明，避免路由被 :id 吞掉） */
+  @Get('history')
+  @UseGuards(JwtAuthGuard)
+  fetchHistory(
+    @CurrentUser() user: AuthUser,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+  ) {
+    return this.community.fetchHistory(user.id, page);
+  }
+
   /** 作品详情 */
   @Get(':id')
   detail(@Param('id', ParseIntPipe) id: number) {
@@ -158,16 +168,6 @@ export class PostsController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.community.addHistory(user.id, id);
-  }
-
-  /** 获取我的浏览历史 */
-  @Get('history')
-  @UseGuards(JwtAuthGuard)
-  fetchHistory(
-    @CurrentUser() user: AuthUser,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-  ) {
-    return this.community.fetchHistory(user.id, page);
   }
 
   // ──── User profile posts ────
