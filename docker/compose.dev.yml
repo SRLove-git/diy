@@ -24,6 +24,8 @@ services:
     container_name: diy-redis-dev
     ports:
       - "6379:6379"
+    # 开启 AOF 持久化：重启/重建容器不丢失会话数据（refresh token、验证码等）
+    command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-dev-data:/data
 

@@ -52,6 +52,11 @@ class AuthService extends ChangeNotifier {
             handler.next(error);
             return;
           }
+          // 刷新令牌请求自身的 401 直接透传，避免递归刷新导致死锁
+          if (error.requestOptions.extra['skipRefresh'] == true) {
+            handler.next(error);
+            return;
+          }
           // 避免并发 401 时重复刷新
           if (_isRefreshing) {
             // 等待刷新完成后用新 token 重试
@@ -63,6 +68,13 @@ class AuthService extends ChangeNotifier {
             }
             return;
           }
+          // 最近一次刷新刚失败（如断网/超时）：进入冷却期，直接透传，避免连发刷新请求
+          if (_lastRefreshAt != null &&
+              DateTime.now().difference(_lastRefreshAt!) < _refreshCooldown) {
+            handler.next(error);
+            return;
+          }
+          _lastRefreshAt = DateTime.now();
           _isRefreshing = true;
           try {
             final ok = await tryRefresh();
@@ -93,6 +105,11 @@ class AuthService extends ChangeNotifier {
   String? _accessToken;
   String? _refreshToken;
   bool _isRefreshing = false;
+  /// refresh token 被服务端明确拒绝（会话确实失效）时置位，用于区分瞬时网络错误
+  bool _sessionInvalid = false;
+  DateTime? _lastRefreshAt;
+  /// 刷新失败后的冷却期：避免断网时对刷新接口的连发请求
+  static const _refreshCooldown = Duration(seconds: 10);
 
   User? get user => _user;
   String? get accessToken => _accessToken;
@@ -154,15 +171,29 @@ class AuthService extends ChangeNotifier {
   Future<bool> tryRefresh() async {
     if (_refreshToken == null) return false;
     try {
-      final resp = await ApiClient.instance
-          .post('/auth/refresh', data: {'refreshToken': _refreshToken});
+      final resp = await ApiClient.instance.post(
+        '/auth/refresh',
+        data: {'refreshToken': _refreshToken},
+        // 标记跳过拦截器刷新逻辑，避免 401 递归处理
+        options: Options(extra: {'skipRefresh': true}),
+      );
       await _saveTokens(
         resp.data['accessToken'] as String,
         resp.data['refreshToken'] as String,
       );
+      _sessionInvalid = false;
+      _lastRefreshAt = null;
       return true;
+    } on DioException catch (e) {
+      // 服务端明确返回 401：refresh token 已失效，登录态作废，需重新登录
+      if (e.response?.statusCode == 401) {
+        _sessionInvalid = true;
+        await logout();
+        return false;
+      }
+      // 断网、超时等瞬时错误：保留 token 不登出，等下次请求再自动重试刷新
+      return false;
     } catch (_) {
-      await logout();
       return false;
     }
   }
@@ -189,6 +220,7 @@ class AuthService extends ChangeNotifier {
 
   Future<void> logout() async {
     ChatService.instance.disconnect();
+    _sessionInvalid = false;
     _user = null;
     _accessToken = null;
     _refreshToken = null;
@@ -200,13 +232,15 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 拉取当前用户；401 已由全局拦截器统一处理，此处只清空登录态
+  /// 拉取当前用户；401 已由全局拦截器统一处理。
+  /// 仅当会话确已失效（refresh token 被服务端拒绝）时才清空登录态，
+  /// 瞬时网络错误保留 token，等下次请求自动重试刷新，避免误登出。
   Future<void> _fetchMe() async {
     try {
       final resp = await ApiClient.instance.get('/auth/me');
       _user = User.fromJson(resp.data as Map<String, dynamic>);
     } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
+      if (e.response?.statusCode == 401 && _sessionInvalid) {
         await logout();
       }
     } catch (_) {

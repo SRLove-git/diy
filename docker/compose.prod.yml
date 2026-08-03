@@ -20,6 +20,8 @@ services:
     image: redis:7
     container_name: diy-redis-prod
     restart: unless-stopped
+    # 开启 AOF 持久化：避免容器重启/故障切换导致所有用户 refresh token 失效而掉线重登
+    command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-prod-data:/data
     healthcheck:

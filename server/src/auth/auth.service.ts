@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from 'crypto';
 import { promisify } from 'util';
 import type Redis from 'ioredis';
@@ -154,7 +154,11 @@ export class AuthService {
       { sub: userId, type: 'access' },
       {
         secret: this.config.get<string>('JWT_SECRET'),
-        expiresIn: '15m',
+        // access token 有效期默认 2h，可用环境变量 JWT_ACCESS_TTL 覆盖
+        expiresIn: this.config.get<string>(
+          'JWT_ACCESS_TTL',
+          '2h',
+        ) as JwtSignOptions['expiresIn'],
       },
     );
     const jti = randomUUID();
