@@ -87,7 +87,14 @@ export class ChatService {
   /** Redis 在线判断：chat:online:{userId} 连接计数 > 0 视为在线（心跳续期） */
   async isUserOnline(userId: number): Promise<boolean> {
     try {
-      const v = await this.redis.get(`chat:online:${userId}`);
+      // 网络层已有 commandTimeout（1500ms），此处再叠加本地超时兜底，
+      // Redis 不可用时按"离线"处理，不阻塞消息推送主流程
+      const v = await Promise.race([
+        this.redis.get(`chat:online:${userId}`),
+        new Promise<null>((resolve) =>
+          setTimeout(() => resolve(null), 1500),
+        ),
+      ]);
       return Number(v) > 0;
     } catch {
       // Redis 异常时回退为进程内连接表判断
@@ -218,7 +225,14 @@ export class ChatService {
     return { items: rows, nextCursor };
   }
 
-  /** 发送消息：落库 + 双端已读状态 + 更新会话冗余字段（同事务） */
+  /**
+   * 发送消息（P1 优化：落库不阻塞实时转发）。
+   *
+   * 仅同步 INSERT 消息本体（1 次写入，返回完整消息拿 id/createdAt）；
+   * 已读状态（message_status × 2）与会话冗余字段由 finalizeSend 异步补全。
+   * 这样 `sent` 回执与对端推送只等待单次 INSERT，不受其余写放大拖累；
+   * 异步补全失败仅影响未读数/会话预览/已读回执，消息本体已落库不丢失。
+   */
   async sendMessage(
     userId: number,
     conversationId: number,
@@ -240,32 +254,48 @@ export class ChatService {
       throw new BadRequestException('消息内容不能为空');
     }
 
-    const message = this.messages.create({
-      conversationId,
-      senderId: userId,
-      contentType: type,
-      content: body,
+    const message = await this.messages.save(
+      this.messages.create({
+        conversationId,
+        senderId: userId,
+        contentType: type,
+        content: body,
+      }),
+    );
+
+    // 异步补全（fire-and-forget）：失败仅影响未读数/预览，不影响消息送达
+    void this.finalizeSend(message, peerId).catch((e) => {
+      console.warn(
+        '[ChatService] finalizeSend failed:',
+        e instanceof Error ? e.message : e,
+      );
     });
+
+    return { message, peerId };
+  }
+
+  /** 发送后的异步补全：参与者各自已读状态 + 会话最后消息冗余字段（同事务） */
+  private async finalizeSend(message: Message, peerId: number): Promise<void> {
     await this.messages.manager.transaction(async (em) => {
-      const saved = await em.save(message);
       // 参与者的各自已读状态：发送方立即已读，接收方待读
       await em.insert(MessageStatus, [
-        { messageId: saved.id, userId, readAt: saved.createdAt },
-        { messageId: saved.id, userId: peerId, readAt: null },
+        { messageId: message.id, userId: message.senderId, readAt: message.createdAt },
+        { messageId: message.id, userId: peerId, readAt: null },
       ]);
-      const preview = type === 'image' ? 'image:' : `text:${body.slice(0, 50)}`;
+      const preview =
+        message.contentType === 'image'
+          ? 'image:'
+          : `text:${message.content.slice(0, 50)}`;
       await em.update(
         Conversation,
-        { id: conversationId },
+        { id: message.conversationId },
         {
-          lastMessageId: String(saved.id),
+          lastMessageId: String(message.id),
           lastMessagePreview: preview,
-          lastMessageAt: saved.createdAt,
+          lastMessageAt: message.createdAt,
         },
       );
-      return saved;
     });
-    return { message, peerId };
   }
 
   /** 批量标记已读，返回已读时间与对端用户 ID */

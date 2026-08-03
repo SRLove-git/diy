@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -8,6 +9,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'auth_service.dart';
 import 'chat_api.dart';
+import 'local_chat_store.dart';
 import 'config.dart';
 
 /// 聊天事件（实时流，页面订阅）
@@ -145,6 +147,10 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
           final message =
               ChatMessage.fromJson(frame['message'] as Map<String, dynamic>);
           _pendingSends.remove(clientMsgId)?.complete(message);
+          // 本地回填服务端 id，置为已发送
+          if (message.id != null) {
+            LocalChatStore.instance.markSent(clientMsgId, message.id!);
+          }
           break;
         case 'newMessage':
           final rawMsg = frame['message'];
@@ -153,8 +159,11 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
           _onNewMessage(message);
           break;
         case 'read':
+          final conversationId = (frame['conversationId'] as num).toInt();
+          // 本地缓存：对端已读回执
+          LocalChatStore.instance.markRead(conversationId);
           _events.add(ReadEvent(
-            (frame['conversationId'] as num).toInt(),
+            conversationId,
             (frame['readerId'] as num).toInt(),
             frame['readAt'] != null
                 ? DateTime.tryParse(frame['readAt'] as String)
@@ -188,6 +197,8 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void _onNewMessage(ChatMessage message) {
+    // 本地缓存落库（以 server_id 去重，幂等）
+    LocalChatStore.instance.saveIncoming(message);
     // 更新会话缓存：预览 + 未读数（置顶会话保持在置顶区）
     final idx = conversations.indexWhere((c) => c.id == message.conversationId);
     if (idx >= 0) {
@@ -242,14 +253,37 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     final delay = Duration(seconds: min(30, 1 << _reconnectAttempt));
     _reconnectAttempt++;
     _reconnectTimer = Timer(delay, () async {
-      if (!_manualClose && AuthService.instance.isLoggedIn) {
-        // 重连前尝试刷新 token，避免用过期的 token 连接
-        if (AuthService.instance.accessToken != null) {
-          await AuthService.instance.tryRefresh();
-        }
-        if (AuthService.instance.isLoggedIn) _connect();
+      if (_manualClose || !AuthService.instance.isLoggedIn) return;
+      final token = AuthService.instance.accessToken;
+      if (token == null) return;
+      // token 已过期：先刷新；刷新失败则跳过本轮，等下一轮退避重连，
+      // 避免反复用旧 token 连接被服务端 4001 拒绝形成无效循环
+      if (_isTokenExpired(token)) {
+        final ok = await AuthService.instance.tryRefresh();
+        if (!ok || _manualClose || !AuthService.instance.isLoggedIn) return;
       }
+      _connect();
     });
+  }
+
+  /// 判断 access token 是否已过期（解析 JWT payload 的 exp 字段）；
+  /// 解析失败视为未过期，交由连接结果兜底
+  static bool _isTokenExpired(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return false;
+      final normalized = parts[1].replaceAll('-', '+').replaceAll('_', '/');
+      final padded = normalized.padRight(
+        normalized.length + ((4 - normalized.length % 4) % 4),
+        '=',
+      );
+      final payload = utf8.decode(base64.decode(padded));
+      final exp = ((jsonDecode(payload) as Map)['exp'] as num?)?.toInt();
+      if (exp == null) return false;
+      return DateTime.now().millisecondsSinceEpoch ~/ 1000 >= exp;
+    } catch (_) {
+      return false;
+    }
   }
 
   void _closeChannel() {
@@ -310,7 +344,7 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     return true;
   }
 
-  /// 删除会话：成功后从缓存移除
+  /// 删除会话：成功后从缓存移除，并清理本地消息缓存
   Future<bool> deleteConversation(int conversationId) async {
     try {
       await ChatApi.deleteConversation(conversationId);
@@ -320,6 +354,7 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     conversations = conversations
         .where((c) => c.id != conversationId)
         .toList(growable: false);
+    LocalChatStore.instance.clearConversation(conversationId);
     notifyListeners();
     return true;
   }
@@ -327,15 +362,29 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
   /// 发消息：WebSocket 优先（等 sent 回执），超时/失败走 REST 兜底。
   /// 返回服务端确认后的消息；彻底失败返回 null（由页面标记失败态）。
   /// [contentType] 支持 text（文本/表情）与 image（content 为上传后的相对路径）。
+  ///
+  /// 连接策略：仅 WS 已连接时才发帧并等待回执；未连接时跳过 3s 空等，
+  /// 立即走 REST 兜底并尝试恢复连接（避免每次发送停顿数秒）。
   Future<ChatMessage?> sendMessage({
     required int conversationId,
     required String content,
     required String clientMsgId,
     String contentType = 'text',
   }) async {
-    final completer = Completer<ChatMessage?>();
-    _pendingSends[clientMsgId] = completer;
+    // 本地留底（秒开/弱网/发送流水）；本地失败不影响发送
+    try {
+      await LocalChatStore.instance.insertPending(
+        clientMsgId: clientMsgId,
+        conversationId: conversationId,
+        senderId: AuthService.instance.user?.id ?? 0,
+        content: content,
+        type: contentType,
+      );
+    } catch (_) {}
+    ChatMessage? confirmed;
     if (connected) {
+      final completer = Completer<ChatMessage?>();
+      _pendingSends[clientMsgId] = completer;
       _sendBin({
         'type': 'send',
         'conversationId': conversationId,
@@ -343,20 +392,27 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
         'contentType': contentType,
         'content': content,
       });
+      try {
+        confirmed = await completer.future.timeout(const Duration(seconds: 3));
+      } on TimeoutException {
+        confirmed = null;
+      } finally {
+        _pendingSends.remove(clientMsgId);
+      }
+      if (confirmed != null) return confirmed;
+    } else {
+      // WS 未连接：不等回执，直接 REST 兜底，并尝试恢复连接
+      if (_channel == null) _connect();
     }
-    ChatMessage? confirmed;
     try {
-      confirmed = await completer.future.timeout(const Duration(seconds: 3));
-    } on TimeoutException {
-      confirmed = null;
-    } finally {
-      _pendingSends.remove(clientMsgId);
-    }
-    if (confirmed != null) return confirmed;
-    try {
-      return await ChatApi.sendMessage(conversationId, content,
+      final m = await ChatApi.sendMessage(conversationId, content,
           contentType: contentType);
+      if (m.id != null) {
+        LocalChatStore.instance.markSent(clientMsgId, m.id!);
+      }
+      return m;
     } catch (_) {
+      LocalChatStore.instance.markFailed(clientMsgId);
       return null;
     }
   }

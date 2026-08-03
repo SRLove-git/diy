@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Controller,
+  Inject,
   Post,
   UploadedFile,
   UseGuards,
@@ -10,8 +11,13 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { randomUUID } from 'crypto';
 import { mkdirSync, unlinkSync } from 'fs';
 import { diskStorage } from 'multer';
+import { tmpdir } from 'os';
 import { extname, join } from 'path';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import {
+  UPLOAD_PROVIDER,
+  type UploadProvider,
+} from './uploads.provider';
 
 /** 允许上传的图片类型 */
 const ALLOWED_MIMES = new Set([
@@ -20,11 +26,6 @@ const ALLOWED_MIMES = new Set([
   'image/gif',
   'image/webp',
 ]);
-
-/** 上传根目录（UPLOAD_DIR 环境变量，默认 uploads，相对进程工作目录） */
-function uploadRoot(): string {
-  return process.env.UPLOAD_DIR ?? 'uploads';
-}
 
 /** 当前月份子目录：yyyy/mm */
 function monthDir(): string {
@@ -36,22 +37,28 @@ function monthDir(): string {
 /**
  * 聊天图片上传。
  *
- * POST /api/uploads/images（multipart 字段 file，需登录），
- * 文件落盘到 {UPLOAD_DIR}/chat/{yyyy}/{mm}/，返回可访问的相对路径
- * （静态资源由 main.ts 以 /uploads 前缀托管，与消息内容存储解耦）。
+ * POST /api/uploads/images（multipart 字段 file，需登录）。
+ * multer 先写入系统临时目录，随后交给 UploadProvider 持久化：
+ * - local（默认）：移动到 {UPLOAD_DIR}/chat/{yyyy}/{mm}/，返回相对路径
+ * - oss（预留）：配置 UPLOAD_PROVIDER=oss 并实现对象存储后启用
  *
- * 注意：磁盘路径基于进程内环境变量在请求时求值（.env 在 bootstrap 阶段加载），
- * 不依赖实例状态，避免装饰器求值期 this 不可用的问题。
+ * 返回的 url 作为图片消息 content 存储；本地模式由 main.ts 以 /uploads 前缀托管静态资源。
  */
 @Controller('uploads')
 @UseGuards(JwtAuthGuard)
 export class UploadsController {
+  constructor(
+    @Inject(UPLOAD_PROVIDER)
+    private readonly uploader: UploadProvider,
+  ) {}
+
   @Post('images')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
+        // 先写入临时目录，由存储提供者移动到最终位置
         destination: (_req, _file, cb) => {
-          const dir = join(uploadRoot(), 'chat', monthDir());
+          const dir = join(tmpdir(), 'diy-uploads');
           mkdirSync(dir, { recursive: true });
           cb(null, dir);
         },
@@ -63,10 +70,10 @@ export class UploadsController {
       limits: { fileSize: 10 * 1024 * 1024 },
     }),
   )
-  upload(@UploadedFile() file?: Express.Multer.File) {
+  async upload(@UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('缺少文件');
     if (!ALLOWED_MIMES.has(file.mimetype)) {
-      // 类型不合规：删掉已落盘文件再报错
+      // 类型不合规：删掉临时文件再报错
       try {
         unlinkSync(file.path);
       } catch {
@@ -74,6 +81,7 @@ export class UploadsController {
       }
       throw new BadRequestException('仅支持 jpg/png/gif/webp 图片');
     }
-    return { url: `/uploads/chat/${monthDir()}/${file.filename}` };
+    const { url } = await this.uploader.save(file, `chat/${monthDir()}`);
+    return { url };
   }
 }

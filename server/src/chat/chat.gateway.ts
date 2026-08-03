@@ -1,4 +1,9 @@
-import { HttpException, Inject } from '@nestjs/common';
+import {
+  HttpException,
+  Inject,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import {
@@ -7,6 +12,7 @@ import {
   WebSocketGateway,
 } from '@nestjs/websockets';
 import { decode, encode } from '@msgpack/msgpack';
+import { randomUUID } from 'crypto';
 import type { IncomingMessage } from 'http';
 import type Redis from 'ioredis';
 import { WebSocket } from 'ws';
@@ -22,6 +28,19 @@ interface ChatFrame {
 
 /** Redis 在线状态 TTL（秒）：客户端 25s 心跳续期，60s 未续期视为离线 */
 const PRESENCE_TTL = 60;
+
+/** 跨实例事件频道：多实例部署时通过 Redis pub/sub 转发消息/已读/在线状态 */
+const CHAT_CHANNEL = 'chat:events';
+
+/** 跨实例转发事件 */
+interface RemoteEvent {
+  /** 发布实例 ID（接收端据此跳过自己，避免重复推送） */
+  source: string;
+  kind: 'newMessage' | 'read' | 'presence';
+  /** 目标用户（各实例按本地连接表判断是否推送） */
+  toUserIds: number[];
+  payload: Record<string, unknown>;
+}
 
 /**
  * 用户间聊天 WebSocket 网关。
@@ -39,9 +58,20 @@ const PRESENCE_TTL = 60;
  * 离线消息不实时推送（已落库，下次上线拉取历史可见）。
  */
 @WebSocketGateway({ path: '/ws' })
-export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class ChatGateway
+  implements
+    OnGatewayConnection,
+    OnGatewayDisconnect,
+    OnModuleInit,
+    OnModuleDestroy {
   /** 在线连接表：userId -> 该用户的全部连接（支持多设备） */
   private readonly clients = new Map<number, Set<WebSocket>>();
+
+  /** 实例唯一标识：跨实例转发事件时用于去重（source 相同则跳过） */
+  private readonly instanceId = randomUUID();
+
+  /** 独立 pub/sub 连接（ioredis 的 subscribe 会独占该连接） */
+  private readonly pubsub: Redis;
 
   constructor(
     private readonly chat: ChatService,
@@ -49,7 +79,33 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly config: ConfigService,
     @Inject(REDIS_CLIENT)
     private readonly redis: Redis,
-  ) {}
+  ) {
+    this.pubsub = this.redis.duplicate();
+  }
+
+  async onModuleInit(): Promise<void> {
+    // duplicate() 连接异步就绪：订阅失败不阻塞应用启动，连接就绪后重试
+    this.pubsub.on('message', (channel, raw) => {
+      if (channel !== CHAT_CHANNEL) return;
+      this.onRemoteEvent(raw);
+    });
+    await this.trySubscribe();
+    this.pubsub.on('ready', () => void this.trySubscribe());
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.pubsub.unsubscribe(CHAT_CHANNEL);
+    await this.pubsub.quit();
+  }
+
+  /** 订阅跨实例频道（失败仅告警；连接就绪事件会触发重试） */
+  private async trySubscribe(): Promise<void> {
+    try {
+      await this.pubsub.subscribe(CHAT_CHANNEL);
+    } catch (e) {
+      console.warn('[ChatGateway] pub/sub subscribe failed:', e);
+    }
+  }
 
   handleConnection(client: WebSocket, request?: IncomingMessage): void {
     let userId: number;
@@ -130,13 +186,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  /** 向该用户所有会话对端广播在线状态变化 */
+  /** 向该用户所有会话对端广播在线状态变化（本实例直推 + 跨实例转发） */
   private async broadcastPresence(userId: number, online: boolean) {
     try {
       const peerIds = await this.chat.conversationPeerIds(userId);
-      for (const pid of peerIds) {
-        this.sendToUser(pid, { type: 'presence', userId, online });
-      }
+      if (peerIds.length === 0) return;
+      const payload = { type: 'presence', userId, online };
+      for (const pid of peerIds) this.sendToUser(pid, payload);
+      this.publish({ kind: 'presence', toUserIds: peerIds, payload });
     } catch {
       // 广播失败忽略
     }
@@ -196,10 +253,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
       // Redis 判断在线：在线才实时推送；离线走"离线消息"（已落库，下次上线拉历史可见）
       if (await this.chat.isUserOnline(peerId)) {
-        this.sendToUser(peerId, {
+        const payload = {
           type: 'newMessage',
           message: this.serializeMessage(message),
-        });
+        };
+        // 本实例直推对端 + 跨实例转发（对端连接在其他实例时由该实例推送）
+        this.sendToUser(peerId, payload);
+        this.publish({ kind: 'newMessage', toUserIds: [peerId], payload });
       }
     } catch (e) {
       this.reply(client, {
@@ -223,12 +283,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         userId,
         conversationId,
       );
-      this.sendToUser(peerId, {
+      const payload = {
         type: 'read',
         conversationId,
         readerId: userId,
         readAt: readAt?.toISOString?.() ?? readAt,
-      });
+      };
+      this.sendToUser(peerId, payload);
+      this.publish({ kind: 'read', toUserIds: [peerId], payload });
     } catch {
       // 无权访问或会话不存在：静默忽略
     }
@@ -237,10 +299,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /** REST 发消息后的实时转发（同样以 Redis 在线状态判断是否推送） */
   async broadcastNewMessage(message: Message, peerId: number): Promise<void> {
     if (await this.chat.isUserOnline(peerId)) {
-      this.sendToUser(peerId, {
+      const payload = {
         type: 'newMessage',
         message: this.serializeMessage(message),
-      });
+      };
+      this.sendToUser(peerId, payload);
+      this.publish({ kind: 'newMessage', toUserIds: [peerId], payload });
     }
   }
 
@@ -251,12 +315,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     readerId: number,
     readAt: Date,
   ): void {
-    this.sendToUser(peerId, {
+    const payload = {
       type: 'read',
       conversationId,
       readerId,
       readAt: readAt?.toISOString?.() ?? readAt,
-    });
+    };
+    this.sendToUser(peerId, payload);
+    this.publish({ kind: 'read', toUserIds: [peerId], payload });
   }
 
   /** 将 Message 实体转为可安全 msgpack 编码的纯对象（Date → ISO 字符串） */
@@ -293,6 +359,32 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
             err.message,
           );
       });
+    }
+  }
+
+  /** 发布跨实例事件：携带本实例 ID，接收端据此跳过自己避免重复推送 */
+  private publish(ev: Omit<RemoteEvent, 'source'>): void {
+    this.pubsub
+      .publish(
+        CHAT_CHANNEL,
+        JSON.stringify({ source: this.instanceId, ...ev }),
+      )
+      .catch(() => {
+        // pub/sub 异常不影响本实例内的直推
+      });
+  }
+
+  /** 接收其他实例转发的事件：目标用户在本实例有连接时推送 */
+  private onRemoteEvent(raw: string): void {
+    let ev: RemoteEvent;
+    try {
+      ev = JSON.parse(raw) as RemoteEvent;
+    } catch {
+      return;
+    }
+    if (!ev || ev.source === this.instanceId) return;
+    for (const uid of ev.toUserIds) {
+      this.sendToUser(uid, ev.payload as Record<string, unknown>);
     }
   }
 }

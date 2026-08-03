@@ -106,11 +106,12 @@ class ChatMessage {
     String? content,
     String? contentType,
     String? clientMsgId,
+    int? senderId,
   }) =>
       ChatMessage(
         id: id,
         conversationId: conversationId,
-        senderId: senderId,
+        senderId: senderId ?? this.senderId,
         contentType: contentType ?? this.contentType,
         content: content ?? this.content,
         readAt: readAt ?? this.readAt,

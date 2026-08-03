@@ -9,6 +9,7 @@ import '../../core/app_colors.dart';
 import '../../core/auth_service.dart';
 import '../../core/chat_api.dart';
 import '../../core/chat_service.dart';
+import '../../core/local_chat_store.dart';
 import '../../widgets/state_widgets.dart';
 
 enum _SendState { pending, sent, failed }
@@ -62,24 +63,54 @@ class _ChatPageState extends State<ChatPage> {
   int? _nextCursor;
   bool _loadingMore = false;
   bool _showEmoji = false;
-  late final int _meId;
+  /// 是否已把本地缓存 sender_id=0 的本机消息修正为真实 id
+  bool _fixedLocalSender = false;
+
+  /// 当前用户 id：实时读取（登录态恢复时 _fetchMe 异步，initState 阶段 user 可能为 null，
+  /// 若固定成 0 会导致所有消息被判定为"对方"，出现全部在左侧的显示错误）
+  int get _meId => AuthService.instance.user?.id ?? 0;
 
   @override
   void initState() {
     super.initState();
-    _meId = AuthService.instance.user?.id ?? 0;
+    AuthService.instance.addListener(_onAuthChanged);
+    _fixLocalSenderIds();
     ChatService.instance.ensureConnected();
-    ChatService.instance.markRead(widget.conversation.id);
+    // 首帧后再标记已读：markRead 内部会 notifyListeners，
+    // 路由切换的 build 阶段同步通知会触发 "setState during build" 异常
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ChatService.instance.markRead(widget.conversation.id);
+    });
     _sub = ChatService.instance.events.listen(_onEvent);
     _loadHistory();
   }
 
   @override
   void dispose() {
+    AuthService.instance.removeListener(_onAuthChanged);
     _sub?.cancel();
     _input.dispose();
     _inputFocus.dispose();
     super.dispose();
+  }
+
+  /// user 就绪/变化后重新渲染，让气泡按最新 meId 自动归位
+  void _onAuthChanged() {
+    _fixLocalSenderIds();
+    if (mounted) setState(() {});
+  }
+
+  /// 登录态恢复后将本地缓存与当前内存中 sender_id=0 的本机消息修正为真实 id
+  void _fixLocalSenderIds() {
+    final uid = _meId;
+    if (uid <= 0 || _fixedLocalSender) return;
+    _fixedLocalSender = true;
+    LocalChatStore.instance.fixSenderIds(uid);
+    for (final vm in _msgs) {
+      if (vm.message.senderId == 0) {
+        vm.message = vm.message.copyWith(senderId: uid);
+      }
+    }
   }
 
   void _onEvent(ChatEvent event) {
@@ -111,17 +142,50 @@ class _ChatPageState extends State<ChatPage> {
       _loading = true;
       _error = null;
     });
+    // 1) 秒开：本地缓存先上屏（弱网/离线也能查看历史与待发消息）
+    try {
+      final local = await LocalChatStore.instance
+          .messages(widget.conversation.id, limit: 100);
+      if (mounted && local.isNotEmpty) {
+        setState(() {
+          _msgs
+            ..clear()
+            ..addAll(local.reversed.map((m) {
+              final st = m.status;
+              return _ViewMsg(
+                message: m.toChatMessage(),
+                state: st == LocalMsgStatus.failed
+                    ? _SendState.failed
+                    : st == LocalMsgStatus.sending
+                        ? _SendState.pending
+                        : _SendState.sent,
+              );
+            }));
+          _loading = false; // 有本地数据即先展示
+        });
+      }
+    } catch (_) {
+      // 本地库异常：忽略，走服务端
+    }
+    // 2) 服务端同步（失败保留本地缓存，不阻断浏览）
     try {
       final r = await ChatApi.fetchMessages(widget.conversation.id);
       if (mounted) {
         setState(() {
-          // 保留正在发送中的本地消息（避免竞态被清除）
-          final pending = _msgs.where((vm) => vm.state == _SendState.pending).toList();
+          // 保留本地尚未确认/发送失败的消息（pending/failed，服务端还没有的）
+          final keepLocal = _msgs
+              .where((vm) =>
+                  vm.state == _SendState.pending ||
+                  vm.state == _SendState.failed)
+              .toList();
           _msgs
             ..clear()
             ..addAll(r.items.reversed.map((m) => _ViewMsg(message: m)));
-          for (final p in pending.reversed) {
-            if (!_msgs.any((vm) => vm.message.clientMsgId == p.message.clientMsgId)) {
+          for (final p in keepLocal.reversed) {
+            final sid = p.message.id;
+            if (sid != null && r.items.any((m) => m.id == sid)) continue;
+            if (!_msgs
+                .any((vm) => vm.message.clientMsgId == p.message.clientMsgId)) {
               _msgs.insert(0, p);
             }
           }
@@ -129,7 +193,10 @@ class _ChatPageState extends State<ChatPage> {
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _error = '加载失败，请重试');
+      // 服务端失败：本地缓存已展示，弱网可用
+      if (mounted && _msgs.isEmpty) {
+        setState(() => _error = '加载失败，请重试');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
