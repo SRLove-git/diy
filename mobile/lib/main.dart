@@ -8,9 +8,11 @@ import 'pages/profile_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // 恢复本地登录态（Keychain/Keystore）
-  await AuthService.instance.init();
   runApp(const DiyApp());
+  // 冷启动延时 300ms，等原生插件（Keychain）就绪后再恢复登录态
+  Future.delayed(const Duration(milliseconds: 300), () {
+    AuthService.instance.init();
+  });
 }
 
 /// 全局主题：对齐《第一阶段UI设计指导》§3 视觉规范

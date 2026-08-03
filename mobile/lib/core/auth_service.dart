@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -39,7 +41,11 @@ class AuthService extends ChangeNotifier {
 
   static final AuthService instance = AuthService._();
 
-  static const _storage = FlutterSecureStorage();
+  static final _storage = FlutterSecureStorage(
+    iOptions: const IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
+  );
   static const _kAccess = 'access_token';
   static const _kRefresh = 'refresh_token';
 
@@ -53,8 +59,12 @@ class AuthService extends ChangeNotifier {
 
   /// 启动时恢复登录态；token 失效则尝试用 refresh token 续期
   Future<void> init() async {
-    _accessToken = await _storage.read(key: _kAccess);
-    _refreshToken = await _storage.read(key: _kRefresh);
+    try {
+      _accessToken = await _storage.read(key: _kAccess);
+      _refreshToken = await _storage.read(key: _kRefresh);
+    } catch (_) {
+      // Keychain 读取失败则当作未登录
+    }
     if (_accessToken != null) {
       await _fetchMe();
     }
@@ -105,7 +115,11 @@ class AuthService extends ChangeNotifier {
     _user = null;
     _accessToken = null;
     _refreshToken = null;
-    await _storage.deleteAll();
+    try {
+      await _storage.deleteAll();
+    } catch (_) {
+      // Keychain 写入失败忽略
+    }
     notifyListeners();
   }
 
@@ -119,8 +133,13 @@ class AuthService extends ChangeNotifier {
         final resp = await ApiClient.instance.get('/auth/me');
         _user = User.fromJson(resp.data as Map<String, dynamic>);
       } else {
-        await logout();
+        // 401 且 refresh 失败才清空登录态；网络不通则保留 token 等下次重试
+        if (e.response?.statusCode == 401) {
+          await logout();
+        }
       }
+    } catch (_) {
+      // 网络不通或数据格式异常，保留 token 等下次重试
     }
   }
 
