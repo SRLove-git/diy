@@ -193,7 +193,6 @@ class _ConversationListPageState extends State<ConversationListPage> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
-        bottom: false,
         child: Column(
           children: [
             AppBar(

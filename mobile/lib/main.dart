@@ -17,16 +17,16 @@ Future<void> main() async {
   await dotenv.load(fileName: '.env');
   await LiquidGlassWidgets.initialize();
 
-  // 透明状态栏
+  // 透明状态栏，图标亮度跟随系统
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.light,
   ));
 
   runApp(LiquidGlassWidgets.wrap(
     child: const DiyApp(),
   ));
-  // 冷启动延时 300ms，等原生插件（Keychain）就绪后再恢复登录态
   Future.delayed(const Duration(milliseconds: 300), () {
     AuthService.instance.init();
   });
@@ -123,49 +123,51 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
 
-    return GlassScaffold(
+    return Scaffold(
       extendBody: true,
-      statusBarStyle: GlassStatusBarStyle.none,
       backgroundColor: colors.surface,
       body: IndexedStack(index: _index, children: _pages),
-      bottomBar: ListenableBuilder(
+      bottomNavigationBar: ListenableBuilder(
         listenable: ChatService.instance,
         builder: (context, _) {
           final unread = ChatService.instance.totalUnread;
-          return GlassTabBar.bottom(
-            selectedIndex: _index,
-            onTabSelected: (i) => setState(() => _index = i),
-            unselectedLabelColor: const Color(0xFF9A9AA4),
-            selectedLabelColor: colors.primary,
-            tabs: [
-              GlassTab(
-                icon: _icon(0, Icons.home_outlined, Icons.home_rounded),
-                label: '首页',
-              ),
-              GlassTab(
-                icon: _icon(1, Icons.explore_outlined, Icons.explore_rounded),
-                label: '发现',
-              ),
-              GlassTab(
-                icon: unread > 0
-                    ? GlassBadge(
-                        count: unread,
-                        child: _icon(
-                            2, Icons.chat_bubble_outline_rounded, Icons.chat_bubble_rounded),
-                      )
-                    : _icon(2, Icons.chat_bubble_outline_rounded,
-                        Icons.chat_bubble_rounded),
-                label: '消息',
-              ),
-              GlassTab(
-                icon: _icon(
-                    3, Icons.person_outline_rounded, Icons.person_rounded),
-                label: '个人',
-              ),
-            ],
-          );
+          return _buildBottomBar(colors, unread);
         },
       ),
+    );
+  }
+
+  Widget _buildBottomBar(AppColors colors, int unread) {
+    return GlassTabBar.bottom(
+      selectedIndex: _index,
+      onTabSelected: (i) => setState(() => _index = i),
+      unselectedLabelColor: const Color(0xFF9A9AA4),
+      selectedLabelColor: colors.primary,
+      tabs: [
+        GlassTab(
+          icon: _icon(0, Icons.home_outlined, Icons.home_rounded),
+          label: '首页',
+        ),
+        GlassTab(
+          icon: _icon(1, Icons.explore_outlined, Icons.explore_rounded),
+          label: '发现',
+        ),
+        GlassTab(
+          icon: unread > 0
+              ? GlassBadge(
+                  count: unread,
+                  child: _icon(2, Icons.chat_bubble_outline_rounded,
+                      Icons.chat_bubble_rounded),
+                )
+              : _icon(2, Icons.chat_bubble_outline_rounded,
+                  Icons.chat_bubble_rounded),
+          label: '消息',
+        ),
+        GlassTab(
+          icon: _icon(3, Icons.person_outline_rounded, Icons.person_rounded),
+          label: '个人',
+        ),
+      ],
     );
   }
 

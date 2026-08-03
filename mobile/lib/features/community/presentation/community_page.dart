@@ -128,7 +128,6 @@ class _CommunityPageState extends State<CommunityPage> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
-        bottom: false,
         child: RefreshIndicator(
           color: colors.primary,
           onRefresh: _load,

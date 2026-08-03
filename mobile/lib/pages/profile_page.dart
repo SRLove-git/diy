@@ -174,7 +174,6 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
-        bottom: false,
         child: ListenableBuilder(
           listenable: AuthService.instance,
           builder: (context, _) {

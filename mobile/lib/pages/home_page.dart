@@ -20,12 +20,7 @@ import 'checkin/my_checkin_qr_page.dart';
 import 'checkin/scan_checkin_page.dart';
 import 'checkin/service_timer_page.dart';
 
-// ────────────────────────────────────────────
-// 卡片白底（覆盖在浅灰背景上保持对比）
-// ────────────────────────────────────────────
-const _cardWhite = Colors.white;
-
-/// 快捷功能的多彩配色（装饰性，不随主题变化）
+/// 快捷功能的多彩配色
 const _shortcutColors = [
   Color(0xFFFF6B6B),
   Color(0xFF4ECDC4),
@@ -100,10 +95,12 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
-        bottom: false,
         child: ListenableBuilder(
           listenable: AuthService.instance,
           builder: (context, _) {
@@ -111,7 +108,6 @@ class _HomePageState extends State<HomePage> {
             return SingleChildScrollView(
               child: Column(
                 children: [
-                  // 1. 顶部 Banner
                   _TopBanner(
                     tabIndex: _tabIndex,
                     onTabChanged: (i) => setState(() => _tabIndex = i),
@@ -130,32 +126,25 @@ class _HomePageState extends State<HomePage> {
                     isAdmin: isAdmin,
                     checkInLabel: isAdmin ? '扫码核销' : '到店核销',
                   ),
-
                   const SizedBox(height: 20),
-
-                  // 2. 快捷功能区域
                   const _ShortcutBar(),
-
                   const SizedBox(height: 20),
-
-                  // 3. 商品广告 Banner
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: _ProductAdBanner(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _ProductAdBanner(isDark: isDark),
                   ),
-
                   const SizedBox(height: 24),
-
-                  // 4. 管理员入口
                   if (isAdmin) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const _SectionTitle('管理后台'),
+                          _SectionTitle('管理后台', colors: colors),
                           const SizedBox(height: 12),
                           _AdminEntryGrid(
+                            isDark: isDark,
+                            colors: colors,
                             onTap: (page) => Navigator.of(context).push(
                               MaterialPageRoute(builder: (_) => page),
                             ),
@@ -165,15 +154,13 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 24),
                   ],
-
-                  // 5. 进行中的服务
                   if (_activeAppts.isNotEmpty) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const _SectionTitle('进行中的服务'),
+                          _SectionTitle('进行中的服务', colors: colors),
                           const SizedBox(height: 12),
                           for (final appt in _activeAppts) ...[
                             _ActiveServiceCard(
@@ -184,6 +171,8 @@ class _HomePageState extends State<HomePage> {
                                       DateTime.parse(appt.serviceStartTime!),
                                     )
                                   : Duration.zero,
+                              isDark: isDark,
+                              colors: colors,
                               onTap: () => _openActiveService(appt),
                             ),
                             const SizedBox(height: 12),
@@ -192,7 +181,6 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ],
-
                   const SizedBox(height: 24),
                 ],
               ),
@@ -204,14 +192,22 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+// ─── helpers ───
+
+Color _cardBg(bool isDark) =>
+    isDark ? const Color(0xFF1E1E28) : Colors.white;
+
+Color _surfaceBg(bool isDark) =>
+    isDark ? const Color(0xFF252530) : const Color(0xFFF0F0F0);
+
 /// 区块小标题
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.title);
+  const _SectionTitle(this.title, {required this.colors});
   final String title;
+  final AppColors colors;
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
     return Text(
       title,
       style: TextStyle(
@@ -224,9 +220,9 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-// ════════════════════════════════════════════
+// ════════════════════════════════════
 // 1. 顶部 Banner
-// ════════════════════════════════════════════
+// ════════════════════════════════════
 
 class _TopBanner extends StatelessWidget {
   const _TopBanner({
@@ -249,23 +245,22 @@ class _TopBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final bannerHeight = screenWidth > 600 ? 320.0 : 280.0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SizedBox(
       height: bannerHeight,
       child: Stack(
         children: [
-          // 柔和渐变背景 + 装饰圆
-          const _SoftGradientBg(),
-          // 顶部切换按钮
+          _SoftGradientBg(isDark: isDark),
           Positioned(
             top: 14,
             left: 16,
             child: _BannerToggle(
               tabIndex: tabIndex,
+              isDark: isDark,
               onChanged: onTabChanged,
             ),
           ),
-          // 底部入口卡片
           Positioned(
             left: 0,
             right: 0,
@@ -278,6 +273,7 @@ class _TopBanner extends StatelessWidget {
                     child: _BannerEntry(
                       icon: Icons.calendar_month_rounded,
                       label: '到店预约',
+                      isDark: isDark,
                       onTap: onBooking,
                     ),
                   ),
@@ -288,14 +284,16 @@ class _TopBanner extends StatelessWidget {
                           ? Icons.qr_code_scanner_rounded
                           : Icons.store_rounded,
                       label: checkInLabel,
+                      isDark: isDark,
                       onTap: onCheckIn,
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: _BannerEntry(
                       icon: Icons.card_membership_rounded,
                       label: '会员套餐',
+                      isDark: isDark,
                       onTap: null,
                     ),
                   ),
@@ -309,9 +307,10 @@ class _TopBanner extends StatelessWidget {
   }
 }
 
-/// 柔和渐变背景
+/// 渐变背景（浅色/深色自适应）
 class _SoftGradientBg extends StatelessWidget {
-  const _SoftGradientBg();
+  const _SoftGradientBg({required this.isDark});
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
@@ -322,22 +321,27 @@ class _SoftGradientBg extends StatelessWidget {
         return ClipRect(
           child: Stack(
             children: [
-              // 柔和渐变
               Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFFE8DDF5),
-                      Color(0xFFF0E6F6),
-                      Color(0xFFFDE8EC),
-                      Color(0xFFFFF0E8),
-                    ],
+                    colors: isDark
+                        ? const [
+                            Color(0xFF1A1A2E),
+                            Color(0xFF252538),
+                            Color(0xFF2A2030),
+                            Color(0xFF1E2430),
+                          ]
+                        : const [
+                            Color(0xFFE8DDF5),
+                            Color(0xFFF0E6F6),
+                            Color(0xFFFDE8EC),
+                            Color(0xFFFFF0E8),
+                          ],
                   ),
                 ),
               ),
-              // 装饰性大圆
               Positioned(
                 right: -40,
                 top: -20,
@@ -346,7 +350,8 @@ class _SoftGradientBg extends StatelessWidget {
                   height: 180,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFFFF6B6B).withValues(alpha: 0.08),
+                    color: const Color(0xFFFF6B6B)
+                        .withValues(alpha: isDark ? 0.15 : 0.08),
                   ),
                 ),
               ),
@@ -358,11 +363,11 @@ class _SoftGradientBg extends StatelessWidget {
                   height: 160,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF7C6FF7).withValues(alpha: 0.06),
+                    color: const Color(0xFF7C6FF7)
+                        .withValues(alpha: isDark ? 0.12 : 0.06),
                   ),
                 ),
               ),
-              // 小装饰点
               ...List.generate(8, (i) {
                 final rng = math.Random(i * 13);
                 return Positioned(
@@ -372,7 +377,8 @@ class _SoftGradientBg extends StatelessWidget {
                     width: 4 + rng.nextDouble() * 4,
                     height: 4 + rng.nextDouble() * 4,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.7),
+                      color: (isDark ? Colors.white30 : Colors.white70)
+                          .withValues(alpha: 0.7),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -388,17 +394,26 @@ class _SoftGradientBg extends StatelessWidget {
 
 /// 切换按钮
 class _BannerToggle extends StatelessWidget {
-  const _BannerToggle({required this.tabIndex, required this.onChanged});
+  const _BannerToggle({
+    required this.tabIndex,
+    required this.isDark,
+    required this.onChanged,
+  });
 
   final int tabIndex;
+  final bool isDark;
   final ValueChanged<int> onChanged;
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final bg = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.white.withValues(alpha: 0.6);
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.6),
+        color: bg,
         borderRadius: BorderRadius.circular(22),
       ),
       child: Row(
@@ -407,11 +422,15 @@ class _BannerToggle extends StatelessWidget {
           _ToggleChip(
             label: '拼豆',
             active: tabIndex == 0,
+            isDark: isDark,
+            colors: colors,
             onTap: () => onChanged(0),
           ),
           _ToggleChip(
             label: '敬请期待',
             active: tabIndex == 1,
+            isDark: isDark,
+            colors: colors,
             onTap: () => onChanged(1),
           ),
         ],
@@ -424,16 +443,19 @@ class _ToggleChip extends StatelessWidget {
   const _ToggleChip({
     required this.label,
     required this.active,
+    required this.isDark,
+    required this.colors,
     required this.onTap,
   });
 
   final String label;
   final bool active;
+  final bool isDark;
+  final AppColors colors;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -441,11 +463,11 @@ class _ToggleChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: active
             ? BoxDecoration(
-                color: _cardWhite,
+                color: _cardBg(isDark),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
+                    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -457,7 +479,11 @@ class _ToggleChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: active ? colors.textPrimary : Colors.white.withValues(alpha: 0.8),
+            color: active
+                ? colors.textPrimary
+                : isDark
+                    ? Colors.white70
+                    : colors.textSecondary,
           ),
         ),
       ),
@@ -470,18 +496,23 @@ class _BannerEntry extends StatelessWidget {
   const _BannerEntry({
     required this.icon,
     required this.label,
+    required this.isDark,
     this.onTap,
   });
 
   final IconData icon;
   final String label;
+  final bool isDark;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final bg = isDark
+        ? const Color(0xFF2A2A3A).withValues(alpha: 0.85)
+        : Colors.white.withValues(alpha: 0.85);
     return Material(
-      color: Colors.white.withValues(alpha: 0.85),
+      color: bg,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
@@ -509,9 +540,9 @@ class _BannerEntry extends StatelessWidget {
   }
 }
 
-// ════════════════════════════════════════════
+// ════════════════════════════════════
 // 2. 快捷功能
-// ════════════════════════════════════════════
+// ════════════════════════════════════
 
 class _ShortcutBar extends StatefulWidget {
   const _ShortcutBar();
@@ -540,6 +571,8 @@ class _ShortcutBarState extends State<_ShortcutBar> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       children: [
         Padding(
@@ -554,6 +587,8 @@ class _ShortcutBarState extends State<_ShortcutBar> {
                     icon: item.icon,
                     label: item.label,
                     color: _shortcutColors[i % _shortcutColors.length],
+                    isDark: isDark,
+                    colors: colors,
                   ),
                 );
               },
@@ -565,7 +600,6 @@ class _ShortcutBarState extends State<_ShortcutBar> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(_pages.length, (i) {
             final active = i == _pageIndex;
-            final colors = AppColors.of(context);
             return GestureDetector(
               onTap: () => setState(() => _pageIndex = i),
               child: AnimatedContainer(
@@ -574,7 +608,11 @@ class _ShortcutBarState extends State<_ShortcutBar> {
                 width: active ? 18 : 6,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: active ? colors.primary : const Color(0xFFDDDDE0),
+                  color: active
+                      ? colors.primary
+                      : isDark
+                          ? const Color(0xFF444450)
+                          : const Color(0xFFDDDDE0),
                   borderRadius: BorderRadius.circular(3),
                 ),
               ),
@@ -591,15 +629,18 @@ class _ShortcutItem extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.color,
+    required this.isDark,
+    required this.colors,
   });
 
   final IconData icon;
   final String label;
   final Color color;
+  final bool isDark;
+  final AppColors colors;
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
     return GestureDetector(
       onTap: () {},
       child: Column(
@@ -609,7 +650,7 @@ class _ShortcutItem extends StatelessWidget {
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: color.withValues(alpha: isDark ? 0.2 : 0.12),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(icon, color: color, size: 26),
@@ -629,12 +670,14 @@ class _ShortcutItem extends StatelessWidget {
   }
 }
 
-// ════════════════════════════════════════════
-// 3. 商品广告 Banner
-// ════════════════════════════════════════════
+// ════════════════════════════════════
+// 3. 商品广告 Banner（始终深色风格，不受主题影响）
+// ════════════════════════════════════
 
 class _ProductAdBanner extends StatelessWidget {
-  const _ProductAdBanner();
+  const _ProductAdBanner({required this.isDark});
+
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
@@ -667,7 +710,6 @@ class _ProductAdBanner extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: Stack(
             children: [
-              // 装饰圆
               Positioned(
                 right: -30,
                 top: -30,
@@ -695,7 +737,6 @@ class _ProductAdBanner extends StatelessWidget {
                   ),
                 ),
               ),
-              // 右侧产品图片
               Positioned(
                 right: 0,
                 top: 0,
@@ -722,7 +763,6 @@ class _ProductAdBanner extends StatelessWidget {
                   ),
                 ),
               ),
-              // 左侧渐变遮罩
               Positioned(
                 left: 0,
                 top: 0,
@@ -743,7 +783,6 @@ class _ProductAdBanner extends StatelessWidget {
                   ),
                 ),
               ),
-              // 左侧文字
               Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(
@@ -752,9 +791,7 @@ class _ProductAdBanner extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: colors.primary,
                         borderRadius: BorderRadius.circular(6),
@@ -791,9 +828,7 @@ class _ProductAdBanner extends StatelessWidget {
                     const SizedBox(height: 14),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 8,
-                      ),
+                          horizontal: 20, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(24),
@@ -818,13 +853,19 @@ class _ProductAdBanner extends StatelessWidget {
   }
 }
 
-// ════════════════════════════════════════════
-// 原有：管理后台宫格
-// ════════════════════════════════════════════
+// ════════════════════════════════════
+// 管理后台宫格
+// ════════════════════════════════════
 
 class _AdminEntryGrid extends StatelessWidget {
-  const _AdminEntryGrid({required this.onTap});
+  const _AdminEntryGrid({
+    required this.isDark,
+    required this.colors,
+    required this.onTap,
+  });
 
+  final bool isDark;
+  final AppColors colors;
   final ValueChanged<Widget> onTap;
 
   static const _entries = [
@@ -839,7 +880,7 @@ class _AdminEntryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cardBg = _cardBg(isDark);
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -853,7 +894,7 @@ class _AdminEntryGrid extends StatelessWidget {
       itemBuilder: (context, i) {
         final e = _entries[i];
         return Material(
-          color: _cardWhite,
+          color: cardBg,
           borderRadius: BorderRadius.circular(16),
           child: InkWell(
             onTap: () => onTap(e.page),
@@ -880,33 +921,37 @@ class _AdminEntryGrid extends StatelessWidget {
   }
 }
 
-// ════════════════════════════════════════════
-// 原有：进行中的服务卡片
-// ════════════════════════════════════════════
+// ════════════════════════════════════
+// 进行中的服务卡片
+// ════════════════════════════════════
 
 class _ActiveServiceCard extends StatelessWidget {
   const _ActiveServiceCard({
     required this.appt,
     required this.inService,
     required this.elapsed,
+    required this.isDark,
+    required this.colors,
     required this.onTap,
   });
 
   final Appointment appt;
   final bool inService;
   final Duration elapsed;
+  final bool isDark;
+  final AppColors colors;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cardBg = _cardBg(isDark);
     return Container(
       decoration: BoxDecoration(
-        color: _cardWhite,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -928,7 +973,7 @@ class _ActiveServiceCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: inService
                         ? const Color(0xFF26DE81).withValues(alpha: 0.12)
-                        : const Color(0xFFF0F0F0),
+                        : _surfaceBg(isDark),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(
@@ -953,7 +998,10 @@ class _ActiveServiceCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         '${appt.date} ${appt.startTime}-${appt.endTime} · 桌位 ${appt.tableName}',
-                        style: TextStyle(color: colors.textSecondary, fontSize: 13),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   ),
@@ -974,7 +1022,10 @@ class _ActiveServiceCard extends StatelessWidget {
                       ),
                       Text(
                         '服务中',
-                        style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 12,
+                        ),
                       ),
                     ] else ...[
                       Text(
@@ -986,7 +1037,10 @@ class _ActiveServiceCard extends StatelessWidget {
                       ),
                       Text(
                         '待上钟',
-                        style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ],
