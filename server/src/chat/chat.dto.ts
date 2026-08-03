@@ -21,10 +21,10 @@ export class SendMessageDto {
   @MaxLength(2000)
   content: string;
 
-  /** 消息类型：text（文本/表情，默认）| image（content 为上传后的相对路径） */
+  /** 消息类型：text（文本/表情，默认）| image（content 为上传后的相对路径）| voice（content 为 {url,duration} JSON） */
   @IsOptional()
-  @IsIn(['text', 'image'])
-  contentType?: 'text' | 'image';
+  @IsIn(['text', 'image', 'voice'])
+  contentType?: 'text' | 'image' | 'voice';
 }
 
 export class PinConversationDto {

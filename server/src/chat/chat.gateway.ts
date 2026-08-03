@@ -239,10 +239,16 @@ export class ChatGateway
       return;
     }
     try {
+      const type: MessageContentType =
+        contentType === 'image'
+          ? 'image'
+          : contentType === 'voice'
+            ? 'voice'
+            : 'text';
       const { message, peerId } = await this.chat.sendMessage(
         userId,
         Number(conversationId),
-        contentType === 'image' ? 'image' : 'text',
+        type,
         content,
       );
       // 通过 sendToUser 发给发送方自己的所有连接（比 reply(client) 更可靠，后者可能因单连接状态异常丢帧）

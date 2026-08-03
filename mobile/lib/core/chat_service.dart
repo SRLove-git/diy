@@ -204,7 +204,11 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     if (idx >= 0) {
       final old = conversations[idx];
       final list = [...conversations];
-      final prefix = message.contentType == 'image' ? 'image:' : 'text:';
+      final prefix = switch (message.contentType) {
+        'image' => 'image:',
+        'voice' => 'voice:',
+        _ => 'text:',
+      };
       list[idx] = old.copyWith(
         lastMessagePreview: '$prefix${message.content}',
         lastMessageAt: message.createdAt,

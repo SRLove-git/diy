@@ -36,6 +36,7 @@ class Conversation {
     final p = lastMessagePreview;
     if (p == null) return '';
     if (p.startsWith('image:')) return '[图片]';
+    if (p.startsWith('voice:')) return '[语音]';
     if (p.startsWith('text:')) return p.substring(5);
     return p;
   }
@@ -212,6 +213,19 @@ class ChatApi {
     });
     final resp = await ApiClient.instance.post(
       '/uploads/images',
+      data: form,
+      options: Options(contentType: Headers.multipartFormDataContentType),
+    );
+    return (resp.data as Map<String, dynamic>)['url'] as String;
+  }
+
+  /// 上传聊天语音，返回可访问的相对路径（如 /uploads/chat/2026/08/xxx.m4a）
+  static Future<String> uploadAudio(String filePath) async {
+    final form = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath),
+    });
+    final resp = await ApiClient.instance.post(
+      '/uploads/audio',
       data: form,
       options: Options(contentType: Headers.multipartFormDataContentType),
     );

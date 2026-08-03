@@ -14,11 +14,26 @@ import { Conversation } from './conversation.entity';
 import { Message } from './message.entity';
 import { MessageStatus } from './message_status.entity';
 
-/** 消息内容类型：text 文本/表情；image 图片（content 存 /uploads/chat/... 相对路径） */
-export type MessageContentType = 'text' | 'image';
+/** 消息内容类型：text 文本/表情；image 图片（content 存 /uploads/chat/... 相对路径）；voice 语音（content 存 {url,duration} JSON） */
+export type MessageContentType = 'text' | 'image' | 'voice';
 
-/** 聊天图片内容必须是本站上传的相对路径 */
-const IMAGE_URL_RE = /^\/uploads\/chat\/[\w./-]+$/;
+/** 聊天媒体内容必须是本站上传的相对路径 */
+const MEDIA_URL_RE = /^\/uploads\/chat\/[\w./-]+$/;
+
+/** 语音内容校验：JSON { url, duration }，url 必须是本站上传路径 */
+function isValidVoiceContent(content: string): boolean {
+  try {
+    const j = JSON.parse(content) as { url?: unknown; duration?: unknown };
+    return (
+      typeof j.url === 'string' &&
+      MEDIA_URL_RE.test(j.url) &&
+      typeof j.duration === 'number' &&
+      j.duration >= 0
+    );
+  } catch {
+    return false;
+  }
+}
 
 @Injectable()
 export class ChatService {
@@ -244,12 +259,21 @@ export class ChatService {
     const peer = await this.users.findOneBy({ id: peerId });
     if (peer?.isBanned) throw new BadRequestException('对方账号已被禁用');
 
-    const type: MessageContentType = contentType === 'image' ? 'image' : 'text';
+    const type: MessageContentType =
+      contentType === 'image'
+        ? 'image'
+        : contentType === 'voice'
+          ? 'voice'
+          : 'text';
     const body = content.trim();
     if (type === 'image') {
       // 图片消息内容必须是本站上传的相对路径
-      if (!IMAGE_URL_RE.test(body))
+      if (!MEDIA_URL_RE.test(body))
         throw new BadRequestException('图片地址不合法');
+    } else if (type === 'voice') {
+      // 语音消息内容必须是本站上传路径 + 时长的 JSON
+      if (!isValidVoiceContent(body))
+        throw new BadRequestException('语音内容不合法');
     } else if (!body) {
       throw new BadRequestException('消息内容不能为空');
     }
@@ -285,7 +309,9 @@ export class ChatService {
       const preview =
         message.contentType === 'image'
           ? 'image:'
-          : `text:${message.content.slice(0, 50)}`;
+          : message.contentType === 'voice'
+            ? 'voice:'
+            : `text:${message.content.slice(0, 50)}`;
       await em.update(
         Conversation,
         { id: message.conversationId },

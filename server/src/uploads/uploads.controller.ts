@@ -27,11 +27,41 @@ const ALLOWED_MIMES = new Set([
   'image/webp',
 ]);
 
+/** 允许上传的音频类型（聊天语音消息） */
+const ALLOWED_AUDIO_MIMES = new Set([
+  'audio/mpeg',
+  'audio/mp4',
+  'audio/m4a',
+  'audio/x-m4a',
+  'audio/aac',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/ogg',
+  'audio/webm',
+  'audio/3gpp',
+  'audio/x-ms-wma',
+]);
+
 /** 当前月份子目录：yyyy/mm */
 function monthDir(): string {
   const d = new Date();
   const mm = `${d.getMonth() + 1}`.padStart(2, '0');
   return `${d.getFullYear()}/${mm}`;
+}
+
+/** multer 磁盘存储：先写系统临时目录，由 UploadProvider 移动到最终位置 */
+function multerStorage() {
+  return diskStorage({
+    destination: (_req, _file, cb) => {
+      const dir = join(tmpdir(), 'diy-uploads');
+      mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (_req, file, cb) => {
+      const ext = extname(file.originalname).toLowerCase() || '.bin';
+      cb(null, `${randomUUID()}${ext}`);
+    },
+  });
 }
 
 /**
@@ -55,18 +85,7 @@ export class UploadsController {
   @Post('images')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        // 先写入临时目录，由存储提供者移动到最终位置
-        destination: (_req, _file, cb) => {
-          const dir = join(tmpdir(), 'diy-uploads');
-          mkdirSync(dir, { recursive: true });
-          cb(null, dir);
-        },
-        filename: (_req, file, cb) => {
-          const ext = extname(file.originalname).toLowerCase() || '.jpg';
-          cb(null, `${randomUUID()}${ext}`);
-        },
-      }),
+      storage: multerStorage(),
       limits: { fileSize: 10 * 1024 * 1024 },
     }),
   )
@@ -80,6 +99,29 @@ export class UploadsController {
         /* 忽略删除失败 */
       }
       throw new BadRequestException('仅支持 jpg/png/gif/webp 图片');
+    }
+    const { url } = await this.uploader.save(file, `chat/${monthDir()}`);
+    return { url };
+  }
+
+  /** 聊天语音上传：POST /api/uploads/audio（multipart 字段 file，需登录），返回相对路径 */
+  @Post('audio')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: multerStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 },
+    }),
+  )
+  async uploadAudio(@UploadedFile() file?: Express.Multer.File) {
+    if (!file) throw new BadRequestException('缺少文件');
+    if (!ALLOWED_AUDIO_MIMES.has(file.mimetype)) {
+      // 类型不合规：删掉临时文件再报错
+      try {
+        unlinkSync(file.path);
+      } catch {
+        /* 忽略删除失败 */
+      }
+      throw new BadRequestException('仅支持常见音频格式');
     }
     const { url } = await this.uploader.save(file, `chat/${monthDir()}`);
     return { url };
