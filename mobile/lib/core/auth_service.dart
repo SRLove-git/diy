@@ -89,6 +89,27 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 密码登录（需先用验证码设置过密码）
+  Future<void> passwordLogin(String phone, String password) async {
+    final resp = await ApiClient.instance.post('/auth/password-login',
+        data: {'phone': phone, 'password': password});
+    await _saveTokens(
+      resp.data['accessToken'] as String,
+      resp.data['refreshToken'] as String,
+    );
+    await _fetchMe();
+    notifyListeners();
+  }
+
+  /// 设置/重置密码（短信验证码校验后生效）
+  Future<void> setPassword(String phone, String code, String password) async {
+    await ApiClient.instance.post('/auth/set-password', data: {
+      'phone': phone,
+      'code': code,
+      'password': password,
+    });
+  }
+
   Future<bool> tryRefresh() async {
     if (_refreshToken == null) return false;
     try {

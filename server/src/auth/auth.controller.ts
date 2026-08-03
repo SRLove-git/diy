@@ -1,7 +1,13 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
-import { LoginDto, RefreshDto, SendCodeDto } from './auth.dto';
+import {
+  LoginDto,
+  PasswordLoginDto,
+  RefreshDto,
+  SendCodeDto,
+  SetPasswordDto,
+} from './auth.dto';
 import { CurrentUser } from './current-user.decorator';
 import type { AuthUser } from './current-user.decorator';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -23,6 +29,18 @@ export class AuthController {
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto.phone, dto.code);
+  }
+
+  /** 密码登录（需先用验证码设置过密码） */
+  @Post('password-login')
+  passwordLogin(@Body() dto: PasswordLoginDto) {
+    return this.auth.passwordLogin(dto.phone, dto.password);
+  }
+
+  /** 设置/重置密码（短信验证码校验） */
+  @Post('set-password')
+  setPassword(@Body() dto: SetPasswordDto) {
+    return this.auth.setPassword(dto.phone, dto.code, dto.password);
   }
 
   /** 刷新令牌（轮换制） */

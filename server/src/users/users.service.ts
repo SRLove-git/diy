@@ -38,6 +38,10 @@ export class UsersService {
     return this.users.update({ id }, patch);
   }
 
+  setPasswordHash(id: number, hash: string) {
+    return this.users.update({ id }, { passwordHash: hash });
+  }
+
   setRole(id: number, role: 'admin' | 'user') {
     return this.users.update({ id }, { role });
   }

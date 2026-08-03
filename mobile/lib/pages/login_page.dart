@@ -4,8 +4,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../core/auth_service.dart';
+import 'set_password_page.dart';
 
-/// 登录 / 注册（手机号验证码）：未注册手机号登录时自动注册。
+/// 登录 / 注册（验证码 + 密码双模式）：未注册手机号登录时自动注册。
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -16,10 +17,14 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _phoneCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
+  final _passwordCtrl = TextEditingController();
+  final _codeFormKey = GlobalKey<FormState>();
+  final _passwordFormKey = GlobalKey<FormState>();
 
   bool _sendingCode = false;
   bool _loggingIn = false;
+  bool _passwordLoggingIn = false;
+  bool _obscurePassword = true;
   int _countdown = 0;
   Timer? _timer;
 
@@ -28,6 +33,7 @@ class _LoginPageState extends State<LoginPage> {
     _timer?.cancel();
     _phoneCtrl.dispose();
     _codeCtrl.dispose();
+    _passwordCtrl.dispose();
     super.dispose();
   }
 
@@ -48,7 +54,7 @@ class _LoginPageState extends State<LoginPage> {
     final phoneValid = RegExp(r'^1[3-9]\d{9}$').hasMatch(_phoneCtrl.text);
     if (!phoneValid) {
       // 触发手机号字段的错误显示
-      _formKey.currentState!.validate();
+      _codeFormKey.currentState!.validate();
       return;
     }
     setState(() => _sendingCode = true);
@@ -76,7 +82,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_codeFormKey.currentState!.validate()) return;
     setState(() => _loggingIn = true);
     try {
       await AuthService.instance.login(_phoneCtrl.text, _codeCtrl.text);
@@ -86,6 +92,26 @@ class _LoginPageState extends State<LoginPage> {
     } finally {
       if (mounted) setState(() => _loggingIn = false);
     }
+  }
+
+  Future<void> _passwordLogin() async {
+    if (!_passwordFormKey.currentState!.validate()) return;
+    setState(() => _passwordLoggingIn = true);
+    try {
+      await AuthService.instance
+          .passwordLogin(_phoneCtrl.text, _passwordCtrl.text);
+      // 登录成功后 AuthGate 自动切换到主界面
+    } on DioException catch (e) {
+      _showError(_message(e));
+    } finally {
+      if (mounted) setState(() => _passwordLoggingIn = false);
+    }
+  }
+
+  void _goSetPassword() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SetPasswordPage()),
+    );
   }
 
   String _message(DioException e) {
@@ -105,12 +131,12 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -128,71 +154,174 @@ class _LoginPageState extends State<LoginPage> {
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Color(0xFF8A8A8A)),
                 ),
-                const SizedBox(height: 32),
-                TextFormField(
-                  controller: _phoneCtrl,
-                  keyboardType: TextInputType.phone,
-                  maxLength: 11,
-                  decoration: const InputDecoration(
-                    labelText: '手机号',
-                    counterText: '',
-                    prefixIcon: Icon(Icons.phone_iphone),
+                const SizedBox(height: 24),
+                TabBar(
+                  labelColor: const Color(0xFFE8633A),
+                  unselectedLabelColor: const Color(0xFF8A8A8A),
+                  indicatorColor: const Color(0xFFE8633A),
+                  indicatorSize: TabBarIndicatorSize.label,
+                  labelStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                   ),
-                  validator: (v) =>
-                      (v == null || !RegExp(r'^1[3-9]\d{9}$').hasMatch(v))
-                          ? '请输入正确的手机号'
-                          : null,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _codeCtrl,
-                        keyboardType: TextInputType.number,
-                        maxLength: 6,
-                        decoration: const InputDecoration(
-                          labelText: '验证码',
-                          counterText: '',
-                          prefixIcon: Icon(Icons.sms_outlined),
-                        ),
-                        validator: (v) =>
-                            (v == null || !RegExp(r'^\d{6}$').hasMatch(v))
-                                ? '请输入 6 位验证码'
-                                : null,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: TextButton(
-                        onPressed: (_countdown > 0 || _sendingCode)
-                            ? null
-                            : _sendCode,
-                        child: Text(
-                          _countdown > 0 ? '$_countdown 秒后重发' : '获取验证码',
-                          style: const TextStyle(color: Color(0xFFE8633A)),
-                        ),
-                      ),
-                    ),
+                  tabs: const [
+                    Tab(text: '验证码登录'),
+                    Tab(text: '密码登录'),
                   ],
                 ),
-                const SizedBox(height: 32),
-                FilledButton(
-                  onPressed: _loggingIn ? null : _login,
-                  child: _loggingIn
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('登录'),
+                const SizedBox(height: 24),
+                SizedBox(
+                  height: 320,
+                  child: TabBarView(
+                    children: [_buildCodeTab(), _buildPasswordTab()],
+                  ),
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// 验证码登录表单
+  Widget _buildCodeTab() {
+    return Form(
+      key: _codeFormKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextFormField(
+            controller: _phoneCtrl,
+            keyboardType: TextInputType.phone,
+            maxLength: 11,
+            decoration: const InputDecoration(
+              labelText: '手机号',
+              counterText: '',
+              prefixIcon: Icon(Icons.phone_iphone),
+            ),
+            validator: (v) =>
+                (v == null || !RegExp(r'^1[3-9]\d{9}$').hasMatch(v))
+                    ? '请输入正确的手机号'
+                    : null,
+          ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _codeCtrl,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  decoration: const InputDecoration(
+                    labelText: '验证码',
+                    counterText: '',
+                    prefixIcon: Icon(Icons.sms_outlined),
+                  ),
+                  validator: (v) =>
+                      (v == null || !RegExp(r'^\d{6}$').hasMatch(v))
+                          ? '请输入 6 位验证码'
+                          : null,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: TextButton(
+                  onPressed: (_countdown > 0 || _sendingCode)
+                      ? null
+                      : _sendCode,
+                  child: Text(
+                    _countdown > 0 ? '$_countdown 秒后重发' : '获取验证码',
+                    style: const TextStyle(color: Color(0xFFE8633A)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          FilledButton(
+            onPressed: _loggingIn ? null : _login,
+            child: _loggingIn
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('登录'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 密码登录表单
+  Widget _buildPasswordTab() {
+    return Form(
+      key: _passwordFormKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextFormField(
+            controller: _phoneCtrl,
+            keyboardType: TextInputType.phone,
+            maxLength: 11,
+            decoration: const InputDecoration(
+              labelText: '手机号',
+              counterText: '',
+              prefixIcon: Icon(Icons.phone_iphone),
+            ),
+            validator: (v) =>
+                (v == null || !RegExp(r'^1[3-9]\d{9}$').hasMatch(v))
+                    ? '请输入正确的手机号'
+                    : null,
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _passwordCtrl,
+            obscureText: _obscurePassword,
+            maxLength: 32,
+            decoration: InputDecoration(
+              labelText: '密码',
+              counterText: '',
+              prefixIcon: const Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                ),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+              ),
+            ),
+            validator: (v) =>
+                (v == null || v.length < 6) ? '密码至少 6 位' : null,
+          ),
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _goSetPassword,
+              child: const Text(
+                '忘记密码？',
+                style: TextStyle(color: Color(0xFFE8633A)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: _passwordLoggingIn ? null : _passwordLogin,
+            child: _passwordLoggingIn
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('登录'),
+          ),
+        ],
       ),
     );
   }

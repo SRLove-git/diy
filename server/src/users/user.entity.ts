@@ -22,6 +22,10 @@ export class User {
   @Column({ default: '' })
   avatar: string;
 
+  /** 密码哈希（scrypt），格式 scrypt$<salt>:<hash> 共 168 字符；null 表示未设置密码 */
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  passwordHash: string | null;
+
   @Column({ default: false })
   isBanned: boolean;
 

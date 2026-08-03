@@ -1,4 +1,10 @@
-import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 /** 中国大陆手机号 */
 export class SendCodeDto {
@@ -7,6 +13,20 @@ export class SendCodeDto {
 }
 
 export class LoginDto extends SendCodeDto {
+  @Matches(/^\d{6}$/, { message: '验证码为 6 位数字' })
+  code: string;
+}
+
+/** 密码登录 */
+export class PasswordLoginDto extends SendCodeDto {
+  @IsString()
+  @MinLength(6, { message: '密码至少 6 位' })
+  @MaxLength(32, { message: '密码最多 32 位' })
+  password: string;
+}
+
+/** 设置/重置密码（需短信验证码） */
+export class SetPasswordDto extends PasswordLoginDto {
   @Matches(/^\d{6}$/, { message: '验证码为 6 位数字' })
   code: string;
 }
