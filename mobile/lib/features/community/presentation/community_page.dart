@@ -80,7 +80,6 @@ class _CommunityPageState extends State<CommunityPage> {
   }
 
   void _onAvatarTap() => widget.onSwitchTab(3); // 切到个人主页
-  void _onUserTap() => widget.onSwitchTab(3);
   void _onSearchTap() => _showToast('找频道 / 找内容（演示）');
 
   /// 点击帖子作者头像：打开用户主页展示页面

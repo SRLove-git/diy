@@ -31,14 +31,16 @@ class _PublishPostPageState extends State<PublishPostPage> {
   final ImagePicker _picker = ImagePicker();
 
   /// 已选图片的本地文件路径列表
-  late final List<String> _selectedImages =
-      widget.initialImage == null ? [] : [widget.initialImage!];
+  late final List<String> _selectedImages = widget.initialImage == null
+      ? []
+      : [widget.initialImage!];
 
   /// 已选视频素材（单个，可选）
   XFile? _video;
 
   /// 最大可选图片数
   static const int _maxImages = 9;
+
   /// 是否正在发布中
   bool _publishing = false;
 
@@ -74,9 +76,7 @@ class _PublishPostPageState extends State<PublishPostPage> {
   /// 上传图片/视频并发布帖子
   Future<void> _onPublish() async {
     final content = _textController.text.trim();
-    if (content.isEmpty &&
-        _selectedImages.isEmpty &&
-        _video == null) {
+    if (content.isEmpty && _selectedImages.isEmpty && _video == null) {
       _showError('请输入内容或选择素材');
       return;
     }
@@ -142,7 +142,7 @@ class _PublishPostPageState extends State<PublishPostPage> {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFFBFC),
       appBar: _buildAppBar(colors),
       body: Stack(
         children: [
@@ -181,19 +181,16 @@ class _PublishPostPageState extends State<PublishPostPage> {
         children: [
           CircularProgressIndicator(color: Colors.white),
           SizedBox(height: 16),
-          Text(
-            '发布中…',
-            style: TextStyle(color: Colors.white, fontSize: 16),
-          ),
+          Text('发布中…', style: TextStyle(color: Colors.white, fontSize: 16)),
         ],
       ),
     );
   }
 
-  /// 自定义 AppBar：左侧返回箭头 + 中间标题 + 右侧蓝色发表按钮
+  /// 自定义 AppBar：左侧返回箭头 + 中间标题 + 右侧品牌色发表按钮
   PreferredSizeWidget _buildAppBar(AppColors colors) {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFFBFC),
       elevation: 0.5,
       shadowColor: Colors.black12,
       leading: IconButton(
@@ -216,7 +213,7 @@ class _PublishPostPageState extends State<PublishPostPage> {
           child: TextButton(
             onPressed: _publishing ? null : _onPublish,
             style: TextButton.styleFrom(
-              backgroundColor: const Color(0xFF4E8BFF),
+              backgroundColor: colors.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               shape: RoundedRectangleBorder(
@@ -239,17 +236,10 @@ class _PublishPostPageState extends State<PublishPostPage> {
         maxLines: 5,
         minLines: 3,
         enabled: !_publishing,
-        style: TextStyle(
-          fontSize: 16,
-          color: colors.textPrimary,
-          height: 1.5,
-        ),
+        style: TextStyle(fontSize: 16, color: colors.textPrimary, height: 1.5),
         decoration: InputDecoration(
           hintText: '分享新鲜事…',
-          hintStyle: TextStyle(
-            color: colors.textSecondary,
-            fontSize: 16,
-          ),
+          hintStyle: TextStyle(color: colors.textSecondary, fontSize: 16),
           border: InputBorder.none,
           contentPadding: EdgeInsets.zero,
         ),
@@ -352,14 +342,18 @@ class _PublishPostPageState extends State<PublishPostPage> {
             Icon(
               Icons.add,
               size: 32,
-              color: isFull ? colors.textSecondary.withValues(alpha: 0.4) : colors.textSecondary,
+              color: isFull
+                  ? colors.textSecondary.withValues(alpha: 0.4)
+                  : colors.textSecondary,
             ),
             const SizedBox(height: 2),
             Text(
               '添加照片',
               style: TextStyle(
                 fontSize: 11,
-                color: isFull ? colors.textSecondary.withValues(alpha: 0.4) : colors.textSecondary,
+                color: isFull
+                    ? colors.textSecondary.withValues(alpha: 0.4)
+                    : colors.textSecondary,
               ),
             ),
           ],
@@ -383,12 +377,16 @@ class _PublishPostPageState extends State<PublishPostPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.play_circle_outline,
-                size: 30, color: colors.textSecondary),
+            Icon(
+              Icons.play_circle_outline,
+              size: 30,
+              color: colors.textSecondary,
+            ),
             const SizedBox(height: 2),
-            Text('添加视频',
-                style: TextStyle(
-                    fontSize: 11, color: colors.textSecondary)),
+            Text(
+              '添加视频',
+              style: TextStyle(fontSize: 11, color: colors.textSecondary),
+            ),
           ],
         ),
       ),
@@ -411,8 +409,7 @@ class _PublishPostPageState extends State<PublishPostPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.play_circle_fill,
-                  color: Colors.white, size: 30),
+              const Icon(Icons.play_circle_fill, color: Colors.white, size: 30),
               const SizedBox(height: 4),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -490,10 +487,17 @@ class _PublishPostPageState extends State<PublishPostPage> {
                   Expanded(
                     child: Text(
                       title,
-                      style: const TextStyle(fontSize: 15, color: Colors.black87),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
                     ),
                   ),
-                  Icon(Icons.chevron_right, size: 22, color: colors.textSecondary),
+                  Icon(
+                    Icons.chevron_right,
+                    size: 22,
+                    color: colors.textSecondary,
+                  ),
                 ],
               ),
             ),

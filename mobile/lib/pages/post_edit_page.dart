@@ -97,7 +97,7 @@ class _PostEditPageState extends State<PostEditPage> {
 
   static const _white = Colors.white;
   static const _hint = Color(0xFF999999);
-  static const _primary = Color(0xFFFE2C55);
+  static const _primary = Color(0xFFFF718D);
   static const _btnBg = Color(0xFF2C2C2C);
   static const _bg = Color(0xFF121212);
   static const _border = Color(0xFF333333);
@@ -215,10 +215,7 @@ class _PostEditPageState extends State<PostEditPage> {
             icon: const Icon(Icons.close, color: _white, size: 26),
           ),
           const Spacer(),
-          const Text(
-            '编辑',
-            style: TextStyle(color: _white, fontSize: 16),
-          ),
+          const Text('编辑', style: TextStyle(color: _white, fontSize: 16)),
           const Spacer(),
           GestureDetector(
             onTap: () => Navigator.pop(
@@ -275,85 +272,91 @@ class _PostEditPageState extends State<PostEditPage> {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                  // 背景：照片 / 视频真实预览 / 占位
-                  if (!_isVideo)
-                    Image.file(
-                      File(widget.photo!.path),
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => _placeholder(),
-                    )
-                  else if (_videoReady)
-                    _videoPreview()
-                  else
-                    _placeholder(video: true),
-                  // 滤镜名称角标
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
+                      // 背景：照片 / 视频真实预览 / 占位
+                      if (!_isVideo)
+                        Image.file(
+                          File(widget.photo!.path),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => _placeholder(),
+                        )
+                      else if (_videoReady)
+                        _videoPreview()
+                      else
+                        _placeholder(video: true),
+                      // 滤镜名称角标
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            filterOf(_filterId).name,
+                            style: const TextStyle(color: _white, fontSize: 11),
+                          ),
+                        ),
                       ),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        filterOf(_filterId).name,
-                        style: const TextStyle(color: _white, fontSize: 11),
-                      ),
-                    ),
+                      // 裁剪区间角标（视频）
+                      if (_isVideo && _trimStart > 0)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${_fmt(_trimStart)} - ${_fmt(_trimEnd)}',
+                              style: const TextStyle(
+                                color: _white,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ),
+                      // 倍速角标（视频）
+                      if (_isVideo && _speed != 1)
+                        Positioned(
+                          bottom: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${_speed}x',
+                              style: const TextStyle(
+                                color: _white,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  // 裁剪区间角标（视频）
-                  if (_isVideo && _trimStart > 0)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${_fmt(_trimStart)} - ${_fmt(_trimEnd)}',
-                          style: const TextStyle(color: _white, fontSize: 11),
-                        ),
-                      ),
-                    ),
-                  // 倍速角标（视频）
-                  if (_isVideo && _speed != 1)
-                    Positioned(
-                      bottom: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${_speed}x',
-                          style: const TextStyle(color: _white, fontSize: 11),
-                        ),
-                      ),
-                    ),
-                ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),
-  ),
-);
+    );
   }
 
   /// 视频真实预览：播放画面 + 中央播放/暂停 + 底部进度
@@ -392,8 +395,10 @@ class _PostEditPageState extends State<PostEditPage> {
             builder: (context, value, _) {
               return Container(
                 color: Colors.black54,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 child: Text(
                   '${_fmtPos(value.position)} / ${_fmtPos(value.duration)}',
                   style: const TextStyle(color: _white, fontSize: 10),
@@ -464,10 +469,7 @@ class _PostEditPageState extends State<PostEditPage> {
           ),
           const SizedBox(height: 4),
           // 面板（固定高度）
-          SizedBox(
-            height: 108,
-            child: _buildPanel(),
-          ),
+          SizedBox(height: 108, child: _buildPanel()),
           const SizedBox(height: 8),
         ],
       ),
@@ -481,18 +483,11 @@ class _PostEditPageState extends State<PostEditPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            color: selected ? _primary : _hint,
-            size: 22,
-          ),
+          Icon(icon, color: selected ? _primary : _hint, size: 22),
           const SizedBox(height: 3),
           Text(
             label,
-            style: TextStyle(
-              color: selected ? _primary : _hint,
-              fontSize: 11,
-            ),
+            style: TextStyle(color: selected ? _primary : _hint, fontSize: 11),
           ),
         ],
       ),
@@ -543,9 +538,8 @@ class _PostEditPageState extends State<PostEditPage> {
                         ? Image.file(
                             File(source.path),
                             fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => const ColoredBox(
-                              color: _btnBg,
-                            ),
+                            errorBuilder: (_, _, _) =>
+                                const ColoredBox(color: _btnBg),
                           )
                         : const ColoredBox(
                             color: Color(0xFF1E1E28),
@@ -580,10 +574,7 @@ class _PostEditPageState extends State<PostEditPage> {
     if (_isVideo) {
       if (_videoLength <= 0) {
         return const Center(
-          child: Text(
-            '无法读取视频时长',
-            style: TextStyle(color: _hint, fontSize: 12),
-          ),
+          child: Text('无法读取视频时长', style: TextStyle(color: _hint, fontSize: 12)),
         );
       }
       return Padding(
@@ -598,10 +589,7 @@ class _PostEditPageState extends State<PostEditPage> {
               divisions: _videoLength.round(),
               activeColor: _primary,
               inactiveColor: _btnBg,
-              labels: RangeLabels(
-                _fmt(_trimStart),
-                _fmt(_trimEnd),
-              ),
+              labels: RangeLabels(_fmt(_trimStart), _fmt(_trimEnd)),
               onChanged: (v) => setState(() {
                 _trimStart = v.start;
                 _trimEnd = v.end;

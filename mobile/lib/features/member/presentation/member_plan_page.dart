@@ -65,10 +65,8 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
         _coupons = results[3] as List<MemberCoupon>;
         _activities = results[4] as List<MemberActivity>;
         // 默认选中「推荐」套餐
-        _selectedPlanId ??= _plans
-                .where((p) => p.recommended)
-                .firstOrNull
-                ?.id ??
+        _selectedPlanId ??=
+            _plans.where((p) => p.recommended).firstOrNull?.id ??
             _plans.firstOrNull?.id;
         _loading = false;
       });
@@ -157,8 +155,7 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
   }
 
   void _toast(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   // ─── 格式化工具 ───
@@ -180,9 +177,7 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('会员套餐')),
       body: _buildBody(),
-      bottomNavigationBar: canShowBar
-          ? _buildPurchaseBar(colors)
-          : null,
+      bottomNavigationBar: canShowBar ? _buildPurchaseBar(colors) : null,
     );
   }
 
@@ -211,18 +206,9 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
   Widget _buildStatusCard() {
     final m = _membership!;
     final gradient = switch (m.status) {
-      MemberStatus.active => const [
-          Color(0xFF7C6FF7),
-          Color(0xFFFF6B6B),
-        ],
-      MemberStatus.expired => const [
-          Color(0xFF9A9AA4),
-          Color(0xFF6E6E7A),
-        ],
-      MemberStatus.none => const [
-          Color(0xFFFFB347),
-          Color(0xFFFF6B6B),
-        ],
+      MemberStatus.active => const [Color(0xFF7C6FF7), Color(0xFFFF718D)],
+      MemberStatus.expired => const [Color(0xFF9A9AA4), Color(0xFF6E6E7A)],
+      MemberStatus.none => const [Color(0xFFFFB347), Color(0xFFFF718D)],
     };
     final (chipText, chipColor) = switch (m.status) {
       MemberStatus.active => ('生效中', const Color(0xFF2E9E5B)),
@@ -253,8 +239,11 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
         children: [
           Row(
             children: [
-              const Icon(Icons.workspace_premium_rounded,
-                  color: Colors.white, size: 22),
+              const Icon(
+                Icons.workspace_premium_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
               const SizedBox(width: 8),
               Text(
                 m.levelName,
@@ -266,8 +255,10 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
               ),
               const Spacer(),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(12),
@@ -450,16 +441,16 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
               padding: const EdgeInsets.symmetric(vertical: 3),
               child: Row(
                 children: [
-                  Icon(Icons.check_circle_rounded,
-                      size: 15, color: colors.primary),
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 15,
+                    color: colors.primary,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       benefit,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: colors.textPrimary,
-                      ),
+                      style: TextStyle(fontSize: 13, color: colors.textPrimary),
                     ),
                   ),
                 ],
@@ -542,8 +533,7 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
                 children: [
                   Text(
                     '会员 ',
-                    style: TextStyle(
-                        fontSize: 11, color: colors.textSecondary),
+                    style: TextStyle(fontSize: 11, color: colors.textSecondary),
                   ),
                   Text(
                     _formatPrice(exp.memberPrice),
@@ -647,8 +637,7 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
                   const SizedBox(height: 3),
                   Text(
                     '有效期至 ${_formatDate(coupon.expireAt)}',
-                    style: TextStyle(
-                        fontSize: 11, color: colors.textSecondary),
+                    style: TextStyle(fontSize: 11, color: colors.textSecondary),
                   ),
                   const Spacer(),
                   Align(
@@ -656,7 +645,9 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
                     child: coupon.received
                         ? Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: colors.placeholder,
                               borderRadius: BorderRadius.circular(10),
@@ -674,7 +665,9 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
                             borderRadius: BorderRadius.circular(10),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 4),
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: colors.primary,
                                 borderRadius: BorderRadius.circular(10),
@@ -736,8 +729,7 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
           Row(
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: colors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
@@ -874,8 +866,8 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
                   _purchasing
                       ? '开通中…'
                       : isMember
-                          ? '立即续费'
-                          : '立即开通',
+                      ? '立即续费'
+                      : '立即开通',
                 ),
               ),
             ],

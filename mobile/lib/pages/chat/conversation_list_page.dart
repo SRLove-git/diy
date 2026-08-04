@@ -72,13 +72,15 @@ class _ConversationListPageState extends State<ConversationListPage> {
   /// 按筛选 + 搜索词过滤
   List<Conversation> _visible(List<Conversation> all) {
     final q = _query.trim().toLowerCase();
-    return all.where((c) {
-      if (_filter == _Filter.unread && c.unreadCount == 0) return false;
-      if (q.isEmpty) return true;
-      final name = c.peerNickname.toLowerCase();
-      final preview = c.lastMessageText.toLowerCase();
-      return name.contains(q) || preview.contains(q);
-    }).toList(growable: false);
+    return all
+        .where((c) {
+          if (_filter == _Filter.unread && c.unreadCount == 0) return false;
+          if (q.isEmpty) return true;
+          final name = c.peerNickname.toLowerCase();
+          final preview = c.lastMessageText.toLowerCase();
+          return name.contains(q) || preview.contains(q);
+        })
+        .toList(growable: false);
   }
 
   String _formatTime(DateTime? t) {
@@ -125,8 +127,10 @@ class _ConversationListPageState extends State<ConversationListPage> {
                 title: Text(conv.pinned ? '取消置顶' : '置顶'),
                 onTap: () async {
                   Navigator.pop(ctx);
-                  final ok = await ChatService.instance
-                      .pinConversation(conv.id, !conv.pinned);
+                  final ok = await ChatService.instance.pinConversation(
+                    conv.id,
+                    !conv.pinned,
+                  );
                   _toast(ok ? (conv.pinned ? '已取消置顶' : '已置顶') : '操作失败，请重试');
                 },
               ),
@@ -162,15 +166,20 @@ class _ConversationListPageState extends State<ConversationListPage> {
         title: const Text('删除会话'),
         content: Text('将删除与 ${_displayName(conv)} 的会话及全部消息（对双方生效），且不可恢复。'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              final ok =
-                  await ChatService.instance.deleteConversation(conv.id);
+              final ok = await ChatService.instance.deleteConversation(conv.id);
               _toast(ok ? '会话已删除' : '删除失败，请重试');
             },
-            child: Text('删除', style: TextStyle(color: AppColors.of(ctx).danger)),
+            child: Text(
+              '删除',
+              style: TextStyle(color: AppColors.of(ctx).danger),
+            ),
           ),
         ],
       ),
@@ -184,8 +193,9 @@ class _ConversationListPageState extends State<ConversationListPage> {
 
   void _toast(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
+    );
   }
 
   @override
@@ -208,9 +218,8 @@ class _ConversationListPageState extends State<ConversationListPage> {
             Expanded(
               child: ListenableBuilder(
                 listenable: ChatService.instance,
-                builder: (context, _) => _buildList(
-                  _visible(ChatService.instance.conversations),
-                ),
+                builder: (context, _) =>
+                    _buildList(_visible(ChatService.instance.conversations)),
               ),
             ),
           ],
@@ -224,7 +233,8 @@ class _ConversationListPageState extends State<ConversationListPage> {
     final me = AuthService.instance.user;
     final colors = AppColors.of(context);
     final avatar = me?.avatar ?? '';
-    final valid = avatar.startsWith('http://') ||
+    final valid =
+        avatar.startsWith('http://') ||
         avatar.startsWith('https://') ||
         avatar.startsWith('/uploads/');
     return InkWell(
@@ -358,10 +368,7 @@ class _ConversationListPageState extends State<ConversationListPage> {
           physics: const AlwaysScrollableScrollPhysics(),
           children: const [
             SizedBox(height: 160),
-            EmptyWidget(
-              icon: Icons.search_off,
-              message: '没有匹配的会话',
-            ),
+            EmptyWidget(icon: Icons.search_off, message: '没有匹配的会话'),
           ],
         ),
       );
@@ -424,8 +431,11 @@ class _ConversationTile extends StatelessWidget {
                   Row(
                     children: [
                       if (conversation.pinned) ...[
-                        Icon(Icons.push_pin,
-                            size: 14, color: colors.textSecondary),
+                        Icon(
+                          Icons.push_pin,
+                          size: 14,
+                          color: colors.textSecondary,
+                        ),
                         const SizedBox(width: 2),
                       ],
                       Expanded(
@@ -463,15 +473,15 @@ class _ConversationTile extends StatelessWidget {
                           ),
                         ),
                       ),
-                      // 蓝色圆点 = 未读消息（条目级）
+                      // 品牌色圆点 = 未读消息（条目级）
                       if (hasUnread)
                         Container(
                           width: 8,
                           height: 8,
                           margin: const EdgeInsets.only(left: 8),
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Color(0xFF465FFF),
+                            color: colors.primary,
                           ),
                         ),
                     ],
@@ -487,11 +497,13 @@ class _ConversationTile extends StatelessWidget {
 
   Widget _avatar(BuildContext context, String nickname, String avatar) {
     final colors = AppColors.of(context);
-    final valid = avatar.startsWith('http://') ||
+    final valid =
+        avatar.startsWith('http://') ||
         avatar.startsWith('https://') ||
         avatar.startsWith('/uploads/');
     // 对端在线状态（presence 事件实时更新）
-    final online = ChatService.instance.isPeerOnline(conversation.peerId) ||
+    final online =
+        ChatService.instance.isPeerOnline(conversation.peerId) ||
         conversation.peerOnline;
     return Stack(
       clipBehavior: Clip.none,

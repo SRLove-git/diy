@@ -27,13 +27,25 @@ class AdminHomePage extends StatelessWidget {
         : '管理员';
 
     const entries = [
-      (icon: Icons.dashboard_outlined, label: '数据看板', page: AdminDashboardPage()),
+      (
+        icon: Icons.dashboard_outlined,
+        label: '数据看板',
+        page: AdminDashboardPage(),
+      ),
       (icon: Icons.store_outlined, label: '门店管理', page: AdminStoresPage()),
-      (icon: Icons.receipt_long_outlined, label: '订单管理', page: AdminOrdersPage()),
+      (
+        icon: Icons.receipt_long_outlined,
+        label: '订单管理',
+        page: AdminOrdersPage(),
+      ),
       (icon: Icons.article_outlined, label: '作品审核', page: AdminPostsPage()),
       (icon: Icons.people_outline, label: '用户管理', page: AdminUsersPage()),
       (icon: Icons.report_outlined, label: '举报处理', page: AdminReportsPage()),
-      (icon: Icons.notifications_outlined, label: '通知管理', page: AdminNotificationsPage()),
+      (
+        icon: Icons.notifications_outlined,
+        label: '通知管理',
+        page: AdminNotificationsPage(),
+      ),
     ];
 
     return Scaffold(
@@ -46,7 +58,7 @@ class AdminHomePage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFF465FFF),
+                color: const Color(0xFFFF718D),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -54,7 +66,11 @@ class AdminHomePage extends StatelessWidget {
                   const CircleAvatar(
                     radius: 26,
                     backgroundColor: Colors.white24,
-                    child: Icon(Icons.admin_panel_settings, color: Colors.white, size: 30),
+                    child: Icon(
+                      Icons.admin_panel_settings,
+                      color: Colors.white,
+                      size: 30,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -150,7 +166,10 @@ class _EntryItem extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
               Icon(Icons.chevron_right, color: colors.textSecondary, size: 20),

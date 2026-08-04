@@ -106,8 +106,10 @@ class _LoginPageState extends State<LoginPage> {
     if (!_passwordFormKey.currentState!.validate()) return;
     setState(() => _passwordLoggingIn = true);
     try {
-      await AuthService.instance
-          .passwordLogin(_phoneCtrl.text, _passwordCtrl.text);
+      await AuthService.instance.passwordLogin(
+        _phoneCtrl.text,
+        _passwordCtrl.text,
+      );
       // 登录成功后 AuthGate 自动切换到主界面
     } on DioException catch (e) {
       _showError(_message(e));
@@ -120,8 +122,10 @@ class _LoginPageState extends State<LoginPage> {
     if (!_usernameFormKey.currentState!.validate()) return;
     setState(() => _usernameLoggingIn = true);
     try {
-      await AuthService.instance
-          .usernameLogin(_usernameCtrl.text, _namePasswordCtrl.text);
+      await AuthService.instance.usernameLogin(
+        _usernameCtrl.text,
+        _namePasswordCtrl.text,
+      );
       // 登录成功后 AuthGate 自动切换到主界面
     } on DioException catch (e) {
       _showError(_message(e));
@@ -131,9 +135,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _goSetPassword() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SetPasswordPage()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SetPasswordPage()));
   }
 
   String _message(DioException e) {
@@ -147,8 +151,7 @@ class _LoginPageState extends State<LoginPage> {
 
   void _showError(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -164,24 +167,57 @@ class _LoginPageState extends State<LoginPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 48),
-                Icon(Icons.handyman, size: 64, color: colors.primary),
-                const SizedBox(height: 12),
-                Text(
-                  'DIY 手作工坊',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall,
+                Center(
+                  child: Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFFFF9BB0), Color(0xFFFF6687)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x33FF718D),
+                          blurRadius: 18,
+                          offset: Offset(0, 7),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 34,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 18),
                 Text(
-                  '未注册手机号将自动创建账号',
+                  '拾染爱恋',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: colors.textSecondary),
+                  style: TextStyle(
+                    color: colors.primary,
+                    fontSize: 27,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 7),
+                Text(
+                  '拼出美好 · 豆住快乐',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 30),
                 TabBar(
-                  labelColor: colors.textPrimary,
+                  labelColor: colors.primary,
                   unselectedLabelColor: colors.textSecondary,
-                  indicatorColor: colors.textPrimary,
+                  indicatorColor: colors.primary,
                   indicatorSize: TabBarIndicatorSize.label,
                   labelStyle: const TextStyle(
                     fontSize: 16,
@@ -230,8 +266,8 @@ class _LoginPageState extends State<LoginPage> {
             ),
             validator: (v) =>
                 (v == null || !RegExp(r'^1[3-9]\d{9}$').hasMatch(v))
-                    ? '请输入正确的手机号'
-                    : null,
+                ? '请输入正确的手机号'
+                : null,
           ),
           const SizedBox(height: 16),
           Row(
@@ -249,8 +285,8 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   validator: (v) =>
                       (v == null || !RegExp(r'^\d{6}$').hasMatch(v))
-                          ? '请输入 6 位验证码'
-                          : null,
+                      ? '请输入 6 位验证码'
+                      : null,
                 ),
               ),
               const SizedBox(width: 8),
@@ -262,7 +298,9 @@ class _LoginPageState extends State<LoginPage> {
                       : _sendCode,
                   child: Text(
                     _countdown > 0 ? '$_countdown 秒后重发' : '获取验证码',
-                    style: TextStyle(color: AppColors.of(context).textSecondary),
+                    style: TextStyle(
+                      color: AppColors.of(context).textSecondary,
+                    ),
                   ),
                 ),
               ),
@@ -302,8 +340,8 @@ class _LoginPageState extends State<LoginPage> {
             ),
             validator: (v) =>
                 (v == null || !RegExp(r'^1[3-9]\d{9}$').hasMatch(v))
-                    ? '请输入正确的手机号'
-                    : null,
+                ? '请输入正确的手机号'
+                : null,
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -324,8 +362,7 @@ class _LoginPageState extends State<LoginPage> {
                     setState(() => _obscurePassword = !_obscurePassword),
               ),
             ),
-            validator: (v) =>
-                (v == null || v.length < 6) ? '密码至少 6 位' : null,
+            validator: (v) => (v == null || v.length < 6) ? '密码至少 6 位' : null,
           ),
           const SizedBox(height: 4),
           Align(
@@ -387,12 +424,12 @@ class _LoginPageState extends State<LoginPage> {
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
                 ),
-                onPressed: () =>
-                    setState(() => _obscureNamePassword = !_obscureNamePassword),
+                onPressed: () => setState(
+                  () => _obscureNamePassword = !_obscureNamePassword,
+                ),
               ),
             ),
-            validator: (v) =>
-                (v == null || v.length < 6) ? '密码至少 6 位' : null,
+            validator: (v) => (v == null || v.length < 6) ? '密码至少 6 位' : null,
           ),
           const SizedBox(height: 4),
           Align(

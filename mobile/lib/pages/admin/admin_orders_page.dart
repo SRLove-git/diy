@@ -72,22 +72,52 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
   }
 
   Future<void> _operate(AdminOrder o, String action) async {
-    if (action == 'clockin') {
-      final ok = await _confirm('上钟', '确认为该预约上钟（开始服务）？');
-      if (ok != true) return;
-    } else {
-      final ok = await _confirm('下钟', '确认下钟（结束服务）？');
-      if (ok != true) return;
+    String title;
+    String content;
+    String success;
+    switch (action) {
+      case 'checkin':
+        title = '核销';
+        content = '确认核销该预约？核销后记录核销时间。';
+        success = '已核销';
+        break;
+      case 'clockin':
+        title = '上钟';
+        content = '确认为该预约上钟（开始服务）？';
+        success = '已上钟';
+        break;
+      case 'clockout':
+        title = '下钟';
+        content = '确认下钟（结束服务）？';
+        success = '已下钟';
+        break;
+      case 'cancel':
+        title = '取消订单';
+        content = '确认取消该预约订单？';
+        success = '已取消';
+        break;
+      default:
+        return;
     }
+    final ok = await _confirm(title, content);
+    if (ok != true) return;
     try {
-      if (action == 'clockin') {
-        await AdminApi.clockIn(o.id);
-      } else {
-        await AdminApi.clockOut(o.id);
+      switch (action) {
+        case 'checkin':
+          await AdminApi.adminCheckIn(o.id);
+          break;
+        case 'clockin':
+          await AdminApi.clockIn(o.id);
+          break;
+        case 'clockout':
+          await AdminApi.clockOut(o.id);
+          break;
+        case 'cancel':
+          await AdminApi.adminCancel(o.id);
+          break;
       }
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(action == 'clockin' ? '已上钟' : '已下钟')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(success)));
         _load();
       }
     } on DioException catch (e) {
@@ -211,24 +241,58 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
           _row('核销时间', _fmtTime(o.checkInTime), colors),
           _row('上钟 / 下钟', '${_fmtTime(o.serviceStartTime)} / ${_fmtTime(o.serviceEndTime)}', colors),
           _row('使用时长', _fmtDuration(o.serviceStartTime, o.serviceEndTime), colors),
-          if (o.status == 'checked_in' || o.status == 'in_service') ...[
+          if (o.status == 'booked' ||
+              o.status == 'checked_in' ||
+              o.status == 'in_service') ...[
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () => _operate(o, o.status == 'checked_in' ? 'clockin' : 'clockout'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: o.status == 'checked_in'
-                      ? const Color(0xFF2E9E5B)
-                      : colors.danger,
-                  minimumSize: const Size.fromHeight(40),
-                ),
-                child: Text(o.status == 'checked_in' ? '上钟' : '下钟'),
-              ),
-            ),
+            _buildActions(o, colors),
           ],
         ],
       ),
+    );
+  }
+
+  /// 操作区：待核销 → 核销 + 取消订单；已核销 → 上钟 + 取消订单；服务中 → 下钟
+  Widget _buildActions(AdminOrder o, AppColors colors) {
+    if (o.status == 'in_service') {
+      return SizedBox(
+        width: double.infinity,
+        child: FilledButton(
+          onPressed: () => _operate(o, 'clockout'),
+          style: FilledButton.styleFrom(
+            backgroundColor: colors.danger,
+            minimumSize: const Size.fromHeight(40),
+          ),
+          child: const Text('下钟'),
+        ),
+      );
+    }
+    final isBooked = o.status == 'booked';
+    return Row(
+      children: [
+        Expanded(
+          child: FilledButton(
+            onPressed: () => _operate(o, isBooked ? 'checkin' : 'clockin'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF2E9E5B),
+              minimumSize: const Size.fromHeight(40),
+            ),
+            child: Text(isBooked ? '核销' : '上钟'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: OutlinedButton(
+            onPressed: () => _operate(o, 'cancel'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: colors.danger,
+              side: BorderSide(color: colors.danger),
+              minimumSize: const Size.fromHeight(40),
+            ),
+            child: const Text('取消订单'),
+          ),
+        ),
+      ],
     );
   }
 

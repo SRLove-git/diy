@@ -308,6 +308,17 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  /** 管理端取消预约（仅待核销/已核销状态，服务开始前） */
+  async adminCancel(id: number): Promise<Appointment> {
+    const appt = await this.appointments.findOneBy({ id });
+    if (!appt) throw new NotFoundException('预约单不存在');
+    if (appt.status !== 'booked' && appt.status !== 'checked_in') {
+      throw new BadRequestException('仅待核销或已核销状态的预约可取消');
+    }
+    appt.status = 'cancelled';
+    return this.appointments.save(appt);
+  }
+
   /** 管理端核销（按 ID，管理员/店员代操作） */
   async adminCheckIn(id: number): Promise<Appointment> {
     const appt = await this.appointments.findOneBy({ id });

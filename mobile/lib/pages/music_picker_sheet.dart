@@ -112,7 +112,8 @@ class _MusicPickerSheetState extends State<MusicPickerSheet> {
                 const Spacer(),
                 // 原声：清除配乐
                 GestureDetector(
-                  onTap: () => Navigator.pop(context, const MusicPickResult(null)),
+                  onTap: () =>
+                      Navigator.pop(context, const MusicPickResult(null)),
                   child: Row(
                     children: [
                       Icon(
@@ -120,7 +121,7 @@ class _MusicPickerSheetState extends State<MusicPickerSheet> {
                             ? Icons.check_circle_rounded
                             : Icons.music_off_rounded,
                         color: widget.current == null
-                            ? const Color(0xFFFE2C55)
+                            ? const Color(0xFFFF718D)
                             : Colors.white,
                         size: 18,
                       ),
@@ -169,19 +170,18 @@ class _MusicPickerSheetState extends State<MusicPickerSheet> {
                     child: CircularProgressIndicator(color: Colors.white30),
                   )
                 : _items.isEmpty
-                    ? const Center(
-                        child: Text(
-                          '未找到相关音乐',
-                          style: TextStyle(color: Color(0xFF8A8A96)),
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        itemCount: _items.length,
-                        separatorBuilder: (_, _) =>
-                            const SizedBox(height: 2),
-                        itemBuilder: (_, i) => _buildItem(_items[i]),
-                      ),
+                ? const Center(
+                    child: Text(
+                      '未找到相关音乐',
+                      style: TextStyle(color: Color(0xFF8A8A96)),
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    itemCount: _items.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 2),
+                    itemBuilder: (_, i) => _buildItem(_items[i]),
+                  ),
           ),
         ],
       ),
@@ -265,7 +265,9 @@ class _MusicPickerSheetState extends State<MusicPickerSheet> {
               selected
                   ? Icons.check_circle_rounded
                   : Icons.radio_button_unchecked,
-              color: selected ? const Color(0xFFFE2C55) : const Color(0xFF4A4A56),
+              color: selected
+                  ? const Color(0xFFFF718D)
+                  : const Color(0xFF4A4A56),
               size: 20,
             ),
           ],

@@ -18,11 +18,8 @@ Future<void> showCommentSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _CommentSheet(
-      post: post,
-      comments: comments,
-      currentUser: currentUser,
-    ),
+    builder: (_) =>
+        _CommentSheet(post: post, comments: comments, currentUser: currentUser),
   );
 }
 
@@ -83,7 +80,9 @@ class _CommentSheetState extends State<_CommentSheet> {
             width: 36,
             height: 4,
             decoration: BoxDecoration(
-              color: palette.isDark ? const Color(0xFF3A3A44) : const Color(0xFFE0E0E6),
+              color: palette.isDark
+                  ? const Color(0xFF3A3A44)
+                  : const Color(0xFFE0E0E6),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -96,13 +95,20 @@ class _CommentSheetState extends State<_CommentSheet> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: palette.isDark ? const Color(0xFFE6E6EC) : const Color(0xFF2B2B33),
+                    color: palette.isDark
+                        ? const Color(0xFFE6E6EC)
+                        : const Color(0xFF2B2B33),
                   ),
                 ),
                 const SizedBox(width: 6),
                 Text(
                   '${_comments.length}',
-                  style: TextStyle(fontSize: 13, color: palette.isDark ? const Color(0xFF9A9AA6) : const Color(0xFF8A8A94)),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: palette.isDark
+                        ? const Color(0xFF9A9AA6)
+                        : const Color(0xFF8A8A94),
+                  ),
                 ),
               ],
             ),
@@ -113,7 +119,11 @@ class _CommentSheetState extends State<_CommentSheet> {
                 ? Center(
                     child: Text(
                       '还没有评论，来抢沙发～',
-                      style: TextStyle(color: palette.isDark ? const Color(0xFF9A9AA6) : const Color(0xFF8A8A94)),
+                      style: TextStyle(
+                        color: palette.isDark
+                            ? const Color(0xFF9A9AA6)
+                            : const Color(0xFF8A8A94),
+                      ),
                     ),
                   )
                 : ListView.separated(
@@ -143,12 +153,17 @@ class _CommentSheetState extends State<_CommentSheet> {
                   hintText: '友善评论，温暖手作圈…',
                   isDense: true,
                   filled: true,
-                  fillColor: palette.isDark ? const Color(0xFF23232C) : const Color(0xFFF2F2F4),
+                  fillColor: palette.isDark
+                      ? const Color(0xFF23232C)
+                      : const Color(0xFFF2F2F4),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(22),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                 ),
                 style: const TextStyle(fontSize: 14),
                 textInputAction: TextInputAction.send,
@@ -157,7 +172,7 @@ class _CommentSheetState extends State<_CommentSheet> {
             ),
             const SizedBox(width: 6),
             IconButton(
-              icon: const Icon(Icons.send_rounded, color: Color(0xFF465FFF)),
+              icon: const Icon(Icons.send_rounded, color: Color(0xFFFF718D)),
               onPressed: _send,
             ),
           ],
@@ -191,7 +206,9 @@ class _CommentRow extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
-                      color: palette.isDark ? const Color(0xFF9A9AA6) : const Color(0xFF8A8A94),
+                      color: palette.isDark
+                          ? const Color(0xFF9A9AA6)
+                          : const Color(0xFF8A8A94),
                     ),
                   ),
                   const Spacer(),
@@ -199,7 +216,9 @@ class _CommentRow extends StatelessWidget {
                     timeAgo(comment.createdAt),
                     style: TextStyle(
                       fontSize: 11,
-                      color: palette.isDark ? const Color(0xFF6A6A76) : const Color(0xFFB0B0BA),
+                      color: palette.isDark
+                          ? const Color(0xFF6A6A76)
+                          : const Color(0xFFB0B0BA),
                     ),
                   ),
                 ],
@@ -210,7 +229,9 @@ class _CommentRow extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   height: 1.4,
-                  color: palette.isDark ? const Color(0xFFE6E6EC) : const Color(0xFF2B2B33),
+                  color: palette.isDark
+                      ? const Color(0xFFE6E6EC)
+                      : const Color(0xFF2B2B33),
                 ),
               ),
             ],
@@ -243,7 +264,9 @@ class _ShareSheet extends StatelessWidget {
   void _pick(BuildContext context, String label) {
     Navigator.pop(context);
     if (label == '复制链接') {
-      Clipboard.setData(const ClipboardData(text: 'https://diy.example.com/post/1'));
+      Clipboard.setData(
+        const ClipboardData(text: 'https://diy.example.com/post/1'),
+      );
     }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -272,7 +295,9 @@ class _ShareSheet extends StatelessWidget {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: palette.isDark ? const Color(0xFF3A3A44) : const Color(0xFFE0E0E6),
+                color: palette.isDark
+                    ? const Color(0xFF3A3A44)
+                    : const Color(0xFFE0E0E6),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -282,7 +307,9 @@ class _ShareSheet extends StatelessWidget {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
-                color: palette.isDark ? const Color(0xFFE6E6EC) : const Color(0xFF2B2B33),
+                color: palette.isDark
+                    ? const Color(0xFFE6E6EC)
+                    : const Color(0xFF2B2B33),
               ),
             ),
             const SizedBox(height: 18),
@@ -303,7 +330,7 @@ class _ShareSheet extends StatelessWidget {
                             gradient: const LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [Color(0xFF465FFF), Color(0xFF7A5CFF)],
+                              colors: [Color(0xFFFF718D), Color(0xFF8B73F6)],
                             ),
                           ),
                           child: Icon(o.icon, color: Colors.white, size: 24),
@@ -313,7 +340,9 @@ class _ShareSheet extends StatelessWidget {
                           o.label,
                           style: TextStyle(
                             fontSize: 12,
-                            color: palette.isDark ? const Color(0xFFB8B8C4) : const Color(0xFF565662),
+                            color: palette.isDark
+                                ? const Color(0xFFB8B8C4)
+                                : const Color(0xFF565662),
                           ),
                         ),
                       ],
@@ -364,21 +393,30 @@ class _MoreSheet extends StatelessWidget {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: palette.isDark ? const Color(0xFF3A3A44) : const Color(0xFFE0E0E6),
+                color: palette.isDark
+                    ? const Color(0xFF3A3A44)
+                    : const Color(0xFFE0E0E6),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 8),
             for (final a in _actions)
               ListTile(
-                leading: Icon(a.icon, color: palette.isDark ? const Color(0xFFB8B8C4) : const Color(0xFF565662)),
+                leading: Icon(
+                  a.icon,
+                  color: palette.isDark
+                      ? const Color(0xFFB8B8C4)
+                      : const Color(0xFF565662),
+                ),
                 title: Text(
                   a.label,
                   style: TextStyle(
                     fontSize: 15,
                     color: a.label == '举报'
                         ? CommunityPalette.love
-                        : (palette.isDark ? const Color(0xFFE6E6EC) : const Color(0xFF2B2B33)),
+                        : (palette.isDark
+                              ? const Color(0xFFE6E6EC)
+                              : const Color(0xFF2B2B33)),
                   ),
                 ),
                 onTap: () {

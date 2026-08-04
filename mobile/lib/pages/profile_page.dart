@@ -215,8 +215,9 @@ class _ProfilePageState extends State<ProfilePage> {
         await AuthService.instance.updateNickname(nickname);
       } on DioException catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(PostApi.messageOf(e))));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(PostApi.messageOf(e))));
         }
       }
     }
@@ -308,6 +309,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   // ─── 1. 顶部导航栏（60px） ───
   Widget _buildHeader(User? user) {
+    final colors = AppColors.of(context);
     final name = user?.nickname.isNotEmpty == true ? user!.nickname : '手作新人';
     return SizedBox(
       height: 56,
@@ -323,9 +325,13 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                const Icon(Icons.arrow_drop_down, size: 20),
+                Icon(Icons.arrow_drop_down, size: 20, color: colors.primary),
               ],
             ),
           ),
@@ -333,7 +339,7 @@ class _ProfilePageState extends State<ProfilePage> {
           Positioned(
             left: 4,
             child: IconButton(
-              icon: const Icon(Icons.add),
+              icon: Icon(Icons.add_rounded, color: colors.primary),
               onPressed: _openCreate,
             ),
           ),
@@ -341,7 +347,7 @@ class _ProfilePageState extends State<ProfilePage> {
           Positioned(
             right: 4,
             child: IconButton(
-              icon: const Icon(Icons.menu),
+              icon: Icon(Icons.menu_rounded, color: colors.textPrimary),
               onPressed: _openAccountMenu,
             ),
           ),
@@ -368,7 +374,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   height: 90,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Color(0xFFE8C9B8),
+                    color: Color(0xFFFFDCE5),
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: _isValidImageUrl(user?.avatar)
@@ -412,7 +418,10 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -474,8 +483,9 @@ class _ProfilePageState extends State<ProfilePage> {
         height: 40,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(10),
+          color: colors.placeholder,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.divider),
         ),
         child: Text(
           label,
@@ -501,7 +511,7 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Row(
         children: List.generate(3, (i) {
           final active = _tab == i;
-          final color = active ? colors.textPrimary : colors.textSecondary;
+          final color = active ? colors.primary : colors.textSecondary;
           return Expanded(
             child: GestureDetector(
               onTap: () => setState(() => _tab = i),
@@ -518,7 +528,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   // 激活 tab 底部黑线
                   Container(
                     height: 2,
-                    color: active ? colors.textPrimary : Colors.transparent,
+                    color: active ? colors.primary : Colors.transparent,
                   ),
                 ],
               ),
@@ -558,10 +568,8 @@ class _ProfilePageState extends State<ProfilePage> {
         mainAxisSpacing: 2,
         crossAxisSpacing: 2,
       ),
-      itemBuilder: (_, i) => _GridCell(
-        post: _posts[i],
-        onTap: () => _openDetail(_posts[i]),
-      ),
+      itemBuilder: (_, i) =>
+          _GridCell(post: _posts[i], onTap: () => _openDetail(_posts[i])),
     );
   }
 
@@ -587,7 +595,8 @@ class _GridCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      child: post.images.isNotEmpty &&
+      child:
+          post.images.isNotEmpty &&
               (post.images.first.startsWith('http://') ||
                   post.images.first.startsWith('https://'))
           ? Image.network(

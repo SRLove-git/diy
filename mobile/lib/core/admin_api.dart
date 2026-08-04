@@ -489,6 +489,16 @@ class AdminApi {
     await ApiClient.instance.post('/admin/appointments/$id/clockout');
   }
 
+  /// 管理端核销（店员代操作，booked → checked_in）
+  static Future<void> adminCheckIn(int id) async {
+    await ApiClient.instance.post('/admin/appointments/$id/checkin');
+  }
+
+  /// 管理端取消预约（待核销/已核销状态）
+  static Future<void> adminCancel(int id) async {
+    await ApiClient.instance.post('/admin/appointments/$id/cancel');
+  }
+
   // ─── 作品审核 ───
 
   static Future<Paged<AdminPost>> fetchPosts({String? status, int page = 1}) async {

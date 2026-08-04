@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// 全局语义配色：对齐《个人页面设计初稿》白色模式 / 黑色模式
+/// 拾染爱恋全局语义配色。
 ///
 /// 页面里不再直接写死颜色，统一通过 [AppColors.of] 取主题色，
 /// 保证切到深色模式时整站自动换色。
@@ -37,26 +37,26 @@ class AppColors extends ThemeExtension<AppColors> {
   /// 危险操作（退出登录等）
   final Color danger;
 
-  /// 白色模式（默认）—— 简洁年轻风
+  /// 浅色模式：与首页统一的粉白手作风格。
   static const light = AppColors(
-    primary: Color(0xFFFF6B6B),
-    surface: Color(0xFFF8F9FC),
-    textPrimary: Color(0xFF1A1A2E),
-    textSecondary: Color(0xFFA0A0B0),
-    divider: Color(0xFFE8E8EC),
-    placeholder: Color(0xFFF0F0F4),
+    primary: Color(0xFFFF718D),
+    surface: Color(0xFFFFFFFF),
+    textPrimary: Color(0xFF333033),
+    textSecondary: Color(0xFF8F898C),
+    divider: Color(0xFFF0E5E8),
+    placeholder: Color(0xFFFFF0F3),
     danger: Color(0xFFD9453E),
   );
 
   /// 黑色模式
   static const dark = AppColors(
-    primary: Color(0xFFFF6B6B),
-    surface: Color(0xFF12121A),
-    textPrimary: Color(0xFFF0F0F5),
-    textSecondary: Color(0xFF888896),
-    divider: Color(0xFF2A2A35),
-    placeholder: Color(0xFF1E1E28),
-    danger: Color(0xFFFF6B6B),
+    primary: Color(0xFFFF8FA6),
+    surface: Color(0xFF1C191C),
+    textPrimary: Color(0xFFF8F3F5),
+    textSecondary: Color(0xFFAAA2A6),
+    divider: Color(0xFF373037),
+    placeholder: Color(0xFF2A2429),
+    danger: Color(0xFFFF8A8A),
   );
 
   static AppColors of(BuildContext context) =>

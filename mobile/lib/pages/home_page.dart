@@ -13,65 +13,6 @@ import 'checkin/my_checkin_qr_page.dart';
 import 'checkin/scan_checkin_page.dart';
 import 'checkin/service_timer_page.dart';
 
-// ════════════════════════════════════════════════
-// 点击缩放动画包装器
-// ════════════════════════════════════════════════
-
-class _TapScaleBounce extends StatefulWidget {
-  const _TapScaleBounce({required this.child, this.onTap, this.scale = 0.96});
-  final Widget child;
-  final VoidCallback? onTap;
-  final double scale;
-
-  @override
-  State<_TapScaleBounce> createState() => _TapScaleBounceState();
-}
-
-class _TapScaleBounceState extends State<_TapScaleBounce>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 120),
-    );
-    _anim = Tween<double>(begin: 1.0, end: widget.scale).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _ctrl.forward(),
-      onTapUp: (_) {
-        _ctrl.reverse();
-        widget.onTap?.call();
-      },
-      onTapCancel: () => _ctrl.reverse(),
-      child: AnimatedBuilder(
-        animation: _anim,
-        builder: (_, child) => Transform.scale(scale: _anim.value, child: child),
-        child: widget.child,
-      ),
-    );
-  }
-}
-
-// ════════════════════════════════════════════════
-// Mock 商品数据模型
-// ════════════════════════════════════════════════
-
 class MockProduct {
   const MockProduct({
     required this.name,
@@ -88,36 +29,39 @@ class MockProduct {
   final int collections;
 }
 
-// ════════════════════════════════════════════════
-// HomePage
-// ════════════════════════════════════════════════
-
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, this.loadActiveAppointments = true});
+
+  final bool loadActiveAppointments;
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  List<Appointment> _activeAppts = [];
+  List<Appointment> _activeAppointments = [];
   Timer? _tickTimer;
   Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
-    _loadActive();
+    if (!widget.loadActiveAppointments) return;
+    _loadActiveAppointments();
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted &&
-          _activeAppts.any(
-            (a) => a.status == 'in_service' && a.serviceStartTime != null,
+          _activeAppointments.any(
+            (appointment) =>
+                appointment.status == 'in_service' &&
+                appointment.serviceStartTime != null,
           )) {
         setState(() {});
       }
     });
-    _pollTimer =
-        Timer.periodic(const Duration(seconds: 3), (_) => _loadActive());
+    _pollTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => _loadActiveAppointments(),
+    );
   }
 
   @override
@@ -127,247 +71,212 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  Future<void> _loadActive() async {
+  Future<void> _loadActiveAppointments() async {
     try {
-      final resp = await ApiClient.instance.get('/appointments');
+      final response = await ApiClient.instance.get('/appointments');
       if (!mounted) return;
-      final active = (resp.data as List)
-          .map((e) => Appointment.fromJson(e as Map<String, dynamic>))
-          .where((a) => a.status == 'in_service' || a.status == 'checked_in')
+      final appointments = (response.data as List)
+          .map((item) => Appointment.fromJson(item as Map<String, dynamic>))
+          .where(
+            (appointment) =>
+                appointment.status == 'in_service' ||
+                appointment.status == 'checked_in',
+          )
           .toList();
-      setState(() => _activeAppts = active);
+      setState(() => _activeAppointments = appointments);
     } on DioException {
-      // 忽略
+      // The home content remains available while the active service request fails.
     }
   }
 
-  Future<void> _openActiveService(Appointment appt) async {
+  Future<void> _openActiveService(Appointment appointment) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ServiceTimerPage(appointmentId: appt.id),
+        builder: (_) => ServiceTimerPage(appointmentId: appointment.id),
       ),
     );
-    _loadActive();
+    _loadActiveAppointments();
+  }
+
+  void _openBooking() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const BookingFlowPage()));
   }
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = AuthService.instance.isAdmin;
-
     return Scaffold(
       backgroundColor: HomePalette.background,
       body: SafeArea(
+        bottom: false,
         child: ListenableBuilder(
           listenable: AuthService.instance,
-          builder: (context, _) => CustomScrollView(
-            slivers: [
-              // 顶部 Header
-              SliverToBoxAdapter(child: HomeHeader(isAdmin: isAdmin)),
-              // 功能入口卡片
-              SliverToBoxAdapter(
-                child: FeatureEntryRow(
-                  onBooking: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => const BookingFlowPage()),
-                  ),
-                  onCheckIn: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => isAdmin
-                          ? const ScanCheckInPage()
-                          : const MyCheckInQrPage(),
-                    ),
-                  ),
-                  onMembership: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => const MemberPlanPage()),
-                  ),
-                  isAdmin: isAdmin,
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
-              // 快捷功能
-              const SliverToBoxAdapter(child: ShortcutBar()),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
-              // Banner
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: PromoBanner(
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                          builder: (_) => const BookingFlowPage()),
-                    ),
-                  ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              // 热门推荐
-              const SliverToBoxAdapter(child: HotRecommendSection()),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
-              // 进行中的服务
-              if (_activeAppts.isNotEmpty) ...[
+          builder: (context, _) {
+            final isAdmin = AuthService.instance.isAdmin;
+            return CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(child: HomeHeader(isAdmin: isAdmin)),
                 SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '进行中的服务',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: HomePalette.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        ..._activeAppts.map(
-                          (appt) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: ActiveServiceCard(
-                              appt: appt,
-                              inService: appt.status == 'in_service',
-                              elapsed: appt.serviceStartTime != null
-                                  ? DateTime.now().difference(
-                                      DateTime.parse(appt.serviceStartTime!))
-                                  : Duration.zero,
-                              onTap: () => _openActiveService(appt),
-                            ),
-                          ),
-                        ),
-                      ],
+                  child: FeatureEntryRow(
+                    isAdmin: isAdmin,
+                    onBooking: _openBooking,
+                    onCheckIn: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => isAdmin
+                            ? const ScanCheckInPage()
+                            : const MyCheckInQrPage(),
+                      ),
+                    ),
+                    onMembership: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const MemberPlanPage()),
                     ),
                   ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                const SliverToBoxAdapter(child: ShortcutBar()),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: PromoBanner(onTap: _openBooking),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 26)),
+                const SliverToBoxAdapter(child: HotRecommendSection()),
+                if (_activeAppointments.isNotEmpty) ...[
+                  const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                  SliverToBoxAdapter(
+                    child: ActiveServiceSection(
+                      appointments: _activeAppointments,
+                      onTap: _openActiveService,
+                    ),
+                  ),
+                ],
+                const SliverToBoxAdapter(child: SizedBox(height: 96)),
               ],
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
   }
 }
 
-// ════════════════════════════════════════════════
-// 1. 顶部 Header（品牌标语 + 通知 + 头像）
-// ════════════════════════════════════════════════
-
 class HomeHeader extends StatelessWidget {
   const HomeHeader({super.key, required this.isAdmin});
+
   final bool isAdmin;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 75,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 15, 18, 19),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 左侧品牌区
-          Expanded(
+          const Expanded(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   '拾染爱恋',
                   style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
                     color: HomePalette.primary,
-                    letterSpacing: 0.5,
+                    fontSize: 25,
+                    height: 1.2,
+                    fontWeight: FontWeight.w900,
+                    shadows: [
+                      Shadow(color: Color(0x33FF718D), offset: Offset(1, 1)),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 2),
-                const Text(
+                SizedBox(height: 6),
+                Text(
                   '拼出美好 · 豆住快乐',
                   style: TextStyle(
-                    fontSize: 11,
-                    color: HomePalette.textSecondary,
-                    fontWeight: FontWeight.w400,
+                    color: Color(0xFF777777),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
-          // 右侧：通知 + 头像
-          _buildNotificationBadge(),
+          _NotificationButton(count: isAdmin ? 12 : 6),
           const SizedBox(width: 14),
-          _buildAvatar(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNotificationBadge() {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF5F5F5),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(
-            Icons.notifications_outlined,
-            color: HomePalette.textSecondary,
-            size: 18,
-          ),
-        ),
-        Positioned(
-          top: -2,
-          right: -2,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+          Container(
+            width: 44,
+            height: 44,
+            padding: const EdgeInsets.all(2),
             decoration: const BoxDecoration(
-              color: HomePalette.badgeRed,
+              color: Color(0xFFFFE9EF),
               shape: BoxShape.circle,
             ),
-            constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-            child: const Text(
-              '12',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
+            child: ClipOval(
+              child: Image.asset(
+                'assets/images/home/avatar.png',
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const ColoredBox(
+                  color: Color(0xFFFFDCE5),
+                  child: Icon(Icons.person, color: HomePalette.primary),
+                ),
               ),
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAvatar() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: Image.asset(
-        'assets/images/home/avatar.png',
-        width: 36,
-        height: 36,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: HomePalette.primary.withAlpha(30),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: const Icon(Icons.person, color: HomePalette.primary, size: 18),
-        ),
+        ],
       ),
     );
   }
 }
 
-// ════════════════════════════════════════════════
-// 2. 功能入口区域（三张白色卡片）
-// ════════════════════════════════════════════════
+class _NotificationButton extends StatelessWidget {
+  const _NotificationButton({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 38,
+      height: 44,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const Align(
+            alignment: Alignment.bottomLeft,
+            child: Icon(
+              Icons.notifications_none_rounded,
+              color: HomePalette.textPrimary,
+              size: 28,
+            ),
+          ),
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 22, minHeight: 22),
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: HomePalette.badgeRed,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '$count',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class FeatureEntryRow extends StatelessWidget {
   const FeatureEntryRow({
@@ -385,127 +294,128 @@ class FeatureEntryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final entries = [
+      _FeatureEntry(
+        icon: Icons.event_available_rounded,
+        colors: const [Color(0xFFFF9BB0), Color(0xFFFF6687)],
+        title: '到店预约',
+        subtitle: '预约手作时间',
+        onTap: onBooking,
+      ),
+      _FeatureEntry(
+        icon: isAdmin ? Icons.qr_code_scanner_rounded : Icons.qr_code_2_rounded,
+        colors: const [Color(0xFFA895FF), Color(0xFF7563EC)],
+        title: isAdmin ? '扫码核销' : '到店核销',
+        subtitle: '快速开始制作',
+        onTap: onCheckIn,
+      ),
+      _FeatureEntry(
+        icon: Icons.card_membership_rounded,
+        colors: const [Color(0xFFFFCA68), Color(0xFFFFA62E)],
+        title: '会员套餐',
+        subtitle: '查看会员权益',
+        onTap: onMembership,
+      ),
+    ];
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: _FeatureCard(
-              icon: Icons.calendar_month_rounded,
-              iconBgColor: HomePalette.iconPinkBg,
-              iconColor: HomePalette.primary,
-              title: '到店预约',
-              subtitle: '预约手作时间',
-              onTap: onBooking,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _FeatureCard(
-              icon: isAdmin
-                  ? Icons.qr_code_scanner_rounded
-                  : Icons.qr_code_rounded,
-              iconBgColor: HomePalette.iconPurpleBg,
-              iconColor: const Color(0xFF8B7CF6),
-              title: isAdmin ? '扫码核销' : '到店核销',
-              subtitle: '快速开始制作',
-              onTap: onCheckIn,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _FeatureCard(
-              icon: Icons.card_membership_rounded,
-              iconBgColor: HomePalette.iconYellowBg,
-              iconColor: const Color(0xFFF0A040),
-              title: '会员套餐',
-              subtitle: '查看会员权益',
-              onTap: onMembership,
-            ),
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final spacing = constraints.maxWidth < 350 ? 8.0 : 10.0;
+          return Row(
+            children: [
+              for (var index = 0; index < entries.length; index++) ...[
+                Expanded(child: _FeatureCard(entry: entries[index])),
+                if (index != entries.length - 1) SizedBox(width: spacing),
+              ],
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-class _FeatureCard extends StatelessWidget {
-  const _FeatureCard({
+class _FeatureEntry {
+  const _FeatureEntry({
     required this.icon,
-    required this.iconBgColor,
-    required this.iconColor,
+    required this.colors,
     required this.title,
     required this.subtitle,
     required this.onTap,
   });
 
   final IconData icon;
-  final Color iconBgColor;
-  final Color iconColor;
+  final List<Color> colors;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+}
+
+class _FeatureCard extends StatelessWidget {
+  const _FeatureCard({required this.entry});
+
+  final _FeatureEntry entry;
 
   @override
   Widget build(BuildContext context) {
-    return _TapScaleBounce(
-      onTap: onTap,
+    return _TapScale(
+      onTap: entry.onTap,
       child: Container(
-        height: 140,
+        height: 152,
+        padding: const EdgeInsets.fromLTRB(8, 22, 8, 15),
         decoration: BoxDecoration(
-          color: HomePalette.card,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
+          color: Colors.white.withAlpha(245),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: const [
             BoxShadow(
-              color: Colors.black.withAlpha(13),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
+              color: Color(0x0D7A4754),
+              blurRadius: 18,
+              offset: Offset(0, 6),
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 彩色圆形图标
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: iconBgColor,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(icon, color: iconColor, size: 20),
-              ),
-              const Spacer(),
-              Text(
-                title,
+        child: Column(
+          children: [
+            _GradientIcon(
+              icon: entry.icon,
+              colors: entry.colors,
+              size: 48,
+              iconSize: 25,
+              radius: 11,
+            ),
+            const Spacer(),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                entry.title,
+                maxLines: 1,
                 style: const TextStyle(
+                  color: Color(0xFF252525),
                   fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: HomePalette.textPrimary,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
+            ),
+            const SizedBox(height: 6),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                entry.subtitle,
+                maxLines: 1,
                 style: const TextStyle(
-                  fontSize: 13,
                   color: HomePalette.textSecondary,
+                  fontSize: 12,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
-
-// ════════════════════════════════════════════════
-// 3. 快捷功能区域
-// ════════════════════════════════════════════════
 
 class ShortcutBar extends StatelessWidget {
   const ShortcutBar({super.key});
@@ -513,184 +423,253 @@ class ShortcutBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const items = [
-      (
+      _ShortcutData(
         icon: Icons.auto_awesome_rounded,
         label: '新品推荐',
-        bgColor: HomePalette.iconPinkBg,
-        fgColor: HomePalette.primary,
+        colors: [Color(0xFFFF8199), Color(0xFFFF506F)],
       ),
-      (
-        icon: Icons.card_giftcard_rounded,
-        label: '领取中心',
-        bgColor: HomePalette.iconPurpleBg,
-        fgColor: Color(0xFF8B7CF6),
+      _ShortcutData(
+        icon: Icons.redeem_rounded,
+        label: '领券中心',
+        colors: [Color(0xFFFFC05B), Color(0xFFFF9D29)],
       ),
-      (
-        icon: Icons.star_rounded,
+      _ShortcutData(
+        icon: Icons.workspace_premium_rounded,
         label: '会员专享',
-        bgColor: HomePalette.iconYellowBg,
-        fgColor: Color(0xFFF0A040),
+        colors: [Color(0xFFA37AFF), Color(0xFF774CE8)],
       ),
-      (
+      _ShortcutData(
         icon: Icons.local_fire_department_rounded,
         label: '热门排行',
-        bgColor: HomePalette.iconTealBg,
-        fgColor: Color(0xFF4DC0B5),
+        colors: [Color(0xFF83CCFF), Color(0xFF5799EC)],
       ),
     ];
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: items.map((item) {
-          return GestureDetector(
-            onTap: () {},
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: item.bgColor,
-                    borderRadius: BorderRadius.circular(26),
+        children: items
+            .map(
+              (item) => Expanded(
+                child: Semantics(
+                  button: true,
+                  label: item.label,
+                  child: InkResponse(
+                    radius: 34,
+                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${item.label}即将上线'),
+                        duration: const Duration(seconds: 1),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _GradientIcon(
+                          icon: item.icon,
+                          colors: item.colors,
+                          size: 46,
+                          iconSize: 23,
+                          radius: 23,
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          item.label,
+                          maxLines: 1,
+                          style: const TextStyle(
+                            color: HomePalette.textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Icon(item.icon, color: item.fgColor, size: 24),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  item.label,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: HomePalette.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
+              ),
+            )
+            .toList(),
       ),
     );
   }
 }
 
-// ════════════════════════════════════════════════
-// 4. Banner 区域
-// ════════════════════════════════════════════════
+class _ShortcutData {
+  const _ShortcutData({
+    required this.icon,
+    required this.label,
+    required this.colors,
+  });
+
+  final IconData icon;
+  final String label;
+  final List<Color> colors;
+}
+
+class _GradientIcon extends StatelessWidget {
+  const _GradientIcon({
+    required this.icon,
+    required this.colors,
+    required this.size,
+    required this.iconSize,
+    required this.radius,
+  });
+
+  final IconData icon;
+  final List<Color> colors;
+  final double size;
+  final double iconSize;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colors,
+        ),
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: [
+          BoxShadow(
+            color: colors.last.withAlpha(45),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Icon(icon, color: Colors.white, size: iconSize),
+    );
+  }
+}
 
 class PromoBanner extends StatelessWidget {
   const PromoBanner({super.key, required this.onTap});
+
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width - 32;
-
-    return _TapScaleBounce(
+    return _TapScale(
       onTap: onTap,
-      child: Container(
-        height: 170,
-        decoration: BoxDecoration(
-          color: HomePalette.bannerBg,
-          borderRadius: BorderRadius.circular(28),
-        ),
-        child: Stack(
-          children: [
-            // 右侧拼豆作品图 — 占40%
-            Positioned(
-              right: 0,
-              top: 0,
-              bottom: 0,
-              width: screenWidth * 0.40,
-              child: ClipRRect(
-                borderRadius:
-                    const BorderRadius.horizontal(right: Radius.circular(28)),
-                child: Hero(
-                  tag: 'banner_art',
-                  child: Image.asset(
-                    'assets/images/home/banner_art.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                  ),
-                ),
+      child: SizedBox(
+        height: (MediaQuery.sizeOf(context).width * 0.42).clamp(158.0, 170.0),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFFFDEE6), Color(0xFFFFF4F2)],
               ),
             ),
-            // 左侧文字区 — 占60%
-            Padding(
-              padding: const EdgeInsets.only(left: 24, right: 8),
-              child: SizedBox(
-                width: screenWidth * 0.56,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Stack(
                   children: [
-                    const Text(
-                      '创意拼豆手作工坊',
-                      style: TextStyle(
-                        color: HomePalette.textPrimary,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.3,
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      bottom: 0,
+                      width: constraints.maxWidth * 0.48,
+                      child: Image.asset(
+                        'assets/images/home/banner_art.png',
+                        fit: BoxFit.cover,
+                        alignment: Alignment.centerRight,
+                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      '拼出你的独特创意',
-                      style: TextStyle(
-                        color: HomePalette.textSecondary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      '¥39.9 / 次起',
-                      style: TextStyle(
-                        color: HomePalette.primary,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 18, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: HomePalette.primary.withAlpha(20),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFFFFDEE6),
+                              const Color(0xFFFFDEE6).withAlpha(210),
+                              Colors.transparent,
+                            ],
+                            stops: const [0, 0.48, 0.72],
                           ),
-                        ],
-                      ),
-                      child: const Text(
-                        '立即预约',
-                        style: TextStyle(
-                          color: HomePalette.primary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
                         ),
                       ),
                     ),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        constraints.maxWidth < 350 ? 18 : 22,
+                        14,
+                        constraints.maxWidth * 0.39,
+                        12,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              '创意拼豆手作工坊',
+                              maxLines: 1,
+                              style: TextStyle(
+                                color: Color(0xFF292529),
+                                fontSize: 19,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          const Text(
+                            '拼出你的独特创意',
+                            style: TextStyle(
+                              color: Color(0xFF6F686B),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            '¥39.9 / 次起',
+                            style: TextStyle(
+                              color: HomePalette.primary,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 9),
+                          Container(
+                            height: 31,
+                            padding: const EdgeInsets.symmetric(horizontal: 17),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: HomePalette.primary,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Text(
+                              '立即预约',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
-                ),
-              ),
+                );
+              },
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
-
-// ════════════════════════════════════════════════
-// 5. 热门推荐区域
-// ════════════════════════════════════════════════
 
 class HotRecommendSection extends StatelessWidget {
   const HotRecommendSection({super.key});
@@ -700,52 +679,57 @@ class HotRecommendSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 标题栏
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                '热门推荐',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: HomePalette.textPrimary,
+              const Expanded(
+                child: Text(
+                  '热门推荐',
+                  style: TextStyle(
+                    color: Color(0xFF252525),
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-              GestureDetector(
+              InkWell(
+                borderRadius: BorderRadius.circular(16),
                 onTap: () {},
-                child: const Row(
-                  children: [
-                    Text(
-                      '查看更多',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: HomePalette.textSecondary,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 5, horizontal: 2),
+                  child: Row(
+                    children: [
+                      Text(
+                        '查看更多',
+                        style: TextStyle(
+                          color: HomePalette.textSecondary,
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
-                    Icon(Icons.chevron_right,
-                        size: 16, color: HomePalette.textSecondary),
-                  ],
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: HomePalette.textSecondary,
+                        size: 18,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
-        // 横向商品列表
+        const SizedBox(height: 13),
         SizedBox(
-          height: 164,
+          height: 214,
           child: ListView.separated(
+            physics: const BouncingScrollPhysics(),
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: _mockProducts.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, i) => ProductCard(
-              product: _mockProducts[i],
-              index: i,
-            ),
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (context, index) =>
+                ProductCard(product: _mockProducts[index], index: index),
           ),
         ),
       ],
@@ -755,103 +739,92 @@ class HotRecommendSection extends StatelessWidget {
 
 class ProductCard extends StatelessWidget {
   const ProductCard({super.key, required this.product, required this.index});
+
   final MockProduct product;
   final int index;
 
   @override
   Widget build(BuildContext context) {
-    return _TapScaleBounce(
-      child: Container(
-        width: 124,
-        decoration: BoxDecoration(
-          color: HomePalette.card,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(10),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+    final cardWidth = (MediaQuery.sizeOf(context).width * 0.30).clamp(
+      112.0,
+      132.0,
+    );
+    return _TapScale(
+      onTap: () {},
+      child: SizedBox(
+        width: cardWidth,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 图片
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              child: Hero(
-                tag: 'product_$index',
-                child: Image.asset(
-                  product.asset,
-                  width: 124,
-                  height: 100,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
-                    width: 124,
-                    height: 100,
-                    color: const Color(0xFFF5F5F5),
-                    child: const Center(
-                      child: Icon(Icons.image_outlined,
-                          color: Color(0xFFCCCCCC), size: 32),
-                    ),
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                product.asset,
+                width: cardWidth,
+                height: 126,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Container(
+                  width: cardWidth,
+                  height: 126,
+                  color: const Color(0xFFF6F1F2),
+                  child: const Icon(
+                    Icons.image_outlined,
+                    color: Color(0xFFC9C1C3),
                   ),
                 ),
               ),
             ),
-            // 信息
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: HomePalette.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          '¥${product.price.toStringAsFixed(1)} 起',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: HomePalette.primary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.star_border_rounded,
-                          size: 10, color: HomePalette.textSecondary),
-                      const SizedBox(width: 1),
-                      Text(
-                        _fmtCount(product.collections),
-                        style: const TextStyle(
-                            fontSize: 9, color: HomePalette.textSecondary),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.favorite_border_rounded,
-                          size: 10, color: HomePalette.textSecondary),
-                      const SizedBox(width: 1),
-                      Text(
-                        _fmtCount(product.likes),
-                        style: const TextStyle(
-                            fontSize: 9, color: HomePalette.textSecondary),
-                      ),
-                    ],
-                  ),
-                ],
+            const SizedBox(height: 9),
+            Text(
+              product.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF343034),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
               ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '¥${product.price.toStringAsFixed(1)} 起',
+              style: const TextStyle(
+                color: Color(0xFF6F6A6D),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(
+                  Icons.workspace_premium_outlined,
+                  size: 14,
+                  color: Color(0xFFA8A2A5),
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  _formatCount(product.collections),
+                  style: const TextStyle(
+                    color: Color(0xFFA8A2A5),
+                    fontSize: 10,
+                  ),
+                ),
+                const Spacer(),
+                const Icon(
+                  Icons.favorite_border_rounded,
+                  size: 14,
+                  color: Color(0xFFE49AA9),
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  _formatCount(product.likes),
+                  style: const TextStyle(
+                    color: Color(0xFFA8A2A5),
+                    fontSize: 10,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -859,188 +832,225 @@ class ProductCard extends StatelessWidget {
     );
   }
 }
-
-// ════════════════════════════════════════════════
-// Mock 商品数据
-// ════════════════════════════════════════════════
 
 const _mockProducts = [
   MockProduct(
     name: '库洛米系列',
     asset: 'assets/images/home/product_kuromi.png',
     price: 39.9,
-    likes: 2840,
-    collections: 1520,
+    likes: 128,
+    collections: 128,
   ),
   MockProduct(
     name: '星之卡比系列',
     asset: 'assets/images/home/product_kirby.png',
     price: 39.9,
-    likes: 1960,
-    collections: 1100,
+    likes: 96,
+    collections: 96,
   ),
   MockProduct(
     name: '花花系列',
     asset: 'assets/images/home/product_flower.png',
     price: 39.9,
-    likes: 3270,
-    collections: 1890,
+    likes: 76,
+    collections: 36,
   ),
   MockProduct(
     name: '可爱萌宠系列',
     asset: 'assets/images/home/product_pet.png',
     price: 39.9,
-    likes: 4210,
-    collections: 2340,
+    likes: 86,
+    collections: 58,
   ),
 ];
 
-// ════════════════════════════════════════════════
-// 6. 进行中的服务卡片
-// ════════════════════════════════════════════════
+class ActiveServiceSection extends StatelessWidget {
+  const ActiveServiceSection({
+    super.key,
+    required this.appointments,
+    required this.onTap,
+  });
+
+  final List<Appointment> appointments;
+  final ValueChanged<Appointment> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '进行中的服务',
+            style: TextStyle(
+              color: Color(0xFF252525),
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          for (final appointment in appointments)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: ActiveServiceCard(
+                appointment: appointment,
+                elapsed: appointment.serviceStartTime == null
+                    ? Duration.zero
+                    : DateTime.now().difference(
+                        DateTime.parse(appointment.serviceStartTime!),
+                      ),
+                onTap: () => onTap(appointment),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
 class ActiveServiceCard extends StatelessWidget {
   const ActiveServiceCard({
     super.key,
-    required this.appt,
-    required this.inService,
+    required this.appointment,
     required this.elapsed,
     required this.onTap,
   });
 
-  final Appointment appt;
-  final bool inService;
+  final Appointment appointment;
   final Duration elapsed;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return _TapScaleBounce(
+    final inService = appointment.status == 'in_service';
+    return _TapScale(
       onTap: onTap,
       child: Container(
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: HomePalette.card,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: const [
             BoxShadow(
-              color: Colors.black.withAlpha(8),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: Color(0x0F7A4754),
+              blurRadius: 16,
+              offset: Offset(0, 5),
             ),
           ],
         ),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(20),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: inService
+                    ? const Color(0xFFEAF9F1)
+                    : const Color(0xFFFFEFF3),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                inService ? Icons.timer_outlined : Icons.login_rounded,
+                color: inService
+                    ? const Color(0xFF22A866)
+                    : HomePalette.primary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: inService
-                          ? const Color(0xFF26DE81).withAlpha(25)
-                          : const Color(0xFFF5F5F5),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      inService ? Icons.timer_outlined : Icons.login_rounded,
-                      color: inService
-                          ? const Color(0xFF20B868)
-                          : HomePalette.textPrimary,
-                      size: 22,
+                  Text(
+                    appointment.storeName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: HomePalette.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          appt.storeName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                            color: HomePalette.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          '${appt.date} ${appt.startTime}-${appt.endTime} · 桌位 ${appt.tableName}',
-                          style: const TextStyle(
-                            color: HomePalette.textSecondary,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 4),
+                  Text(
+                    '${appointment.date} ${appointment.startTime}-${appointment.endTime} · ${appointment.tableName}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: HomePalette.textSecondary,
+                      fontSize: 11,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      if (inService) ...[
-                        Text(
-                          _fmtDuration(elapsed),
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF20B868),
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        const Text(
-                          '服务中',
-                          style: TextStyle(
-                            color: HomePalette.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ] else ...[
-                        const Text(
-                          '已核销',
-                          style: TextStyle(
-                            color: HomePalette.textPrimary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Text(
-                          '待上钟',
-                          style: TextStyle(
-                            color: HomePalette.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.chevron_right,
-                      color: HomePalette.textSecondary, size: 20),
                 ],
               ),
             ),
-          ),
+            const SizedBox(width: 8),
+            Text(
+              inService ? _formatDuration(elapsed) : '待上钟',
+              style: TextStyle(
+                color: inService
+                    ? const Color(0xFF22A866)
+                    : HomePalette.primary,
+                fontSize: inService ? 14 : 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: HomePalette.textSecondary,
+              size: 19,
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-String _fmtDuration(Duration d) {
-  final h = d.inHours.toString().padLeft(2, '0');
-  final m = (d.inMinutes % 60).toString().padLeft(2, '0');
-  final s = (d.inSeconds % 60).toString().padLeft(2, '0');
-  return '$h:$m:$s';
+class _TapScale extends StatefulWidget {
+  const _TapScale({required this.child, required this.onTap});
+
+  final Widget child;
+  final VoidCallback onTap;
+
+  @override
+  State<_TapScale> createState() => _TapScaleState();
 }
 
-String _fmtCount(int n) {
-  if (n >= 10000) return '${(n / 10000).toStringAsFixed(1)}w';
-  if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
-  return '$n';
+class _TapScaleState extends State<_TapScale> {
+  var _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _pressed ? 0.97 : 1,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          child: widget.child,
+        ),
+      ),
+    );
+  }
+}
+
+String _formatDuration(Duration duration) {
+  final hours = duration.inHours.toString().padLeft(2, '0');
+  final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+  final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+  return '$hours:$minutes:$seconds';
+}
+
+String _formatCount(int count) {
+  if (count >= 10000) return '${(count / 10000).toStringAsFixed(1)}w';
+  if (count >= 1000) return '${(count / 1000).toStringAsFixed(1)}k';
+  return '$count';
 }

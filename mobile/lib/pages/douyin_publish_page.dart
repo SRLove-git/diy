@@ -279,7 +279,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
   // ---------- 配色常量 ----------
   static const _bg = Color(0xFF121212);
   static const _btnBg = Color(0xFF2C2C2C);
-  static const _primary = Color(0xFFFE2C55);
+  static const _primary = Color(0xFFFF718D);
   static const _white = Colors.white;
   static const _hint = Color(0xFF888888);
   static const _border = Color(0xFF333333);
@@ -332,8 +332,8 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
           const Spacer(),
           // 预览按钮
           GestureDetector(
-            onTap: () => _toast(
-                _video == null && _photos.isEmpty ? '请先添加素材' : '预览（演示）'),
+            onTap: () =>
+                _toast(_video == null && _photos.isEmpty ? '请先添加素材' : '预览（演示）'),
             child: const Text(
               '预览',
               style: TextStyle(color: _white, fontSize: 15),
@@ -449,9 +449,11 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
                               ),
                               color: Colors.black54,
                               child: Text(
-                                _fileName(_video != null
-                                    ? _video!.name
-                                    : _photos.first.name),
+                                _fileName(
+                                  _video != null
+                                      ? _video!.name
+                                      : _photos.first.name,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
@@ -594,8 +596,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
         height: 72,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
-          itemCount:
-              _photos.length + (_photos.length >= _maxPhotos ? 0 : 1),
+          itemCount: _photos.length + (_photos.length >= _maxPhotos ? 0 : 1),
           separatorBuilder: (_, _) => const SizedBox(width: 8),
           itemBuilder: (_, i) {
             if (i == _photos.length) {
@@ -719,9 +720,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            isPhoto
-                ? '照片素材'
-                : (_video == null ? '点击添加视频或照片素材' : '已选择视频'),
+            isPhoto ? '照片素材' : (_video == null ? '点击添加视频或照片素材' : '已选择视频'),
             style: const TextStyle(color: _hint, fontSize: 12),
           ),
         ],
@@ -883,11 +882,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
     return Column(
       children: [
         // 1. 添加标签
-        _optionRow(
-          icon: Icons.label_outline,
-          title: '添加标签',
-          onTap: () {},
-        ),
+        _optionRow(icon: Icons.label_outline, title: '添加标签', onTap: () {}),
         const Divider(color: _border, height: 1),
 
         // 2. 添加自主声明
@@ -916,7 +911,10 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
             Icon(icon, color: _white, size: 20),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(title, style: const TextStyle(color: _white, fontSize: 15)),
+              child: Text(
+                title,
+                style: const TextStyle(color: _white, fontSize: 15),
+              ),
             ),
             const Icon(Icons.chevron_right, color: _hint, size: 20),
           ],

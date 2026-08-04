@@ -93,9 +93,11 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
       }
       final target = _useFront
           ? cameras.indexWhere(
-              (c) => c.lensDirection == CameraLensDirection.front)
+              (c) => c.lensDirection == CameraLensDirection.front,
+            )
           : cameras.indexWhere(
-              (c) => c.lensDirection == CameraLensDirection.back);
+              (c) => c.lensDirection == CameraLensDirection.back,
+            );
       final controller = CameraController(
         cameras[target >= 0 ? target : 0],
         ResolutionPreset.high,
@@ -350,7 +352,11 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.fiber_manual_record, color: Color(0xFFFF3B30), size: 14),
+              const Icon(
+                Icons.fiber_manual_record,
+                color: Color(0xFFFF3B30),
+                size: 14,
+              ),
               const SizedBox(width: 6),
               Text(
                 _formatSeconds(_recTimer.elapsed.inSeconds),
@@ -384,8 +390,10 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
             GestureDetector(
               onTap: _openMusicPicker,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white12,
                   borderRadius: BorderRadius.circular(20),
@@ -393,7 +401,11 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.music_note_rounded, color: _white, size: 18),
+                    const Icon(
+                      Icons.music_note_rounded,
+                      color: _white,
+                      size: 18,
+                    ),
                     const SizedBox(width: 6),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 160),
@@ -430,17 +442,9 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _railItem(
-            Icons.cameraswitch_rounded,
-            '翻转',
-            onTap: _switchCamera,
-          ),
+          _railItem(Icons.cameraswitch_rounded, '翻转', onTap: _switchCamera),
           const SizedBox(height: 22),
-          _railItem(
-            _flashIcon,
-            _flashLabel,
-            onTap: _cycleFlash,
-          ),
+          _railItem(_flashIcon, _flashLabel, onTap: _cycleFlash),
           const SizedBox(height: 22),
           _railItem(
             Icons.settings_rounded,
@@ -453,16 +457,16 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
   }
 
   IconData get _flashIcon => switch (_flash) {
-        FlashMode.off => Icons.flash_off_rounded,
-        FlashMode.torch => Icons.flash_on_rounded,
-        _ => Icons.flash_auto_rounded,
-      };
+    FlashMode.off => Icons.flash_off_rounded,
+    FlashMode.torch => Icons.flash_on_rounded,
+    _ => Icons.flash_auto_rounded,
+  };
 
   String get _flashLabel => switch (_flash) {
-        FlashMode.off => '闪光灯',
-        FlashMode.torch => '常亮',
-        _ => '自动',
-      };
+    FlashMode.off => '闪光灯',
+    FlashMode.torch => '常亮',
+    _ => '自动',
+  };
 
   Widget _railItem(IconData icon, String label, {required VoidCallback onTap}) {
     return GestureDetector(
@@ -472,10 +476,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
         children: [
           Icon(icon, color: _white, size: 26),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(color: _white, fontSize: 11),
-          ),
+          Text(label, style: const TextStyle(color: _white, fontSize: 11)),
         ],
       ),
     );
@@ -578,10 +579,14 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
             ? Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFFFE2C55),
+                  color: const Color(0xFFFF718D),
                 ),
                 child: const Center(
-                  child: Icon(Icons.stop_rounded, color: Colors.white, size: 32),
+                  child: Icon(
+                    Icons.stop_rounded,
+                    color: Colors.white,
+                    size: 32,
+                  ),
                 ),
               )
             : Container(
@@ -612,10 +617,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
             child: Icon(icon, color: _white, size: 24),
           ),
           const SizedBox(height: 6),
-          Text(
-            label,
-            style: const TextStyle(color: _white, fontSize: 12),
-          ),
+          Text(label, style: const TextStyle(color: _white, fontSize: 12)),
         ],
       ),
     );

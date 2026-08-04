@@ -36,6 +36,12 @@ export class AdminAppointmentsController {
     return this.appointments.adminCheckIn(id);
   }
 
+  /** 取消预约（店员代操作） */
+  @Post(':id/cancel')
+  cancel(@Param('id', ParseIntPipe) id: number) {
+    return this.appointments.adminCancel(id);
+  }
+
   /** 上钟（店员代操作） */
   @Post(':id/clockin')
   clockIn(@Param('id', ParseIntPipe) id: number) {

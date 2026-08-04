@@ -15,7 +15,13 @@ import '../chat/chat_page.dart';
 /// 传入 [post] 时，头部与帖子使用该帖作者的头像 / 昵称；否则使用示例数据。
 /// 「私信」创建会话进入聊天页，「关注」走关注接口并切换状态，失败时 Toast 提示。
 class UserProfilePage extends StatefulWidget {
-  const UserProfilePage({super.key, this.post, this.userId, this.nickname, this.avatar});
+  const UserProfilePage({
+    super.key,
+    this.post,
+    this.userId,
+    this.nickname,
+    this.avatar,
+  });
 
   /// 来源帖（用于展示作者头像 / 昵称）
   final FeedPost? post;
@@ -29,11 +35,11 @@ class UserProfilePage extends StatefulWidget {
   /// 直接指定头像（优先级高于 post.avatar）
   final String? avatar;
 
-  // ---- 页面配色（按设计指导）----
-  static const Color _primary = Color(0xFF2962FF); // 主按钮蓝
-  static const Color _textPrimary = Colors.black; // 主文字
-  static const Color _textSecondary = Color(0xFF777777); // 次要文字灰
-  static const Color _tagBg = Color(0xFFEEEEEE); // 标签底色（公告条灰）
+  // ---- 页面配色：与首页品牌风格统一 ----
+  static const Color _primary = Color(0xFFFF718D);
+  static const Color _textPrimary = Color(0xFF333033);
+  static const Color _textSecondary = Color(0xFF8F898C);
+  static const Color _tagBg = Color(0xFFFFF0F3);
 
   @override
   State<UserProfilePage> createState() => _UserProfilePageState();
@@ -91,9 +97,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
     try {
       final conv = await ChatApi.createConversation(_userId);
       if (!mounted) return;
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ChatPage(conversation: conv)),
-      );
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => ChatPage(conversation: conv)));
     } catch (_) {
       if (mounted) _toast(context, '发起会话失败，请稍后再试');
     }
@@ -102,19 +108,25 @@ class _UserProfilePageState extends State<UserProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFFBFC),
       // 顶部：仅返回箭头 + 更多图标，无标题
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFFFFBFC),
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: UserProfilePage._textPrimary),
+          icon: const Icon(
+            Icons.arrow_back,
+            color: UserProfilePage._textPrimary,
+          ),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.more_horiz, color: UserProfilePage._textPrimary),
+            icon: const Icon(
+              Icons.more_horiz,
+              color: UserProfilePage._textPrimary,
+            ),
             onPressed: () => _toast(context, '更多（演示）'),
           ),
         ],
@@ -125,7 +137,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
           _buildUserInfo(),
           _buildSignature(),
           _buildActions(context),
-          const Divider(height: 16, thickness: 0.5, color: Color(0xFFEEEEEE)),
+          const Divider(height: 16, thickness: 0.5, color: Color(0xFFF0E5E8)),
           // ---- 帖子列表 ----
           // 第一个帖子（按设计指导详细复刻）
           _PostItem(
@@ -138,7 +150,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
             viewText: '浏览 220',
             commentCount: '3',
           ),
-          const Divider(height: 16, thickness: 0.5, color: Color(0xFFEEEEEE)),
+          const Divider(height: 16, thickness: 0.5, color: Color(0xFFF0E5E8)),
           // 补充示例帖子（延续同一结构）
           _PostItem(
             avatar: _avatar,
@@ -150,7 +162,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
             viewText: '浏览 512',
             commentCount: '6',
           ),
-          const Divider(height: 16, thickness: 0.5, color: Color(0xFFEEEEEE)),
+          const Divider(height: 16, thickness: 0.5, color: Color(0xFFF0E5E8)),
           _PostItem(
             avatar: _avatar,
             nickname: _nickname,
@@ -210,12 +222,18 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 const SizedBox(height: 6),
                 const Text(
                   '女 | 安徽 | 已加入11天',
-                  style: TextStyle(fontSize: 12.5, color: UserProfilePage._textSecondary),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: UserProfilePage._textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 const Text(
                   'IP:重庆',
-                  style: TextStyle(fontSize: 12.5, color: UserProfilePage._textSecondary),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: UserProfilePage._textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -227,15 +245,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   /// 头像加载失败兜底
   Widget _avatarFallback(double size) => Container(
-        width: size,
-        height: size,
-        color: UserProfilePage._tagBg,
-        child: Icon(
-          Icons.person_rounded,
-          size: size * 0.5,
-          color: UserProfilePage._textSecondary,
-        ),
-      );
+    width: size,
+    height: size,
+    color: UserProfilePage._tagBg,
+    child: Icon(
+      Icons.person_rounded,
+      size: size * 0.5,
+      color: UserProfilePage._textSecondary,
+    ),
+  );
 
   /// 个性签名：字体 16，黑色
   Widget _buildSignature() {
@@ -260,11 +278,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       child: Row(
         children: [
           Expanded(
-            child: _ActionButton(
-              label: '私信',
-              filled: false,
-              onTap: _openChat,
-            ),
+            child: _ActionButton(label: '私信', filled: false, onTap: _openChat),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -505,8 +519,11 @@ class _PostItem extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.favorite_rounded,
-                          color: Colors.white, size: 16),
+                      const Icon(
+                        Icons.favorite_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
                       const SizedBox(width: 3),
                       Text(
                         likeText,

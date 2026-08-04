@@ -23,7 +23,7 @@ class HomePalette {
   static const textSecondary = Color(0xFF999999);
 
   // 功能色
-  static const badgeRed = Color(0xFFFF6B6B);
+  static const badgeRed = Color(0xFFFF718D);
   static const bannerBg = Color(0xFFFFECEF);
 
   // 图标圆形背景色（低饱和度）

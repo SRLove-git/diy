@@ -29,9 +29,9 @@ class _CreatePostPageState extends State<CreatePostPage> {
     final tag = _tagCtrl.text.trim();
     if (tag.isEmpty) return;
     if (_tags.contains(tag)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('标签已存在')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('标签已存在')));
       return;
     }
     setState(() => _tags.add(tag));
@@ -45,9 +45,9 @@ class _CreatePostPageState extends State<CreatePostPage> {
   void _addImage() {
     // 一期：使用占位图片 URL（后续接入 OSS 上传）
     if (_images.length >= 9) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('最多上传 9 张图片')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('最多上传 9 张图片')));
       return;
     }
     showDialog(
@@ -87,30 +87,26 @@ class _CreatePostPageState extends State<CreatePostPage> {
   Future<void> _submit() async {
     final content = _contentCtrl.text.trim();
     if (content.isEmpty && _images.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请填写文案或添加图片')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请填写文案或添加图片')));
       return;
     }
 
     setState(() => _submitting = true);
     try {
-      await PostApi.create(
-        content: content,
-        images: _images,
-        tags: _tags,
-      );
+      await PostApi.create(content: content, images: _images, tags: _tags);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('发布成功，等待审核')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('发布成功，等待审核')));
         Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('发布失败：$e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('发布失败：$e')));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -132,7 +128,13 @@ class _CreatePostPageState extends State<CreatePostPage> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text('发布', style: TextStyle(color: colors.primary, fontWeight: FontWeight.w600)),
+                : Text(
+                    '发布',
+                    style: TextStyle(
+                      color: colors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
           ),
         ],
       ),
@@ -142,7 +144,10 @@ class _CreatePostPageState extends State<CreatePostPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 图片区域
-            const Text('添加图片（最多 9 张）', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            const Text(
+              '添加图片（最多 9 张）',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -172,7 +177,11 @@ class _CreatePostPageState extends State<CreatePostPage> {
                               color: Colors.black54,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.close, size: 16, color: Colors.white),
+                            child: const Icon(
+                              Icons.close,
+                              size: 16,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -190,7 +199,10 @@ class _CreatePostPageState extends State<CreatePostPage> {
                         border: Border.all(color: colors.divider, width: 1.5),
                         color: colors.surface,
                       ),
-                      child: Icon(Icons.add_photo_alternate_outlined, color: colors.textSecondary),
+                      child: Icon(
+                        Icons.add_photo_alternate_outlined,
+                        color: colors.textSecondary,
+                      ),
                     ),
                   ),
               ],
@@ -199,7 +211,10 @@ class _CreatePostPageState extends State<CreatePostPage> {
             const SizedBox(height: 20),
 
             // 文案区域
-            const Text('文案', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            const Text(
+              '文案',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: _contentCtrl,
@@ -215,7 +230,10 @@ class _CreatePostPageState extends State<CreatePostPage> {
             const SizedBox(height: 20),
 
             // 标签区域
-            const Text('标签', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            const Text(
+              '标签',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -225,7 +243,10 @@ class _CreatePostPageState extends State<CreatePostPage> {
                     decoration: const InputDecoration(
                       hintText: '输入标签名',
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       isDense: true,
                     ),
                     onSubmitted: (_) => _addTag(),
@@ -236,7 +257,10 @@ class _CreatePostPageState extends State<CreatePostPage> {
                   onPressed: _addTag,
                   style: FilledButton.styleFrom(
                     minimumSize: Size.zero,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                   ),
                   child: const Text('添加'),
                 ),
@@ -247,15 +271,17 @@ class _CreatePostPageState extends State<CreatePostPage> {
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
-                children: _tags.map(
-                  (t) => Chip(
-                    label: Text(t, style: const TextStyle(fontSize: 12)),
-                    deleteIcon: const Icon(Icons.close, size: 14),
-                    onDeleted: () => _removeTag(t),
-                    backgroundColor: const Color(0x1AE8633A),
-                    side: BorderSide.none,
-                  ),
-                ).toList(),
+                children: _tags
+                    .map(
+                      (t) => Chip(
+                        label: Text(t, style: const TextStyle(fontSize: 12)),
+                        deleteIcon: const Icon(Icons.close, size: 14),
+                        onDeleted: () => _removeTag(t),
+                        backgroundColor: const Color(0x1AFF718D),
+                        side: BorderSide.none,
+                      ),
+                    )
+                    .toList(),
               ),
             ],
           ],

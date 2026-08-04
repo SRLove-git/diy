@@ -17,11 +17,13 @@ Future<void> main() async {
   await dotenv.load(fileName: '.env');
 
   // 透明状态栏，图标亮度跟随系统
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
-    statusBarBrightness: Brightness.light,
-  ));
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+    ),
+  );
 
   runApp(const DiyApp());
   Future.delayed(const Duration(milliseconds: 300), () {
@@ -40,38 +42,164 @@ class DiyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.light,
       home: const AuthGate(),
     );
   }
 
-  /// 按亮/暗模式构建主题，配色对齐首页年轻化风格
+  /// 按亮/暗模式构建统一的拾染爱恋视觉系统。
   ThemeData _buildTheme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
-    final surface = isDark ? const Color(0xFF12121A) : const Color(0xFFF8F9FC);
+    final palette = isDark ? AppColors.dark : AppColors.light;
+    final background = isDark
+        ? const Color(0xFF131113)
+        : const Color(0xFFFFFBFC);
+    final scheme = ColorScheme.fromSeed(
+      seedColor: palette.primary,
+      brightness: brightness,
+      primary: palette.primary,
+      onPrimary: Colors.white,
+      surface: palette.surface,
+      error: palette.danger,
+    );
+
     return ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFFFF6B6B),
-        brightness: brightness,
+      useMaterial3: true,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: background,
+      splashFactory: InkSparkle.splashFactory,
+      textTheme: ThemeData(brightness: brightness).textTheme.apply(
+        bodyColor: palette.textPrimary,
+        displayColor: palette.textPrimary,
       ),
-      scaffoldBackgroundColor: surface,
       appBarTheme: AppBarTheme(
-        backgroundColor: surface,
-        foregroundColor: isDark ? const Color(0xFFF0F0F5) : const Color(0xFF1A1A2E),
+        backgroundColor: background,
+        foregroundColor: palette.textPrimary,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: true,
+        titleTextStyle: TextStyle(
+          color: palette.textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+        ),
+        iconTheme: IconThemeData(color: palette.textPrimary, size: 23),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFFFF6B6B),
+          backgroundColor: palette.primary,
           foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(48),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),
-      extensions: [isDark ? AppColors.dark : AppColors.light],
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: palette.primary,
+          minimumSize: const Size.fromHeight(44),
+          side: BorderSide(color: palette.primary.withValues(alpha: 0.45)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: palette.primary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: palette.placeholder,
+        hintStyle: TextStyle(color: palette.textSecondary),
+        labelStyle: TextStyle(color: palette.textSecondary),
+        prefixIconColor: palette.textSecondary,
+        suffixIconColor: palette.textSecondary,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 15,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: palette.divider),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: palette.primary, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: palette.danger),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: palette.danger, width: 1.5),
+        ),
+      ),
+      cardTheme: CardThemeData(
+        color: palette.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: palette.divider.withValues(alpha: 0.65)),
+        ),
+      ),
+      dividerTheme: DividerThemeData(color: palette.divider, thickness: 0.8),
+      tabBarTheme: TabBarThemeData(
+        labelColor: palette.primary,
+        unselectedLabelColor: palette.textSecondary,
+        indicatorColor: palette.primary,
+        dividerColor: Colors.transparent,
+        labelStyle: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: palette.placeholder,
+        selectedColor: palette.primary.withValues(alpha: 0.14),
+        side: BorderSide.none,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        labelStyle: TextStyle(color: palette.textPrimary),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: palette.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: palette.surface,
+        surfaceTintColor: Colors.transparent,
+        showDragHandle: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: palette.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF3D3539),
+        contentTextStyle: const TextStyle(color: Colors.white),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: palette.primary,
+      ),
+      extensions: [palette],
     );
   }
 }
@@ -84,8 +212,9 @@ class AuthGate extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: AuthService.instance,
-      builder: (context, _) =>
-          AuthService.instance.isLoggedIn ? const MainShell() : const LoginPage(),
+      builder: (context, _) => AuthService.instance.isLoggedIn
+          ? const MainShell()
+          : const LoginPage(),
     );
   }
 }
@@ -112,14 +241,12 @@ class _MainShellState extends State<MainShell> {
   }
 
   List<Widget> get _pages => [
-        const HomePage(),
-        DiscoverPage(
-          onSwitchTab: (navIndex) => setState(() => _index = navIndex),
-        ),
-        ShortVideoPage(active: _index == 2),
-        ConversationListPage(onTapAvatar: () => setState(() => _index = 4)),
-        const ProfilePage(),
-      ];
+    const HomePage(),
+    DiscoverPage(onSwitchTab: (navIndex) => setState(() => _index = navIndex)),
+    ShortVideoPage(active: _index == 2),
+    ConversationListPage(onTapAvatar: () => setState(() => _index = 4)),
+    const ProfilePage(),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -139,27 +266,41 @@ class _MainShellState extends State<MainShell> {
 
   Widget _buildBottomBar(int unread) {
     final bottom = MediaQuery.of(context).padding.bottom;
-    const barHeight = 56.0;
+    const barHeight = 60.0;
     final totalHeight = barHeight + bottom + 0.5; // +0.5 for top border
 
     return Container(
       height: totalHeight,
       decoration: const BoxDecoration(
-        color: Color(0xF2FFFBFC),
-        border: Border(
-          top: BorderSide(color: Color(0x1A333333), width: 0.5),
-        ),
+        color: Color(0xFAFFFFFF),
+        border: Border(top: BorderSide(color: Color(0x14FF718D), width: 0.8)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x147A4754),
+            blurRadius: 16,
+            offset: Offset(0, -4),
+          ),
+        ],
       ),
-      child: ClipRect(
-        child: Column(
+      child: Column(
         children: [
           SizedBox(
             height: barHeight,
             child: Row(
               children: [
                 _navItem(0, Icons.home_outlined, Icons.home_rounded, '首页'),
-                _navItem(1, Icons.explore_outlined, Icons.explore_rounded, '社区'),
-                _navItem(2, Icons.videocam_outlined, Icons.videocam_rounded, '视频'),
+                _navItem(
+                  1,
+                  Icons.explore_outlined,
+                  Icons.explore_rounded,
+                  '社区',
+                ),
+                _navItem(
+                  2,
+                  Icons.videocam_outlined,
+                  Icons.videocam_rounded,
+                  '视频',
+                ),
                 _navItemWithBadge(
                   3,
                   Icons.chat_bubble_outline_rounded,
@@ -167,13 +308,17 @@ class _MainShellState extends State<MainShell> {
                   '消息',
                   unread,
                 ),
-                _navItem(4, Icons.person_outline_rounded, Icons.person_rounded, '我的'),
+                _navItem(
+                  4,
+                  Icons.person_outline_rounded,
+                  Icons.person_rounded,
+                  '我的',
+                ),
               ],
             ),
           ),
           SizedBox(height: bottom),
         ],
-      ),
       ),
     );
   }
@@ -208,7 +353,12 @@ class _MainShellState extends State<MainShell> {
   }
 
   Widget _navItemWithBadge(
-      int i, IconData outline, IconData filled, String label, int unread) {
+    int i,
+    IconData outline,
+    IconData filled,
+    String label,
+    int unread,
+  ) {
     final selected = _index == i;
     return Expanded(
       child: GestureDetector(
@@ -230,11 +380,16 @@ class _MainShellState extends State<MainShell> {
                     top: -4,
                     right: -12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      constraints:
-                          const BoxConstraints(minWidth: 16, minHeight: 16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
                       decoration: const BoxDecoration(
-                        color: Color(0xFFFF6B6B),
+                        color: Color(0xFFFF718D),
                         shape: BoxShape.circle,
                       ),
                       child: Text(
