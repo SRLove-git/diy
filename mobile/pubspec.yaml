@@ -51,6 +51,7 @@ dependencies:
   liquid_glass_widgets: ^0.29.1
   camera: ^0.11.1
   video_player: ^2.13.0
+  flutter_staggered_grid_view: ^0.7.0
 
 dev_dependencies:
   flutter_test:
@@ -77,6 +78,7 @@ flutter:
   # 后端 IP 等运行配置（编辑 .env 后热重启生效）
   assets:
     - .env
+    - assets/images/home/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

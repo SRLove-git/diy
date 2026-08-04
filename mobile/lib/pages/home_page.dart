@@ -1,39 +1,97 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../core/api_client.dart';
-import '../core/app_colors.dart';
 import '../core/appointment_api.dart';
 import '../core/auth_service.dart';
+import '../features/home/presentation/palette.dart';
 import '../features/member/presentation/member_plan_page.dart';
-import 'admin/admin_dashboard_page.dart';
-import 'admin/admin_notifications_page.dart';
-import 'admin/admin_orders_page.dart';
-import 'admin/admin_posts_page.dart';
-import 'admin/admin_reports_page.dart';
-import 'admin/admin_stores_page.dart';
-import 'admin/admin_users_page.dart';
 import 'booking/booking_flow_page.dart';
 import 'checkin/my_checkin_qr_page.dart';
 import 'checkin/scan_checkin_page.dart';
 import 'checkin/service_timer_page.dart';
 
-/// 快捷功能的多彩配色
-const _shortcutColors = [
-  Color(0xFFFF6B6B),
-  Color(0xFF4ECDC4),
-  Color(0xFFFFB347),
-  Color(0xFF7C6FF7),
-  Color(0xFF45B7D1),
-  Color(0xFFF7DC6F),
-  Color(0xFF26DE81),
-  Color(0xFFFC5C65),
-];
+// ════════════════════════════════════════════════
+// 点击缩放动画包装器
+// ════════════════════════════════════════════════
 
-/// 首页
+class _TapScaleBounce extends StatefulWidget {
+  const _TapScaleBounce({required this.child, this.onTap, this.scale = 0.96});
+  final Widget child;
+  final VoidCallback? onTap;
+  final double scale;
+
+  @override
+  State<_TapScaleBounce> createState() => _TapScaleBounceState();
+}
+
+class _TapScaleBounceState extends State<_TapScaleBounce>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+    );
+    _anim = Tween<double>(begin: 1.0, end: widget.scale).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _ctrl.forward(),
+      onTapUp: (_) {
+        _ctrl.reverse();
+        widget.onTap?.call();
+      },
+      onTapCancel: () => _ctrl.reverse(),
+      child: AnimatedBuilder(
+        animation: _anim,
+        builder: (_, child) => Transform.scale(scale: _anim.value, child: child),
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════
+// Mock 商品数据模型
+// ════════════════════════════════════════════════
+
+class MockProduct {
+  const MockProduct({
+    required this.name,
+    required this.asset,
+    required this.price,
+    required this.likes,
+    required this.collections,
+  });
+
+  final String name;
+  final String asset;
+  final double price;
+  final int likes;
+  final int collections;
+}
+
+// ════════════════════════════════════════════════
+// HomePage
+// ════════════════════════════════════════════════
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -42,8 +100,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _tabIndex = 0;
-
   List<Appointment> _activeAppts = [];
   Timer? _tickTimer;
   Timer? _pollTimer;
@@ -96,350 +152,276 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isAdmin = AuthService.instance.isAdmin;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: HomePalette.background,
       body: SafeArea(
         child: ListenableBuilder(
           listenable: AuthService.instance,
-          builder: (context, _) {
-            final isAdmin = AuthService.instance.isAdmin;
-            return SingleChildScrollView(
-              child: Column(
-                children: [
-                  _TopBanner(
-                    tabIndex: _tabIndex,
-                    onTabChanged: (i) => setState(() => _tabIndex = i),
-                    onBooking: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const BookingFlowPage(),
-                      ),
-                    ),
-                    onCheckIn: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => isAdmin
-                            ? const ScanCheckInPage()
-                            : const MyCheckInQrPage(),
-                      ),
-                    ),
-                    onMembership: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const MemberPlanPage(),
-                      ),
-                    ),
-                    isAdmin: isAdmin,
-                    checkInLabel: isAdmin ? '扫码核销' : '到店核销',
+          builder: (context, _) => CustomScrollView(
+            slivers: [
+              // 顶部 Header
+              SliverToBoxAdapter(child: HomeHeader(isAdmin: isAdmin)),
+              // 功能入口卡片
+              SliverToBoxAdapter(
+                child: FeatureEntryRow(
+                  onBooking: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const BookingFlowPage()),
                   ),
-                  const SizedBox(height: 20),
-                  const _ShortcutBar(),
-                  const SizedBox(height: 20),
-                  Padding(
+                  onCheckIn: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => isAdmin
+                          ? const ScanCheckInPage()
+                          : const MyCheckInQrPage(),
+                    ),
+                  ),
+                  onMembership: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const MemberPlanPage()),
+                  ),
+                  isAdmin: isAdmin,
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+              // 快捷功能
+              const SliverToBoxAdapter(child: ShortcutBar()),
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+              // Banner
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: PromoBanner(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const BookingFlowPage()),
+                    ),
+                  ),
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              // 热门推荐
+              const SliverToBoxAdapter(child: HotRecommendSection()),
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+              // 进行中的服务
+              if (_activeAppts.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _ProductAdBanner(isDark: isDark),
-                  ),
-                  const SizedBox(height: 24),
-                  if (isAdmin) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _SectionTitle('管理后台', colors: colors),
-                          const SizedBox(height: 12),
-                          _AdminEntryGrid(
-                            isDark: isDark,
-                            colors: colors,
-                            onTap: (page) => Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => page),
-                            ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '进行中的服务',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: HomePalette.textPrimary,
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                  if (_activeAppts.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _SectionTitle('进行中的服务', colors: colors),
-                          const SizedBox(height: 12),
-                          for (final appt in _activeAppts) ...[
-                            _ActiveServiceCard(
+                        ),
+                        const SizedBox(height: 12),
+                        ..._activeAppts.map(
+                          (appt) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: ActiveServiceCard(
                               appt: appt,
                               inService: appt.status == 'in_service',
                               elapsed: appt.serviceStartTime != null
                                   ? DateTime.now().difference(
-                                      DateTime.parse(appt.serviceStartTime!),
-                                    )
+                                      DateTime.parse(appt.serviceStartTime!))
                                   : Duration.zero,
-                              isDark: isDark,
-                              colors: colors,
                               onTap: () => _openActiveService(appt),
                             ),
-                            const SizedBox(height: 12),
-                          ],
-                        ],
-                      ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                  const SizedBox(height: 24),
-                ],
-              ),
-            );
-          },
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ─── helpers ───
+// ════════════════════════════════════════════════
+// 1. 顶部 Header（品牌标语 + 通知 + 头像）
+// ════════════════════════════════════════════════
 
-Color _cardBg(bool isDark) =>
-    isDark ? const Color(0xFF1E1E28) : Colors.white;
-
-Color _surfaceBg(bool isDark) =>
-    isDark ? const Color(0xFF252530) : const Color(0xFFF0F0F0);
-
-/// 区块小标题
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.title, {required this.colors});
-  final String title;
-  final AppColors colors;
+class HomeHeader extends StatelessWidget {
+  const HomeHeader({super.key, required this.isAdmin});
+  final bool isAdmin;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-        color: colors.textPrimary,
-        letterSpacing: 0.5,
+    return Container(
+      height: 75,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // 左侧品牌区
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '拾染爱恋',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: HomePalette.primary,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  '拼出美好 · 豆住快乐',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: HomePalette.textSecondary,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // 右侧：通知 + 头像
+          _buildNotificationBadge(),
+          const SizedBox(width: 14),
+          _buildAvatar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationBadge() {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5F5F5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(
+            Icons.notifications_outlined,
+            color: HomePalette.textSecondary,
+            size: 18,
+          ),
+        ),
+        Positioned(
+          top: -2,
+          right: -2,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: const BoxDecoration(
+              color: HomePalette.badgeRed,
+              shape: BoxShape.circle,
+            ),
+            constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+            child: const Text(
+              '12',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAvatar() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: Image.asset(
+        'assets/images/home/avatar.png',
+        width: 36,
+        height: 36,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: HomePalette.primary.withAlpha(30),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: const Icon(Icons.person, color: HomePalette.primary, size: 18),
+        ),
       ),
     );
   }
 }
 
-// ════════════════════════════════════
-// 1. 顶部 Banner
-// ════════════════════════════════════
+// ════════════════════════════════════════════════
+// 2. 功能入口区域（三张白色卡片）
+// ════════════════════════════════════════════════
 
-class _TopBanner extends StatelessWidget {
-  const _TopBanner({
-    required this.tabIndex,
-    required this.onTabChanged,
+class FeatureEntryRow extends StatelessWidget {
+  const FeatureEntryRow({
+    super.key,
     required this.onBooking,
     required this.onCheckIn,
     required this.onMembership,
     required this.isAdmin,
-    required this.checkInLabel,
   });
 
-  final int tabIndex;
-  final ValueChanged<int> onTabChanged;
   final VoidCallback onBooking;
   final VoidCallback onCheckIn;
   final VoidCallback onMembership;
   final bool isAdmin;
-  final String checkInLabel;
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bannerHeight = screenWidth > 600 ? 320.0 : 280.0;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return SizedBox(
-      height: bannerHeight,
-      child: Stack(
-        children: [
-          _SoftGradientBg(isDark: isDark),
-          Positioned(
-            top: 14,
-            left: 16,
-            child: _BannerToggle(
-              tabIndex: tabIndex,
-              isDark: isDark,
-              onChanged: onTabChanged,
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 16,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _BannerEntry(
-                      icon: Icons.calendar_month_rounded,
-                      label: '到店预约',
-                      isDark: isDark,
-                      onTap: onBooking,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _BannerEntry(
-                      icon: isAdmin
-                          ? Icons.qr_code_scanner_rounded
-                          : Icons.store_rounded,
-                      label: checkInLabel,
-                      isDark: isDark,
-                      onTap: onCheckIn,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _BannerEntry(
-                      icon: Icons.card_membership_rounded,
-                      label: '会员套餐',
-                      isDark: isDark,
-                      onTap: onMembership,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 渐变背景（浅色/深色自适应）
-class _SoftGradientBg extends StatelessWidget {
-  const _SoftGradientBg({required this.isDark});
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        final h = constraints.maxHeight;
-        return ClipRect(
-          child: Stack(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: isDark
-                        ? const [
-                            Color(0xFF1A1A2E),
-                            Color(0xFF252538),
-                            Color(0xFF2A2030),
-                            Color(0xFF1E2430),
-                          ]
-                        : const [
-                            Color(0xFFE8DDF5),
-                            Color(0xFFF0E6F6),
-                            Color(0xFFFDE8EC),
-                            Color(0xFFFFF0E8),
-                          ],
-                  ),
-                ),
-              ),
-              Positioned(
-                right: -40,
-                top: -20,
-                child: Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFFFF6B6B)
-                        .withValues(alpha: isDark ? 0.15 : 0.08),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: -60,
-                bottom: 20,
-                child: Container(
-                  width: 160,
-                  height: 160,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF7C6FF7)
-                        .withValues(alpha: isDark ? 0.12 : 0.06),
-                  ),
-                ),
-              ),
-              ...List.generate(8, (i) {
-                final rng = math.Random(i * 13);
-                return Positioned(
-                  left: rng.nextDouble() * w * 0.8,
-                  top: rng.nextDouble() * h * 0.5,
-                  child: Container(
-                    width: 4 + rng.nextDouble() * 4,
-                    height: 4 + rng.nextDouble() * 4,
-                    decoration: BoxDecoration(
-                      color: (isDark ? Colors.white30 : Colors.white70)
-                          .withValues(alpha: 0.7),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                );
-              }),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// 切换按钮
-class _BannerToggle extends StatelessWidget {
-  const _BannerToggle({
-    required this.tabIndex,
-    required this.isDark,
-    required this.onChanged,
-  });
-
-  final int tabIndex;
-  final bool isDark;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final bg = isDark
-        ? Colors.white.withValues(alpha: 0.12)
-        : Colors.white.withValues(alpha: 0.6);
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(22),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          _ToggleChip(
-            label: '拼豆',
-            active: tabIndex == 0,
-            isDark: isDark,
-            colors: colors,
-            onTap: () => onChanged(0),
+          Expanded(
+            child: _FeatureCard(
+              icon: Icons.calendar_month_rounded,
+              iconBgColor: HomePalette.iconPinkBg,
+              iconColor: HomePalette.primary,
+              title: '到店预约',
+              subtitle: '预约手作时间',
+              onTap: onBooking,
+            ),
           ),
-          _ToggleChip(
-            label: '敬请期待',
-            active: tabIndex == 1,
-            isDark: isDark,
-            colors: colors,
-            onTap: () => onChanged(1),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _FeatureCard(
+              icon: isAdmin
+                  ? Icons.qr_code_scanner_rounded
+                  : Icons.qr_code_rounded,
+              iconBgColor: HomePalette.iconPurpleBg,
+              iconColor: const Color(0xFF8B7CF6),
+              title: isAdmin ? '扫码核销' : '到店核销',
+              subtitle: '快速开始制作',
+              onTap: onCheckIn,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _FeatureCard(
+              icon: Icons.card_membership_rounded,
+              iconBgColor: HomePalette.iconYellowBg,
+              iconColor: const Color(0xFFF0A040),
+              title: '会员套餐',
+              subtitle: '查看会员权益',
+              onTap: onMembership,
+            ),
           ),
         ],
       ),
@@ -447,97 +429,70 @@ class _BannerToggle extends StatelessWidget {
   }
 }
 
-class _ToggleChip extends StatelessWidget {
-  const _ToggleChip({
-    required this.label,
-    required this.active,
-    required this.isDark,
-    required this.colors,
+class _FeatureCard extends StatelessWidget {
+  const _FeatureCard({
+    required this.icon,
+    required this.iconBgColor,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
     required this.onTap,
   });
 
-  final String label;
-  final bool active;
-  final bool isDark;
-  final AppColors colors;
+  final IconData icon;
+  final Color iconBgColor;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return _TapScaleBounce(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        decoration: active
-            ? BoxDecoration(
-                color: _cardBg(isDark),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              )
-            : null,
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: active
-                ? colors.textPrimary
-                : isDark
-                    ? Colors.white70
-                    : colors.textSecondary,
-          ),
+      child: Container(
+        height: 140,
+        decoration: BoxDecoration(
+          color: HomePalette.card,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(13),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-      ),
-    );
-  }
-}
-
-/// 入口卡片
-class _BannerEntry extends StatelessWidget {
-  const _BannerEntry({
-    required this.icon,
-    required this.label,
-    required this.isDark,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool isDark;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final bg = isDark
-        ? const Color(0xFF2A2A3A).withValues(alpha: 0.85)
-        : Colors.white.withValues(alpha: 0.85);
-    return Material(
-      color: bg,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 18),
+          padding: const EdgeInsets.all(16),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, size: 28, color: colors.textPrimary),
-              const SizedBox(height: 8),
+              // 彩色圆形图标
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+              const Spacer(),
               Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
+                  color: HomePalette.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: HomePalette.textSecondary,
                 ),
               ),
             ],
@@ -548,514 +503,527 @@ class _BannerEntry extends StatelessWidget {
   }
 }
 
-// ════════════════════════════════════
-// 2. 快捷功能
-// ════════════════════════════════════
+// ════════════════════════════════════════════════
+// 3. 快捷功能区域
+// ════════════════════════════════════════════════
 
-class _ShortcutBar extends StatefulWidget {
-  const _ShortcutBar();
-
-  @override
-  State<_ShortcutBar> createState() => _ShortcutBarState();
-}
-
-class _ShortcutBarState extends State<_ShortcutBar> {
-  int _pageIndex = 0;
-
-  static const _pages = [
-    [
-      (icon: Icons.auto_awesome_rounded, label: '新品推荐'),
-      (icon: Icons.card_giftcard_rounded, label: '领券中心'),
-      (icon: Icons.star_rounded, label: '会员专享'),
-      (icon: Icons.local_fire_department_rounded, label: '热销排行'),
-    ],
-    [
-      (icon: Icons.palette_rounded, label: '创意素材'),
-      (icon: Icons.menu_book_rounded, label: '教程指南'),
-      (icon: Icons.emoji_events_rounded, label: '作品大赛'),
-      (icon: Icons.grid_view_rounded, label: '全部项目'),
-    ],
-  ];
+class ShortcutBar extends StatelessWidget {
+  const ShortcutBar({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            children: List.generate(
-              _pages[_pageIndex].length,
-              (i) {
-                final item = _pages[_pageIndex][i];
-                return Expanded(
-                  child: _ShortcutItem(
-                    icon: item.icon,
-                    label: item.label,
-                    color: _shortcutColors[i % _shortcutColors.length],
-                    isDark: isDark,
-                    colors: colors,
+    const items = [
+      (
+        icon: Icons.auto_awesome_rounded,
+        label: '新品推荐',
+        bgColor: HomePalette.iconPinkBg,
+        fgColor: HomePalette.primary,
+      ),
+      (
+        icon: Icons.card_giftcard_rounded,
+        label: '领取中心',
+        bgColor: HomePalette.iconPurpleBg,
+        fgColor: Color(0xFF8B7CF6),
+      ),
+      (
+        icon: Icons.star_rounded,
+        label: '会员专享',
+        bgColor: HomePalette.iconYellowBg,
+        fgColor: Color(0xFFF0A040),
+      ),
+      (
+        icon: Icons.local_fire_department_rounded,
+        label: '热门排行',
+        bgColor: HomePalette.iconTealBg,
+        fgColor: Color(0xFF4DC0B5),
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: items.map((item) {
+          return GestureDetector(
+            onTap: () {},
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: item.bgColor,
+                    borderRadius: BorderRadius.circular(26),
                   ),
-                );
-              },
+                  child: Icon(item.icon, color: item.fgColor, size: 24),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  item.label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: HomePalette.textPrimary,
+                  ),
+                ),
+              ],
             ),
-          ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════
+// 4. Banner 区域
+// ════════════════════════════════════════════════
+
+class PromoBanner extends StatelessWidget {
+  const PromoBanner({super.key, required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width - 32;
+
+    return _TapScaleBounce(
+      onTap: onTap,
+      child: Container(
+        height: 170,
+        decoration: BoxDecoration(
+          color: HomePalette.bannerBg,
+          borderRadius: BorderRadius.circular(28),
         ),
-        const SizedBox(height: 14),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_pages.length, (i) {
-            final active = i == _pageIndex;
-            return GestureDetector(
-              onTap: () => setState(() => _pageIndex = i),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: active ? 18 : 6,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: active
-                      ? colors.primary
-                      : isDark
-                          ? const Color(0xFF444450)
-                          : const Color(0xFFDDDDE0),
-                  borderRadius: BorderRadius.circular(3),
+        child: Stack(
+          children: [
+            // 右侧拼豆作品图 — 占40%
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: screenWidth * 0.40,
+              child: ClipRRect(
+                borderRadius:
+                    const BorderRadius.horizontal(right: Radius.circular(28)),
+                child: Hero(
+                  tag: 'banner_art',
+                  child: Image.asset(
+                    'assets/images/home/banner_art.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                  ),
                 ),
               ),
-            );
-          }),
+            ),
+            // 左侧文字区 — 占60%
+            Padding(
+              padding: const EdgeInsets.only(left: 24, right: 8),
+              child: SizedBox(
+                width: screenWidth * 0.56,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      '创意拼豆手作工坊',
+                      style: TextStyle(
+                        color: HomePalette.textPrimary,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      '拼出你的独特创意',
+                      style: TextStyle(
+                        color: HomePalette.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      '¥39.9 / 次起',
+                      style: TextStyle(
+                        color: HomePalette.primary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 18, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: HomePalette.primary.withAlpha(20),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Text(
+                        '立即预约',
+                        style: TextStyle(
+                          color: HomePalette.primary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════
+// 5. 热门推荐区域
+// ════════════════════════════════════════════════
+
+class HotRecommendSection extends StatelessWidget {
+  const HotRecommendSection({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 标题栏
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '热门推荐',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: HomePalette.textPrimary,
+                ),
+              ),
+              GestureDetector(
+                onTap: () {},
+                child: const Row(
+                  children: [
+                    Text(
+                      '查看更多',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: HomePalette.textSecondary,
+                      ),
+                    ),
+                    Icon(Icons.chevron_right,
+                        size: 16, color: HomePalette.textSecondary),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // 横向商品列表
+        SizedBox(
+          height: 164,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _mockProducts.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemBuilder: (context, i) => ProductCard(
+              product: _mockProducts[i],
+              index: i,
+            ),
+          ),
         ),
       ],
     );
   }
 }
 
-class _ShortcutItem extends StatelessWidget {
-  const _ShortcutItem({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.isDark,
-    required this.colors,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-  final bool isDark;
-  final AppColors colors;
+class ProductCard extends StatelessWidget {
+  const ProductCard({super.key, required this.product, required this.index});
+  final MockProduct product;
+  final int index;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {},
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: isDark ? 0.2 : 0.12),
-              borderRadius: BorderRadius.circular(16),
+    return _TapScaleBounce(
+      child: Container(
+        width: 124,
+        decoration: BoxDecoration(
+          color: HomePalette.card,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(10),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
             ),
-            child: Icon(icon, color: color, size: 26),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: colors.textPrimary,
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 图片
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              child: Hero(
+                tag: 'product_$index',
+                child: Image.asset(
+                  product.asset,
+                  width: 124,
+                  height: 100,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    width: 124,
+                    height: 100,
+                    color: const Color(0xFFF5F5F5),
+                    child: const Center(
+                      child: Icon(Icons.image_outlined,
+                          color: Color(0xFFCCCCCC), size: 32),
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
-        ],
+            // 信息
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: HomePalette.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          '¥${product.price.toStringAsFixed(1)} 起',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: HomePalette.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.star_border_rounded,
+                          size: 10, color: HomePalette.textSecondary),
+                      const SizedBox(width: 1),
+                      Text(
+                        _fmtCount(product.collections),
+                        style: const TextStyle(
+                            fontSize: 9, color: HomePalette.textSecondary),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.favorite_border_rounded,
+                          size: 10, color: HomePalette.textSecondary),
+                      const SizedBox(width: 1),
+                      Text(
+                        _fmtCount(product.likes),
+                        style: const TextStyle(
+                            fontSize: 9, color: HomePalette.textSecondary),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-// ════════════════════════════════════
-// 3. 商品广告 Banner（始终深色风格，不受主题影响）
-// ════════════════════════════════════
+// ════════════════════════════════════════════════
+// Mock 商品数据
+// ════════════════════════════════════════════════
 
-class _ProductAdBanner extends StatelessWidget {
-  const _ProductAdBanner({required this.isDark});
+const _mockProducts = [
+  MockProduct(
+    name: '库洛米系列',
+    asset: 'assets/images/home/product_kuromi.png',
+    price: 39.9,
+    likes: 2840,
+    collections: 1520,
+  ),
+  MockProduct(
+    name: '星之卡比系列',
+    asset: 'assets/images/home/product_kirby.png',
+    price: 39.9,
+    likes: 1960,
+    collections: 1100,
+  ),
+  MockProduct(
+    name: '花花系列',
+    asset: 'assets/images/home/product_flower.png',
+    price: 39.9,
+    likes: 3270,
+    collections: 1890,
+  ),
+  MockProduct(
+    name: '可爱萌宠系列',
+    asset: 'assets/images/home/product_pet.png',
+    price: 39.9,
+    likes: 4210,
+    collections: 2340,
+  ),
+];
 
-  final bool isDark;
+// ════════════════════════════════════════════════
+// 6. 进行中的服务卡片
+// ════════════════════════════════════════════════
 
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = constraints.maxWidth;
-        final cardHeight = cardWidth * 0.72 > 500 ? 500.0 : cardWidth * 0.72;
-        final isLandscape =
-            MediaQuery.of(context).orientation == Orientation.landscape;
-
-        return Container(
-          width: cardWidth,
-          height: isLandscape ? 280 : cardHeight,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF2D2D44), Color(0xFF43436A)],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF2D2D44).withValues(alpha: 0.2),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Stack(
-            children: [
-              Positioned(
-                right: -30,
-                top: -30,
-                child: Container(
-                  width: 160,
-                  height: 160,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.06),
-                      width: 1,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: -20,
-                bottom: -40,
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: colors.primary.withValues(alpha: 0.1),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 0,
-                top: 0,
-                bottom: 0,
-                width: cardWidth * 0.48,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(24),
-                    bottomRight: Radius.circular(24),
-                  ),
-                  child: Image.network(
-                    'https://picsum.photos/seed/beads/400/500',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
-                      color: const Color(0xFF3A3A55),
-                      child: const Center(
-                        child: Icon(
-                          Icons.grid_view_rounded,
-                          size: 56,
-                          color: Color(0xFFFFB347),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: cardWidth * 0.58,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF2D2D44),
-                        const Color(0xFF2D2D44).withValues(alpha: 0.7),
-                        Colors.transparent,
-                      ],
-                      stops: const [0.0, 0.55, 1.0],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: colors.primary,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        '热门',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '创意拼豆\n手作工坊',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: isLandscape ? 18 : 24,
-                        fontWeight: FontWeight.w800,
-                        height: 1.25,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      '¥39.9 / 次起',
-                      style: TextStyle(
-                        color: Color(0xFFFFD54F),
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: const Text(
-                        '立即预约',
-                        style: TextStyle(
-                          color: Color(0xFFFF6B6B),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ════════════════════════════════════
-// 管理后台宫格
-// ════════════════════════════════════
-
-class _AdminEntryGrid extends StatelessWidget {
-  const _AdminEntryGrid({
-    required this.isDark,
-    required this.colors,
-    required this.onTap,
-  });
-
-  final bool isDark;
-  final AppColors colors;
-  final ValueChanged<Widget> onTap;
-
-  static const _entries = [
-    (icon: Icons.dashboard_outlined, label: '数据看板', page: AdminDashboardPage()),
-    (icon: Icons.store_outlined, label: '门店管理', page: AdminStoresPage()),
-    (icon: Icons.receipt_long_outlined, label: '订单管理', page: AdminOrdersPage()),
-    (icon: Icons.article_outlined, label: '作品审核', page: AdminPostsPage()),
-    (icon: Icons.people_outline, label: '用户管理', page: AdminUsersPage()),
-    (icon: Icons.report_outlined, label: '举报处理', page: AdminReportsPage()),
-    (icon: Icons.notifications_outlined, label: '通知管理', page: AdminNotificationsPage()),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final cardBg = _cardBg(isDark);
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _entries.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 1.15,
-      ),
-      itemBuilder: (context, i) {
-        final e = _entries[i];
-        return Material(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(16),
-          child: InkWell(
-            onTap: () => onTap(e.page),
-            borderRadius: BorderRadius.circular(16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(e.icon, size: 26, color: colors.textPrimary),
-                const SizedBox(height: 8),
-                Text(
-                  e.label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: colors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ════════════════════════════════════
-// 进行中的服务卡片
-// ════════════════════════════════════
-
-class _ActiveServiceCard extends StatelessWidget {
-  const _ActiveServiceCard({
+class ActiveServiceCard extends StatelessWidget {
+  const ActiveServiceCard({
+    super.key,
     required this.appt,
     required this.inService,
     required this.elapsed,
-    required this.isDark,
-    required this.colors,
     required this.onTap,
   });
 
   final Appointment appt;
   final bool inService;
   final Duration elapsed;
-  final bool isDark;
-  final AppColors colors;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final cardBg = _cardBg(isDark);
-    return Container(
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: inService
-                        ? const Color(0xFF26DE81).withValues(alpha: 0.12)
-                        : _surfaceBg(isDark),
-                    borderRadius: BorderRadius.circular(14),
+    return _TapScaleBounce(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: HomePalette.card,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(8),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: inService
+                          ? const Color(0xFF26DE81).withAlpha(25)
+                          : const Color(0xFFF5F5F5),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      inService ? Icons.timer_outlined : Icons.login_rounded,
+                      color: inService
+                          ? const Color(0xFF20B868)
+                          : HomePalette.textPrimary,
+                      size: 22,
+                    ),
                   ),
-                  child: Icon(
-                    inService ? Icons.timer_outlined : Icons.login_rounded,
-                    color: inService ? const Color(0xFF20B868) : colors.textPrimary,
-                    size: 22,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          appt.storeName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            color: HomePalette.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '${appt.date} ${appt.startTime}-${appt.endTime} · 桌位 ${appt.tableName}',
+                          style: const TextStyle(
+                            color: HomePalette.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        appt.storeName,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                          color: colors.textPrimary,
+                      if (inService) ...[
+                        Text(
+                          _fmtDuration(elapsed),
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF20B868),
+                            letterSpacing: 1,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${appt.date} ${appt.startTime}-${appt.endTime} · 桌位 ${appt.tableName}',
-                        style: TextStyle(
-                          color: colors.textSecondary,
-                          fontSize: 13,
+                        const Text(
+                          '服务中',
+                          style: TextStyle(
+                            color: HomePalette.textSecondary,
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
+                      ] else ...[
+                        const Text(
+                          '已核销',
+                          style: TextStyle(
+                            color: HomePalette.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Text(
+                          '待上钟',
+                          style: TextStyle(
+                            color: HomePalette.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (inService) ...[
-                      Text(
-                        _formatDuration(elapsed),
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF20B868),
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      Text(
-                        '服务中',
-                        style: TextStyle(
-                          color: colors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ] else ...[
-                      Text(
-                        '已核销',
-                        style: TextStyle(
-                          color: colors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        '待上钟',
-                        style: TextStyle(
-                          color: colors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(width: 4),
-                Icon(Icons.chevron_right, color: colors.textSecondary, size: 20),
-              ],
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right,
+                      color: HomePalette.textSecondary, size: 20),
+                ],
+              ),
             ),
           ),
         ),
@@ -1064,9 +1032,15 @@ class _ActiveServiceCard extends StatelessWidget {
   }
 }
 
-String _formatDuration(Duration d) {
+String _fmtDuration(Duration d) {
   final h = d.inHours.toString().padLeft(2, '0');
   final m = (d.inMinutes % 60).toString().padLeft(2, '0');
   final s = (d.inSeconds % 60).toString().padLeft(2, '0');
   return '$h:$m:$s';
+}
+
+String _fmtCount(int n) {
+  if (n >= 10000) return '${(n / 10000).toStringAsFixed(1)}w';
+  if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+  return '$n';
 }

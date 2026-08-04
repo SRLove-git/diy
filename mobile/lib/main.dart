@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'core/app_colors.dart';
 import 'core/auth_service.dart';
 import 'core/chat_service.dart';
-import 'features/community/presentation/community_page.dart';
+import 'features/community/presentation/discover/discover_page.dart';
 import 'pages/chat/conversation_list_page.dart';
 import 'pages/home_page.dart';
 import 'pages/login_page.dart';
@@ -16,7 +15,6 @@ import 'pages/short_video_page.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
-  await LiquidGlassWidgets.initialize();
 
   // 透明状态栏，图标亮度跟随系统
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -25,9 +23,7 @@ Future<void> main() async {
     statusBarBrightness: Brightness.light,
   ));
 
-  runApp(LiquidGlassWidgets.wrap(
-    child: const DiyApp(),
-  ));
+  runApp(const DiyApp());
   Future.delayed(const Duration(milliseconds: 300), () {
     AuthService.instance.init();
   });
@@ -94,7 +90,7 @@ class AuthGate extends StatelessWidget {
   }
 }
 
-/// 底部 5 Tab：首页 / 社区 / 视频 / 消息 / 个人主页（液态玻璃样式）
+/// 底部 5 Tab：首页 / 社区 / 视频 / 消息 / 我的（iOS 风格）
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -105,17 +101,19 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _index = 0;
 
+  // iOS 风格底部导航主色
+  static const _selectedColor = Color(0xFFFF718D);
+  static const _unselectedColor = Color(0xFF999999);
+
   @override
   void initState() {
     super.initState();
     ChatService.instance.ensureConnected();
   }
 
-  /// IndexedStack 子页常驻内存，需把「当前 Tab 是否可见」传给视频页，
-  /// 切换走后暂停播放，避免关闭视频页面后视频仍在后台播放。
   List<Widget> get _pages => [
         const HomePage(),
-        CommunityPage(
+        DiscoverPage(
           onSwitchTab: (navIndex) => setState(() => _index = navIndex),
         ),
         ShortVideoPage(active: _index == 2),
@@ -125,61 +123,145 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-
     return Scaffold(
       extendBody: true,
-      backgroundColor: colors.surface,
+      backgroundColor: const Color(0xFFFFFBFC),
       body: IndexedStack(index: _index, children: _pages),
       bottomNavigationBar: ListenableBuilder(
         listenable: ChatService.instance,
         builder: (context, _) {
           final unread = ChatService.instance.totalUnread;
-          return _buildBottomBar(colors, unread);
+          return _buildBottomBar(unread);
         },
       ),
     );
   }
 
-  Widget _buildBottomBar(AppColors colors, int unread) {
-    return GlassTabBar.bottom(
-      selectedIndex: _index,
-      onTabSelected: (i) => setState(() => _index = i),
-      unselectedLabelColor: const Color(0xFF9A9AA4),
-      selectedLabelColor: colors.primary,
-      tabs: [
-        GlassTab(
-          icon: _icon(0, Icons.home_outlined, Icons.home_rounded),
-          label: '首页',
+  Widget _buildBottomBar(int unread) {
+    final bottom = MediaQuery.of(context).padding.bottom;
+    const barHeight = 56.0;
+    final totalHeight = barHeight + bottom + 0.5; // +0.5 for top border
+
+    return Container(
+      height: totalHeight,
+      decoration: const BoxDecoration(
+        color: Color(0xF2FFFBFC),
+        border: Border(
+          top: BorderSide(color: Color(0x1A333333), width: 0.5),
         ),
-        GlassTab(
-          icon: _icon(1, Icons.explore_outlined, Icons.explore_rounded),
-          label: '社区',
-        ),
-        GlassTab(
-          icon: _icon(2, Icons.videocam_outlined, Icons.videocam_rounded),
-          label: '视频',
-        ),
-        GlassTab(
-          icon: unread > 0
-              ? GlassBadge(
-                  count: unread,
-                  child: _icon(3, Icons.chat_bubble_outline_rounded,
-                      Icons.chat_bubble_rounded),
-                )
-              : _icon(3, Icons.chat_bubble_outline_rounded,
-                  Icons.chat_bubble_rounded),
-          label: '消息',
-        ),
-        GlassTab(
-          icon: _icon(4, Icons.person_outline_rounded, Icons.person_rounded),
-          label: '个人',
-        ),
-      ],
+      ),
+      child: ClipRect(
+        child: Column(
+        children: [
+          SizedBox(
+            height: barHeight,
+            child: Row(
+              children: [
+                _navItem(0, Icons.home_outlined, Icons.home_rounded, '首页'),
+                _navItem(1, Icons.explore_outlined, Icons.explore_rounded, '社区'),
+                _navItem(2, Icons.videocam_outlined, Icons.videocam_rounded, '视频'),
+                _navItemWithBadge(
+                  3,
+                  Icons.chat_bubble_outline_rounded,
+                  Icons.chat_bubble_rounded,
+                  '消息',
+                  unread,
+                ),
+                _navItem(4, Icons.person_outline_rounded, Icons.person_rounded, '我的'),
+              ],
+            ),
+          ),
+          SizedBox(height: bottom),
+        ],
+      ),
+      ),
     );
   }
 
-  Widget _icon(int i, IconData outline, IconData filled) {
-    return Icon(_index == i ? filled : outline, size: 22);
+  Widget _navItem(int i, IconData outline, IconData filled, String label) {
+    final selected = _index == i;
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _index = i),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              selected ? filled : outline,
+              size: 22,
+              color: selected ? _selectedColor : _unselectedColor,
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                color: selected ? _selectedColor : _unselectedColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _navItemWithBadge(
+      int i, IconData outline, IconData filled, String label, int unread) {
+    final selected = _index == i;
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _index = i),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  selected ? filled : outline,
+                  size: 22,
+                  color: selected ? _selectedColor : _unselectedColor,
+                ),
+                if (unread > 0)
+                  Positioned(
+                    top: -4,
+                    right: -12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      constraints:
+                          const BoxConstraints(minWidth: 16, minHeight: 16),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFF6B6B),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        unread > 99 ? '99+' : '$unread',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                color: selected ? _selectedColor : _unselectedColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
