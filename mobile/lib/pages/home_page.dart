@@ -8,7 +8,14 @@ import '../core/appointment_api.dart';
 import '../core/auth_service.dart';
 import '../features/home/presentation/palette.dart';
 import '../features/member/presentation/member_plan_page.dart';
-import 'admin/admin_home_page.dart';
+import 'admin/admin_dashboard_page.dart';
+import 'admin/admin_members_page.dart';
+import 'admin/admin_notifications_page.dart';
+import 'admin/admin_orders_page.dart';
+import 'admin/admin_posts_page.dart';
+import 'admin/admin_reports_page.dart';
+import 'admin/admin_stores_page.dart';
+import 'admin/admin_users_page.dart';
 import 'booking/booking_flow_page.dart';
 import 'checkin/my_checkin_qr_page.dart';
 import 'checkin/scan_checkin_page.dart';
@@ -123,9 +130,9 @@ class _HomePageState extends State<HomePage> {
                   child: FeatureEntryRow(
                     isAdmin: isAdmin,
                     onBooking: _openBooking,
-                    onAdminHome: () => Navigator.of(context).push(
+                    onStores: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const AdminHomePage(),
+                        builder: (_) => const AdminStoresPage(),
                       ),
                     ),
                     onCheckIn: () => Navigator.of(context).push(
@@ -138,10 +145,15 @@ class _HomePageState extends State<HomePage> {
                     onMembership: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const MemberPlanPage()),
                     ),
+                    onOrders: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const AdminOrdersPage(),
+                      ),
+                    ),
                   ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                const SliverToBoxAdapter(child: ShortcutBar()),
+                SliverToBoxAdapter(child: ShortcutBar(isAdmin: isAdmin)),
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
                 SliverToBoxAdapter(
                   child: Padding(
@@ -288,16 +300,18 @@ class FeatureEntryRow extends StatelessWidget {
   const FeatureEntryRow({
     super.key,
     required this.onBooking,
-    required this.onAdminHome,
+    required this.onStores,
     required this.onCheckIn,
     required this.onMembership,
+    required this.onOrders,
     required this.isAdmin,
   });
 
   final VoidCallback onBooking;
-  final VoidCallback onAdminHome;
+  final VoidCallback onStores;
   final VoidCallback onCheckIn;
   final VoidCallback onMembership;
+  final VoidCallback onOrders;
   final bool isAdmin;
 
   @override
@@ -305,11 +319,11 @@ class FeatureEntryRow extends StatelessWidget {
     final entries = [
       if (isAdmin)
         _FeatureEntry(
-          icon: Icons.admin_panel_settings_rounded,
-          colors: const [Color(0xFF453C4C), Color(0xFF6E4E63)],
-          title: '管理后台',
-          subtitle: '门店 · 订单 · 数据',
-          onTap: onAdminHome,
+          icon: Icons.storefront_rounded,
+          colors: const [Color(0xFF6FC3FF), Color(0xFF3A97E8)],
+          title: '门店管理',
+          subtitle: '维护门店信息',
+          onTap: onStores,
         )
       else
         _FeatureEntry(
@@ -326,13 +340,22 @@ class FeatureEntryRow extends StatelessWidget {
         subtitle: '快速开始制作',
         onTap: onCheckIn,
       ),
-      _FeatureEntry(
-        icon: Icons.card_membership_rounded,
-        colors: const [Color(0xFFFFCA68), Color(0xFFFFA62E)],
-        title: '会员套餐',
-        subtitle: '查看会员权益',
-        onTap: onMembership,
-      ),
+      if (isAdmin)
+        _FeatureEntry(
+          icon: Icons.receipt_long_rounded,
+          colors: const [Color(0xFF5ED1B2), Color(0xFF2FA58A)],
+          title: '订单管理',
+          subtitle: '处理门店订单',
+          onTap: onOrders,
+        )
+      else
+        _FeatureEntry(
+          icon: Icons.card_membership_rounded,
+          colors: const [Color(0xFFFFCA68), Color(0xFFFFA62E)],
+          title: '会员套餐',
+          subtitle: '查看会员权益',
+          onTap: onMembership,
+        ),
     ];
 
     return Padding(
@@ -435,10 +458,37 @@ class _FeatureCard extends StatelessWidget {
 }
 
 class ShortcutBar extends StatelessWidget {
-  const ShortcutBar({super.key});
+  const ShortcutBar({super.key, required this.isAdmin});
+
+  final bool isAdmin;
 
   @override
   Widget build(BuildContext context) {
+    if (isAdmin) {
+      final itemWidth =
+          (MediaQuery.sizeOf(context).width - 24) / 3; // 与左右 padding 对齐，每行 3 个
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Wrap(
+          runSpacing: 16,
+          children: [
+            for (final item in _adminShortcutData)
+              SizedBox(
+                width: itemWidth,
+                child: _ShortcutItem(
+                  icon: item.icon,
+                  label: item.label,
+                  colors: item.colors,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => item.page),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+
     const items = [
       _ShortcutData(
         icon: Icons.auto_awesome_rounded,
@@ -468,44 +518,68 @@ class ShortcutBar extends StatelessWidget {
         children: items
             .map(
               (item) => Expanded(
-                child: Semantics(
-                  button: true,
+                child: _ShortcutItem(
+                  icon: item.icon,
                   label: item.label,
-                  child: InkResponse(
-                    radius: 34,
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${item.label}即将上线'),
-                        duration: const Duration(seconds: 1),
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _GradientIcon(
-                          icon: item.icon,
-                          colors: item.colors,
-                          size: 46,
-                          iconSize: 23,
-                          radius: 23,
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          item.label,
-                          maxLines: 1,
-                          style: const TextStyle(
-                            color: HomePalette.textPrimary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                  colors: item.colors,
+                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${item.label}即将上线'),
+                      duration: const Duration(seconds: 1),
                     ),
                   ),
                 ),
               ),
             )
             .toList(),
+      ),
+    );
+  }
+}
+
+class _ShortcutItem extends StatelessWidget {
+  const _ShortcutItem({
+    required this.icon,
+    required this.label,
+    required this.colors,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final List<Color> colors;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: InkResponse(
+        radius: 34,
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _GradientIcon(
+              icon: icon,
+              colors: colors,
+              size: 46,
+              iconSize: 23,
+              radius: 23,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              maxLines: 1,
+              style: const TextStyle(
+                color: HomePalette.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -522,6 +596,59 @@ class _ShortcutData {
   final String label;
   final List<Color> colors;
 }
+
+class _AdminShortcutData {
+  const _AdminShortcutData({
+    required this.icon,
+    required this.label,
+    required this.colors,
+    required this.page,
+  });
+
+  final IconData icon;
+  final String label;
+  final List<Color> colors;
+  final Widget page;
+}
+
+const _adminShortcutData = [
+  _AdminShortcutData(
+    icon: Icons.dashboard_rounded,
+    label: '数据看板',
+    colors: [Color(0xFF6EC6FF), Color(0xFF3E9BE0)],
+    page: AdminDashboardPage(),
+  ),
+  _AdminShortcutData(
+    icon: Icons.article_rounded,
+    label: '作品审核',
+    colors: [Color(0xFFFF9BB0), Color(0xFFFF6687)],
+    page: AdminPostsPage(),
+  ),
+  _AdminShortcutData(
+    icon: Icons.people_rounded,
+    label: '用户管理',
+    colors: [Color(0xFFA895FF), Color(0xFF7563EC)],
+    page: AdminUsersPage(),
+  ),
+  _AdminShortcutData(
+    icon: Icons.report_rounded,
+    label: '举报处理',
+    colors: [Color(0xFFFF8A80), Color(0xFFFF5C4D)],
+    page: AdminReportsPage(),
+  ),
+  _AdminShortcutData(
+    icon: Icons.notifications_rounded,
+    label: '通知管理',
+    colors: [Color(0xFF83CCFF), Color(0xFF5799EC)],
+    page: AdminNotificationsPage(),
+  ),
+  _AdminShortcutData(
+    icon: Icons.card_membership_rounded,
+    label: '会员运营',
+    colors: [Color(0xFFA37AFF), Color(0xFF774CE8)],
+    page: AdminMembersPage(),
+  ),
+];
 
 class _GradientIcon extends StatelessWidget {
   const _GradientIcon({

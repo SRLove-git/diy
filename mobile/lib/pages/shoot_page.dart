@@ -41,6 +41,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
   // ── 相机状态 ──
   CameraController? _camera;
   bool _cameraReady = false;
+  bool _switchingCamera = false;
   bool _recording = false;
   final Stopwatch _recTimer = Stopwatch();
 
@@ -87,6 +88,9 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
 
   /// 初始化相机（按当前镜头方向）；无可用相机时降级为占位背景
   Future<void> _initCamera() async {
+    // 防止快速连续点击翻转导致多个初始化并发、状态错乱
+    if (_switchingCamera) return;
+    _switchingCamera = true;
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
@@ -101,6 +105,25 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
           : cameras.indexWhere(
               (c) => c.lensDirection == CameraLensDirection.back,
             );
+
+      // 先释放旧相机，避免新旧两个 CaptureSession 同时占用摄像头，
+      // 否则新控制器 initialize() 会挂起或失败，表现为“翻转后卡住”。
+      final old = _camera;
+      if (old != null) {
+        if (mounted) {
+          setState(() {
+            _camera = null;
+            _cameraReady = false;
+          });
+        }
+        try {
+          await old.dispose();
+        } catch (_) {
+          // 旧相机释放失败不阻塞新相机初始化
+        }
+      }
+      if (!mounted) return;
+
       final controller = CameraController(
         cameras[target >= 0 ? target : 0],
         ResolutionPreset.high,
@@ -113,18 +136,24 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
         return;
       }
       setState(() {
-        _camera?.dispose();
         _camera = controller;
         _cameraReady = true;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() => _cameraReady = false);
+    } finally {
+      _switchingCamera = false;
     }
   }
 
   /// 翻转前后摄像头
   Future<void> _switchCamera() async {
+    if (_recording) {
+      _toast('录制中无法切换镜头');
+      return;
+    }
+    if (_switchingCamera) return;
     setState(() => _useFront = !_useFront);
     await _initCamera();
   }
@@ -353,7 +382,18 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
   }
 
   Widget _buildCameraPreview() {
-    final camera = _camera!;
+    final camera = _camera;
+    if (camera == null) {
+      return const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF1E1E26), Color(0xFF000000)],
+          ),
+        ),
+      );
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         final ratio = _modeIndex == 1 ? _aspectPreset.ratio : 3 / 4;
