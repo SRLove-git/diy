@@ -22,8 +22,14 @@ class ShortVideo {
     required this.music,
     this.comments = const [],
     this.liked = false,
+    this.videoUrl = '',
     this.isPhoto = false,
     this.photos = const [],
+    this.filterId = '',
+    this.trimStart = 0,
+    this.trimEnd = 0,
+    this.speed = 1.0,
+    this.rotation = 0,
   });
 
   final int id;
@@ -64,11 +70,29 @@ class ShortVideo {
 
   final bool liked;
 
+  /// 视频文件 URL（已解析为绝对地址；照片作品为空）
+  final String videoUrl;
+
   /// 照片作品（无视频流，仅封面照片配背景音乐）
   final bool isPhoto;
 
   /// 照片作品图片列表（已解析为绝对地址；单图/视频作品为空）
   final List<String> photos;
+
+  /// 编辑滤镜 ID（'' 原图），见 PhotoFilter
+  final String filterId;
+
+  /// 视频裁剪起点（秒，0 表示未裁剪）
+  final double trimStart;
+
+  /// 视频裁剪终点（秒，0 表示未裁剪）
+  final double trimEnd;
+
+  /// 播放倍速（0.5 ~ 2）
+  final double speed;
+
+  /// 照片顺时针旋转 90° 次数（0/1/2/3）
+  final int rotation;
 
   /// 从服务端信息流条目解析（对应 videos 模块 VideoItem 响应）。
   /// 头像/封面兼容 http(s) 与 /uploads/ 相对路径，统一解析为绝对地址。
@@ -76,6 +100,7 @@ class ShortVideo {
     final author = (json['author'] as Map<String, dynamic>?) ?? const {};
     final avatar = (author['avatar'] ?? '') as String;
     final cover = (json['cover'] ?? '') as String;
+    final rawVideo = (json['videoUrl'] ?? '') as String;
     return ShortVideo(
       id: json['id'] as int,
       authorId: ((json['userId'] ?? author['id']) as num).toInt(),
@@ -83,6 +108,7 @@ class ShortVideo {
       avatar: avatar.isEmpty ? '' : ChatApi.resolveUrl(avatar),
       title: (json['title'] ?? '') as String,
       cover: cover.isEmpty ? '' : ChatApi.resolveUrl(cover),
+      videoUrl: rawVideo.isEmpty ? '' : ChatApi.resolveUrl(rawVideo),
       duration: Duration(seconds: ((json['duration'] ?? 0) as num).toInt()),
       likeCount: ((json['likeCount'] ?? 0) as num).toInt(),
       commentCount: ((json['commentCount'] ?? 0) as num).toInt(),
@@ -95,6 +121,11 @@ class ShortVideo {
       photos: ((json['photos'] ?? []) as List)
           .map((e) => ChatApi.resolveUrl(e.toString()))
           .toList(),
+      filterId: (json['filter'] ?? '') as String,
+      trimStart: ((json['trimStart'] ?? 0) as num).toDouble(),
+      trimEnd: ((json['trimEnd'] ?? 0) as num).toDouble(),
+      speed: ((json['speed'] ?? 1) as num).toDouble(),
+      rotation: ((json['rotation'] ?? 0) as num).toInt(),
     );
   }
 
@@ -121,7 +152,13 @@ class ShortVideo {
         music: music,
         comments: comments ?? this.comments,
         liked: liked ?? this.liked,
+        videoUrl: videoUrl,
         isPhoto: isPhoto,
         photos: photos,
+        filterId: filterId,
+        trimStart: trimStart,
+        trimEnd: trimEnd,
+        speed: speed,
+        rotation: rotation,
       );
 }

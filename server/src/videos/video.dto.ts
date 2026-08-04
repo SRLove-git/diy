@@ -38,6 +38,30 @@ export class CreateVideoDto {
   @IsOptional()
   photos?: string[];
 
+  /** 编辑滤镜 ID（'' 原图） */
+  @IsString()
+  @MaxLength(50)
+  @IsOptional()
+  filter?: string;
+
+  /** 视频裁剪起点（秒，0 未裁剪） */
+  @IsOptional()
+  trimStart?: number;
+
+  /** 视频裁剪终点（秒，0 未裁剪） */
+  @IsOptional()
+  trimEnd?: number;
+
+  /** 播放倍速（0.5 ~ 2，默认 1） */
+  @IsOptional()
+  speed?: number;
+
+  /** 照片顺时针旋转 90° 次数 */
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  rotation?: number;
+
   /** 视频时长（秒，缺省默认 15，客户端未解析出真实时长时用） */
   @IsInt()
   @Min(1, { message: '时长必须大于 0 秒' })

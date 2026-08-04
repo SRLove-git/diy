@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -5,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../core/music_api.dart';
 import 'douyin_publish_page.dart';
 import 'music_picker_sheet.dart';
+import 'post_edit_page.dart';
 import 'short_video_models.dart';
 
 /// 抖音风格作品拍摄页面
@@ -38,6 +41,10 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
   bool _cameraReady = false;
   bool _recording = false;
   final Stopwatch _recTimer = Stopwatch();
+
+  /// 录制计时刷新器（每秒触发 setState 让顶部计时走起来）
+  Timer? _recTicker;
+
   bool _useFront = false;
   FlashMode _flash = FlashMode.auto;
 
@@ -57,6 +64,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _recTicker?.cancel();
     _camera?.dispose();
     super.dispose();
   }
@@ -65,6 +73,8 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // 相机在后台必须释放，回前台重新初始化
     if (state == AppLifecycleState.inactive) {
+      _recTicker?.cancel();
+      _recTicker = null;
       _camera?.dispose();
       _camera = null;
     } else if (state == AppLifecycleState.resumed) {
@@ -153,6 +163,11 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
     try {
       await c.startVideoRecording();
       _recTimer.start();
+      // 每秒刷新顶部录制计时（否则一直停在 00:00）
+      _recTicker?.cancel();
+      _recTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
       if (mounted) setState(() => _recording = true);
     } catch (_) {
       _toast('无法开始录制，请检查相机权限');
@@ -162,6 +177,8 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
   Future<void> _stopRecording() async {
     final c = _camera;
     if (c == null) return;
+    _recTicker?.cancel();
+    _recTicker = null;
     try {
       final file = await c.stopVideoRecording();
       _recTimer.stop();
@@ -169,10 +186,14 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
       _recTimer.reset();
       if (!mounted) return;
       setState(() => _recording = false);
+      // 先进入拍摄后编辑页，再进发布页
+      final edit = await _openEditor(video: file, durationSeconds: seconds);
+      if (edit == null || !mounted) return;
       await _openPublishPage(
         initialVideo: file,
         durationSeconds: seconds,
-        musicTitle: _music?.title,
+        musicTitle: edit.music?.title ?? _music?.title,
+        edit: edit,
       );
     } catch (_) {
       _recTimer.stop();
@@ -191,20 +212,49 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
     try {
       final shot = await c.takePicture();
       if (!mounted) return;
-      await _openPublishPage(initialImage: shot);
+      // 先进入拍摄后编辑页，再进发布页
+      final edit = await _openEditor(photo: shot);
+      if (edit == null || !mounted) return;
+      await _openPublishPage(
+        initialImage: shot,
+        musicTitle: edit.music?.title ?? _music?.title,
+        edit: edit,
+      );
     } catch (_) {
       _toast('拍照失败');
     }
   }
 
-  /// 相册按钮：从系统相册选择视频后直接进入发布流程
+  /// 相册按钮：从系统相册选择视频后先进入编辑页，再进发布流程
   Future<void> _pickFromAlbum() async {
     final file = await _picker.pickVideo(source: ImageSource.gallery);
     if (file == null) return;
     if (!mounted) return;
+    final edit = await _openEditor(video: file);
+    if (edit == null || !mounted) return;
     await _openPublishPage(
       initialVideo: file,
-      musicTitle: _music?.title,
+      musicTitle: edit.music?.title ?? _music?.title,
+      edit: edit,
+    );
+  }
+
+  /// 进入拍摄后编辑页（滤镜/裁剪/倍速/音乐）；取消返回 null
+  Future<PostEditResult?> _openEditor({
+    XFile? video,
+    XFile? photo,
+    int? durationSeconds,
+  }) {
+    return Navigator.push<PostEditResult>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PostEditPage(
+          video: video,
+          photo: photo,
+          initialMusic: _music?.title,
+          durationSeconds: durationSeconds,
+        ),
+      ),
     );
   }
 
@@ -214,6 +264,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
     XFile? initialImage,
     int? durationSeconds,
     String? musicTitle,
+    PostEditResult? edit,
   }) async {
     final result = await Navigator.push<ShortVideo>(
       context,
@@ -223,6 +274,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
           initialImage: initialImage,
           initialMusic: musicTitle,
           durationSeconds: durationSeconds,
+          initialEdit: edit,
         ),
       ),
     );

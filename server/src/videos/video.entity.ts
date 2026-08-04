@@ -42,6 +42,26 @@ export class Video {
   @Column({ type: 'json', nullable: true })
   photos: string[];
 
+  /** 编辑滤镜 ID（'' 原图），见移动端 PhotoFilter */
+  @Column({ length: 50, default: '' })
+  filter: string;
+
+  /** 视频裁剪起点（秒，0 未裁剪） */
+  @Column({ type: 'float', default: 0 })
+  trimStart: number;
+
+  /** 视频裁剪终点（秒，0 未裁剪） */
+  @Column({ type: 'float', default: 0 })
+  trimEnd: number;
+
+  /** 播放倍速（0.5 ~ 2，默认 1） */
+  @Column({ type: 'float', default: 1 })
+  speed: number;
+
+  /** 照片顺时针旋转 90° 次数（0/1/2/3） */
+  @Column({ default: 0 })
+  rotation: number;
+
   /** 视频时长（秒） */
   @Column({ default: 0 })
   duration: number;

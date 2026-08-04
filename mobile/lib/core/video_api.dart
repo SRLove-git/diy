@@ -101,6 +101,11 @@ class VideoApi {
     List<String> tags = const [],
     String location = '',
     List<String> photos = const [],
+    String filter = '',
+    double trimStart = 0,
+    double trimEnd = 0,
+    double speed = 1,
+    int rotation = 0,
   }) async {
     final data = <String, dynamic>{};
     if (title.isNotEmpty) data['title'] = title;
@@ -112,6 +117,11 @@ class VideoApi {
     if (tags.isNotEmpty) data['tags'] = tags;
     if (location.isNotEmpty) data['location'] = location;
     if (photos.isNotEmpty) data['photos'] = photos;
+    if (filter.isNotEmpty) data['filter'] = filter;
+    if (trimStart > 0) data['trimStart'] = trimStart;
+    if (trimEnd > 0) data['trimEnd'] = trimEnd;
+    if (speed != 1) data['speed'] = speed;
+    if (rotation != 0) data['rotation'] = rotation;
     final resp = await ApiClient.instance.post('/videos', data: data);
     return ShortVideo.fromServerJson(resp.data as Map<String, dynamic>);
   }

@@ -3,8 +3,10 @@ import 'dart:ui';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:video_player/video_player.dart';
 
 import '../core/follow_api.dart';
+import '../core/photo_filters.dart';
 import '../core/video_api.dart';
 import '../features/community/domain/community_models.dart';
 import 'shoot_page.dart';
@@ -308,7 +310,6 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
             _buildEmptyFollow()
           else
             PageView.builder(
-              key: ValueKey(_tabIndex),
               controller: _pageCtrl,
               scrollDirection: Axis.vertical,
               itemCount: feed.length,
@@ -531,13 +532,29 @@ class _VideoItemPage extends StatefulWidget {
 
 class _VideoItemPageState extends State<_VideoItemPage>
     with TickerProviderStateMixin {
-  /// Mock 播放进度（模拟视频流；接入真实视频后替换为 video_player）
+  /// Mock 播放进度（模拟视频流；接入真实视频后替换为 video_player）。
+  /// 时长按 裁剪区间/倍速 换算：如 15s 视频 2x 播放用 7.5s 播完。
   late final AnimationController _progress = AnimationController(
     vsync: this,
-    duration: widget.video.duration,
+    duration: _playDuration,
   );
 
+  /// Mock 播放时长：裁剪区间长度 ÷ 倍速
+  Duration get _playDuration {
+    final v = widget.video;
+    var ms = v.duration.inMilliseconds;
+    if (v.trimStart > 0 && v.trimEnd > v.trimStart) {
+      ms = ((v.trimEnd - v.trimStart) * 1000).round();
+    }
+    if (v.speed > 0) ms = (ms / v.speed).round();
+    return Duration(milliseconds: ms);
+  }
+
   bool _playing = false;
+
+  /// 真实视频播放器（网络视频；视频作品播放画面，加载失败回退 Mock 封面）
+  VideoPlayerController? _videoCtrl;
+  bool _videoReady = false;
 
   /// 照片作品多图轮播页码控制（仅照片多图时使用）
   final PageController _photoCtrl = PageController();
@@ -577,10 +594,57 @@ class _VideoItemPageState extends State<_VideoItemPage>
         _progress.forward(from: 0);
       }
     });
+    // 视频作品：初始化真实播放器（照片作品/无视频回退 Mock）
+    final v = widget.video;
+    if (!v.isPhoto && v.videoUrl.isNotEmpty) {
+      _initVideo();
+    }
     // 首帧后上报照片页码角标（避免在父页面 build 期间 setState）
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _emitBadge();
     });
+  }
+
+  /// 初始化真实视频播放器：循环、倍速、裁剪区间，就绪后自动播放
+  Future<void> _initVideo() async {
+    final url = widget.video.videoUrl;
+    if (url.isEmpty) return;
+    final ctrl = VideoPlayerController.networkUrl(Uri.parse(url));
+    _videoCtrl = ctrl;
+    try {
+      await ctrl.initialize();
+      await ctrl.setLooping(true);
+      final spd = widget.video.speed;
+      if (spd > 0 && spd != 1) await ctrl.setPlaybackSpeed(spd);
+      ctrl.addListener(_onVideoTick);
+      if (!mounted) return;
+      setState(() => _videoReady = true);
+      // 若当前页 active 自动开始播放
+      if (widget.active) {
+        await ctrl.play();
+        if (mounted) setState(() => _playing = true);
+      }
+    } catch (_) {
+      // 播放失败回退 Mock 封面（_videoReady 保持 false）
+    }
+  }
+
+  /// 真实播放同步：裁剪区间循环 + 播放状态回写
+  void _onVideoTick() {
+    final c = _videoCtrl;
+    if (c == null || !c.value.isInitialized) return;
+    final v = widget.video;
+    // 超出裁剪终点跳回起点（元数据裁剪在播放侧生效）
+    if (v.trimStart > 0 && v.trimEnd > v.trimStart) {
+      final end = Duration(milliseconds: (v.trimEnd * 1000).round());
+      if (c.value.position >= end) {
+        c.seekTo(Duration(milliseconds: (v.trimStart * 1000).round()));
+      }
+    }
+    final playing = c.value.isPlaying;
+    if (playing != _playing && mounted) {
+      setState(() => _playing = playing);
+    }
   }
 
   @override
@@ -588,12 +652,21 @@ class _VideoItemPageState extends State<_VideoItemPage>
     super.didUpdateWidget(oldWidget);
     if (widget.active != oldWidget.active) {
       if (widget.active) {
-        _progress.forward(from: _progress.value);
+        if (_videoReady) {
+          _videoCtrl?.play();
+        } else {
+          _progress.forward(from: _progress.value);
+        }
         _playing = true;
         _emitBadge();
       } else {
-        _progress.stop();
-        _progress.reset();
+        // 失活暂停；真实播放器暂停到当前位置，Mock 复位
+        if (_videoReady) {
+          _videoCtrl?.pause();
+        } else {
+          _progress.stop();
+          _progress.reset();
+        }
         _playing = false;
         // 失活时重置上报记录，重新激活后才会重新上报角标
         _lastReportedBadge = '';
@@ -607,6 +680,8 @@ class _VideoItemPageState extends State<_VideoItemPage>
 
   @override
   void dispose() {
+    _videoCtrl?.removeListener(_onVideoTick);
+    _videoCtrl?.dispose();
     _photoCtrl.dispose();
     _progress.dispose();
     _burst.dispose();
@@ -636,6 +711,18 @@ class _VideoItemPageState extends State<_VideoItemPage>
   }
 
   void _togglePlay() {
+    // 真实视频播放器优先
+    if (_videoReady) {
+      final c = _videoCtrl!;
+      if (c.value.isPlaying) {
+        c.pause();
+      } else {
+        c.play();
+      }
+      setState(() => _playing = c.value.isPlaying);
+      return;
+    }
+    // Mock 播放（照片作品/播放器未就绪）
     setState(() {
       if (_playing) {
         _progress.stop();
@@ -652,9 +739,12 @@ class _VideoItemPageState extends State<_VideoItemPage>
     widget.onDoubleTapLike();
   }
 
-  /// 封面/照片网络图（加载中与失败兜底）
+  /// 封面/照片网络图（加载中与失败兜底）。
+  /// 统一应用编辑滤镜（ColorFiltered）与照片旋转（RotatedBox）。
   Widget _coverImage(String url) {
-    return Image.network(
+    final filter = filterOf(widget.video.filterId).colorFilter;
+    final turns = widget.video.rotation % 4;
+    Widget image = Image.network(
       url,
       fit: BoxFit.cover,
       frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
@@ -681,6 +771,28 @@ class _VideoItemPageState extends State<_VideoItemPage>
         ),
       ),
     );
+    image = ColorFiltered(colorFilter: filter, child: image);
+    if (turns != 0) image = RotatedBox(quarterTurns: turns, child: image);
+    return image;
+  }
+
+  /// 视频真实画面：全屏铺满裁切（BoxFit.cover），应用编辑滤镜
+  Widget _videoLayer() {
+    final c = _videoCtrl!;
+    final filter = filterOf(widget.video.filterId).colorFilter;
+    return ColorFiltered(
+      colorFilter: filter,
+      child: ClipRect(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: 100,
+            height: c.value.aspectRatio > 0 ? 100 / c.value.aspectRatio : 100,
+            child: VideoPlayer(c),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -694,7 +806,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 背景：照片多图轮播 / 单封面（Mock 播放载体）/ 占位图
+            // 背景：照片多图轮播 / 视频真实画面 / 单封面（Mock 播放载体）/ 占位图
             if (video.isPhoto && video.photos.length > 1)
               PageView.builder(
                 controller: _photoCtrl,
@@ -705,6 +817,8 @@ class _VideoItemPageState extends State<_VideoItemPage>
                 },
                 itemBuilder: (_, i) => _coverImage(video.photos[i]),
               )
+            else if (_videoReady)
+              _videoLayer()
             else if (video.cover.isEmpty)
               Container(
                 color: const Color(0xFF14141C),
@@ -873,17 +987,51 @@ class _VideoItemPageState extends State<_VideoItemPage>
                               ),
                           ],
                         )
-                      : AnimatedBuilder(
+                      : _videoReady
+                          ? ValueListenableBuilder<VideoPlayerValue>(
+                              valueListenable: _videoCtrl!,
+                              builder: (context, value, _) {
+                                // 真实播放进度（原始时间轴比例）
+                                final total = value.duration.inMilliseconds;
+                                final pos = value.position.inMilliseconds;
+                                final display =
+                                    total > 0 ? (pos / total).clamp(0.0, 1.0) : 0.0;
+                                return ClipRRect(
+                                  borderRadius: BorderRadius.circular(2),
+                                  child: LinearProgressIndicator(
+                                    value: display,
+                                    minHeight: 3,
+                                    backgroundColor: Colors.white24,
+                                    color: const Color(0xFFFE2C55),
+                                  ),
+                                );
+                              },
+                            )
+                          : AnimatedBuilder(
                           animation: _progress,
-                          builder: (context, _) => ClipRRect(
-                            borderRadius: BorderRadius.circular(2),
-                            child: LinearProgressIndicator(
-                              value: _progress.value,
-                              minHeight: 3,
-                              backgroundColor: Colors.white24,
-                              color: const Color(0xFFFE2C55),
-                            ),
-                          ),
+                          builder: (context, _) {
+                            // 把 Mock 播放进度映射回原始时间轴：
+                            // 展示位置 = 裁剪起点 + 已播时长 × 倍速
+                            final v = widget.video;
+                            final playMs = _playDuration.inMilliseconds;
+                            var rawMs = _progress.value * playMs * v.speed;
+                            if (v.trimStart > 0 && v.trimEnd > v.trimStart) {
+                              rawMs += v.trimStart * 1000;
+                            }
+                            final totalMs = v.duration.inMilliseconds;
+                            final display = totalMs > 0
+                                ? (rawMs / totalMs).clamp(0.0, 1.0)
+                                : 0.0;
+                            return ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: LinearProgressIndicator(
+                                value: display,
+                                minHeight: 3,
+                                backgroundColor: Colors.white24,
+                                color: const Color(0xFFFE2C55),
+                              ),
+                            );
+                          },
                         ),
                 ),
               ),

@@ -1,12 +1,16 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:video_player/video_player.dart';
 
 import '../core/music_api.dart';
+import '../core/photo_filters.dart';
 import '../core/video_api.dart';
 import 'music_picker_sheet.dart';
+import 'post_edit_page.dart';
 import 'short_video_models.dart';
 
 /// 抖音风格作品发布编辑页面
@@ -23,6 +27,7 @@ class DouyinPublishPage extends StatefulWidget {
     this.initialImage,
     this.initialMusic,
     this.durationSeconds,
+    this.initialEdit,
   });
 
   /// 拍摄页选中的视频文件（可为空，进入后在页内再选）
@@ -36,6 +41,9 @@ class DouyinPublishPage extends StatefulWidget {
 
   /// 录制视频的实测时长（秒，可空则由服务端默认）
   final int? durationSeconds;
+
+  /// 拍摄后编辑结果（滤镜/裁剪/倍速/旋转/配乐，可空）
+  final PostEditResult? initialEdit;
 
   @override
   State<DouyinPublishPage> createState() => _DouyinPublishPageState();
@@ -61,6 +69,14 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
   /// 已选配乐（发布时写入作品）
   MusicItem? _music;
 
+  /// 拍摄后编辑结果（滤镜/裁剪/倍速/旋转）
+  PostEditResult? _edit;
+
+  /// 视频真实播放器（无封面视频预览；播放失败回退占位）
+  VideoPlayerController? _videoCtrl;
+  bool _videoReady = false;
+  bool _videoPlaying = false;
+
   bool _submitting = false;
 
   @override
@@ -80,10 +96,65 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
         duration: 0,
       );
     }
+    _edit = widget.initialEdit;
+    // 编辑页选择的配乐优先
+    final editMusic = _edit?.music;
+    if (editMusic != null && editMusic.title.isNotEmpty) {
+      _music = editMusic;
+    }
+    // 视频素材：初始化真实播放器用于预览
+    if (_video != null) _initVideoPreview();
+  }
+
+  /// 初始化视频播放器：循环播放，失败回退占位
+  Future<void> _initVideoPreview() async {
+    final file = _video;
+    if (file == null) return;
+    final ctrl = VideoPlayerController.file(File(file.path));
+    _videoCtrl = ctrl;
+    try {
+      await ctrl.initialize();
+      await ctrl.setLooping(true);
+      ctrl.addListener(_onVideoTick);
+      if (mounted) setState(() => _videoReady = true);
+    } catch (_) {
+      // 播放失败保留占位（_videoReady 保持 false）
+    }
+  }
+
+  /// 释放视频播放器（更换视频/切照片模式时调用）
+  void _releaseVideo() {
+    _videoCtrl?.removeListener(_onVideoTick);
+    _videoCtrl?.dispose();
+    _videoCtrl = null;
+    _videoReady = false;
+    _videoPlaying = false;
+  }
+
+  void _onVideoTick() {
+    final c = _videoCtrl;
+    if (c == null || !c.value.isInitialized) return;
+    final playing = c.value.isPlaying;
+    if (playing != _videoPlaying && mounted) {
+      setState(() => _videoPlaying = playing);
+    }
+  }
+
+  /// 视频预览播放/暂停切换
+  void _toggleVideoPreview() {
+    final c = _videoCtrl;
+    if (c == null || !c.value.isInitialized) return;
+    if (c.value.isPlaying) {
+      c.pause();
+    } else {
+      c.play();
+    }
+    if (mounted) setState(() => _videoPlaying = c.value.isPlaying);
   }
 
   @override
   void dispose() {
+    _releaseVideo();
     _titleCtrl.dispose();
     _descCtrl.dispose();
     super.dispose();
@@ -93,11 +164,13 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
   Future<void> _pickVideo() async {
     final file = await _picker.pickVideo(source: ImageSource.gallery);
     if (file == null) return;
+    _releaseVideo();
     setState(() {
       _video = file;
       _photos.clear();
       _cover = null;
     });
+    _initVideoPreview();
   }
 
   /// 从相册追加照片素材（小红书式多图，最多 9 张）
@@ -108,6 +181,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
       limit: _maxPhotos - _photos.length,
     );
     if (files.isEmpty) return;
+    _releaseVideo();
     setState(() {
       _photos.addAll(files);
       _video = null;
@@ -175,6 +249,11 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
         duration: widget.durationSeconds,
         music: _music?.title ?? '',
         photos: photos,
+        filter: _edit?.filterId ?? '',
+        trimStart: _edit?.trimStart ?? 0,
+        trimEnd: _edit?.trimEnd ?? 0,
+        speed: _edit?.speed ?? 1,
+        rotation: _edit?.rotation ?? 0,
       );
       if (mounted) {
         _toast('发布成功');
@@ -269,100 +348,136 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
   // ===================== 预览区域 =====================
   Widget _buildPreviewArea() {
     final hasAsset = _video != null || _photos.isNotEmpty;
+    final filter = filterOf(_edit?.filterId ?? '').colorFilter;
+    final angle = (_edit?.rotation ?? 0) * 90 * 3.141592653589793 / 180;
+    final summary = _editSummary;
     return Column(
       children: [
         // 手机样式素材预览卡片
         Center(
           child: GestureDetector(
-            onTap: () => hasAsset ? _toast('预览（演示）') : _pickVideo(),
-            child: Container(
-              width: 200,
-              height: 340,
-              decoration: BoxDecoration(
-                color: _btnBg,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _border, width: 2),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // 背景：照片素材（第一张）/ 封面图 / 占位
-                    if (_photos.isNotEmpty)
-                      Image.file(
-                        File(_photos.first.path),
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => _placeholder(),
-                      )
-                    else if (_cover != null)
-                      Image.file(
-                        File(_cover!.path),
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => _placeholder(),
-                      )
-                    else
-                      _placeholder(),
-                    // 视频播放按钮叠加（照片作品不显示）
-                    if (_video != null)
-                      const Center(
-                        child: Icon(
-                          Icons.play_circle_outline,
-                          color: _white,
-                          size: 56,
-                        ),
-                      ),
-                    // 照片作品角标（多图显示张数）
-                    if (_photos.isNotEmpty)
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            _photos.length > 1 ? '照片 ${_photos.length} 张' : '照片',
-                            style: const TextStyle(color: _white, fontSize: 10),
-                          ),
-                        ),
-                      ),
-                    // 底部素材名称
-                    if (hasAsset)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 6,
-                          ),
-                          color: Colors.black54,
-                          child: Text(
-                            _fileName(
-                              _video != null ? _video!.name : _photos.first.name,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+            onTap: () {
+              if (!hasAsset) {
+                _pickVideo();
+                return;
+              }
+              // 视频就绪时点击卡片播放/暂停
+              if (_video != null && _videoReady) {
+                _toggleVideoPreview();
+                return;
+              }
+              _toast('预览（演示）');
+            },
+            child: Transform.rotate(
+              angle: angle,
+              child: Container(
+                width: 200,
+                height: 340,
+                decoration: BoxDecoration(
+                  color: _btnBg,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _border, width: 2),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: ColorFiltered(
+                    colorFilter: filter,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // 背景：照片素材（第一张）/ 无封面视频真实预览 / 封面图 / 占位
+                        if (_photos.isNotEmpty)
+                          Image.file(
+                            File(_photos.first.path),
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => _placeholder(),
+                          )
+                        else if (_video != null && _videoReady)
+                          _videoPreviewBox()
+                        else if (_cover != null)
+                          Image.file(
+                            File(_cover!.path),
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => _placeholder(),
+                          )
+                        else
+                          _placeholder(),
+                        // 视频未就绪时叠加播放图标（就绪后由预览框内部管理）
+                        if (_video != null && !_videoReady)
+                          const Center(
+                            child: Icon(
+                              Icons.play_circle_outline,
                               color: _white,
-                              fontSize: 11,
+                              size: 56,
                             ),
                           ),
-                        ),
-                      ),
-                  ],
+                        // 照片作品角标（多图显示张数）
+                        if (_photos.isNotEmpty)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black54,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                _photos.length > 1
+                                    ? '照片 ${_photos.length} 张'
+                                    : '照片',
+                                style: const TextStyle(
+                                  color: _white,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                          ),
+                        // 底部素材名称
+                        if (hasAsset)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 6,
+                              ),
+                              color: Colors.black54,
+                              child: Text(
+                                _fileName(_video != null
+                                    ? _video!.name
+                                    : _photos.first.name),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: _white,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
         ),
+        // 编辑摘要（滤镜/倍速/裁剪）
+        if (summary.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              summary,
+              style: const TextStyle(color: _hint, fontSize: 11),
+            ),
+          ),
 
         const SizedBox(height: 12),
 
@@ -447,6 +562,27 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
         ),
       ],
     );
+  }
+
+  /// 编辑摘要文案：滤镜 · 倍速 · 裁剪区间
+  String get _editSummary {
+    final edit = _edit;
+    if (edit == null) return '';
+    final parts = <String>[
+      if (edit.filterId.isNotEmpty) '滤镜 ${filterOf(edit.filterId).name}',
+      if (edit.speed != 1) '${edit.speed}x',
+      if (edit.trimStart > 0)
+        '已裁剪 ${_fmtSec(edit.trimStart)}-${_fmtSec(edit.trimEnd)}',
+      if (edit.rotation != 0) '已旋转',
+    ];
+    return parts.join(' · ');
+  }
+
+  static String _fmtSec(double sec) {
+    final s = sec.round();
+    final m = (s ~/ 60).toString().padLeft(2, '0');
+    final r = (s % 60).toString().padLeft(2, '0');
+    return '$m:$r';
   }
 
   /// 照片图片列表：横向排列全部照片，右上角可移除，
@@ -590,6 +726,48 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
           ),
         ],
       ),
+    );
+  }
+
+  /// 视频真实预览框：播放画面 + 播放/暂停 + 底部进度
+  Widget _videoPreviewBox() {
+    final c = _videoCtrl!;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Center(
+          child: AspectRatio(
+            aspectRatio: c.value.aspectRatio,
+            child: VideoPlayer(c),
+          ),
+        ),
+        Center(
+          child: Icon(
+            _videoPlaying
+                ? Icons.pause_circle_outline
+                : Icons.play_circle_outline,
+            color: _white.withValues(alpha: 0.85),
+            size: 46,
+          ),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: ValueListenableBuilder<VideoPlayerValue>(
+            valueListenable: c,
+            builder: (context, value, _) => Container(
+              color: Colors.black54,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Text(
+                '${_fmtSec(value.position.inMilliseconds / 1000)}'
+                ' / ${_fmtSec(value.duration.inMilliseconds / 1000)}',
+                style: const TextStyle(color: _white, fontSize: 10),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

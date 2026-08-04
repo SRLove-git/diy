@@ -30,6 +30,12 @@ export interface VideoItem {
   music: string;
   tags: string[];
   location: string;
+  photos: string[];
+  filter: string;
+  trimStart: number;
+  trimEnd: number;
+  speed: number;
+  rotation: number;
   likeCount: number;
   commentCount: number;
   shareCount: number;
@@ -233,6 +239,11 @@ export class VideosService {
       cover: dto.cover ?? '',
       videoUrl: dto.videoUrl ?? '',
       photos: dto.photos ?? [],
+      filter: dto.filter ?? '',
+      trimStart: dto.trimStart ?? 0,
+      trimEnd: dto.trimEnd ?? 0,
+      speed: dto.speed ?? 1,
+      rotation: dto.rotation ?? 0,
       duration: dto.duration ?? 15,
       music: dto.music ?? '',
       tags: dto.tags ?? [],
