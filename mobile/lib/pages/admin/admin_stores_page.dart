@@ -531,29 +531,44 @@ class _SlotsSheet extends StatefulWidget {
 
 class _SlotsSheetState extends State<_SlotsSheet> {
   late List<AdminTimeSlot> _slots = widget.store.slots;
-  final _start = TextEditingController();
-  final _end = TextEditingController();
+  TimeOfDay? _start;
+  TimeOfDay? _end;
   bool _busy = false;
 
-  @override
-  void dispose() {
-    _start.dispose();
-    _end.dispose();
-    super.dispose();
+  Future<void> _pickStart() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _start ?? const TimeOfDay(hour: 10, minute: 0),
+    );
+    if (picked != null) setState(() => _start = picked);
   }
 
+  Future<void> _pickEnd() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _end ?? const TimeOfDay(hour: 11, minute: 30),
+    );
+    if (picked != null) setState(() => _end = picked);
+  }
+
+  String _fmt(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
   Future<void> _add() async {
-    final s = _start.text.trim();
-    final e = _end.text.trim();
-    if (s.isEmpty || e.isEmpty) return;
+    final s = _start;
+    final e = _end;
+    if (s == null || e == null) return;
     setState(() => _busy = true);
     try {
-      final slot = await AdminApi.addSlot(widget.store.id, {'startTime': s, 'endTime': e});
+      final slot = await AdminApi.addSlot(widget.store.id, {
+        'startTime': _fmt(s),
+        'endTime': _fmt(e),
+      });
       if (mounted) {
         setState(() {
           _slots = [..._slots, slot];
-          _start.clear();
-          _end.clear();
+          _start = null;
+          _end = null;
         });
       }
     } on DioException catch (ex) {
@@ -627,24 +642,18 @@ class _SlotsSheetState extends State<_SlotsSheet> {
               Row(
                 children: [
                   Expanded(
-                    child: TextField(
-                      controller: _start,
-                      decoration: const InputDecoration(
-                        hintText: '开始 10:00',
-                        isDense: true,
-                        border: OutlineInputBorder(),
-                      ),
+                    child: _TimeField(
+                      selected: _start,
+                      hint: '开始 10:00',
+                      onTap: _pickStart,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: TextField(
-                      controller: _end,
-                      decoration: const InputDecoration(
-                        hintText: '结束 11:30',
-                        isDense: true,
-                        border: OutlineInputBorder(),
-                      ),
+                    child: _TimeField(
+                      selected: _end,
+                      hint: '结束 11:30',
+                      onTap: _pickEnd,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -668,6 +677,54 @@ class _SlotsSheetState extends State<_SlotsSheet> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 时间选择输入框：点击弹出系统时间选择器
+class _TimeField extends StatelessWidget {
+  const _TimeField({
+    required this.selected,
+    required this.hint,
+    required this.onTap,
+  });
+
+  final TimeOfDay? selected;
+  final String hint;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final hasValue = selected != null;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          border: Border.all(color: colors.divider),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.access_time, size: 16, color: colors.textSecondary),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                hasValue
+                    ? '${selected!.hour.toString().padLeft(2, '0')}:${selected!.minute.toString().padLeft(2, '0')}'
+                    : hint,
+                style: TextStyle(
+                  color: hasValue ? colors.textPrimary : colors.textSecondary,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

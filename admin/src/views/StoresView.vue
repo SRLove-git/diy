@@ -202,8 +202,8 @@ onMounted(load)
           </tbody>
         </table>
         <div class="row">
-          <input v-model="newSlot.startTime" placeholder="开始 10:00" />
-          <input v-model="newSlot.endTime" placeholder="结束 11:30" />
+          <input v-model="newSlot.startTime" type="time" />
+          <input v-model="newSlot.endTime" type="time" />
           <button class="primary" @click="addSlot">添加</button>
         </div>
         <div class="actions">
