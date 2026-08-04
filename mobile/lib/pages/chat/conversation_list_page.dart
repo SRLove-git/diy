@@ -196,7 +196,11 @@ class _ConversationListPageState extends State<ConversationListPage> {
         child: Column(
           children: [
             AppBar(
-              leading: _buildAvatar(),
+              // 头像跟随登录用户实时变化（修改头像后自动刷新）
+              leading: ListenableBuilder(
+                listenable: AuthService.instance,
+                builder: (context, _) => _buildAvatar(),
+              ),
               title: const Text('聊天'),
               actions: [_buildFilterButton()],
             ),
@@ -220,7 +224,9 @@ class _ConversationListPageState extends State<ConversationListPage> {
     final me = AuthService.instance.user;
     final colors = AppColors.of(context);
     final avatar = me?.avatar ?? '';
-    final valid = avatar.startsWith('http://') || avatar.startsWith('https://');
+    final valid = avatar.startsWith('http://') ||
+        avatar.startsWith('https://') ||
+        avatar.startsWith('/uploads/');
     return InkWell(
       onTap: widget.onTapAvatar,
       borderRadius: BorderRadius.circular(24),
@@ -236,7 +242,7 @@ class _ConversationListPageState extends State<ConversationListPage> {
           clipBehavior: Clip.antiAlias,
           child: valid
               ? Image.network(
-                  avatar,
+                  ChatApi.resolveUrl(avatar),
                   fit: BoxFit.cover,
                   errorBuilder: (_, _, _) => _initial(me?.nickname ?? '我'),
                 )

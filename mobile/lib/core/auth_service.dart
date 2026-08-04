@@ -218,6 +218,25 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 上传并更新头像：先上传图片到 /uploads/avatar，再 PATCH 到用户资料。
+  /// 上传后的相对路径存库，展示侧统一用 ChatApi.resolveUrl 拼绝对地址。
+  Future<void> updateAvatar(String filePath) async {
+    final form = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath),
+    });
+    final upload = await ApiClient.instance.post(
+      '/uploads/images',
+      queryParameters: {'folder': 'avatar'},
+      data: form,
+      options: Options(contentType: Headers.multipartFormDataContentType),
+    );
+    final url = (upload.data as Map<String, dynamic>)['url'] as String;
+    final resp = await ApiClient.instance
+        .patch('/users/me', data: {'avatar': url});
+    _user = User.fromJson(resp.data as Map<String, dynamic>);
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     ChatService.instance.disconnect();
     _sessionInvalid = false;

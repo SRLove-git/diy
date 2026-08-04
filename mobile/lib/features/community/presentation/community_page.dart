@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../core/app_colors.dart';
+import '../../../core/auth_service.dart';
+import '../../../core/chat_api.dart';
 import '../../../widgets/state_widgets.dart';
 import '../data/mock_community_datasource.dart';
 import '../../../pages/community/create_post_page.dart';
@@ -208,21 +210,10 @@ class _CommunityPageState extends State<CommunityPage> {
           padding: const EdgeInsets.only(left: 16),
           child: GestureDetector(
             onTap: _onAvatarTap,
-            child: ClipOval(
-              child: Image.network(
-                MockCommunityDataSource.me.avatarUrl,
-                width: 40,
-                height: 40,
-                fit: BoxFit.cover,
-                cacheWidth: 120,
-                errorBuilder: (_, _, _) => Container(
-                  width: 40,
-                  height: 40,
-                  color: colors.primary,
-                  child: const Icon(Icons.person_rounded,
-                      color: Colors.white, size: 24),
-                ),
-              ),
+            // 跟随登录用户实时头像：上传/修改后自动同步
+            child: ListenableBuilder(
+              listenable: AuthService.instance,
+              builder: (context, _) => _buildHeaderAvatar(colors),
             ),
           ),
         ),
@@ -248,6 +239,34 @@ class _CommunityPageState extends State<CommunityPage> {
       ],
     );
   }
+
+  /// 左上角头像：跟随登录用户实时头像；未设置/加载失败时显示占位图标。
+  /// 兼容 http(s) 与服务端相对路径（/uploads/...），统一解析为绝对地址。
+  Widget _buildHeaderAvatar(AppColors colors) {
+    final avatar = AuthService.instance.user?.avatar ?? '';
+    final valid = avatar.startsWith('http://') ||
+        avatar.startsWith('https://') ||
+        avatar.startsWith('/uploads/');
+    return ClipOval(
+      child: valid
+          ? Image.network(
+              ChatApi.resolveUrl(avatar),
+              width: 40,
+              height: 40,
+              fit: BoxFit.cover,
+              cacheWidth: 120,
+              errorBuilder: (_, _, _) => _avatarFallback(colors),
+            )
+          : _avatarFallback(colors),
+    );
+  }
+
+  Widget _avatarFallback(AppColors colors) => Container(
+        width: 40,
+        height: 40,
+        color: colors.primary,
+        child: const Icon(Icons.person_rounded, color: Colors.white, size: 24),
+      );
 
   /// 搜索栏：48 高，圆角 24
   Widget _buildSearchBar() {

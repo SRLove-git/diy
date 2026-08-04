@@ -3,6 +3,7 @@ import {
   Controller,
   Inject,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -64,12 +65,15 @@ function multerStorage() {
   });
 }
 
+/** 允许的图片业务目录（query 参数 folder，防止路径穿越） */
+const ALLOWED_FOLDERS = new Set(['chat', 'avatar', 'post']);
+
 /**
  * 聊天图片上传。
  *
  * POST /api/uploads/images（multipart 字段 file，需登录）。
  * multer 先写入系统临时目录，随后交给 UploadProvider 持久化：
- * - local（默认）：移动到 {UPLOAD_DIR}/chat/{yyyy}/{mm}/，返回相对路径
+ * - local（默认）：移动到 {UPLOAD_DIR}/{folder}/{yyyy}/{mm}/，返回相对路径
  * - oss（预留）：配置 UPLOAD_PROVIDER=oss 并实现对象存储后启用
  *
  * 返回的 url 作为图片消息 content 存储；本地模式由 main.ts 以 /uploads 前缀托管静态资源。
@@ -89,7 +93,10 @@ export class UploadsController {
       limits: { fileSize: 10 * 1024 * 1024 },
     }),
   )
-  async upload(@UploadedFile() file?: Express.Multer.File) {
+  async upload(
+    @UploadedFile() file?: Express.Multer.File,
+    @Query('folder') folder?: string,
+  ) {
     if (!file) throw new BadRequestException('缺少文件');
     if (!ALLOWED_MIMES.has(file.mimetype)) {
       // 类型不合规：删掉临时文件再报错
@@ -100,7 +107,8 @@ export class UploadsController {
       }
       throw new BadRequestException('仅支持 jpg/png/gif/webp 图片');
     }
-    const { url } = await this.uploader.save(file, `chat/${monthDir()}`);
+    const dir = folder && ALLOWED_FOLDERS.has(folder) ? folder : 'chat';
+    const { url } = await this.uploader.save(file, `${dir}/${monthDir()}`);
     return { url };
   }
 

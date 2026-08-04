@@ -1,9 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../core/app_colors.dart';
 import '../core/auth_service.dart';
+import '../core/chat_api.dart';
 import '../core/post_api.dart';
+import '../widgets/image_viewer.dart';
 import '../widgets/state_widgets.dart';
 import 'admin/admin_home_page.dart';
 import 'community/create_post_page.dart';
@@ -69,10 +72,93 @@ class _ProfilePageState extends State<ProfilePage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  /// 仅对合法的 http(s) 图片地址走网络加载，避免脏数据触发图片解析异常
+  /// 仅对合法的 http(s)/服务端相对路径图片地址走网络加载，避免脏数据触发图片解析异常
   bool _isValidImageUrl(String? url) {
     if (url == null || url.isEmpty) return false;
-    return url.startsWith('http://') || url.startsWith('https://');
+    return url.startsWith('http://') ||
+        url.startsWith('https://') ||
+        url.startsWith('/uploads/');
+  }
+
+  /// 头像菜单：查看大图 / 拍照 / 从相册选择
+  void _openAvatarMenu() {
+    final user = AuthService.instance.user;
+    final hasAvatar = _isValidImageUrl(user?.avatar);
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (hasAvatar)
+              ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: const Text('查看头像'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _viewAvatar(user!.avatar);
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('拍照'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickAndUploadAvatar(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('从相册选择'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickAndUploadAvatar(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.close),
+              title: const Text('取消'),
+              onTap: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 全屏查看当前头像
+  void _viewAvatar(String avatar) {
+    showImageViewer(
+      context,
+      image: networkViewerImage(ChatApi.resolveUrl(avatar)),
+      heroTag: 'profile-avatar',
+    );
+  }
+
+  /// 选图 → 上传 → 更新头像（失败仅提示，不影响当前头像）
+  Future<void> _pickAndUploadAvatar(ImageSource source) async {
+    final XFile? picked;
+    try {
+      picked = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1080,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+    } catch (_) {
+      _toast('无法打开相机/相册');
+      return;
+    }
+    if (picked == null) return;
+    try {
+      await AuthService.instance.updateAvatar(picked.path);
+      if (mounted) _toast('头像已更新');
+    } on DioException catch (e) {
+      if (mounted) _toast(PostApi.messageOf(e));
+    } catch (_) {
+      if (mounted) _toast('头像上传失败，请稍后再试');
+    }
   }
 
   /// 编辑主页 → 修改昵称
@@ -250,7 +336,7 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           // 头像 90×90 + 右下角悬浮 +
           GestureDetector(
-            onTap: () => _toast('添加头像动态功能开发中'),
+            onTap: _openAvatarMenu,
             child: Stack(
               clipBehavior: Clip.none,
               children: [
@@ -264,7 +350,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   clipBehavior: Clip.antiAlias,
                   child: _isValidImageUrl(user?.avatar)
                       ? Image.network(
-                          user!.avatar,
+                          ChatApi.resolveUrl(user!.avatar),
                           fit: BoxFit.cover,
                           errorBuilder: (_, _, _) => const Icon(
                             Icons.person,
