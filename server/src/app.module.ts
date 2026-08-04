@@ -13,6 +13,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { BootstrapService } from './bootstrap/bootstrap.service';
 import { GlobalJwtModule } from './common/global-jwt.module';
 import { HealthController } from './health/health.controller';
+import { MusicModule } from './music/music.module';
 import { RedisModule } from './redis/redis.module';
 import { StoresModule } from './stores/stores.module';
 import { UploadsModule } from './uploads/uploads.module';
@@ -49,6 +50,7 @@ import { VideosModule } from './videos/videos.module';
     NotificationsModule,
     DashboardModule,
     VideosModule,
+    MusicModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService, BootstrapService],

@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { MusicService } from '../music/music.service';
 import { UsersService } from '../users/users.service';
 import { VideosService } from '../videos/videos.service';
 
@@ -90,6 +91,23 @@ const DEMO_VIDEOS: DemoVideo[] = [
   },
 ];
 
+/** 开发环境预置的演示配乐 */
+interface DemoMusic {
+  title: string;
+  artist: string;
+  duration: number;
+}
+
+/** 演示配乐（音频走 SoundHelix 公共示例，客户端可试听） */
+const DEMO_MUSIC: DemoMusic[] = [
+  { title: 'Lofi 手作日常', artist: 'Chill Beats', duration: 180 },
+  { title: '烛光', artist: '卡点神曲', duration: 120 },
+  { title: '羊毛毡小调', artist: '手工 BGM', duration: 150 },
+  { title: '珠光', artist: '轻快手作', duration: 90 },
+  { title: '手作时光', artist: '氛围音乐', duration: 200 },
+  { title: '毛线球', artist: '手工编织', duration: 130 },
+];
+
 /** 启动初始化：开发环境预置管理员账号 + 演示短视频 */
 @Injectable()
 export class BootstrapService implements OnApplicationBootstrap {
@@ -99,12 +117,14 @@ export class BootstrapService implements OnApplicationBootstrap {
   constructor(
     private readonly users: UsersService,
     private readonly videos: VideosService,
+    private readonly music: MusicService,
   ) {}
 
   async onApplicationBootstrap() {
     if (process.env.NODE_ENV === 'production') return;
     await this.ensureAdmin();
     await this.seedDemoVideos();
+    await this.seedDemoMusic();
   }
 
   private async ensureAdmin() {
@@ -152,5 +172,21 @@ export class BootstrapService implements OnApplicationBootstrap {
       });
     }
     this.logger.log(`已预置 ${DEMO_VIDEOS.length} 条演示短视频`);
+  }
+
+  /** 曲库为空时按曲目预置演示配乐（按歌名+歌手去重，保证拍摄页可选） */
+  private async seedDemoMusic() {
+    for (let i = 0; i < DEMO_MUSIC.length; i++) {
+      const m = DEMO_MUSIC[i];
+      const exists = await this.music.findByTitleArtist(m.title, m.artist);
+      if (exists) continue;
+      await this.music.create({
+        title: m.title,
+        artist: m.artist,
+        duration: m.duration,
+        musicUrl: `https://www.soundhelix.com/examples/mp3/SoundHelix-Song-${i + 1}.mp3`,
+      });
+    }
+    this.logger.log('已确保预置演示配乐就绪');
   }
 }

@@ -42,6 +42,9 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
   int _tabIndex = 1;
   int _currentIndex = 0;
 
+  /// 当前照片作品页码角标文案（'' 表示当前视频非照片作品，不显示）
+  String _photoBadge = '';
+
   bool _initialLoading = true;
   String? _error;
 
@@ -337,12 +340,46 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
                   onLike: () => _toggleLike(feed[i]),
                   onComment: () => _openComments(feed[i]),
                   onShare: () => _openShare(feed[i]),
+                  onPhotoBadge: (text) {
+                    if (_photoBadge != text) {
+                      setState(() => _photoBadge = text);
+                    }
+                  },
                 ),
               ),
             ),
 
-          // ── 顶部栏（固定） ──
-          SafeArea(child: _buildTopBar()),
+          // ── 顶部栏（固定）+ 照片页码角标（右上角「+发布」正下方） ──
+          SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _buildTopBar(),
+                // 照片作品页码角标：固定显示在「+发布」按钮下方
+                if (_photoBadge.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6, right: 16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        _photoBadge,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -467,6 +504,7 @@ class _VideoItemPage extends StatefulWidget {
     required this.onLike,
     required this.onComment,
     required this.onShare,
+    this.onPhotoBadge,
   });
 
   final ShortVideo video;
@@ -484,6 +522,9 @@ class _VideoItemPage extends StatefulWidget {
   final VoidCallback onComment;
   final VoidCallback onShare;
 
+  /// 照片作品页码角标上报（'' 表示非照片作品；由页面固定在「+发布」下方展示）
+  final ValueChanged<String>? onPhotoBadge;
+
   @override
   State<_VideoItemPage> createState() => _VideoItemPageState();
 }
@@ -497,6 +538,13 @@ class _VideoItemPageState extends State<_VideoItemPage>
   );
 
   bool _playing = false;
+
+  /// 照片作品多图轮播页码控制（仅照片多图时使用）
+  final PageController _photoCtrl = PageController();
+  int _photoIndex = 0;
+
+  /// 最近一次上报的角标文案（避免 build 时重复上报）
+  String _lastReportedBadge = '';
 
   /// 双击点赞爱心动画
   late final AnimationController _burst = AnimationController(
@@ -529,6 +577,10 @@ class _VideoItemPageState extends State<_VideoItemPage>
         _progress.forward(from: 0);
       }
     });
+    // 首帧后上报照片页码角标（避免在父页面 build 期间 setState）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _emitBadge();
+    });
   }
 
   @override
@@ -538,19 +590,49 @@ class _VideoItemPageState extends State<_VideoItemPage>
       if (widget.active) {
         _progress.forward(from: _progress.value);
         _playing = true;
+        _emitBadge();
       } else {
         _progress.stop();
         _progress.reset();
         _playing = false;
+        // 失活时重置上报记录，重新激活后才会重新上报角标
+        _lastReportedBadge = '';
       }
+    }
+    // 视频对象变化（如翻页复用）时重新上报角标
+    if (widget.video.id != oldWidget.video.id) {
+      _emitBadge();
     }
   }
 
   @override
   void dispose() {
+    _photoCtrl.dispose();
     _progress.dispose();
     _burst.dispose();
+    // 页面销毁时清除右上角照片页码角标（延迟到帧后，避免 dispose 发生在父级 build 期间）
+    final cb = widget.onPhotoBadge;
+    WidgetsBinding.instance.addPostFrameCallback((_) => cb?.call(''));
     super.dispose();
+  }
+
+  /// 上报当前照片页码角标（仅 active 项上报，离屏项不参与避免互相覆盖）。
+  /// 仅在事件回调中调用；内部通过 addPostFrameCallback 延迟到帧后，
+  /// 避免在父页面 build 期间调用其 setState。
+  void _emitBadge() {
+    if (!widget.active) return;
+    final video = widget.video;
+    final text = !video.isPhoto
+        ? ''
+        : (video.photos.length > 1
+            ? '照片 ${_photoIndex + 1}/${video.photos.length}'
+            : '照片');
+    if (text == _lastReportedBadge) return;
+    _lastReportedBadge = text;
+    final cb = widget.onPhotoBadge;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) cb?.call(text);
+    });
   }
 
   void _togglePlay() {
@@ -570,6 +652,37 @@ class _VideoItemPageState extends State<_VideoItemPage>
     widget.onDoubleTapLike();
   }
 
+  /// 封面/照片网络图（加载中与失败兜底）
+  Widget _coverImage(String url) {
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        if (wasSynchronouslyLoaded || frame != null) return child;
+        return Container(
+          color: const Color(0xFF14141C),
+          child: const Center(
+            child: Icon(
+              Icons.movie_outlined,
+              color: Color(0xFF3A3A48),
+              size: 48,
+            ),
+          ),
+        );
+      },
+      errorBuilder: (_, _, _) => Container(
+        color: const Color(0xFF14141C),
+        child: const Center(
+          child: Icon(
+            Icons.broken_image_outlined,
+            color: Color(0xFF3A3A48),
+            size: 48,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final video = widget.video;
@@ -581,8 +694,18 @@ class _VideoItemPageState extends State<_VideoItemPage>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 视频封面（Mock 播放载体；无封面时展示占位图）
-            if (video.cover.isEmpty)
+            // 背景：照片多图轮播 / 单封面（Mock 播放载体）/ 占位图
+            if (video.isPhoto && video.photos.length > 1)
+              PageView.builder(
+                controller: _photoCtrl,
+                itemCount: video.photos.length,
+                onPageChanged: (i) {
+                  setState(() => _photoIndex = i);
+                  _emitBadge();
+                },
+                itemBuilder: (_, i) => _coverImage(video.photos[i]),
+              )
+            else if (video.cover.isEmpty)
               Container(
                 color: const Color(0xFF14141C),
                 child: const Center(
@@ -594,33 +717,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
                 ),
               )
             else
-              Image.network(
-                video.cover,
-                fit: BoxFit.cover,
-                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                  if (wasSynchronouslyLoaded || frame != null) return child;
-                  return Container(
-                    color: const Color(0xFF14141C),
-                    child: const Center(
-                      child: Icon(
-                        Icons.movie_outlined,
-                        color: Color(0xFF3A3A48),
-                        size: 48,
-                      ),
-                    ),
-                  );
-                },
-                errorBuilder: (_, _, _) => Container(
-                  color: const Color(0xFF14141C),
-                  child: const Center(
-                    child: Icon(
-                      Icons.broken_image_outlined,
-                      color: Color(0xFF3A3A48),
-                      size: 48,
-                    ),
-                  ),
-                ),
-              ),
+              _coverImage(video.cover),
 
             // 暂停态中央播放键（播放态隐藏）
             AnimatedSwitcher(
@@ -745,7 +842,8 @@ class _VideoItemPageState extends State<_VideoItemPage>
               child: _buildVideoInfo(widget.video),
             ),
 
-            // 播放进度条（左右等距，与信息区底部对齐）
+            // 底部进度指示：照片作品（多图）→ 分段白条（当前张高亮，其余偏暗）；
+            // 视频/单图 → 播放进度条
             Positioned(
               left: 14,
               right: 14,
@@ -753,18 +851,40 @@ class _VideoItemPageState extends State<_VideoItemPage>
               child: SafeArea(
                 top: false,
                 child: IgnorePointer(
-                  child: AnimatedBuilder(
-                    animation: _progress,
-                    builder: (context, _) => ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: LinearProgressIndicator(
-                        value: _progress.value,
-                        minHeight: 3,
-                        backgroundColor: Colors.white24,
-                        color: const Color(0xFFFE2C55),
-                      ),
-                    ),
-                  ),
+                  child: video.isPhoto && video.photos.length > 1
+                      ? Row(
+                          children: [
+                            for (var i = 0; i < video.photos.length; i++)
+                              Expanded(
+                                child: AnimatedContainer(
+                                  duration:
+                                      const Duration(milliseconds: 200),
+                                  curve: Curves.easeOut,
+                                  height: 3,
+                                  margin:
+                                      const EdgeInsets.symmetric(horizontal: 3),
+                                  decoration: BoxDecoration(
+                                    color: i == _photoIndex
+                                        ? Colors.white
+                                        : Colors.white30,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        )
+                      : AnimatedBuilder(
+                          animation: _progress,
+                          builder: (context, _) => ClipRRect(
+                            borderRadius: BorderRadius.circular(2),
+                            child: LinearProgressIndicator(
+                              value: _progress.value,
+                              minHeight: 3,
+                              backgroundColor: Colors.white24,
+                              color: const Color(0xFFFE2C55),
+                            ),
+                          ),
+                        ),
                 ),
               ),
             ),

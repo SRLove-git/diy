@@ -22,6 +22,8 @@ class ShortVideo {
     required this.music,
     this.comments = const [],
     this.liked = false,
+    this.isPhoto = false,
+    this.photos = const [],
   });
 
   final int id;
@@ -62,6 +64,12 @@ class ShortVideo {
 
   final bool liked;
 
+  /// 照片作品（无视频流，仅封面照片配背景音乐）
+  final bool isPhoto;
+
+  /// 照片作品图片列表（已解析为绝对地址；单图/视频作品为空）
+  final List<String> photos;
+
   /// 从服务端信息流条目解析（对应 videos 模块 VideoItem 响应）。
   /// 头像/封面兼容 http(s) 与 /uploads/ 相对路径，统一解析为绝对地址。
   factory ShortVideo.fromServerJson(Map<String, dynamic> json) {
@@ -83,6 +91,10 @@ class ShortVideo {
       tags: ((json['tags'] ?? []) as List).map((e) => e.toString()).toList(),
       music: (json['music'] ?? '') as String,
       liked: (json['liked'] ?? false) as bool,
+      isPhoto: ((json['videoUrl'] ?? '') as String).isEmpty,
+      photos: ((json['photos'] ?? []) as List)
+          .map((e) => ChatApi.resolveUrl(e.toString()))
+          .toList(),
     );
   }
 
@@ -109,5 +121,7 @@ class ShortVideo {
         music: music,
         comments: comments ?? this.comments,
         liked: liked ?? this.liked,
+        isPhoto: isPhoto,
+        photos: photos,
       );
 }

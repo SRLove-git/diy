@@ -90,27 +90,28 @@ class VideoApi {
 
   // ──── 发布 ────
 
-  /// 发布短视频（videoUrl 已由 [uploadVideo] 上传取得）
+  /// 发布短视频/照片作品（videoUrl 已由 [uploadVideo] 上传取得）
   static Future<ShortVideo> create({
     String title = '',
     String content = '',
     String cover = '',
-    required String videoUrl,
+    String videoUrl = '',
     int? duration,
     String music = '',
     List<String> tags = const [],
     String location = '',
+    List<String> photos = const [],
   }) async {
-    final data = <String, dynamic>{
-      'videoUrl': videoUrl,
-    };
+    final data = <String, dynamic>{};
     if (title.isNotEmpty) data['title'] = title;
     if (content.isNotEmpty) data['content'] = content;
     if (cover.isNotEmpty) data['cover'] = cover;
+    if (videoUrl.isNotEmpty) data['videoUrl'] = videoUrl;
     if (duration != null && duration > 0) data['duration'] = duration;
     if (music.isNotEmpty) data['music'] = music;
     if (tags.isNotEmpty) data['tags'] = tags;
     if (location.isNotEmpty) data['location'] = location;
+    if (photos.isNotEmpty) data['photos'] = photos;
     final resp = await ApiClient.instance.post('/videos', data: data);
     return ShortVideo.fromServerJson(resp.data as Map<String, dynamic>);
   }

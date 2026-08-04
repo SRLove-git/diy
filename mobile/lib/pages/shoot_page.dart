@@ -1,15 +1,22 @@
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../core/music_api.dart';
 import 'douyin_publish_page.dart';
+import 'music_picker_sheet.dart';
 import 'short_video_models.dart';
 
-/// 抖音风格作品拍摄页面（仅 UI，不实现真实相机功能）
+/// 抖音风格作品拍摄页面
 ///
 /// 布局（Stack + Column + Row，纯 Flutter 组件）：
-/// - 顶部：左上白色 X 关闭按钮 + 居中深色「选择音乐」胶囊按钮
-/// - 右侧：垂直按钮栏（翻转/闪光灯/设置/动图/灵感跟拍/倒计时/提词器/更多）
-/// - 底部：拍摄模式（分段拍/照片/视频）+ 快门区（特效/快门/相册）+ Tab 栏（相机/敬请期待）
+/// - 顶部：左上白色 X 关闭按钮 + 居中「选择音乐」胶囊按钮（接入后端曲库）
+/// - 背景：真实相机预览（无相机设备如模拟器时降级为暗色渐变占位）
+/// - 右侧：垂直按钮栏（翻转/闪光灯/设置）
+/// - 底部：拍摄模式（照片/视频）+ 快门区（快门/相册）+ Tab 栏（相机/敬请期待）
+///
+/// 功能：视频模式真实录制 → 发布页上传发布；照片模式拍照 → 社区发帖；
+/// 相册模式从系统相册选视频 → 发布页；翻转/闪光灯实时控制相机。
 class ShootPage extends StatefulWidget {
   const ShootPage({super.key});
 
@@ -17,29 +24,227 @@ class ShootPage extends StatefulWidget {
   State<ShootPage> createState() => _ShootPageState();
 }
 
-class _ShootPageState extends State<ShootPage> {
-  /// 拍摄模式：0=分段拍 1=照片(默认选中) 2=视频
-  int _modeIndex = 1;
+class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
+  /// 拍摄模式：0=照片(默认选中) 1=视频
+  int _modeIndex = 0;
 
   /// 底部 Tab：0=相机(默认选中) 1=敬请期待
   int _tabIndex = 0;
 
   final _picker = ImagePicker();
 
+  // ── 相机状态 ──
+  CameraController? _camera;
+  bool _cameraReady = false;
+  bool _recording = false;
+  final Stopwatch _recTimer = Stopwatch();
+  bool _useFront = false;
+  FlashMode _flash = FlashMode.auto;
+
+  /// 已选配乐（拍摄页顶部展示，发布时写入视频）
+  MusicItem? _music;
+
   static const _white = Colors.white;
   static const _gray = Color(0xFF999999);
 
-  /// 右侧按钮栏（图标 + 文字）
-  static const _railItems = [
-    (Icons.cameraswitch_rounded, '翻转'),
-    (Icons.flash_on_rounded, '闪光灯'),
-    (Icons.settings_rounded, '设置'),
-    (Icons.auto_awesome_rounded, '动图'),
-    (Icons.lightbulb_outline_rounded, '灵感跟拍'),
-    (Icons.timer_outlined, '倒计时'),
-    (Icons.menu_book_outlined, '提词器'),
-    (Icons.more_vert, '更多'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _initCamera();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _camera?.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 相机在后台必须释放，回前台重新初始化
+    if (state == AppLifecycleState.inactive) {
+      _camera?.dispose();
+      _camera = null;
+    } else if (state == AppLifecycleState.resumed) {
+      _initCamera();
+    }
+  }
+
+  /// 初始化相机（按当前镜头方向）；无可用相机时降级为占位背景
+  Future<void> _initCamera() async {
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        if (!mounted) return;
+        setState(() => _cameraReady = false);
+        return;
+      }
+      final target = _useFront
+          ? cameras.indexWhere(
+              (c) => c.lensDirection == CameraLensDirection.front)
+          : cameras.indexWhere(
+              (c) => c.lensDirection == CameraLensDirection.back);
+      final controller = CameraController(
+        cameras[target >= 0 ? target : 0],
+        ResolutionPreset.high,
+        enableAudio: true,
+        imageFormatGroup: ImageFormatGroup.jpeg,
+      );
+      await controller.initialize();
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+      setState(() {
+        _camera?.dispose();
+        _camera = controller;
+        _cameraReady = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _cameraReady = false);
+    }
+  }
+
+  /// 翻转前后摄像头
+  Future<void> _switchCamera() async {
+    setState(() => _useFront = !_useFront);
+    await _initCamera();
+  }
+
+  /// 循环切换闪光灯：关 → 自动 → 常亮
+  Future<void> _cycleFlash() async {
+    final c = _camera;
+    if (c == null || !c.value.isInitialized) {
+      _toast('当前设备无相机');
+      return;
+    }
+    const modes = [FlashMode.off, FlashMode.auto, FlashMode.torch];
+    final next = modes[(modes.indexOf(_flash) + 1) % modes.length];
+    try {
+      await c.setFlashMode(next);
+    } catch (_) {
+      // 部分机型不支持指定闪光模式，静默
+    }
+    if (mounted) setState(() => _flash = next);
+  }
+
+  // ===================== 拍摄动作 =====================
+
+  Future<void> _onShutter() async {
+    if (_modeIndex == 0) {
+      await _takePhoto();
+    } else if (_recording) {
+      await _stopRecording();
+    } else {
+      await _startRecording();
+    }
+  }
+
+  Future<void> _startRecording() async {
+    final c = _camera;
+    if (c == null || !c.value.isInitialized) {
+      // 无相机设备（模拟器）：改从相册选素材进入发布
+      await _pickFromAlbum();
+      return;
+    }
+    try {
+      await c.startVideoRecording();
+      _recTimer.start();
+      if (mounted) setState(() => _recording = true);
+    } catch (_) {
+      _toast('无法开始录制，请检查相机权限');
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    final c = _camera;
+    if (c == null) return;
+    try {
+      final file = await c.stopVideoRecording();
+      _recTimer.stop();
+      final seconds = _recTimer.elapsed.inSeconds;
+      _recTimer.reset();
+      if (!mounted) return;
+      setState(() => _recording = false);
+      await _openPublishPage(
+        initialVideo: file,
+        durationSeconds: seconds,
+        musicTitle: _music?.title,
+      );
+    } catch (_) {
+      _recTimer.stop();
+      _recTimer.reset();
+      if (mounted) setState(() => _recording = false);
+      _toast('录制失败');
+    }
+  }
+
+  Future<void> _takePhoto() async {
+    final c = _camera;
+    if (c == null || !c.value.isInitialized) {
+      _toast('当前设备无相机');
+      return;
+    }
+    try {
+      final shot = await c.takePicture();
+      if (!mounted) return;
+      await _openPublishPage(initialImage: shot);
+    } catch (_) {
+      _toast('拍照失败');
+    }
+  }
+
+  /// 相册按钮：从系统相册选择视频后直接进入发布流程
+  Future<void> _pickFromAlbum() async {
+    final file = await _picker.pickVideo(source: ImageSource.gallery);
+    if (file == null) return;
+    if (!mounted) return;
+    await _openPublishPage(
+      initialVideo: file,
+      musicTitle: _music?.title,
+    );
+  }
+
+  /// 进入作品发布页；若发布成功则携带结果关闭拍摄页
+  Future<void> _openPublishPage({
+    XFile? initialVideo,
+    XFile? initialImage,
+    int? durationSeconds,
+    String? musicTitle,
+  }) async {
+    final result = await Navigator.push<ShortVideo>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DouyinPublishPage(
+          initialVideo: initialVideo,
+          initialImage: initialImage,
+          initialMusic: musicTitle,
+          durationSeconds: durationSeconds,
+        ),
+      ),
+    );
+    if (result != null && mounted) {
+      Navigator.pop(context, result);
+    }
+  }
+
+  /// 打开曲库选择配乐
+  Future<void> _openMusicPicker() async {
+    final result = await showMusicPicker(context, current: _music);
+    if (result == null || !mounted) return; // 取消
+    setState(() => _music = result.music);
+  }
+
+  void _toast(String msg) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
+      );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,16 +253,22 @@ class _ShootPageState extends State<ShootPage> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // ── 背景：相机取景器占位（暗色渐变） ──
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF1E1E26), Color(0xFF000000)],
+          // ── 背景：真实相机预览 / 暗色渐变占位 ──
+          if (_cameraReady)
+            CameraPreview(_camera!)
+          else
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF1E1E26), Color(0xFF000000)],
+                ),
               ),
             ),
-          ),
+
+          // 录制中红点 + 计时
+          if (_recording) _buildRecordingBadge(),
 
           // ── 顶部：关闭按钮 + 选择音乐 ──
           _buildTopBar(),
@@ -72,6 +283,40 @@ class _ShootPageState extends State<ShootPage> {
     );
   }
 
+  // ===================== 录制指示 =====================
+  Widget _buildRecordingBadge() {
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Container(
+          margin: const EdgeInsets.only(top: 70),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.black45,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.fiber_manual_record, color: Color(0xFFFF3B30), size: 14),
+              const SizedBox(width: 6),
+              Text(
+                _formatSeconds(_recTimer.elapsed.inSeconds),
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _formatSeconds(int s) {
+    final m = (s ~/ 60).toString().padLeft(2, '0');
+    final sec = (s % 60).toString().padLeft(2, '0');
+    return '$m:$sec';
+  }
+
   // ===================== 顶部区域 =====================
   Widget _buildTopBar() {
     return Positioned(
@@ -83,23 +328,32 @@ class _ShootPageState extends State<ShootPage> {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // 居中：深色圆角「选择音乐」按钮
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white12,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.music_note_rounded, color: _white, size: 18),
-                  SizedBox(width: 6),
-                  Text(
-                    '选择音乐',
-                    style: TextStyle(color: _white, fontSize: 14),
-                  ),
-                ],
+            // 居中：「选择音乐」/ 已选音乐名
+            GestureDetector(
+              onTap: _openMusicPicker,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white12,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.music_note_rounded, color: _white, size: 18),
+                    const SizedBox(width: 6),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 160),
+                      child: Text(
+                        _music == null ? '选择音乐' : _music!.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: _white, fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             // 左上角：关闭按钮
@@ -121,19 +375,46 @@ class _ShootPageState extends State<ShootPage> {
     return Positioned(
       right: 12,
       top: 110,
-      bottom: 260,
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          for (final item in _railItems) _railItem(item.$1, item.$2),
+          _railItem(
+            Icons.cameraswitch_rounded,
+            '翻转',
+            onTap: _switchCamera,
+          ),
+          const SizedBox(height: 22),
+          _railItem(
+            _flashIcon,
+            _flashLabel,
+            onTap: _cycleFlash,
+          ),
+          const SizedBox(height: 22),
+          _railItem(
+            Icons.settings_rounded,
+            '设置',
+            onTap: () => _toast('设置（演示）'),
+          ),
         ],
       ),
     );
   }
 
-  Widget _railItem(IconData icon, String label) {
+  IconData get _flashIcon => switch (_flash) {
+        FlashMode.off => Icons.flash_off_rounded,
+        FlashMode.torch => Icons.flash_on_rounded,
+        _ => Icons.flash_auto_rounded,
+      };
+
+  String get _flashLabel => switch (_flash) {
+        FlashMode.off => '闪光灯',
+        FlashMode.torch => '常亮',
+        _ => '自动',
+      };
+
+  Widget _railItem(IconData icon, String label, {required VoidCallback onTap}) {
     return GestureDetector(
-      onTap: () {}, // 仅 UI，功能后续接入
+      onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -159,24 +440,21 @@ class _ShootPageState extends State<ShootPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // 拍摄模式：分段拍 / 照片(选中) / 视频
+            // 拍摄模式：照片(选中) / 视频
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _modeLabel('分段拍', 0),
+                _modeLabel('照片', 0),
                 const SizedBox(width: 30),
-                _modeLabel('照片', 1),
-                const SizedBox(width: 30),
-                _modeLabel('视频', 2),
+                _modeLabel('视频', 1),
               ],
             ),
             const SizedBox(height: 22),
-            // 特效 | 快门 | 相册
+            // 快门 | 相册（左侧留空占位保证快门居中）
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _sideButton(Icons.auto_awesome, '特效'),
-                const SizedBox(width: 46),
+                const SizedBox(width: 102),
                 _buildShutter(),
                 const SizedBox(width: 46),
                 _sideButton(Icons.image_outlined, '相册', onTap: _pickFromAlbum),
@@ -231,11 +509,11 @@ class _ShootPageState extends State<ShootPage> {
     );
   }
 
-  /// 大圆形快门按钮：外圈粗白圆环 + 内部白色快门；进入作品发布页。
-  /// 发布成功后把 [ShortVideo] 结果回传给上一页（短视频信息流）。
+  /// 大圆形快门按钮：外圈粗白圆环 + 内部白色快门；录制中变为红色方框（停止）。
+  /// 视频模式录制结束后进入发布页，发布成功后回传 [ShortVideo]。
   Widget _buildShutter() {
     return GestureDetector(
-      onTap: () => _openPublishPage(),
+      onTap: _recording ? _stopRecording : _onShutter,
       child: Container(
         width: 78,
         height: 78,
@@ -244,38 +522,27 @@ class _ShootPageState extends State<ShootPage> {
           shape: BoxShape.circle,
           border: Border.all(color: _white, width: 6),
         ),
-        child: Container(
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: _white,
-          ),
-        ),
+        child: _recording
+            ? Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFFE2C55),
+                ),
+                child: const Center(
+                  child: Icon(Icons.stop_rounded, color: Colors.white, size: 32),
+                ),
+              )
+            : Container(
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _white,
+                ),
+              ),
       ),
     );
   }
 
-  /// 相册按钮：从系统相册选择视频后直接进入发布流程
-  Future<void> _pickFromAlbum() async {
-    final file = await _picker.pickVideo(source: ImageSource.gallery);
-    if (file == null) return;
-    if (!mounted) return;
-    await _openPublishPage(initialVideo: file);
-  }
-
-  /// 进入作品发布页；若发布成功则携带结果关闭拍摄页
-  Future<void> _openPublishPage({XFile? initialVideo}) async {
-    final result = await Navigator.push<ShortVideo>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => DouyinPublishPage(initialVideo: initialVideo),
-      ),
-    );
-    if (result != null && mounted) {
-      Navigator.pop(context, result);
-    }
-  }
-
-  /// 快门两侧按钮：方形占位 + 下方文字
+  /// 快门左侧按钮：方形占位 + 下方文字
   Widget _sideButton(IconData icon, String label, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,

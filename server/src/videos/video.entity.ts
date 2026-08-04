@@ -38,6 +38,10 @@ export class Video {
   @Column({ length: 500, default: '' })
   videoUrl: string;
 
+  /** 照片作品图片列表（JSON 数组，小红书式多图；空则单图/视频） */
+  @Column({ type: 'json', nullable: true })
+  photos: string[];
+
   /** 视频时长（秒） */
   @Column({ default: 0 })
   duration: number;

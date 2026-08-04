@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/app_colors.dart';
 import '../../../core/chat_api.dart';
 import '../../../core/post_api.dart';
+import '../../../core/video_api.dart';
 
 /// 社区作品发布编辑页面
 ///
@@ -16,7 +17,10 @@ import '../../../core/post_api.dart';
 /// - 功能列表项：标记位置 / 自主声明 / 高级设置
 /// - 底部工具栏：表情图标、文本T图标
 class PublishPostPage extends StatefulWidget {
-  const PublishPostPage({super.key});
+  const PublishPostPage({super.key, this.initialImage});
+
+  /// 拍摄页照片模式拍下的图片（本地路径），进入后直接带入
+  final String? initialImage;
 
   @override
   State<PublishPostPage> createState() => _PublishPostPageState();
@@ -27,7 +31,12 @@ class _PublishPostPageState extends State<PublishPostPage> {
   final ImagePicker _picker = ImagePicker();
 
   /// 已选图片的本地文件路径列表
-  final List<String> _selectedImages = [];
+  late final List<String> _selectedImages =
+      widget.initialImage == null ? [] : [widget.initialImage!];
+
+  /// 已选视频素材（单个，可选）
+  XFile? _video;
+
   /// 最大可选图片数
   static const int _maxImages = 9;
   /// 是否正在发布中
@@ -45,16 +54,30 @@ class _PublishPostPageState extends State<PublishPostPage> {
     }
   }
 
+  /// 从相册选视频（单个）
+  Future<void> _pickVideo() async {
+    final file = await _picker.pickVideo(source: ImageSource.gallery);
+    if (file == null) return;
+    setState(() => _video = file);
+  }
+
   /// 移除已选图片
   void _removeImage(int index) {
     setState(() => _selectedImages.removeAt(index));
   }
 
-  /// 上传图片并发布帖子
+  /// 移除已选视频
+  void _removeVideo() {
+    setState(() => _video = null);
+  }
+
+  /// 上传图片/视频并发布帖子
   Future<void> _onPublish() async {
     final content = _textController.text.trim();
-    if (content.isEmpty && _selectedImages.isEmpty) {
-      _showError('请输入内容或选择图片');
+    if (content.isEmpty &&
+        _selectedImages.isEmpty &&
+        _video == null) {
+      _showError('请输入内容或选择素材');
       return;
     }
 
@@ -62,16 +85,24 @@ class _PublishPostPageState extends State<PublishPostPage> {
     try {
       // 1. 先上传所有图片
       final uploadedUrls = <String>[];
+      final medias = <Map<String, dynamic>>[];
       for (final path in _selectedImages) {
         final url = await ChatApi.uploadImage(path, folder: 'post');
         uploadedUrls.add(url);
+        medias.add({'type': 'image', 'url': url});
+      }
+      // 2. 上传视频（如有）
+      if (_video != null) {
+        final videoUrl = await VideoApi.uploadVideo(_video!.path);
+        medias.add({'type': 'video', 'url': videoUrl});
       }
 
-      // 2. 创建帖子
+      // 3. 创建帖子
       await PostApi.create(
         content: content,
         images: uploadedUrls,
         tags: [],
+        medias: medias,
       );
 
       if (!mounted) return;
@@ -121,6 +152,8 @@ class _PublishPostPageState extends State<PublishPostPage> {
               _buildContentInput(colors),
               // 图片选择区域
               _buildImagePicker(colors),
+              // 视频选择区域
+              _buildVideoPicker(colors),
               // 分割线
               Divider(height: 1, color: colors.divider),
               // 功能列表项
@@ -311,6 +344,92 @@ class _PublishPostPageState extends State<PublishPostPage> {
       ),
     );
   }
+
+  /// 视频选择区域：可附加 1 个视频，展示播放图标 + 文件名 + 移除按钮
+  Widget _buildVideoPicker(AppColors colors) {
+    final video = _video;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 0, 16, video == null ? 0 : 12),
+      child: SizedBox(
+        height: 88,
+        child: video == null
+            ? GestureDetector(
+                onTap: _pickVideo,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: colors.placeholder,
+                  ),
+                  alignment: Alignment.center,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.play_circle_outline,
+                          size: 30, color: colors.textSecondary),
+                      const SizedBox(height: 2),
+                      Text('添加视频',
+                          style: TextStyle(
+                              fontSize: 11, color: colors.textSecondary)),
+                    ],
+                  ),
+                ),
+              )
+            : Stack(
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: const Color(0xFF1B1B22),
+                    ),
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.play_circle_fill,
+                            color: Colors.white, size: 30),
+                        const SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Text(
+                            _videoName(video.name),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 9),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: GestureDetector(
+                      onTap: _removeVideo,
+                      child: Container(
+                        width: 20,
+                        height: 20,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.black54,
+                        ),
+                        child: const Icon(Icons.close,
+                            color: Colors.white, size: 14),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  String _videoName(String name) =>
+      name.length > 8 ? '${name.substring(0, 7)}…' : name;
 
   /// 功能列表项：标记位置 / 自主声明 / 高级设置
   Widget _buildSettingsList(AppColors colors) {

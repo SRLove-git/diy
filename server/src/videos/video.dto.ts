@@ -27,10 +27,16 @@ export class CreateVideoDto {
   @IsOptional()
   cover?: string;
 
-  /** 视频文件 URL */
+  /** 视频文件 URL（可空：纯照片作品配背景音乐时以封面承载，无视频流） */
   @IsString()
   @MaxLength(500)
-  videoUrl: string;
+  @IsOptional()
+  videoUrl?: string;
+
+  /** 照片作品图片列表（小红书式多图；空则按单图/视频处理） */
+  @IsArray()
+  @IsOptional()
+  photos?: string[];
 
   /** 视频时长（秒，缺省默认 15，客户端未解析出真实时长时用） */
   @IsInt()
