@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -105,13 +106,35 @@ export class AuthService {
     return { userId: user.id, ...tokens };
   }
 
+  /** 用户名 + 密码登录 */
+  async usernameLogin(username: string, password: string) {
+    const user = await this.users.findByUsername(username);
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException('用户名不存在或未设置密码');
+    }
+    if (!(await verifyPassword(password, user.passwordHash))) {
+      throw new UnauthorizedException('用户名或密码错误');
+    }
+    if (user.isBanned) throw new ForbiddenException('账号已被禁用');
+
+    const tokens = await this.signTokens(user.id);
+    return { userId: user.id, ...tokens };
+  }
+
   /** 设置/重置密码：短信验证码校验通过后写入新密码 */
-  async setPassword(phone: string, code: string, password: string) {
+  async setPassword(phone: string, code: string, password: string, username?: string) {
     await this.verifySmsCode(phone, code);
     const user = await this.users.findByPhoneOrCreate(phone);
     if (user.isBanned) throw new ForbiddenException('账号已被禁用');
 
     await this.users.setPasswordHash(user.id, await hashPassword(password));
+    if (username) {
+      const existing = await this.users.findByUsername(username);
+      if (existing && existing.id !== user.id) {
+        throw new ConflictException('用户名已被占用');
+      }
+      await this.users.setUsername(user.id, username);
+    }
     return { sent: true };
   }
 

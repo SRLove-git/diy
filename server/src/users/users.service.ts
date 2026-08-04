@@ -13,6 +13,10 @@ export class UsersService {
     return this.users.findOneBy({ phone });
   }
 
+  findByUsername(username: string): Promise<User | null> {
+    return this.users.findOneBy({ username });
+  }
+
   /** 按手机号查用户，不存在则创建（并发下靠唯一约束兜底） */
   async findByPhoneOrCreate(phone: string): Promise<User> {
     const existing = await this.findByPhone(phone);
@@ -40,6 +44,10 @@ export class UsersService {
 
   setPasswordHash(id: number, hash: string) {
     return this.users.update({ id }, { passwordHash: hash });
+  }
+
+  setUsername(id: number, username: string) {
+    return this.users.update({ id }, { username });
   }
 
   setRole(id: number, role: 'admin' | 'user') {

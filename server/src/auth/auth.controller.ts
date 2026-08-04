@@ -7,6 +7,7 @@ import {
   RefreshDto,
   SendCodeDto,
   SetPasswordDto,
+  UsernameLoginDto,
 } from './auth.dto';
 import { CurrentUser } from './current-user.decorator';
 import type { AuthUser } from './current-user.decorator';
@@ -37,10 +38,16 @@ export class AuthController {
     return this.auth.passwordLogin(dto.phone, dto.password);
   }
 
+  /** 用户名 + 密码登录 */
+  @Post('username-login')
+  usernameLogin(@Body() dto: UsernameLoginDto) {
+    return this.auth.usernameLogin(dto.username, dto.password);
+  }
+
   /** 设置/重置密码（短信验证码校验） */
   @Post('set-password')
   setPassword(@Body() dto: SetPasswordDto) {
-    return this.auth.setPassword(dto.phone, dto.code, dto.password);
+    return this.auth.setPassword(dto.phone, dto.code, dto.password, dto.username);
   }
 
   /** 刷新令牌（轮换制） */

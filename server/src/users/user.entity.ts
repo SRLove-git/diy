@@ -15,6 +15,10 @@ export class User {
   @Column({ unique: true, length: 20 })
   phone: string;
 
+  /** 用户名：支持用户名+密码登录，null 表示未设置 */
+  @Column({ type: 'varchar', unique: true, length: 30, nullable: true })
+  username: string | null;
+
   @Column({ default: '' })
   nickname: string;
 

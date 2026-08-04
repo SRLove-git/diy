@@ -7,7 +7,7 @@ import '../core/app_colors.dart';
 import '../core/auth_service.dart';
 import 'set_password_page.dart';
 
-/// 登录 / 注册（验证码 + 密码双模式）：未注册手机号登录时自动注册。
+/// 登录 / 注册（验证码 + 密码 + 用户名 三模式）：未注册手机号登录时自动注册。
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -19,13 +19,18 @@ class _LoginPageState extends State<LoginPage> {
   final _phoneCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _usernameCtrl = TextEditingController();
+  final _namePasswordCtrl = TextEditingController();
   final _codeFormKey = GlobalKey<FormState>();
   final _passwordFormKey = GlobalKey<FormState>();
+  final _usernameFormKey = GlobalKey<FormState>();
 
   bool _sendingCode = false;
   bool _loggingIn = false;
   bool _passwordLoggingIn = false;
+  bool _usernameLoggingIn = false;
   bool _obscurePassword = true;
+  bool _obscureNamePassword = true;
   int _countdown = 0;
   Timer? _timer;
 
@@ -35,6 +40,8 @@ class _LoginPageState extends State<LoginPage> {
     _phoneCtrl.dispose();
     _codeCtrl.dispose();
     _passwordCtrl.dispose();
+    _usernameCtrl.dispose();
+    _namePasswordCtrl.dispose();
     super.dispose();
   }
 
@@ -109,6 +116,20 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _usernameLogin() async {
+    if (!_usernameFormKey.currentState!.validate()) return;
+    setState(() => _usernameLoggingIn = true);
+    try {
+      await AuthService.instance
+          .usernameLogin(_usernameCtrl.text, _namePasswordCtrl.text);
+      // 登录成功后 AuthGate 自动切换到主界面
+    } on DioException catch (e) {
+      _showError(_message(e));
+    } finally {
+      if (mounted) setState(() => _usernameLoggingIn = false);
+    }
+  }
+
   void _goSetPassword() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const SetPasswordPage()),
@@ -134,7 +155,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         body: SafeArea(
           child: SingleChildScrollView(
@@ -169,13 +190,18 @@ class _LoginPageState extends State<LoginPage> {
                   tabs: const [
                     Tab(text: '验证码登录'),
                     Tab(text: '密码登录'),
+                    Tab(text: '用户名登录'),
                   ],
                 ),
                 const SizedBox(height: 24),
                 SizedBox(
-                  height: 320,
+                  height: 300,
                   child: TabBarView(
-                    children: [_buildCodeTab(), _buildPasswordTab()],
+                    children: [
+                      _buildCodeTab(),
+                      _buildPasswordTab(),
+                      _buildUsernameTab(),
+                    ],
                   ),
                 ),
               ],
@@ -316,6 +342,73 @@ class _LoginPageState extends State<LoginPage> {
           FilledButton(
             onPressed: _passwordLoggingIn ? null : _passwordLogin,
             child: _passwordLoggingIn
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('登录'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 用户名登录表单
+  Widget _buildUsernameTab() {
+    return Form(
+      key: _usernameFormKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextFormField(
+            controller: _usernameCtrl,
+            maxLength: 30,
+            decoration: const InputDecoration(
+              labelText: '用户名',
+              counterText: '',
+              prefixIcon: Icon(Icons.person_outline),
+            ),
+            validator: (v) =>
+                (v == null || v.trim().length < 2) ? '用户名至少 2 位' : null,
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _namePasswordCtrl,
+            obscureText: _obscureNamePassword,
+            maxLength: 32,
+            decoration: InputDecoration(
+              labelText: '密码',
+              counterText: '',
+              prefixIcon: const Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureNamePassword
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                ),
+                onPressed: () =>
+                    setState(() => _obscureNamePassword = !_obscureNamePassword),
+              ),
+            ),
+            validator: (v) =>
+                (v == null || v.length < 6) ? '密码至少 6 位' : null,
+          ),
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _goSetPassword,
+              child: Text(
+                '忘记密码？',
+                style: TextStyle(color: AppColors.of(context).textSecondary),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: _usernameLoggingIn ? null : _usernameLogin,
+            child: _usernameLoggingIn
                 ? const SizedBox(
                     width: 20,
                     height: 20,

@@ -85,13 +85,11 @@ export class ChatGateway
   }
 
   async onModuleInit(): Promise<void> {
-    // duplicate() 连接异步就绪：订阅失败不阻塞应用启动，连接就绪后重试
     this.pubsub.on('message', (channel, raw) => {
       if (channel !== CHAT_CHANNEL) return;
       this.onRemoteEvent(raw);
     });
     await this.trySubscribe();
-    this.pubsub.on('ready', () => void this.trySubscribe());
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -99,9 +97,16 @@ export class ChatGateway
     await this.pubsub.quit();
   }
 
-  /** 订阅跨实例频道（失败仅告警；连接就绪事件会触发重试） */
+  /** 订阅跨实例频道（等待连接就绪后订阅，失败仅告警） */
   private async trySubscribe(): Promise<void> {
     try {
+      // duplicate() 连接可能在 onModuleInit 时尚未就绪，等待 status 变为 ready
+      if (this.pubsub.status !== 'ready') {
+        await new Promise<void>((resolve, reject) => {
+          this.pubsub.once('ready', resolve);
+          this.pubsub.once('error', reject);
+        });
+      }
       await this.pubsub.subscribe(CHAT_CHANNEL);
     } catch (e) {
       console.warn('[ChatGateway] pub/sub subscribe failed:', e);

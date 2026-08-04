@@ -159,13 +159,28 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 设置/重置密码（短信验证码校验后生效）
-  Future<void> setPassword(String phone, String code, String password) async {
-    await ApiClient.instance.post('/auth/set-password', data: {
+  /// 用户名 + 密码登录
+  Future<void> usernameLogin(String username, String password) async {
+    final resp = await ApiClient.instance.post('/auth/username-login',
+        data: {'username': username, 'password': password});
+    await _saveTokens(
+      resp.data['accessToken'] as String,
+      resp.data['refreshToken'] as String,
+    );
+    await _fetchMe();
+    notifyListeners();
+  }
+
+  /// 设置/重置密码（短信验证码校验后生效），可选同时设置用户名
+  Future<void> setPassword(String phone, String code, String password,
+      {String? username}) async {
+    final data = <String, dynamic>{
       'phone': phone,
       'code': code,
       'password': password,
-    });
+    };
+    if (username != null) data['username'] = username;
+    await ApiClient.instance.post('/auth/set-password', data: data);
   }
 
   Future<bool> tryRefresh() async {

@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
 import '../core/auth_service.dart';
 
-/// 设置 / 重置密码：手机号 + 短信验证码校验后设置新密码。
+/// 设置 / 重置密码：手机号 + 短信验证码校验后设置新密码，可选设置用户名。
 class SetPasswordPage extends StatefulWidget {
   const SetPasswordPage({super.key});
 
@@ -18,6 +18,7 @@ class _SetPasswordPageState extends State<SetPasswordPage> {
   final _phoneCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _usernameCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   bool _sendingCode = false;
@@ -32,6 +33,7 @@ class _SetPasswordPageState extends State<SetPasswordPage> {
     _phoneCtrl.dispose();
     _codeCtrl.dispose();
     _passwordCtrl.dispose();
+    _usernameCtrl.dispose();
     super.dispose();
   }
 
@@ -81,10 +83,12 @@ class _SetPasswordPageState extends State<SetPasswordPage> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitting = true);
     try {
+      final username = _usernameCtrl.text.trim();
       await AuthService.instance.setPassword(
         _phoneCtrl.text,
         _codeCtrl.text,
         _passwordCtrl.text,
+        username: username.isNotEmpty ? username : null,
       );
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
@@ -203,6 +207,21 @@ class _SetPasswordPageState extends State<SetPasswordPage> {
                   ),
                   validator: (v) =>
                       (v == null || v.length < 6) ? '密码至少 6 位' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _usernameCtrl,
+                  maxLength: 30,
+                  decoration: const InputDecoration(
+                    labelText: '设置用户名（可选，用于用户名登录）',
+                    counterText: '',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return null; // 可选
+                    if (v.trim().length < 2) return '用户名至少 2 位';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 32),
                 FilledButton(
