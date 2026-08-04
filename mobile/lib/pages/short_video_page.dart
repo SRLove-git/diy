@@ -3,9 +3,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../core/post_api.dart';
+import '../core/auth_service.dart';
 import '../features/community/domain/community_models.dart';
-import 'douyin_publish_page.dart';
+import 'shoot_page.dart';
 import 'short_video_models.dart';
 
 /// 短视频信息流页面（TikTok 风格）
@@ -23,10 +23,8 @@ class ShortVideoPage extends StatefulWidget {
 class _ShortVideoPageState extends State<ShortVideoPage> {
   final PageController _pageCtrl = PageController();
 
-  /// 推荐 Feed（可变的本地副本，点赞/评论数在此更新）
-  late final List<ShortVideo> _videos = List.of(
-    MockShortVideoDataSource.videos,
-  );
+  /// 视频列表（待接入后端真实数据，当前为空；点赞/评论数在此更新）
+  final List<ShortVideo> _videos = [];
 
   /// 已关注作者 ID 集合
   final Set<int> _followedIds = {};
@@ -49,40 +47,11 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
     super.dispose();
   }
 
-  /// 发布成功后把新作品插入推荐 Feed 顶部，并停留在视频页
-  void _onPublish() async {
-    final post = await Navigator.push<Post>(
+  /// 打开作品拍摄页（仅 UI，拍摄/发布功能后续接入）
+  void _onPublish() {
+    Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const DouyinPublishPage()),
-    );
-    if (post == null || !mounted) return;
-    setState(() {
-      _videos.insert(0, _toShortVideo(post));
-      _tabIndex = 1;
-      _currentIndex = 0;
-    });
-    if (_pageCtrl.hasClients) _pageCtrl.jumpToPage(0);
-  }
-
-  /// 将发布的社区作品映射为短视频信息流条目
-  ShortVideo _toShortVideo(Post post) {
-    final me = MockShortVideoDataSource.me;
-    return ShortVideo(
-      id: post.id,
-      authorId: post.userId,
-      user: post.author?.nickname ?? me.nickname,
-      avatar: post.author?.avatar ?? me.avatarUrl,
-      title: post.title.isNotEmpty ? post.title : post.content,
-      cover: post.images.isNotEmpty
-          ? post.images.first
-          : 'https://picsum.photos/seed/diynew${post.id}/720/1280',
-      duration: const Duration(seconds: 15),
-      likeCount: 0,
-      commentCount: 0,
-      shareCount: 0,
-      followCount: 300,
-      tags: post.tags,
-      music: '《我的作品》- 原创',
+      MaterialPageRoute(builder: (_) => const ShootPage()),
     );
   }
 
@@ -138,13 +107,18 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
   }
 
   void _openComments(ShortVideo v) {
+    final user = AuthService.instance.user;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _CommentSheet(
         video: v,
-        me: MockShortVideoDataSource.me,
+        me: CommunityUser(
+          id: user?.id ?? 0,
+          nickname: user?.nickname ?? '',
+          avatarUrl: user?.avatar ?? '',
+        ),
         onAdded: () => _onCommentAdded(v),
       ),
     );
@@ -284,41 +258,26 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
     );
   }
 
-  // ==================== 关注 Feed 空态 ====================
+  // ==================== 空态 ====================
   Widget _buildEmptyFollow() {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(
-            Icons.person_add_alt_1_rounded,
+            Icons.movie_filter_outlined,
             color: Color(0xFF555566),
             size: 56,
           ),
           const SizedBox(height: 12),
           const Text(
-            '还没有关注的内容',
+            '暂无视频内容',
             style: TextStyle(color: Colors.white70, fontSize: 15),
           ),
           const SizedBox(height: 4),
           const Text(
-            '去推荐页看看，或点作者头像旁的 + 关注',
+            '视频数据接入中，敬请期待',
             style: TextStyle(color: Color(0xFF777788), fontSize: 12.5),
-          ),
-          const SizedBox(height: 16),
-          GestureDetector(
-            onTap: () => _switchTab(1),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFE2C55),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text(
-                '去推荐',
-                style: TextStyle(color: Colors.white, fontSize: 13),
-              ),
-            ),
           ),
         ],
       ),

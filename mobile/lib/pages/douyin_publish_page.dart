@@ -17,23 +17,6 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
 
-  // 缩略图列表（占位图片 URL）
-  final _thumbnails = <String>[
-    'https://picsum.photos/200/300?random=1',
-    'https://picsum.photos/200/300?random=2',
-    'https://picsum.photos/200/300?random=3',
-    'https://picsum.photos/200/300?random=4',
-    'https://picsum.photos/200/300?random=5',
-  ];
-  int _selectedThumbIndex = 0;
-
-  // 话题标签数据（用于展示和发布）
-  final _topics = ['少女时代', '叶子', '虚拟主播', '日常', 'vlog'];
-
-  // 地点标签数据
-  final _locations = ['北京·朝阳区', '三里屯太古里', '国贸CBD'];
-  int _selectedLocationIndex = 0;
-
   bool _submitting = false;
 
   @override
@@ -57,15 +40,12 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
 
     setState(() => _submitting = true);
     try {
-      // 选中的缩略图排在最前，作为短视频封面
-      final selected = _thumbnails[_selectedThumbIndex];
-      final images = [selected, ..._thumbnails.where((u) => u != selected)];
+      // 素材选择功能待实现，当前提交无图帖子
       final post = await PostApi.create(
         content: desc.isEmpty ? title : '$title\n$desc',
-        images: images,
-        tags: _topics,
+        images: const [],
+        tags: const [],
         title: title,
-        location: _locations[_selectedLocationIndex],
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -113,8 +93,6 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
                     const SizedBox(height: 16),
                     _buildFunctionButtons(),
                     const SizedBox(height: 16),
-                    _buildTopicChips(),
-                    const SizedBox(height: 20),
                     _buildOptionsList(),
                     const SizedBox(height: 100), // 底部留白给操作栏
                   ],
@@ -160,7 +138,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
   Widget _buildPreviewArea() {
     return Column(
       children: [
-        // 手机样式视频预览卡片
+        // 手机样式视频预览卡片（素材选择功能待实现，先显示空态）
         Center(
           child: Container(
             width: 200,
@@ -175,20 +153,19 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // 占位预览图
-                  Image.network(
-                    _thumbnails[_selectedThumbIndex],
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, e, s) => Container(
-                      color: _btnBg,
-                      child: const Center(
-                        child: Icon(Icons.videocam, color: _hint, size: 48),
-                      ),
+                  Container(
+                    color: _btnBg,
+                    child: const Center(
+                      child: Icon(Icons.videocam, color: _hint, size: 48),
                     ),
                   ),
                   // 播放按钮叠加
                   const Center(
-                    child: Icon(Icons.play_circle_outline, color: _white, size: 56),
+                    child: Icon(
+                      Icons.play_circle_outline,
+                      color: _white,
+                      size: 56,
+                    ),
                   ),
                 ],
               ),
@@ -198,59 +175,29 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
 
         const SizedBox(height: 12),
 
-        // 横向图片缩略图列表
+        // 添加素材按钮
         SizedBox(
           height: 60,
-          child: ListView.builder(
+          child: ListView(
             scrollDirection: Axis.horizontal,
-            itemCount: _thumbnails.length + 1, // +1 为添加按钮
-            itemBuilder: (context, index) {
-              // 末尾 + 号按钮
-              if (index == _thumbnails.length) {
-                return GestureDetector(
-                  onTap: () {
-                    // TODO: 添加素材
-                  },
-                  child: Container(
-                    width: 52,
-                    height: 52,
-                    margin: const EdgeInsets.only(left: 8),
-                    decoration: BoxDecoration(
-                      color: _btnBg,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: _border),
-                    ),
-                    child: const Icon(Icons.add, color: _white, size: 24),
-                  ),
-                );
-              }
-
-              // 缩略图
-              final isSelected = index == _selectedThumbIndex;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedThumbIndex = index),
+            children: [
+              GestureDetector(
+                onTap: () {
+                  // TODO: 添加素材
+                },
                 child: Container(
                   width: 52,
                   height: 52,
                   margin: const EdgeInsets.only(left: 8),
                   decoration: BoxDecoration(
+                    color: _btnBg,
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: isSelected ? _primary : _border,
-                      width: isSelected ? 2 : 1,
-                    ),
+                    border: Border.all(color: _border),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(5),
-                    child: Image.network(
-                      _thumbnails[index],
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, e, s) => Container(color: _btnBg),
-                    ),
-                  ),
+                  child: const Icon(Icons.add, color: _white, size: 24),
                 ),
-              );
-            },
+              ),
+            ],
           ),
         ),
       ],
@@ -333,45 +280,11 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
     );
   }
 
-  // ===================== 话题标签横向滚动列表 =====================
-  Widget _buildTopicChips() {
-    return SizedBox(
-      height: 36,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _topics.length,
-        separatorBuilder: (_, i) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-            decoration: BoxDecoration(
-              color: _btnBg,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Text(
-              '#${_topics[index]}',
-              style: const TextStyle(color: _white, fontSize: 13),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   // ===================== 列表式功能选项组 =====================
   Widget _buildOptionsList() {
     return Column(
       children: [
-        // 1. 选择地点
-        _optionRow(
-          icon: Icons.location_on_outlined,
-          title: '选择地点',
-          onTap: () {},
-        ),
-        _buildLocationChips(),
-        const Divider(color: _border, height: 1),
-
-        // 2. 添加标签
+        // 1. 添加标签
         _optionRow(
           icon: Icons.label_outline,
           title: '添加标签',
@@ -379,7 +292,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
         ),
         const Divider(color: _border, height: 1),
 
-        // 3. 添加自主声明
+        // 2. 添加自主声明
         _optionRow(
           icon: Icons.campaign_outlined,
           title: '添加自主声明',
@@ -409,52 +322,6 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
             ),
             const Icon(Icons.chevron_right, color: _hint, size: 20),
           ],
-        ),
-      ),
-    );
-  }
-
-  // 地点标签横向滚动
-  Widget _buildLocationChips() {
-    return Padding(
-      padding: const EdgeInsets.only(left: 30, bottom: 12),
-      child: SizedBox(
-        height: 32,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: _locations.length,
-          separatorBuilder: (_, i) => const SizedBox(width: 8),
-          itemBuilder: (context, index) {
-            final isSelected = index == _selectedLocationIndex;
-            return GestureDetector(
-              onTap: () => setState(() => _selectedLocationIndex = index),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isSelected ? _primary.withAlpha(51) : _btnBg,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isSelected ? _primary : _border,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.location_on,
-                        color: isSelected ? _primary : _hint, size: 14),
-                    const SizedBox(width: 4),
-                    Text(
-                      _locations[index],
-                      style: TextStyle(
-                        color: isSelected ? _primary : _white,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
         ),
       ),
     );
@@ -502,12 +369,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          CircleAvatar(
-                            radius: 12,
-                            backgroundImage: NetworkImage(
-                              'https://picsum.photos/100/100?random=99',
-                            ),
-                          ),
+                          Icon(Icons.more_time, color: _white, size: 18),
                           SizedBox(width: 6),
                           Text(
                             '限时日常',
