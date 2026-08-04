@@ -66,6 +66,10 @@ export class Video {
   @Column({ default: 0 })
   duration: number;
 
+  /** 展示画幅（width / height）；0 表示由播放器读取原视频尺寸 */
+  @Column({ type: 'float', default: 0 })
+  aspectRatio: number;
+
   /** 配乐名称 */
   @Column({ length: 200, default: '' })
   music: string;

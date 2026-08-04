@@ -18,8 +18,10 @@ class VideoApi {
   static Future<({List<ShortVideo> items, int total})> fetchRecommend({
     int page = 1,
   }) async {
-    final resp = await ApiClient.instance
-        .get('/videos', queryParameters: {'page': page});
+    final resp = await ApiClient.instance.get(
+      '/videos',
+      queryParameters: {'page': page},
+    );
     return _parseList(resp.data);
   }
 
@@ -27,8 +29,10 @@ class VideoApi {
   static Future<({List<ShortVideo> items, int total})> fetchFollowing({
     int page = 1,
   }) async {
-    final resp = await ApiClient.instance
-        .get('/videos/following', queryParameters: {'page': page});
+    final resp = await ApiClient.instance.get(
+      '/videos/following',
+      queryParameters: {'page': page},
+    );
     return _parseList(resp.data);
   }
 
@@ -36,8 +40,10 @@ class VideoApi {
   static Future<({List<ShortVideo> items, int total})> fetchMine({
     int page = 1,
   }) async {
-    final resp = await ApiClient.instance
-        .get('/videos/mine', queryParameters: {'page': page});
+    final resp = await ApiClient.instance.get(
+      '/videos/mine',
+      queryParameters: {'page': page},
+    );
     return _parseList(resp.data);
   }
 
@@ -106,6 +112,7 @@ class VideoApi {
     double trimEnd = 0,
     double speed = 1,
     int rotation = 0,
+    double aspectRatio = 0,
   }) async {
     final data = <String, dynamic>{};
     if (title.isNotEmpty) data['title'] = title;
@@ -122,6 +129,7 @@ class VideoApi {
     if (trimEnd > 0) data['trimEnd'] = trimEnd;
     if (speed != 1) data['speed'] = speed;
     if (rotation != 0) data['rotation'] = rotation;
+    if (aspectRatio > 0) data['aspectRatio'] = aspectRatio;
     final resp = await ApiClient.instance.post('/videos', data: data);
     return ShortVideo.fromServerJson(resp.data as Map<String, dynamic>);
   }
@@ -143,8 +151,10 @@ class VideoApi {
   /// 批量查询点赞状态
   static Future<Map<int, bool>> batchLiked(List<int> videoIds) async {
     final ids = videoIds.join(',');
-    final resp = await ApiClient.instance
-        .get('/videos/liked', queryParameters: {'ids': ids});
+    final resp = await ApiClient.instance.get(
+      '/videos/liked',
+      queryParameters: {'ids': ids},
+    );
     final map = <int, bool>{};
     for (final e in (resp.data as Map<String, dynamic>).entries) {
       map[int.parse(e.key)] = e.value as bool;
@@ -170,7 +180,10 @@ class VideoApi {
   }
 
   /// 添加评论，返回最新评论
-  static Future<CommunityComment> addComment(int videoId, String content) async {
+  static Future<CommunityComment> addComment(
+    int videoId,
+    String content,
+  ) async {
     final resp = await ApiClient.instance.post(
       '/videos/$videoId/comments',
       data: {'content': content},

@@ -30,6 +30,7 @@ class ShortVideo {
     this.trimEnd = 0,
     this.speed = 1.0,
     this.rotation = 0,
+    this.aspectRatio = 0,
   });
 
   final int id;
@@ -94,6 +95,9 @@ class ShortVideo {
   /// 照片顺时针旋转 90° 次数（0/1/2/3）
   final int rotation;
 
+  /// 视频展示画幅（width / height）；0 表示使用视频文件原始画幅。
+  final double aspectRatio;
+
   /// 从服务端信息流条目解析（对应 videos 模块 VideoItem 响应）。
   /// 头像/封面兼容 http(s) 与 /uploads/ 相对路径，统一解析为绝对地址。
   factory ShortVideo.fromServerJson(Map<String, dynamic> json) {
@@ -126,6 +130,7 @@ class ShortVideo {
       trimEnd: ((json['trimEnd'] ?? 0) as num).toDouble(),
       speed: ((json['speed'] ?? 1) as num).toDouble(),
       rotation: ((json['rotation'] ?? 0) as num).toInt(),
+      aspectRatio: ((json['aspectRatio'] ?? 0) as num).toDouble(),
     );
   }
 
@@ -135,30 +140,30 @@ class ShortVideo {
     int? shareCount,
     List<CommunityComment>? comments,
     bool? liked,
-  }) =>
-      ShortVideo(
-        id: id,
-        authorId: authorId,
-        user: user,
-        avatar: avatar,
-        title: title,
-        cover: cover,
-        duration: duration,
-        likeCount: likeCount ?? this.likeCount,
-        commentCount: commentCount ?? this.commentCount,
-        shareCount: shareCount ?? this.shareCount,
-        followCount: followCount,
-        tags: tags,
-        music: music,
-        comments: comments ?? this.comments,
-        liked: liked ?? this.liked,
-        videoUrl: videoUrl,
-        isPhoto: isPhoto,
-        photos: photos,
-        filterId: filterId,
-        trimStart: trimStart,
-        trimEnd: trimEnd,
-        speed: speed,
-        rotation: rotation,
-      );
+  }) => ShortVideo(
+    id: id,
+    authorId: authorId,
+    user: user,
+    avatar: avatar,
+    title: title,
+    cover: cover,
+    duration: duration,
+    likeCount: likeCount ?? this.likeCount,
+    commentCount: commentCount ?? this.commentCount,
+    shareCount: shareCount ?? this.shareCount,
+    followCount: followCount,
+    tags: tags,
+    music: music,
+    comments: comments ?? this.comments,
+    liked: liked ?? this.liked,
+    videoUrl: videoUrl,
+    isPhoto: isPhoto,
+    photos: photos,
+    filterId: filterId,
+    trimStart: trimStart,
+    trimEnd: trimEnd,
+    speed: speed,
+    rotation: rotation,
+    aspectRatio: aspectRatio,
+  );
 }

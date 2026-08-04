@@ -13,30 +13,25 @@ class CommunityPalette {
   final bool isDark;
 
   /// 页面背景
-  Color get pageBackground =>
-      isDark ? const Color(0xFF131113) : const Color(0xFFFFFBFC);
+  Color get pageBackground => isDark ? const Color(0xFF000000) : Colors.white;
 
   /// 信息流卡片底色
-  Color get card => isDark ? const Color(0xFF1C191C) : Colors.white;
+  Color get card => isDark ? const Color(0xFF121212) : Colors.white;
 
   /// 卡片描边（深色模式下阴影不可见，用描边替代层级）
   Color get cardBorder =>
-      isDark ? const Color(0xFF373037) : const Color(0x14FF718D);
+      isDark ? const Color(0xFF363636) : const Color(0xFFDBDBDB);
 
   /// 卡片悬浮阴影
   List<BoxShadow> get cardShadow => [
-    BoxShadow(
-      color: isDark ? const Color(0x66000000) : const Color(0x0D7A4754),
-      blurRadius: 16,
-      offset: const Offset(0, 5),
-    ),
+    BoxShadow(color: Colors.transparent, blurRadius: 0, offset: Offset.zero),
   ];
 
   /// 故事未读渐变环（暖橙 → 粉 → 紫，原创配色）
   static const List<Color> storyGradient = [
-    Color(0xFFFF718D),
+    Color(0xFFFF3040),
     Color(0xFFFFB65C),
-    Color(0xFF8B73F6),
+    Color(0xFFC13584),
   ];
 
   /// 故事已读环
@@ -57,5 +52,5 @@ class CommunityPalette {
       avatarGradients[id % avatarGradients.length];
 
   /// 点赞/收藏等交互高亮
-  static const Color love = Color(0xFFFF718D);
+  static const Color love = Color(0xFFFF3040);
 }

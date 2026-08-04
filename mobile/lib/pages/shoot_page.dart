@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../core/music_api.dart';
+import '../core/video_layout.dart';
 import 'douyin_publish_page.dart';
 import 'music_picker_sheet.dart';
 import 'post_edit_page.dart';
@@ -47,6 +48,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
 
   bool _useFront = false;
   FlashMode _flash = FlashMode.auto;
+  VideoAspectPreset _aspectPreset = VideoAspectPreset.portrait;
 
   /// 已选配乐（拍摄页顶部展示，发布时写入视频）
   MusicItem? _music;
@@ -189,13 +191,18 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
       if (!mounted) return;
       setState(() => _recording = false);
       // 先进入拍摄后编辑页，再进发布页
-      final edit = await _openEditor(video: file, durationSeconds: seconds);
+      final edit = await _openEditor(
+        video: file,
+        durationSeconds: seconds,
+        aspectRatio: _aspectPreset.ratio,
+      );
       if (edit == null || !mounted) return;
       await _openPublishPage(
         initialVideo: file,
         durationSeconds: seconds,
         musicTitle: edit.music?.title ?? _music?.title,
         edit: edit,
+        aspectRatio: edit.aspectRatio,
       );
     } catch (_) {
       _recTimer.stop();
@@ -238,6 +245,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
       initialVideo: file,
       musicTitle: edit.music?.title ?? _music?.title,
       edit: edit,
+      aspectRatio: edit.aspectRatio,
     );
   }
 
@@ -246,6 +254,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
     XFile? video,
     XFile? photo,
     int? durationSeconds,
+    double? aspectRatio,
   }) {
     return Navigator.push<PostEditResult>(
       context,
@@ -255,6 +264,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
           photo: photo,
           initialMusic: _music?.title,
           durationSeconds: durationSeconds,
+          aspectRatio: aspectRatio,
         ),
       ),
     );
@@ -267,6 +277,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
     int? durationSeconds,
     String? musicTitle,
     PostEditResult? edit,
+    double? aspectRatio,
   }) async {
     final result = await Navigator.push<ShortVideo>(
       context,
@@ -277,6 +288,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
           initialMusic: musicTitle,
           durationSeconds: durationSeconds,
           initialEdit: edit,
+          initialAspectRatio: aspectRatio,
         ),
       ),
     );
@@ -309,7 +321,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
         children: [
           // ── 背景：真实相机预览 / 暗色渐变占位 ──
           if (_cameraReady)
-            CameraPreview(_camera!)
+            _buildCameraPreview()
           else
             const DecoratedBox(
               decoration: BoxDecoration(
@@ -330,9 +342,90 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
           // ── 右侧垂直按钮栏 ──
           _buildRightRail(),
 
+          if (!_recording && _modeIndex == 1) _buildAspectPicker(),
+
           // ── 底部拍摄操作区 + Tab 栏 ──
           _buildBottomArea(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCameraPreview() {
+    final camera = _camera!;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final ratio = _modeIndex == 1 ? _aspectPreset.ratio : 9 / 16;
+        final frame = containAspectSize(
+          Size(constraints.maxWidth, constraints.maxHeight),
+          ratio,
+        );
+        return ColoredBox(
+          color: Colors.black,
+          child: Center(
+            child: SizedBox(
+              width: frame.width,
+              height: frame.height,
+              child: coverVideoFrame(
+                sourceAspectRatio: camera.value.aspectRatio,
+                child: CameraPreview(camera),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAspectPicker() {
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 228,
+      child: SafeArea(
+        top: false,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final preset in VideoAspectPreset.values)
+                  GestureDetector(
+                    onTap: () => setState(() => _aspectPreset = preset),
+                    child: Container(
+                      constraints: const BoxConstraints(minWidth: 48),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: preset == _aspectPreset
+                            ? Colors.white
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Text(
+                        preset.label,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: preset == _aspectPreset
+                              ? Colors.black
+                              : Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

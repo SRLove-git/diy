@@ -9,6 +9,7 @@ import 'package:video_player/video_player.dart';
 import '../core/music_api.dart';
 import '../core/photo_filters.dart';
 import '../core/video_api.dart';
+import '../core/video_layout.dart';
 import 'music_picker_sheet.dart';
 import 'post_edit_page.dart';
 import 'short_video_models.dart';
@@ -28,6 +29,7 @@ class DouyinPublishPage extends StatefulWidget {
     this.initialMusic,
     this.durationSeconds,
     this.initialEdit,
+    this.initialAspectRatio,
   });
 
   /// 拍摄页选中的视频文件（可为空，进入后在页内再选）
@@ -44,6 +46,8 @@ class DouyinPublishPage extends StatefulWidget {
 
   /// 拍摄后编辑结果（滤镜/裁剪/倍速/旋转/配乐，可空）
   final PostEditResult? initialEdit;
+
+  final double? initialAspectRatio;
 
   @override
   State<DouyinPublishPage> createState() => _DouyinPublishPageState();
@@ -76,6 +80,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
   VideoPlayerController? _videoCtrl;
   bool _videoReady = false;
   bool _videoPlaying = false;
+  double? _aspectRatio;
 
   bool _submitting = false;
 
@@ -83,6 +88,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
   void initState() {
     super.initState();
     _video = widget.initialVideo;
+    _aspectRatio = widget.initialAspectRatio ?? widget.initialEdit?.aspectRatio;
     if (widget.initialImage != null) {
       _photos.add(widget.initialImage!);
     }
@@ -116,7 +122,14 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
       await ctrl.initialize();
       await ctrl.setLooping(true);
       ctrl.addListener(_onVideoTick);
-      if (mounted) setState(() => _videoReady = true);
+      if (mounted) {
+        setState(() {
+          _videoReady = true;
+          if (_aspectRatio == null || _aspectRatio! <= 0) {
+            _aspectRatio = ctrl.value.aspectRatio;
+          }
+        });
+      }
     } catch (_) {
       // 播放失败保留占位（_videoReady 保持 false）
     }
@@ -169,6 +182,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
       _video = file;
       _photos.clear();
       _cover = null;
+      _aspectRatio = null;
     });
     _initVideoPreview();
   }
@@ -246,7 +260,9 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
         content: desc.isEmpty ? title : '$title\n$desc',
         cover: cover,
         videoUrl: videoUrl,
-        duration: widget.durationSeconds,
+        duration:
+            widget.durationSeconds ??
+            (_videoCtrl?.value.duration.inSeconds ?? 0),
         music: _music?.title ?? '',
         photos: photos,
         filter: _edit?.filterId ?? '',
@@ -254,6 +270,12 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
         trimEnd: _edit?.trimEnd ?? 0,
         speed: _edit?.speed ?? 1,
         rotation: _edit?.rotation ?? 0,
+        aspectRatio: video == null
+            ? 0
+            : normalizeVideoAspectRatio(
+                _aspectRatio,
+                fallback: _videoCtrl?.value.aspectRatio ?? 9 / 16,
+              ),
       );
       if (mounted) {
         _toast('发布成功');
@@ -351,6 +373,12 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
     final filter = filterOf(_edit?.filterId ?? '').colorFilter;
     final angle = (_edit?.rotation ?? 0) * 90 * 3.141592653589793 / 180;
     final summary = _editSummary;
+    final previewRatio = _video != null && _videoReady
+        ? normalizeVideoAspectRatio(
+            _aspectRatio,
+            fallback: _videoCtrl!.value.aspectRatio,
+          )
+        : 9 / 16;
     return Column(
       children: [
         // 手机样式素材预览卡片
@@ -370,100 +398,104 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
             },
             child: Transform.rotate(
               angle: angle,
-              child: Container(
-                width: 200,
-                height: 340,
-                decoration: BoxDecoration(
-                  color: _btnBg,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: _border, width: 2),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
-                  child: ColorFiltered(
-                    colorFilter: filter,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        // 背景：照片素材（第一张）/ 无封面视频真实预览 / 封面图 / 占位
-                        if (_photos.isNotEmpty)
-                          Image.file(
-                            File(_photos.first.path),
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => _placeholder(),
-                          )
-                        else if (_video != null && _videoReady)
-                          _videoPreviewBox()
-                        else if (_cover != null)
-                          Image.file(
-                            File(_cover!.path),
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => _placeholder(),
-                          )
-                        else
-                          _placeholder(),
-                        // 视频未就绪时叠加播放图标（就绪后由预览框内部管理）
-                        if (_video != null && !_videoReady)
-                          const Center(
-                            child: Icon(
-                              Icons.play_circle_outline,
-                              color: _white,
-                              size: 56,
-                            ),
-                          ),
-                        // 照片作品角标（多图显示张数）
-                        if (_photos.isNotEmpty)
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
+              child: SizedBox(
+                width: isLandscapeVideo(previewRatio) ? 320 : 200,
+                height: isLandscapeVideo(previewRatio)
+                    ? 320 / previewRatio
+                    : 200 / previewRatio,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _btnBg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _border, width: 2),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: ColorFiltered(
+                      colorFilter: filter,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // 背景：照片素材（第一张）/ 无封面视频真实预览 / 封面图 / 占位
+                          if (_photos.isNotEmpty)
+                            Image.file(
+                              File(_photos.first.path),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => _placeholder(),
+                            )
+                          else if (_video != null && _videoReady)
+                            _videoPreviewBox()
+                          else if (_cover != null)
+                            Image.file(
+                              File(_cover!.path),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => _placeholder(),
+                            )
+                          else
+                            _placeholder(),
+                          // 视频未就绪时叠加播放图标（就绪后由预览框内部管理）
+                          if (_video != null && !_videoReady)
+                            const Center(
+                              child: Icon(
+                                Icons.play_circle_outline,
+                                color: _white,
+                                size: 56,
                               ),
-                              decoration: BoxDecoration(
+                            ),
+                          // 照片作品角标（多图显示张数）
+                          if (_photos.isNotEmpty)
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black54,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  _photos.length > 1
+                                      ? '照片 ${_photos.length} 张'
+                                      : '照片',
+                                  style: const TextStyle(
+                                    color: _white,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          // 底部素材名称
+                          if (hasAsset)
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 6,
+                                ),
                                 color: Colors.black54,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                _photos.length > 1
-                                    ? '照片 ${_photos.length} 张'
-                                    : '照片',
-                                style: const TextStyle(
-                                  color: _white,
-                                  fontSize: 10,
+                                child: Text(
+                                  _fileName(
+                                    _video != null
+                                        ? _video!.name
+                                        : _photos.first.name,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: _white,
+                                    fontSize: 11,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        // 底部素材名称
-                        if (hasAsset)
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 6,
-                              ),
-                              color: Colors.black54,
-                              child: Text(
-                                _fileName(
-                                  _video != null
-                                      ? _video!.name
-                                      : _photos.first.name,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: _white,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -734,11 +766,9 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Center(
-          child: AspectRatio(
-            aspectRatio: c.value.aspectRatio,
-            child: VideoPlayer(c),
-          ),
+        coverVideoFrame(
+          sourceAspectRatio: c.value.aspectRatio,
+          child: VideoPlayer(c),
         ),
         Center(
           child: Icon(

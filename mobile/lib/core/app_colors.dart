@@ -37,25 +37,25 @@ class AppColors extends ThemeExtension<AppColors> {
   /// 危险操作（退出登录等）
   final Color danger;
 
-  /// 浅色模式：与首页统一的粉白手作风格。
+  /// 浅色模式：纯白、中性灰与克制粉色强调。
   static const light = AppColors(
-    primary: Color(0xFFFF718D),
+    primary: Color(0xFFFF3040),
     surface: Color(0xFFFFFFFF),
-    textPrimary: Color(0xFF333033),
-    textSecondary: Color(0xFF8F898C),
-    divider: Color(0xFFF0E5E8),
-    placeholder: Color(0xFFFFF0F3),
+    textPrimary: Color(0xFF161616),
+    textSecondary: Color(0xFF737373),
+    divider: Color(0xFFDBDBDB),
+    placeholder: Color(0xFFF5F5F5),
     danger: Color(0xFFD9453E),
   );
 
   /// 黑色模式
   static const dark = AppColors(
-    primary: Color(0xFFFF8FA6),
-    surface: Color(0xFF1C191C),
-    textPrimary: Color(0xFFF8F3F5),
-    textSecondary: Color(0xFFAAA2A6),
-    divider: Color(0xFF373037),
-    placeholder: Color(0xFF2A2429),
+    primary: Color(0xFFFF5261),
+    surface: Color(0xFF121212),
+    textPrimary: Color(0xFFF5F5F5),
+    textSecondary: Color(0xFFA8A8A8),
+    divider: Color(0xFF363636),
+    placeholder: Color(0xFF262626),
     danger: Color(0xFFFF8A8A),
   );
 

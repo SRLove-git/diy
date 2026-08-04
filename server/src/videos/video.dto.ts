@@ -68,6 +68,11 @@ export class CreateVideoDto {
   @IsOptional()
   duration?: number;
 
+  /** 视频展示画幅（width / height，例如 9/16、1、16/9） */
+  @IsOptional()
+  @Min(0.35)
+  aspectRatio?: number;
+
   /** 配乐名称 */
   @IsString()
   @MaxLength(200)

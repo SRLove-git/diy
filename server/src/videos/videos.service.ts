@@ -27,6 +27,7 @@ export interface VideoItem {
   cover: string;
   videoUrl: string;
   duration: number;
+  aspectRatio: number;
   music: string;
   tags: string[];
   location: string;
@@ -245,6 +246,7 @@ export class VideosService {
       speed: dto.speed ?? 1,
       rotation: dto.rotation ?? 0,
       duration: dto.duration ?? 15,
+      aspectRatio: dto.aspectRatio ?? 0,
       music: dto.music ?? '',
       tags: dto.tags ?? [],
       location: dto.location ?? '',

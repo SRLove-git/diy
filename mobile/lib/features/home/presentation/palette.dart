@@ -5,10 +5,10 @@ class HomePalette {
   HomePalette._();
 
   // 背景
-  static const background = Color(0xFFFFFBFC);
+  static const background = Color(0xFFFFFFFF);
 
   // 主色
-  static const primary = Color(0xFFFF718D);
+  static const primary = Color(0xFFFF3040);
 
   // 辅助色
   static const secondaryPink = Color(0xFFFFD9E2);
@@ -19,12 +19,12 @@ class HomePalette {
   static const card = Color(0xFFFFFFFF);
 
   // 文字
-  static const textPrimary = Color(0xFF333333);
-  static const textSecondary = Color(0xFF999999);
+  static const textPrimary = Color(0xFF161616);
+  static const textSecondary = Color(0xFF737373);
 
   // 功能色
-  static const badgeRed = Color(0xFFFF718D);
-  static const bannerBg = Color(0xFFFFECEF);
+  static const badgeRed = Color(0xFFFF3040);
+  static const bannerBg = Color(0xFFFFF0F1);
 
   // 图标圆形背景色（低饱和度）
   static const iconPinkBg = Color(0xFFFFF0F3);

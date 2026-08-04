@@ -18,13 +18,13 @@ void main() {
     expect(find.text('获取验证码'), findsOneWidget);
   });
 
-  testWidgets('全局主题使用统一品牌色和粉白背景', (tester) async {
+  testWidgets('全局主题使用统一品牌色和纯白背景', (tester) async {
     await tester.pumpWidget(const DiyApp());
 
     final context = tester.element(find.text('拾染爱恋'));
     final theme = Theme.of(context);
-    expect(theme.colorScheme.primary, const Color(0xFFFF718D));
-    expect(theme.scaffoldBackgroundColor, const Color(0xFFFFFBFC));
+    expect(theme.colorScheme.primary, const Color(0xFFFF3040));
+    expect(theme.scaffoldBackgroundColor, Colors.white);
     expect(theme.inputDecorationTheme.filled, isTrue);
   });
 }

@@ -15,7 +15,12 @@ import 'widgets/glass_bottom_nav.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: '.env');
+  // 配置文件不是首屏渲染的前置条件；缺失或读取失败时仍应进入登录页。
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (error) {
+    debugPrint('dotenv load skipped: $error');
+  }
 
   // 透明状态栏，图标亮度跟随系统
   SystemChrome.setSystemUIOverlayStyle(
@@ -52,9 +57,7 @@ class DiyApp extends StatelessWidget {
   ThemeData _buildTheme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
     final palette = isDark ? AppColors.dark : AppColors.light;
-    final background = isDark
-        ? const Color(0xFF131113)
-        : const Color(0xFFFFFBFC);
+    final background = isDark ? const Color(0xFF000000) : Colors.white;
     final scheme = ColorScheme.fromSeed(
       seedColor: palette.primary,
       brightness: brightness,
@@ -68,7 +71,8 @@ class DiyApp extends StatelessWidget {
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: background,
-      splashFactory: InkSparkle.splashFactory,
+      splashFactory: InkRipple.splashFactory,
+      fontFamilyFallback: const ['PingFang SC', 'Noto Sans CJK SC'],
       textTheme: ThemeData(brightness: brightness).textTheme.apply(
         bodyColor: palette.textPrimary,
         displayColor: palette.textPrimary,
@@ -249,7 +253,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-      backgroundColor: const Color(0xFFFFFBFC),
+      backgroundColor: Colors.white,
       body: IndexedStack(index: _index, children: _pages),
       bottomNavigationBar: ListenableBuilder(
         listenable: ChatService.instance,

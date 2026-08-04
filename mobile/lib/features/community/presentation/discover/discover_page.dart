@@ -201,15 +201,15 @@ String _formatLikeCount(int n) {
 class DiscoverColors {
   DiscoverColors._();
 
-  static const pageBg = Color(0xFFFFFBFC);
-  static const primary = Color(0xFFFF718D);
-  static const primaryLight = Color(0x1AFF718D); // ~10% opacity
+  static const pageBg = Colors.white;
+  static const primary = Color(0xFFFF3040);
+  static const primaryLight = Color(0x14FF3040);
   static const cardBg = Colors.white;
-  static const titleColor = Color(0xFF333333);
-  static const usernameColor = Color(0xFF666666);
-  static const unselectedText = Color(0xFF999999);
-  static const unselectedBg = Color(0xFFFFF0F3);
-  static const searchIcon = Color(0xFF333333);
+  static const titleColor = Color(0xFF161616);
+  static const usernameColor = Color(0xFF737373);
+  static const unselectedText = Color(0xFF8E8E8E);
+  static const unselectedBg = Color(0xFFF5F5F5);
+  static const searchIcon = Color(0xFF161616);
 }
 
 // =============================================================================
@@ -269,11 +269,7 @@ class _DiscoverPageState extends State<DiscoverPage> {
         height: 56,
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          gradient: LinearGradient(
-            colors: [Color(0xFFFF718D), Color(0xFFFF8FA6)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: DiscoverColors.primary,
         ),
         child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
       ),
@@ -338,12 +334,12 @@ class TopTabBar extends StatelessWidget {
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           width: selected ? 20 : 0,
-                          height: 3,
+                          height: 2,
                           decoration: BoxDecoration(
                             color: selected
                                 ? DiscoverColors.primary
                                 : Colors.transparent,
-                            borderRadius: BorderRadius.circular(2),
+                            borderRadius: BorderRadius.circular(1),
                           ),
                         ),
                       ],
@@ -400,19 +396,19 @@ class CategoryBar extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: _categories.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
           final selected = i == selectedIndex;
           return GestureDetector(
             onTap: () => onChanged(i),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
                 color: selected
                     ? DiscoverColors.primaryLight
                     : DiscoverColors.unselectedBg,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(8),
               ),
               alignment: Alignment.center,
               child: Text(
@@ -469,14 +465,8 @@ class PostCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: DiscoverColors.cardBg,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0D000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFFDBDBDB), width: 0.6),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -492,7 +482,7 @@ class PostCard extends StatelessWidget {
         ? _buildGridImages()
         : _buildSingleImage();
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
       child: w,
     );
   }

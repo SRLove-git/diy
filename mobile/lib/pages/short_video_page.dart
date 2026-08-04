@@ -8,6 +8,7 @@ import 'package:video_player/video_player.dart';
 import '../core/follow_api.dart';
 import '../core/photo_filters.dart';
 import '../core/video_api.dart';
+import '../core/video_layout.dart';
 import '../features/community/domain/community_models.dart';
 import 'shoot_page.dart';
 import 'short_video_models.dart';
@@ -568,7 +569,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
       ms = ((v.trimEnd - v.trimStart) * 1000).round();
     }
     if (v.speed > 0) ms = (ms / v.speed).round();
-    return Duration(milliseconds: ms);
+    return Duration(milliseconds: ms.clamp(1, 86400000));
   }
 
   bool _playing = false;
@@ -641,6 +642,11 @@ class _VideoItemPageState extends State<_VideoItemPage>
       await ctrl.setLooping(true);
       final spd = widget.video.speed;
       if (spd > 0 && spd != 1) await ctrl.setPlaybackSpeed(spd);
+      if (widget.video.trimStart > 0) {
+        await ctrl.seekTo(
+          Duration(milliseconds: (widget.video.trimStart * 1000).round()),
+        );
+      }
       ctrl.addListener(_onVideoTick);
       if (!mounted) return;
       setState(() => _videoReady = true);
@@ -824,21 +830,50 @@ class _VideoItemPageState extends State<_VideoItemPage>
     return image;
   }
 
-  /// 视频真实画面：全屏铺满裁切（BoxFit.cover），应用编辑滤镜
+  /// 视频真实画面：竖屏沉浸铺满；横屏/方形完整显示，并用同帧模糊背景补齐。
   Widget _videoLayer() {
     final c = _videoCtrl!;
     final filter = filterOf(widget.video.filterId).colorFilter;
+    final displayRatio = normalizeVideoAspectRatio(
+      widget.video.aspectRatio,
+      fallback: c.value.aspectRatio,
+    );
+    final sourceRatio = normalizeVideoAspectRatio(c.value.aspectRatio);
+    final shouldContain = displayRatio > 0.82;
+    final foreground = Center(
+      child: AspectRatio(
+        aspectRatio: displayRatio,
+        child: coverVideoFrame(
+          sourceAspectRatio: sourceRatio,
+          child: VideoPlayer(c),
+        ),
+      ),
+    );
     return ColorFiltered(
       colorFilter: filter,
       child: ClipRect(
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width: 100,
-            height: c.value.aspectRatio > 0 ? 100 / c.value.aspectRatio : 100,
-            child: VideoPlayer(c),
-          ),
-        ),
+        child: shouldContain
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  ImageFiltered(
+                    imageFilter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+                    child: Opacity(
+                      opacity: 0.42,
+                      child: coverVideoFrame(
+                        sourceAspectRatio: sourceRatio,
+                        child: VideoPlayer(c),
+                      ),
+                    ),
+                  ),
+                  const ColoredBox(color: Color(0x55000000)),
+                  foreground,
+                ],
+              )
+            : coverVideoFrame(
+                sourceAspectRatio: sourceRatio,
+                child: VideoPlayer(c),
+              ),
       ),
     );
   }
@@ -880,6 +915,35 @@ class _VideoItemPageState extends State<_VideoItemPage>
               )
             else
               _coverImage(video.cover),
+
+            if (_videoReady &&
+                normalizeVideoAspectRatio(
+                      video.aspectRatio,
+                      fallback: _videoCtrl!.value.aspectRatio,
+                    ) >
+                    0.82)
+              Positioned(
+                top: MediaQuery.paddingOf(context).top + 58,
+                right: 14,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black45,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    videoAspectLabel(
+                      video.aspectRatio > 0
+                          ? video.aspectRatio
+                          : _videoCtrl!.value.aspectRatio,
+                    ),
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                ),
+              ),
 
             // 暂停态中央播放键（播放态隐藏）
             AnimatedSwitcher(

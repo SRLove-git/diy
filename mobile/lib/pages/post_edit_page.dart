@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 
 import '../core/music_api.dart';
 import '../core/photo_filters.dart';
+import '../core/video_layout.dart';
 import 'music_picker_sheet.dart';
 
 /// 拍摄后编辑结果（滤镜/裁剪/倍速/旋转/配乐）。
@@ -19,6 +20,7 @@ class PostEditResult {
     this.speed = 1.0,
     this.rotation = 0,
     this.music,
+    this.aspectRatio = 0,
   });
 
   /// 滤镜 ID（'' 原图），见 [PhotoFilter]
@@ -39,6 +41,9 @@ class PostEditResult {
   /// 编辑页选择的配乐（可空）
   final MusicItem? music;
 
+  /// 最终展示画幅（width / height）。
+  final double aspectRatio;
+
   bool get hasTrim => trimEnd > trimStart && trimStart > 0;
 }
 
@@ -54,6 +59,7 @@ class PostEditPage extends StatefulWidget {
     this.photo,
     this.initialMusic,
     this.durationSeconds,
+    this.aspectRatio,
   });
 
   /// 已录制的视频素材（与 [photo] 二选一）
@@ -67,6 +73,8 @@ class PostEditPage extends StatefulWidget {
 
   /// 视频实测时长（秒，相册视频可能为空）
   final int? durationSeconds;
+
+  final double? aspectRatio;
 
   @override
   State<PostEditPage> createState() => _PostEditPageState();
@@ -92,8 +100,17 @@ class _PostEditPageState extends State<PostEditPage> {
   bool get _isVideo => widget.video != null;
 
   /// 视频总时长（秒）；未知时裁剪不可用
-  double get _videoLength =>
-      (widget.durationSeconds ?? 0).toDouble().clamp(0, 600);
+  double get _videoLength {
+    final supplied = widget.durationSeconds;
+    if (supplied != null && supplied > 0) {
+      return supplied.toDouble().clamp(0, 600);
+    }
+    final ctrl = _videoCtrl;
+    if (ctrl != null && ctrl.value.isInitialized) {
+      return (ctrl.value.duration.inMilliseconds / 1000).clamp(0, 600);
+    }
+    return 0;
+  }
 
   static const _white = Colors.white;
   static const _hint = Color(0xFF999999);
@@ -134,7 +151,10 @@ class _PostEditPageState extends State<PostEditPage> {
       await ctrl.setPlaybackSpeed(_speed);
       ctrl.addListener(_onVideoTick);
       if (!mounted) return;
-      setState(() => _videoReady = true);
+      setState(() {
+        _videoReady = true;
+        if (_trimEnd <= 0) _trimEnd = _videoLength;
+      });
     } catch (_) {
       // 播放失败保留占位（_videoReady 保持 false）
     }
@@ -227,6 +247,12 @@ class _PostEditPageState extends State<PostEditPage> {
                 speed: _speed,
                 rotation: _rotation,
                 music: _music,
+                aspectRatio: _isVideo && _videoReady
+                    ? normalizeVideoAspectRatio(
+                        widget.aspectRatio,
+                        fallback: _videoCtrl!.value.aspectRatio,
+                      )
+                    : 0,
               ),
             ),
             child: Container(
@@ -250,111 +276,127 @@ class _PostEditPageState extends State<PostEditPage> {
   Widget _buildPreview() {
     final filter = filterOf(_filterId).colorFilter;
     final angle = _rotation * 90 * 3.141592653589793 / 180;
-    // 占满顶部可用区域（旋转时超出部分裁剪）
+    final mediaRatio = _isVideo && _videoReady
+        ? normalizeVideoAspectRatio(
+            widget.aspectRatio,
+            fallback: _videoCtrl!.value.aspectRatio,
+          )
+        : 9 / 16;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      child: ClipRect(
-        child: Center(
-          child: Transform.rotate(
-            angle: angle,
-            child: Container(
-              width: double.infinity,
-              height: double.infinity,
-              decoration: BoxDecoration(
-                color: _btnBg,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _border, width: 2),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: ColorFiltered(
-                  colorFilter: filter,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      // 背景：照片 / 视频真实预览 / 占位
-                      if (!_isVideo)
-                        Image.file(
-                          File(widget.photo!.path),
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _placeholder(),
-                        )
-                      else if (_videoReady)
-                        _videoPreview()
-                      else
-                        _placeholder(video: true),
-                      // 滤镜名称角标
-                      Positioned(
-                        top: 8,
-                        left: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final frame = containAspectSize(
+            Size(constraints.maxWidth, constraints.maxHeight),
+            mediaRatio,
+          );
+          return Center(
+            child: Transform.rotate(
+              angle: angle,
+              child: SizedBox(
+                width: frame.width,
+                height: frame.height,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _btnBg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _border, width: 2),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: ColorFiltered(
+                      colorFilter: filter,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // 背景：照片 / 视频真实预览 / 占位
+                          if (!_isVideo)
+                            Image.file(
+                              File(widget.photo!.path),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => _placeholder(),
+                            )
+                          else if (_videoReady)
+                            _videoPreview()
+                          else
+                            _placeholder(video: true),
+                          // 滤镜名称角标
+                          Positioned(
+                            top: 8,
+                            left: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black54,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                filterOf(_filterId).name,
+                                style: const TextStyle(
+                                  color: _white,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
                           ),
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            filterOf(_filterId).name,
-                            style: const TextStyle(color: _white, fontSize: 11),
-                          ),
-                        ),
+                          // 裁剪区间角标（视频）
+                          if (_isVideo && _trimStart > 0)
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black54,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '${_fmt(_trimStart)} - ${_fmt(_trimEnd)}',
+                                  style: const TextStyle(
+                                    color: _white,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          // 倍速角标（视频）
+                          if (_isVideo && _speed != 1)
+                            Positioned(
+                              bottom: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black54,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '${_speed}x',
+                                  style: const TextStyle(
+                                    color: _white,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                      // 裁剪区间角标（视频）
-                      if (_isVideo && _trimStart > 0)
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              '${_fmt(_trimStart)} - ${_fmt(_trimEnd)}',
-                              style: const TextStyle(
-                                color: _white,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
-                        ),
-                      // 倍速角标（视频）
-                      if (_isVideo && _speed != 1)
-                        Positioned(
-                          bottom: 8,
-                          right: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              '${_speed}x',
-                              style: const TextStyle(
-                                color: _white,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -366,11 +408,9 @@ class _PostEditPageState extends State<PostEditPage> {
       fit: StackFit.expand,
       children: [
         // 播放画面（按原始宽高比居中展示）
-        Center(
-          child: AspectRatio(
-            aspectRatio: ctrl.value.aspectRatio,
-            child: VideoPlayer(ctrl),
-          ),
+        coverVideoFrame(
+          sourceAspectRatio: ctrl.value.aspectRatio,
+          child: VideoPlayer(ctrl),
         ),
         // 中央播放/暂停按钮（点击切换）
         Center(

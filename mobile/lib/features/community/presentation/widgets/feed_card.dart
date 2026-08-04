@@ -42,13 +42,17 @@ class _FeedCardState extends State<FeedCard>
 
   late final Animation<double> _likeScale = TweenSequence<double>([
     TweenSequenceItem(
-      tween: Tween(begin: 1.0, end: 1.45)
-          .chain(CurveTween(curve: Curves.easeOut)),
+      tween: Tween(
+        begin: 1.0,
+        end: 1.45,
+      ).chain(CurveTween(curve: Curves.easeOut)),
       weight: 45,
     ),
     TweenSequenceItem(
-      tween: Tween(begin: 1.45, end: 1.0)
-          .chain(CurveTween(curve: Curves.elasticOut)),
+      tween: Tween(
+        begin: 1.45,
+        end: 1.0,
+      ).chain(CurveTween(curve: Curves.elasticOut)),
       weight: 55,
     ),
   ]).animate(_likeAnim);
@@ -87,17 +91,17 @@ class _FeedCardState extends State<FeedCard>
         children: [
           _buildHeader(author, colors),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
             child: Text(
               post.content,
               style: TextStyle(
-                fontSize: 18,
-                height: 1.45,
+                fontSize: 15,
+                height: 1.4,
                 color: colors.textPrimary,
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           if (post.medias.isNotEmpty) MediaGrid(medias: post.medias),
           _buildReactions(colors),
           _buildFooter(colors),
@@ -109,7 +113,7 @@ class _FeedCardState extends State<FeedCard>
   /// 作者行：头像 / 昵称 / 频道标签
   Widget _buildHeader(CommunityUser author, AppColors colors) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
       child: Row(
         children: [
           CommunityAvatar(user: author, size: 40, onTap: widget.onAvatarTap),
@@ -124,7 +128,7 @@ class _FeedCardState extends State<FeedCard>
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     color: colors.textPrimary,
                   ),
                 ),
@@ -133,10 +137,7 @@ class _FeedCardState extends State<FeedCard>
                   widget.post.channelTag,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: colors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 12.5, color: colors.textSecondary),
                 ),
               ],
             ),
@@ -151,27 +152,24 @@ class _FeedCardState extends State<FeedCard>
     final reactions = widget.post.reactions;
     if (reactions.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
       child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+        spacing: 6,
+        runSpacing: 6,
         children: [
           for (final r in reactions)
             IntrinsicWidth(
               child: Container(
-                height: 34,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                height: 28,
+                padding: const EdgeInsets.symmetric(horizontal: 9),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF7F7F7),
-                  borderRadius: BorderRadius.circular(18),
+                  color: colors.placeholder,
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   r,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: colors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 13, color: colors.textSecondary),
                 ),
               ),
             ),
@@ -184,7 +182,7 @@ class _FeedCardState extends State<FeedCard>
   Widget _buildFooter(AppColors colors) {
     final post = widget.post;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       child: Row(
         children: [
           Text(
@@ -205,8 +203,10 @@ class _FeedCardState extends State<FeedCard>
                     _liked
                         ? Icons.favorite_rounded
                         : Icons.favorite_border_rounded,
-                    size: 22,
-                    color: _liked ? CommunityPalette.love : colors.textSecondary,
+                    size: 24,
+                    color: _liked
+                        ? CommunityPalette.love
+                        : colors.textSecondary,
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -225,8 +225,11 @@ class _FeedCardState extends State<FeedCard>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.chat_bubble_outline_rounded,
-                    size: 22, color: colors.textSecondary),
+                Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: 24,
+                  color: colors.textPrimary,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   formatCount(post.commentCount),
@@ -243,7 +246,7 @@ class _FeedCardState extends State<FeedCard>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.send_rounded, size: 22, color: colors.textSecondary),
+                Icon(Icons.send_rounded, size: 24, color: colors.textPrimary),
                 const SizedBox(width: 4),
                 Text(
                   formatCount(post.shareCount),
