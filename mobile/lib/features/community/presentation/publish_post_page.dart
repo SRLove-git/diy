@@ -150,10 +150,8 @@ class _PublishPostPageState extends State<PublishPostPage> {
             children: [
               // 内容输入区
               _buildContentInput(colors),
-              // 图片选择区域
-              _buildImagePicker(colors),
-              // 视频选择区域
-              _buildVideoPicker(colors),
+              // 图片/视频选择区域
+              _buildMediaPicker(colors),
               // 分割线
               Divider(height: 1, color: colors.divider),
               // 功能列表项
@@ -260,22 +258,34 @@ class _PublishPostPageState extends State<PublishPostPage> {
     );
   }
 
-  /// 图片选择区域：横向滚动，已选缩略图 + 添加按钮
-  Widget _buildImagePicker(AppColors colors) {
-    final hasImages = _selectedImages.isNotEmpty;
+  /// 图片/视频选择区域：横向滚动
+  /// 顺序：照片缩略图 → 已选视频预览 → 「添加照片」→「添加视频」（两个添加按钮始终相邻且可见）
+  Widget _buildMediaPicker(AppColors colors) {
+    final hasMedia = _selectedImages.isNotEmpty || _video != null;
+    final hasVideo = _video != null;
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, hasImages ? 12 : 0),
+      padding: EdgeInsets.fromLTRB(16, 0, 16, hasMedia ? 12 : 0),
       child: SizedBox(
         height: 88,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
-          itemCount: _selectedImages.length + 1,
+          itemCount: _selectedImages.length + (hasVideo ? 1 : 0) + 2,
           separatorBuilder: (_, _) => const SizedBox(width: 8),
           itemBuilder: (_, i) {
-            if (i == _selectedImages.length) {
+            // 照片缩略图
+            if (i < _selectedImages.length) {
+              return _buildImageThumb(i);
+            }
+            // 已选视频预览（紧跟照片，位于添加按钮左侧）
+            if (hasVideo && i == _selectedImages.length) {
+              return _buildVideoPreview();
+            }
+            // 添加照片按钮
+            if (i == _selectedImages.length + (hasVideo ? 1 : 0)) {
               return _buildAddButton(colors);
             }
-            return _buildImageThumb(i);
+            // 添加视频按钮（始终显示，不被视频预览覆盖）
+            return _buildVideoAddButton(colors);
           },
         ),
       ),
@@ -323,7 +333,7 @@ class _PublishPostPageState extends State<PublishPostPage> {
     );
   }
 
-  /// 添加图片按钮：白色方形 + 灰色加号
+  /// 添加照片按钮：白色方形 + 灰色加号 + 「添加照片」文字
   Widget _buildAddButton(AppColors colors) {
     final isFull = _selectedImages.length >= _maxImages;
     return GestureDetector(
@@ -336,95 +346,103 @@ class _PublishPostPageState extends State<PublishPostPage> {
           color: isFull ? colors.divider : colors.placeholder,
         ),
         alignment: Alignment.center,
-        child: Icon(
-          Icons.add,
-          size: 32,
-          color: isFull ? colors.textSecondary.withValues(alpha: 0.4) : colors.textSecondary,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.add,
+              size: 32,
+              color: isFull ? colors.textSecondary.withValues(alpha: 0.4) : colors.textSecondary,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '添加照片',
+              style: TextStyle(
+                fontSize: 11,
+                color: isFull ? colors.textSecondary.withValues(alpha: 0.4) : colors.textSecondary,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  /// 视频选择区域：可附加 1 个视频，展示播放图标 + 文件名 + 移除按钮
-  Widget _buildVideoPicker(AppColors colors) {
-    final video = _video;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, video == null ? 0 : 12),
-      child: SizedBox(
-        height: 88,
-        child: video == null
-            ? GestureDetector(
-                onTap: _pickVideo,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: colors.placeholder,
-                  ),
-                  alignment: Alignment.center,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.play_circle_outline,
-                          size: 30, color: colors.textSecondary),
-                      const SizedBox(height: 2),
-                      Text('添加视频',
-                          style: TextStyle(
-                              fontSize: 11, color: colors.textSecondary)),
-                    ],
-                  ),
-                ),
-              )
-            : Stack(
-                children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: const Color(0xFF1B1B22),
-                    ),
-                    alignment: Alignment.center,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.play_circle_fill,
-                            color: Colors.white, size: 30),
-                        const SizedBox(height: 4),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text(
-                            _videoName(video.name),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 9),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    top: -2,
-                    right: -2,
-                    child: GestureDetector(
-                      onTap: _removeVideo,
-                      child: Container(
-                        width: 20,
-                        height: 20,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.black54,
-                        ),
-                        child: const Icon(Icons.close,
-                            color: Colors.white, size: 14),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+  /// 添加视频按钮：白色方形 + 播放图标 + 「添加视频」文字（始终显示）
+  Widget _buildVideoAddButton(AppColors colors) {
+    return GestureDetector(
+      onTap: _pickVideo,
+      child: Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          color: colors.placeholder,
+        ),
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.play_circle_outline,
+                size: 30, color: colors.textSecondary),
+            const SizedBox(height: 2),
+            Text('添加视频',
+                style: TextStyle(
+                    fontSize: 11, color: colors.textSecondary)),
+          ],
+        ),
       ),
+    );
+  }
+
+  /// 已选视频预览块：黑色方形 + 播放图标 + 文件名 + 移除按钮
+  Widget _buildVideoPreview() {
+    final video = _video!;
+    return Stack(
+      children: [
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: const Color(0xFF1B1B22),
+          ),
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.play_circle_fill,
+                  color: Colors.white, size: 30),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  _videoName(video.name),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 9),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          top: -2,
+          right: -2,
+          child: GestureDetector(
+            onTap: _removeVideo,
+            child: Container(
+              width: 20,
+              height: 20,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.black54,
+              ),
+              child: const Icon(Icons.close, color: Colors.white, size: 14),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
