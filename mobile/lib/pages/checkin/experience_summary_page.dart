@@ -18,6 +18,7 @@ class ExperienceSummaryPage extends StatelessWidget {
   final DateTime endTime;
 
   String _formatTime(DateTime dt) {
+    dt = dt.toLocal();
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');
     final s = dt.second.toString().padLeft(2, '0');

@@ -54,7 +54,10 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
 
       // 服务端已自动下钟（预约时段到点），直接进入体验总结
       if (status == 'completed' && startStr != null && endStr != null) {
-        _goToSummary(DateTime.parse(startStr), DateTime.parse(endStr));
+        _goToSummary(
+          _parseServerDateTime(startStr),
+          _parseServerDateTime(endStr),
+        );
         return;
       }
 
@@ -65,7 +68,7 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
 
         if (status == 'in_service' && startStr != null) {
           _inService = true;
-          _startTime = DateTime.parse(startStr);
+          _startTime = _parseServerDateTime(startStr);
           _scheduledEnd = _parseScheduledEnd(appt);
           _elapsed = DateTime.now().difference(_startTime!);
           _remaining = _computeRemaining();
@@ -93,7 +96,7 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
       final startStr = appt['serviceStartTime'] as String;
       setState(() {
         _inService = true;
-        _startTime = DateTime.parse(startStr);
+        _startTime = _parseServerDateTime(startStr);
         _scheduledEnd = _parseScheduledEnd(appt);
         _elapsed = Duration.zero;
         _remaining = _computeRemaining();
@@ -219,6 +222,10 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
     return DateTime.parse('${date}T$endTime:00');
   }
 
+  /// 服务端时间带 UTC 偏移时，展示和预约时段都按设备本地时区处理。
+  DateTime _parseServerDateTime(String value) =>
+      DateTime.parse(value).toLocal();
+
   /// 距预约时段结束的剩余时长（已到点则返回 0）
   Duration _computeRemaining() {
     final end = _scheduledEnd;
@@ -249,7 +256,10 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
       if (appt['status'] == 'completed' && startStr != null && endStr != null) {
         _timer?.cancel();
         _pollTimer?.cancel();
-        _goToSummary(DateTime.parse(startStr), DateTime.parse(endStr));
+        _goToSummary(
+          _parseServerDateTime(startStr),
+          _parseServerDateTime(endStr),
+        );
       }
     } on DioException {
       // 轮询失败忽略，等待下一次
