@@ -44,10 +44,15 @@ export const appointmentApi = {
   checkIn: (code: string) =>
     http.post<Appointment>('/appointments/checkin', { code }),
 
-  /** 上钟 */
-  clockIn: (id: number) => http.post<Appointment>(`/appointments/${id}/clockin`),
+  /** 管理端按订单核销 */
+  adminCheckIn: (id: number) =>
+    http.post<Appointment>(`/admin/appointments/${id}/checkin`),
 
-  /** 下钟 */
+  /** 管理端上钟 */
+  clockIn: (id: number) =>
+    http.post<Appointment>(`/admin/appointments/${id}/clockin`),
+
+  /** 管理端下钟 */
   clockOut: (id: number) =>
-    http.post<Appointment>(`/appointments/${id}/clockout`),
+    http.post<Appointment>(`/admin/appointments/${id}/clockout`),
 }

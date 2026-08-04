@@ -6,6 +6,7 @@ const orders = ref<Appointment[]>([])
 const loading = ref(true)
 const error = ref('')
 const statusFilter = ref('')
+const operatingId = ref<number | null>(null)
 
 const statusTabs = [
   { value: '', label: '全部' },
@@ -47,22 +48,27 @@ async function load() {
   }
 }
 
-async function checkIn(id: number) {
-  try {
-    await appointmentApi.clockIn(id)
-    await load()
-  } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+async function operate(
+  order: Appointment,
+  action: 'checkin' | 'clockin' | 'clockout',
+) {
+  const prompts = {
+    checkin: `确认核销预约码 ${order.code}？核销后订单将进入已核销状态。`,
+    clockin: `确认预约码 ${order.code} 开始上钟？`,
+    clockout: `确认预约码 ${order.code} 下钟？`,
   }
-}
+  if (!confirm(prompts[action])) return
 
-async function clockOut(id: number) {
-  if (!confirm('确认下钟？')) return
+  operatingId.value = order.id
   try {
-    await appointmentApi.clockOut(id)
+    if (action === 'checkin') await appointmentApi.adminCheckIn(order.id)
+    if (action === 'clockin') await appointmentApi.clockIn(order.id)
+    if (action === 'clockout') await appointmentApi.clockOut(order.id)
     await load()
   } catch (e: any) {
     alert(e?.response?.data?.message ?? '操作失败')
+  } finally {
+    operatingId.value = null
   }
 }
 
@@ -144,18 +150,28 @@ onMounted(load)
           <td>{{ formatDuration(o.serviceStartTime, o.serviceEndTime) }}</td>
           <td class="actions">
             <button
+              v-if="o.status === 'booked'"
+              class="btn btn-sm btn-success"
+              :disabled="operatingId !== null"
+              @click="operate(o, 'checkin')"
+            >
+              {{ operatingId === o.id ? '核销中…' : '核销' }}
+            </button>
+            <button
               v-if="o.status === 'checked_in'"
               class="btn btn-sm"
-              @click="checkIn(o.id)"
+              :disabled="operatingId !== null"
+              @click="operate(o, 'clockin')"
             >
-              上钟
+              {{ operatingId === o.id ? '处理中…' : '上钟' }}
             </button>
             <button
               v-if="o.status === 'in_service'"
               class="btn btn-sm btn-danger"
-              @click="clockOut(o.id)"
+              :disabled="operatingId !== null"
+              @click="operate(o, 'clockout')"
             >
-              下钟
+              {{ operatingId === o.id ? '处理中…' : '下钟' }}
             </button>
             <span v-if="o.status === 'completed' || o.status === 'cancelled'" class="muted">-</span>
           </td>
@@ -217,7 +233,9 @@ onMounted(load)
   cursor: pointer;
 }
 .btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-success { background: #2e9e5b; }
 .btn-danger { background: #d9453e; }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .muted { color: #8a8a8a; }
 .actions { white-space: nowrap; }
 </style>

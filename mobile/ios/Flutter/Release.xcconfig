@@ -1,1 +1,5 @@
 #include "Generated.xcconfig"
+
+// CCache compiler wrapper — caches compilation results to speed up repeated builds
+CC = $(PROJECT_DIR)/ccache/ccache-clang
+CXX = $(PROJECT_DIR)/ccache/ccache-clang++

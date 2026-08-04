@@ -46,7 +46,7 @@ class GlassBottomNav extends StatelessWidget {
 
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.only(bottom: 6),
+      minimum: const EdgeInsets.only(bottom: 3),
       child: GlassTabBar.bottom(
         tabs: [
           for (final item in items)
