@@ -8,6 +8,7 @@ import '../core/api_client.dart';
 import '../core/app_colors.dart';
 import '../core/appointment_api.dart';
 import '../core/auth_service.dart';
+import '../features/member/presentation/member_plan_page.dart';
 import 'admin/admin_dashboard_page.dart';
 import 'admin/admin_notifications_page.dart';
 import 'admin/admin_orders_page.dart';
@@ -123,6 +124,11 @@ class _HomePageState extends State<HomePage> {
                             : const MyCheckInQrPage(),
                       ),
                     ),
+                    onMembership: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const MemberPlanPage(),
+                      ),
+                    ),
                     isAdmin: isAdmin,
                     checkInLabel: isAdmin ? '扫码核销' : '到店核销',
                   ),
@@ -230,6 +236,7 @@ class _TopBanner extends StatelessWidget {
     required this.onTabChanged,
     required this.onBooking,
     required this.onCheckIn,
+    required this.onMembership,
     required this.isAdmin,
     required this.checkInLabel,
   });
@@ -238,6 +245,7 @@ class _TopBanner extends StatelessWidget {
   final ValueChanged<int> onTabChanged;
   final VoidCallback onBooking;
   final VoidCallback onCheckIn;
+  final VoidCallback onMembership;
   final bool isAdmin;
   final String checkInLabel;
 
@@ -294,7 +302,7 @@ class _TopBanner extends StatelessWidget {
                       icon: Icons.card_membership_rounded,
                       label: '会员套餐',
                       isDark: isDark,
-                      onTap: null,
+                      onTap: onMembership,
                     ),
                   ),
                 ],
