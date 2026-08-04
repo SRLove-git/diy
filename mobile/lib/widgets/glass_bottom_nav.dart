@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
@@ -43,80 +45,88 @@ class GlassBottomNav extends StatelessWidget {
     final colors = AppColors.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final inactive = isDark ? const Color(0xFFB3B3B3) : const Color(0xFF686868);
+    // 压紧与 Home Indicator 的间距：只保留部分底部安全区，
+    // 让悬浮胶囊更贴近屏幕底部（接近 iOS 26 悬浮栏的观感）。
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final bottomPadding = math.max(3.0, bottomInset - 16);
 
-    return SafeArea(
-      top: false,
-      minimum: const EdgeInsets.only(bottom: 3),
-      child: GlassTabBar.bottom(
-        tabs: [
-          for (final item in items)
-            GlassTab(
-              icon: _NavIcon(
-                icon: item.icon,
-                unread: item.label == '消息' ? chatUnread : 0,
+    return MediaQuery.removePadding(
+      context: context,
+      removeTop: true,
+      removeBottom: true,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomPadding),
+        child: GlassTabBar.bottom(
+          tabs: [
+            for (final item in items)
+              GlassTab(
+                icon: _NavIcon(
+                  icon: item.icon,
+                  unread: item.label == '消息' ? chatUnread : 0,
+                ),
+                activeIcon: _NavIcon(
+                  icon: item.activeIcon,
+                  unread: item.label == '消息' ? chatUnread : 0,
+                ),
+                label: item.label,
+                semanticLabel: item.label,
+                glowColor: colors.primary,
               ),
-              activeIcon: _NavIcon(
-                icon: item.activeIcon,
-                unread: item.label == '消息' ? chatUnread : 0,
-              ),
-              label: item.label,
-              semanticLabel: item.label,
-              glowColor: colors.primary,
-            ),
-        ],
-        selectedIndex: currentIndex,
-        onTabSelected: onSelect,
-        quality: GlassQuality.premium,
-        maskingQuality: MaskingQuality.high,
-        horizontalPadding: 14,
-        verticalPadding: 4,
-        barHeight: 64,
-        barBorderRadius: 30,
-        iconSize: 23,
-        iconLabelSpacing: 2,
-        labelFontSize: 10,
-        selectedIconColor: colors.primary,
-        selectedLabelColor: colors.primary,
-        unselectedIconColor: inactive,
-        unselectedLabelColor: inactive,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
-        indicatorColor: isDark
-            ? Colors.white.withValues(alpha: 0.10)
-            : Colors.white.withValues(alpha: 0.38),
-        settings: LiquidGlassSettings(
-          thickness: 28,
-          blur: 7,
-          glassColor: isDark
-              ? const Color(0xFF171717).withValues(alpha: 0.24)
-              : Colors.white.withValues(alpha: 0.22),
-          refractiveIndex: 1.32,
-          saturation: 1.18,
-          lightIntensity: 0.42,
-          glowIntensity: 0.45,
-          shadowElevation: 1,
+          ],
+          selectedIndex: currentIndex,
+          onTabSelected: onSelect,
+          quality: GlassQuality.premium,
+          maskingQuality: MaskingQuality.high,
+          horizontalPadding: 14,
+          verticalPadding: 4,
+          barHeight: 64,
+          barBorderRadius: 30,
+          iconSize: 23,
+          iconLabelSpacing: 2,
+          labelFontSize: 10,
+          selectedIconColor: colors.primary,
+          selectedLabelColor: colors.primary,
+          unselectedIconColor: inactive,
+          unselectedLabelColor: inactive,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
+          indicatorColor: isDark
+              ? Colors.white.withValues(alpha: 0.10)
+              : Colors.white.withValues(alpha: 0.38),
+          settings: LiquidGlassSettings(
+            thickness: 28,
+            blur: 7,
+            glassColor: isDark
+                ? const Color(0xFF171717).withValues(alpha: 0.24)
+                : Colors.white.withValues(alpha: 0.22),
+            refractiveIndex: 1.32,
+            saturation: 1.18,
+            lightIntensity: 0.42,
+            glowIntensity: 0.45,
+            shadowElevation: 1,
+          ),
+          indicatorSettings: LiquidGlassSettings(
+            thickness: 34,
+            blur: 3,
+            glassColor: colors.primary.withValues(alpha: 0.08),
+            refractiveIndex: 1.42,
+            saturation: 1.25,
+            lightIntensity: 0.55,
+            glowIntensity: 0.65,
+            shadowElevation: 1,
+          ),
+          indicatorPinchStrength: 0.52,
+          indicatorExpansion: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 5,
+          ),
+          magnification: 1.12,
+          glowOpacity: 0.22,
+          glowBlurRadius: 20,
+          glowSpreadRadius: 3,
+          interactionGlowColor: colors.primary,
+          pressScale: 1.03,
         ),
-        indicatorSettings: LiquidGlassSettings(
-          thickness: 34,
-          blur: 3,
-          glassColor: colors.primary.withValues(alpha: 0.08),
-          refractiveIndex: 1.42,
-          saturation: 1.25,
-          lightIntensity: 0.55,
-          glowIntensity: 0.65,
-          shadowElevation: 1,
-        ),
-        indicatorPinchStrength: 0.52,
-        indicatorExpansion: const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 5,
-        ),
-        magnification: 1.12,
-        glowOpacity: 0.22,
-        glowBlurRadius: 20,
-        glowSpreadRadius: 3,
-        interactionGlowColor: colors.primary,
-        pressScale: 1.03,
       ),
     );
   }
