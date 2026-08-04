@@ -190,12 +190,15 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
               itemBuilder: (_, i) => AnimatedBuilder(
                 animation: _pageCtrl,
                 builder: (context, child) {
-                  // 相邻页滑动时轻微缩放 + 变暗（TikTok 式过渡）
+                  // 相邻页滑动时轻微缩放 + 透明度渐变（TikTok 式过渡）
+                  // easeOutCubic 缓动：滑动时变化先快后缓，衔接更自然
                   // 首帧构建时 position 可能尚未解析，page 为 null，需兜底
                   final page = _pageCtrl.page;
-                  final offset = page == null ? 0.0 : page - i;
-                  final scale = (1 - offset.abs() * 0.05).clamp(0.9, 1.0);
-                  final opacity = (1 - offset.abs() * 0.2).clamp(0.8, 1.0);
+                  final raw = page == null ? 0.0 : (page - i).abs();
+                  final offset =
+                      Curves.easeOutCubic.transform(raw.clamp(0.0, 1.0));
+                  final scale = 1 - offset * 0.045;
+                  final opacity = 1 - offset * 0.55;
                   return Opacity(
                     opacity: opacity,
                     child: Transform.scale(scale: scale, child: child),
@@ -546,24 +549,35 @@ class _VideoItemPageState extends State<_VideoItemPage>
               ),
             ),
 
-            // 底部毛玻璃层（BackdropFilter 模糊视频背景，随视频滑动）
+            // 底部毛玻璃层（模糊 + 暗色渐变，模糊随高度淡入避免生硬边缘）
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
-              height: 140,
+              height: 160,
               child: ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.65),
-                        ],
+                child: ShaderMask(
+                  // 顶部透明 → 底部不透明，让模糊效果渐变淡入
+                  shaderCallback: (rect) => const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.white],
+                    stops: [0.0, 0.6],
+                  ).createShader(rect),
+                  blendMode: BlendMode.dstIn,
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: const [0.0, 0.75],
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.55),
+                          ],
+                        ),
                       ),
                     ),
                   ),
