@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
 import { CommunityModule } from './community/community.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { FollowsModule } from './follows/follows.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { BootstrapService } from './bootstrap/bootstrap.service';
 import { GlobalJwtModule } from './common/global-jwt.module';
@@ -42,6 +43,7 @@ import { UsersModule } from './users/users.module';
     AppointmentsModule,
     CommunityModule,
     ChatModule,
+    FollowsModule,
     UploadsModule,
     NotificationsModule,
     DashboardModule,

@@ -24,6 +24,7 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
   DateTime? _scheduledEnd; // 预约时段结束时刻（date + endTime），即下钟时间
   Timer? _timer;
   Timer? _pollTimer; // 轮询预约状态，检测服务端自动下钟
+  bool _clockoutChecking = false; // 防止自动下钟检测并发请求
   Duration _elapsed = Duration.zero;
   Duration _remaining = Duration.zero; // 剩余时长（到预约时段结束）
   bool _loading = true;
@@ -169,10 +170,20 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (_startTime == null || !mounted) return;
+      final now = DateTime.now();
       setState(() {
-        _elapsed = DateTime.now().difference(_startTime!);
+        if (_scheduledEnd != null && !now.isBefore(_scheduledEnd!)) {
+          // 已到预约时段结束：使用时长锁定为预约时段时长，不再增长
+          _elapsed = _scheduledEnd!.difference(_startTime!);
+        } else {
+          _elapsed = now.difference(_startTime!);
+        }
         _remaining = _computeRemaining();
       });
+      // 剩余时长到 0：立即触发自动下钟检测，无需等 5 秒轮询
+      if (_remaining <= Duration.zero) {
+        _checkAutoClockout();
+      }
     });
   }
 
@@ -202,7 +213,8 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
   }
 
   Future<void> _checkAutoClockout() async {
-    if (!mounted || _submitting || !_inService) return;
+    if (!mounted || _submitting || !_inService || _clockoutChecking) return;
+    _clockoutChecking = true;
     try {
       final resp =
           await ApiClient.instance.get('/appointments/${widget.appointmentId}');
@@ -217,6 +229,8 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
       }
     } on DioException {
       // 轮询失败忽略，等待下一次
+    } finally {
+      _clockoutChecking = false;
     }
   }
 

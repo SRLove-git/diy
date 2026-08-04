@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_colors.dart';
+import '../../core/auth_service.dart';
+import '../../core/follow_api.dart';
 import '../../core/post_api.dart';
+import '../../widgets/follow_button.dart';
 import '../../widgets/image_viewer.dart';
 import 'author_profile_page.dart';
 
@@ -26,6 +29,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
   List<Comment> _comments = [];
   bool _commentLoading = false;
   final _commentController = TextEditingController();
+
+  /// 与作者的关注关系
+  FollowStatus? _follow;
+  bool _followBusy = false;
 
   @override
   void initState() {
@@ -51,8 +58,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
       if (!mounted) return;
       setState(() => _post = post);
 
-      // 加载点赞和收藏状态
-      _loadStatuses();
+      // 加载点赞、收藏与关注状态
+      _loadStatuses(post.userId);
       // 加载评论
       _loadComments();
     } catch (e) {
@@ -62,20 +69,41 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
-  Future<void> _loadStatuses() async {
+  Future<void> _loadStatuses(int authorId) async {
     try {
       final results = await Future.wait([
         PostApi.isLiked(widget.postId),
         PostApi.isCollected(widget.postId),
+        FollowApi.status(authorId),
       ]);
       if (mounted) {
         setState(() {
-          _liked = results[0];
-          _collected = results[1];
+          _liked = results[0] as bool;
+          _collected = results[1] as bool;
+          _follow = results[2] as FollowStatus;
         });
       }
     } catch (_) {
       // 静默失败，使用默认值
+    }
+  }
+
+  /// 关注/取消关注作者
+  Future<void> _toggleFollow(bool following) async {
+    final authorId = _post?.userId;
+    if (authorId == null) return;
+    setState(() => _followBusy = true);
+    try {
+      final st = await FollowApi.setFollow(authorId, following: following);
+      if (mounted) setState(() => _follow = st);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('操作失败，请稍后再试')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _followBusy = false);
     }
   }
 
@@ -245,6 +273,15 @@ class _PostDetailPageState extends State<PostDetailPage> {
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                           ),
                           const Spacer(),
+                          if (AuthService.instance.user?.id != post.userId) ...[
+                            FollowButton(
+                              compact: true,
+                              following: _follow?.following ?? false,
+                              enabled: !_followBusy,
+                              onChanged: _toggleFollow,
+                            ),
+                            const SizedBox(width: 4),
+                          ],
                           Icon(Icons.chevron_right, color: colors.textSecondary, size: 20),
                         ],
                       ),

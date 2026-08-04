@@ -190,6 +190,22 @@ class _ChatPageState extends State<ChatPage> {
           }
         }
       });
+    } else if (event is ChatLimitEvent) {
+      // 聊天受限：移除占位气泡并清理本地留底，提示互相关注后可畅聊。
+      // 仅当气泡确实被移除时才提示（WS 与 REST 兜底会各触发一次，去重）。
+      var removed = false;
+      setState(() {
+        final before = _msgs.length;
+        _msgs.removeWhere(
+          (vm) => vm.message.clientMsgId == event.clientMsgId,
+        );
+        removed = _msgs.length != before;
+      });
+      if (removed) {
+        LocalChatStore.instance.removeByClientMsgId(event.clientMsgId);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(event.reason)));
+      }
     }
   }
 

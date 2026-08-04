@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:msgpack_dart/msgpack_dart.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -36,6 +37,13 @@ class PresenceEvent extends ChatEvent {
   const PresenceEvent(this.userId, this.online);
   final int userId;
   final bool online;
+}
+
+/// 聊天受限：未互相关注且已发满 3 条，服务端拒绝发送
+class ChatLimitEvent extends ChatEvent {
+  const ChatLimitEvent(this.clientMsgId, this.reason);
+  final String clientMsgId;
+  final String reason;
 }
 
 /// 连接状态
@@ -177,11 +185,20 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
           );
           break;
         case 'error':
-          if (frame['code'] == 'send_failed') {
+          final code = (frame['code'] ?? '') as String;
+          if (code == 'chat_limited') {
+            // 聊天受限：完成等待（不重发），并通知页面移除气泡 + 提示原因
             final clientMsgId = (frame['clientMsgId'] ?? '') as String;
             _pendingSends.remove(clientMsgId)?.complete(null);
-          } else if (frame['code'] == 'unauthorized' ||
-              frame['code'] == 'token_expired') {
+            _events.add(ChatLimitEvent(
+              clientMsgId,
+              (frame['message'] ?? '聊天受限') as String,
+            ));
+          } else if (code == 'send_failed') {
+            final clientMsgId = (frame['clientMsgId'] ?? '') as String;
+            _pendingSends.remove(clientMsgId)?.complete(null);
+          } else if (code == 'unauthorized' ||
+              code == 'token_expired') {
             // token 过期：断开当前连接，刷新后重连
             _closeChannel();
             _setState(ChatConnectionState.disconnected);
@@ -415,6 +432,13 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
         LocalChatStore.instance.markSent(clientMsgId, m.id!);
       }
       return m;
+    } on DioException catch (e) {
+      LocalChatStore.instance.markFailed(clientMsgId);
+      // 403 = 未互相关注已发满限制：通知页面移除气泡并提示原因
+      if (e.response?.statusCode == 403) {
+        _events.add(ChatLimitEvent(clientMsgId, ChatApi.messageOf(e)));
+      }
+      return null;
     } catch (_) {
       LocalChatStore.instance.markFailed(clientMsgId);
       return null;

@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../core/app_colors.dart';
 import '../core/auth_service.dart';
 import '../core/chat_api.dart';
+import '../core/follow_api.dart';
 import '../core/post_api.dart';
 import '../widgets/image_viewer.dart';
 import '../widgets/state_widgets.dart';
@@ -27,10 +28,32 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _error;
   int _tab = 0; // 0 帖子 / 1 Reels / 2 标记
 
+  /// 粉丝/关注数（来自关注接口）
+  int _followerCount = 0;
+  int _followingCount = 0;
+
   @override
   void initState() {
     super.initState();
     _loadPosts();
+    _loadStats();
+  }
+
+  /// 拉取自己的粉丝/关注数
+  Future<void> _loadStats() async {
+    final me = AuthService.instance.user;
+    if (me == null) return;
+    try {
+      final st = await FollowApi.status(me.id);
+      if (mounted) {
+        setState(() {
+          _followerCount = st.followerCount;
+          _followingCount = st.followingCount;
+        });
+      }
+    } catch (_) {
+      // 静默失败，保持占位 0
+    }
   }
 
   Future<void> _loadPosts() async {
@@ -265,7 +288,7 @@ class _ProfilePageState extends State<ProfilePage> {
           builder: (context, _) {
             final user = AuthService.instance.user;
             return RefreshIndicator(
-              onRefresh: _loadPosts,
+              onRefresh: () => Future.wait([_loadPosts(), _loadStats()]),
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
@@ -395,9 +418,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 Row(
                   children: [
                     _buildStat(_posts.length, '帖子'),
-                    // 粉丝/关注后端暂未支持，先按设计稿占位
-                    _buildStat(4, '粉丝'),
-                    _buildStat(9, '关注'),
+                    _buildStat(_followerCount, '粉丝'),
+                    _buildStat(_followingCount, '关注'),
                   ],
                 ),
               ],

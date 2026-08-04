@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Repository } from 'typeorm';
 import type Redis from 'ioredis';
+import { FollowsService } from '../follows/follows.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { User } from '../users/user.entity';
 import { Conversation } from './conversation.entity';
@@ -16,6 +17,9 @@ import { MessageStatus } from './message_status.entity';
 
 /** 消息内容类型：text 文本/表情；image 图片（content 存 /uploads/chat/... 相对路径）；voice 语音（content 存 {url,duration} JSON） */
 export type MessageContentType = 'text' | 'image' | 'voice';
+
+/** 未互相关注时，单会话最多可发送的消息条数 */
+const CHAT_LIMIT = 3;
 
 /** 聊天媒体内容必须是本站上传的相对路径 */
 const MEDIA_URL_RE = /^\/uploads\/chat\/[\w./-]+$/;
@@ -46,6 +50,7 @@ export class ChatService {
     private readonly messageStatus: Repository<MessageStatus>,
     @InjectRepository(User)
     private readonly users: Repository<User>,
+    private readonly follows: FollowsService,
     @Inject(REDIS_CLIENT)
     private readonly redis: Redis,
   ) {}
@@ -258,6 +263,18 @@ export class ChatService {
     const peerId = this.peerIdOf(conv, userId);
     const peer = await this.users.findOneBy({ id: peerId });
     if (peer?.isBanned) throw new BadRequestException('对方账号已被禁用');
+
+    // 聊天限制：互相关注无限畅聊；未互关（无关注或单向关注）每会话最多发 CHAT_LIMIT 条
+    if (!(await this.follows.isMutual(userId, peerId))) {
+      const sent = await this.messages.count({
+        where: { conversationId, senderId: userId },
+      });
+      if (sent >= CHAT_LIMIT) {
+        throw new ForbiddenException(
+          `未互相关注，最多可发送 ${CHAT_LIMIT} 条消息，互相关注后即可畅聊`,
+        );
+      }
+    }
 
     const type: MessageContentType =
       contentType === 'image'

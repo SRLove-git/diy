@@ -5,7 +5,9 @@ import '../../core/app_colors.dart';
 import '../../core/auth_service.dart';
 import '../../core/chat_api.dart';
 import '../../core/chat_service.dart';
+import '../../core/follow_api.dart';
 import '../../core/post_api.dart';
+import '../../widgets/follow_button.dart';
 import '../../widgets/image_viewer.dart';
 import '../../widgets/state_widgets.dart';
 import '../chat/chat_page.dart';
@@ -26,6 +28,12 @@ class _AuthorProfilePageState extends State<AuthorProfilePage> {
   bool _loading = true;
   String? _error;
 
+  /// 与作者的关注关系（含粉丝/关注数）
+  FollowStatus? _follow;
+  bool _followBusy = false;
+
+  bool get _isSelf => AuthService.instance.user?.id == widget.userId;
+
   @override
   void initState() {
     super.initState();
@@ -38,17 +46,41 @@ class _AuthorProfilePageState extends State<AuthorProfilePage> {
       _error = null;
     });
     try {
-      final result = await PostApi.fetchByUser(widget.userId);
+      // 作品与关注关系并行加载（Future.wait 统一处理两路错误）
+      final results = await Future.wait<Object>([
+        PostApi.fetchByUser(widget.userId),
+        FollowApi.status(widget.userId),
+      ]);
+      final result = results[0] as ({List<Post> items, int total});
+      final follow = results[1] as FollowStatus;
       if (mounted) {
         setState(() {
           _posts.clear();
           _posts.addAll(result.items);
+          _follow = follow;
         });
       }
     } catch (e) {
       if (mounted) setState(() => _error = '加载失败，请下拉重试');
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// 关注/取消关注
+  Future<void> _toggleFollow(bool following) async {
+    setState(() => _followBusy = true);
+    try {
+      final st = await FollowApi.setFollow(widget.userId, following: following);
+      if (mounted) setState(() => _follow = st);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('操作失败，请稍后再试')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _followBusy = false);
     }
   }
 
@@ -81,12 +113,11 @@ class _AuthorProfilePageState extends State<AuthorProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final isSelf = AuthService.instance.user?.id == widget.userId;
     return Scaffold(
       appBar: AppBar(
         title: Text('用户 #${widget.userId}'),
         actions: [
-          if (!isSelf)
+          if (!_isSelf)
             IconButton(
               icon: const Icon(Icons.chat_bubble_outline),
               tooltip: '发消息',
@@ -101,16 +132,107 @@ class _AuthorProfilePageState extends State<AuthorProfilePage> {
     );
   }
 
+  /// 作者信息行：头像 + 昵称 + 粉丝/关注 + 关注按钮
+  Widget _buildHeader() {
+    final colors = AppColors.of(context);
+    final st = _follow;
+    final avatar = st?.avatar ?? '';
+    final validAvatar =
+        avatar.startsWith('http://') ||
+        avatar.startsWith('https://') ||
+        avatar.startsWith('/uploads/');
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Row(
+        children: [
+          ClipOval(
+            child: validAvatar
+                ? Image.network(
+                    FollowApi.resolveAvatar(avatar),
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.cover,
+                    cacheWidth: 168,
+                    errorBuilder: (_, _, _) => _avatarFallback(colors),
+                  )
+                : _avatarFallback(colors),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  (st?.nickname.isNotEmpty ?? false)
+                      ? st!.nickname
+                      : '用户 #${widget.userId}',
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${st?.followerCount ?? 0} 粉丝 · ${st?.followingCount ?? 0} 关注',
+                  style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                ),
+                if (st?.mutual == true) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.primary.withAlpha(20),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '互相关注',
+                      style: TextStyle(fontSize: 11, color: colors.primary),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (!_isSelf)
+            FollowButton(
+              following: st?.following ?? false,
+              enabled: !_followBusy,
+              onChanged: _toggleFollow,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _avatarFallback(AppColors colors) => Container(
+        width: 56,
+        height: 56,
+        color: colors.primary,
+        child: const Icon(Icons.person, color: Colors.white, size: 30),
+      );
+
   Widget _buildBody() {
     if (_loading) {
       return const LoadingWidget();
     }
 
+    return Column(
+      children: [
+        _buildHeader(),
+        Expanded(child: _buildContent()),
+      ],
+    );
+  }
+
+  Widget _buildContent() {
     if (_error != null) {
       return ListView(
         children: [
           SizedBox(
-            height: MediaQuery.of(context).size.height * 0.6,
+            height: MediaQuery.of(context).size.height * 0.5,
             child: AppErrorWidget(message: _error!, onRetry: _load),
           ),
         ],
@@ -121,7 +243,7 @@ class _AuthorProfilePageState extends State<AuthorProfilePage> {
       return ListView(
         children: [
           SizedBox(
-            height: MediaQuery.of(context).size.height * 0.6,
+            height: MediaQuery.of(context).size.height * 0.5,
             child: const EmptyWidget(
               icon: Icons.brush_outlined,
               message: '该用户暂无作品',

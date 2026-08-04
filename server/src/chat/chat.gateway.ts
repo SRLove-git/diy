@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   HttpException,
   Inject,
   OnModuleDestroy,
@@ -268,9 +269,11 @@ export class ChatGateway
         this.publish({ kind: 'newMessage', toUserIds: [peerId], payload });
       }
     } catch (e) {
+      // 聊天受限（未互关超 3 条）用专用错误码，客户端据此提示用户去关注对方
+      const limited = e instanceof ForbiddenException;
       this.reply(client, {
         type: 'error',
-        code: 'send_failed',
+        code: limited ? 'chat_limited' : 'send_failed',
         clientMsgId: clientMsgId ?? null,
         message: e instanceof HttpException ? e.message : '发送失败',
       });

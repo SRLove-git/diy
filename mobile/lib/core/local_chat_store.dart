@@ -161,6 +161,16 @@ class LocalChatStore {
     );
   }
 
+  /// 删除本地消息（聊天受限被拒绝时清理占位气泡，避免重进页面又出现）
+  Future<void> removeByClientMsgId(String clientMsgId) async {
+    final db = await _database;
+    await db.delete(
+      _table,
+      where: 'client_msg_id = ?',
+      whereArgs: [clientMsgId],
+    );
+  }
+
   /// 对端已读回执：本会话自己发送的已送达消息置为已读
   Future<void> markRead(int conversationId) async {
     final db = await _database;
