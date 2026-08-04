@@ -180,11 +180,35 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
         }
         _remaining = _computeRemaining();
       });
-      // 剩余时长到 0：立即触发自动下钟检测，无需等 5 秒轮询
-      if (_remaining <= Duration.zero) {
-        _checkAutoClockout();
+      // 剩余时长到 0：乐观进入结算页，后台再同步服务端自动下钟
+      if (_scheduledEnd != null && _remaining <= Duration.zero) {
+        _optimisticClockout();
       }
     });
+  }
+
+  /// 预约时段到点：不等服务端响应，直接进入结算页（时长=预约时段时长），
+  /// 后台再触发一次服务端自动下钟确认（detail 读取时服务端会自动置为已完成）
+  void _optimisticClockout() {
+    final start = _startTime!;
+    final end = _scheduledEnd!;
+    _timer?.cancel();
+    _pollTimer?.cancel();
+    _goToSummary(start, end);
+    _syncServerClockout();
+  }
+
+  /// 后台确认服务端自动下钟（幂等；失败静默，服务端周期任务也会兜底下钟）
+  Future<void> _syncServerClockout() async {
+    if (_clockoutChecking) return;
+    _clockoutChecking = true;
+    try {
+      await ApiClient.instance.get('/appointments/${widget.appointmentId}');
+    } on DioException {
+      // 忽略：服务端周期任务也会自动下钟
+    } finally {
+      _clockoutChecking = false;
+    }
   }
 
   /// 解析预约时段结束时刻（date + endTime）
