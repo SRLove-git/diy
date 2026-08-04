@@ -17,6 +17,7 @@ import { RedisModule } from './redis/redis.module';
 import { StoresModule } from './stores/stores.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
+import { VideosModule } from './videos/videos.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { UsersModule } from './users/users.module';
     UploadsModule,
     NotificationsModule,
     DashboardModule,
+    VideosModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService, BootstrapService],

@@ -57,9 +57,12 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
 
     setState(() => _submitting = true);
     try {
-      await PostApi.create(
+      // 选中的缩略图排在最前，作为短视频封面
+      final selected = _thumbnails[_selectedThumbIndex];
+      final images = [selected, ..._thumbnails.where((u) => u != selected)];
+      final post = await PostApi.create(
         content: desc.isEmpty ? title : '$title\n$desc',
-        images: _thumbnails,
+        images: images,
         tags: _topics,
         title: title,
         location: _locations[_selectedLocationIndex],
@@ -68,7 +71,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('发布成功，等待审核')),
         );
-        Navigator.pop(context, true);
+        Navigator.pop(context, post);
       }
     } catch (e) {
       if (mounted) {

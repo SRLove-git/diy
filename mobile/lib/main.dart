@@ -115,9 +115,7 @@ class _MainShellState extends State<MainShell> {
       CommunityPage(
         onSwitchTab: (navIndex) => setState(() => _index = navIndex),
       ),
-      ShortVideoPage(
-        onRefreshFeed: () => setState(() => _index = 1),
-      ),
+      ShortVideoPage(),
       ConversationListPage(onTapAvatar: () => setState(() => _index = 4)),
       const ProfilePage(),
     ];

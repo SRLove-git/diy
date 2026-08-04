@@ -15,10 +15,7 @@ import { diskStorage } from 'multer';
 import { tmpdir } from 'os';
 import { extname, join } from 'path';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import {
-  UPLOAD_PROVIDER,
-  type UploadProvider,
-} from './uploads.provider';
+import { UPLOAD_PROVIDER, type UploadProvider } from './uploads.provider';
 
 /** 允许上传的图片类型 */
 const ALLOWED_MIMES = new Set([
@@ -41,6 +38,19 @@ const ALLOWED_AUDIO_MIMES = new Set([
   'audio/webm',
   'audio/3gpp',
   'audio/x-ms-wma',
+]);
+
+/** 允许上传的视频类型（短视频文件） */
+const ALLOWED_VIDEO_MIMES = new Set([
+  'video/mp4',
+  'video/quicktime',
+  'video/x-msvideo',
+  'video/x-ms-wmv',
+  'video/webm',
+  'video/ogg',
+  'video/3gpp',
+  'video/mpeg',
+  'video/x-matroska',
 ]);
 
 /** 当前月份子目录：yyyy/mm */
@@ -132,6 +142,31 @@ export class UploadsController {
       throw new BadRequestException('仅支持常见音频格式');
     }
     const { url } = await this.uploader.save(file, `chat/${monthDir()}`);
+    return { url };
+  }
+
+  /** 短视频上传：POST /api/uploads/videos（multipart 字段 file，需登录），返回相对路径 */
+  @Post('videos')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: multerStorage(),
+      limits: { fileSize: 200 * 1024 * 1024 },
+    }),
+  )
+  async uploadVideo(@UploadedFile() file?: Express.Multer.File) {
+    if (!file) throw new BadRequestException('缺少文件');
+    if (!ALLOWED_VIDEO_MIMES.has(file.mimetype)) {
+      // 类型不合规：删掉临时文件再报错
+      try {
+        unlinkSync(file.path);
+      } catch {
+        /* 忽略删除失败 */
+      }
+      throw new BadRequestException(
+        '仅支持 mp4/mov/avi/webm/3gp 等常见视频格式',
+      );
+    }
+    const { url } = await this.uploader.save(file, `video/${monthDir()}`);
     return { url };
   }
 }

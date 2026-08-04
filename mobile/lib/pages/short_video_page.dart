@@ -1,6 +1,9 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/post_api.dart';
 import '../features/community/domain/community_models.dart';
 import 'douyin_publish_page.dart';
 import 'short_video_models.dart';
@@ -11,10 +14,7 @@ import 'short_video_models.dart';
 /// 双击点赞、右侧交互栏（关注/点赞/评论/分享/旋转唱片）、底部信息区，
 /// 顶部「关注 / 推荐」双 Feed 与「+发布」入口。
 class ShortVideoPage extends StatefulWidget {
-  const ShortVideoPage({super.key, this.onRefreshFeed});
-
-  /// 发布成功后刷新社区列表的回调
-  final VoidCallback? onRefreshFeed;
+  const ShortVideoPage({super.key});
 
   @override
   State<ShortVideoPage> createState() => _ShortVideoPageState();
@@ -49,14 +49,41 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
     super.dispose();
   }
 
+  /// 发布成功后把新作品插入推荐 Feed 顶部，并停留在视频页
   void _onPublish() async {
-    final created = await Navigator.push<bool>(
+    final post = await Navigator.push<Post>(
       context,
       MaterialPageRoute(builder: (_) => const DouyinPublishPage()),
     );
-    if (created == true) {
-      widget.onRefreshFeed?.call();
-    }
+    if (post == null || !mounted) return;
+    setState(() {
+      _videos.insert(0, _toShortVideo(post));
+      _tabIndex = 1;
+      _currentIndex = 0;
+    });
+    if (_pageCtrl.hasClients) _pageCtrl.jumpToPage(0);
+  }
+
+  /// 将发布的社区作品映射为短视频信息流条目
+  ShortVideo _toShortVideo(Post post) {
+    final me = MockShortVideoDataSource.me;
+    return ShortVideo(
+      id: post.id,
+      authorId: post.userId,
+      user: post.author?.nickname ?? me.nickname,
+      avatar: post.author?.avatar ?? me.avatarUrl,
+      title: post.title.isNotEmpty ? post.title : post.content,
+      cover: post.images.isNotEmpty
+          ? post.images.first
+          : 'https://picsum.photos/seed/diynew${post.id}/720/1280',
+      duration: const Duration(seconds: 15),
+      likeCount: 0,
+      commentCount: 0,
+      shareCount: 0,
+      followCount: 300,
+      tags: post.tags,
+      music: '《我的作品》- 原创',
+    );
   }
 
   void _switchTab(int index) {
@@ -160,16 +187,31 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
               scrollDirection: Axis.vertical,
               itemCount: feed.length,
               onPageChanged: (i) => setState(() => _currentIndex = i),
-              itemBuilder: (_, i) => _VideoItemPage(
-                key: ValueKey(feed[i].id),
-                video: feed[i],
-                active: i == _currentIndex,
-                followed: _followedIds.contains(feed[i].authorId),
-                onDoubleTapLike: () => _toggleLike(feed[i]),
-                onFollow: () => _toggleFollow(feed[i]),
-                onLike: () => _toggleLike(feed[i]),
-                onComment: () => _openComments(feed[i]),
-                onShare: _openShare,
+              itemBuilder: (_, i) => AnimatedBuilder(
+                animation: _pageCtrl,
+                builder: (context, child) {
+                  // 相邻页滑动时轻微缩放 + 变暗（TikTok 式过渡）
+                  // 首帧构建时 position 可能尚未解析，page 为 null，需兜底
+                  final page = _pageCtrl.page;
+                  final offset = page == null ? 0.0 : page - i;
+                  final scale = (1 - offset.abs() * 0.05).clamp(0.9, 1.0);
+                  final opacity = (1 - offset.abs() * 0.2).clamp(0.8, 1.0);
+                  return Opacity(
+                    opacity: opacity,
+                    child: Transform.scale(scale: scale, child: child),
+                  );
+                },
+                child: _VideoItemPage(
+                  key: ValueKey(feed[i].id),
+                  video: feed[i],
+                  active: i == _currentIndex,
+                  followed: _followedIds.contains(feed[i].authorId),
+                  onDoubleTapLike: () => _toggleLike(feed[i]),
+                  onFollow: () => _toggleFollow(feed[i]),
+                  onLike: () => _toggleLike(feed[i]),
+                  onComment: () => _openComments(feed[i]),
+                  onShare: _openShare,
+                ),
               ),
             ),
 
@@ -498,6 +540,31 @@ class _VideoItemPageState extends State<_VideoItemPage>
                         Colors.transparent,
                         Colors.black54,
                       ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // 底部毛玻璃层（BackdropFilter 模糊视频背景，随视频滑动）
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 140,
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.65),
+                        ],
+                      ),
                     ),
                   ),
                 ),

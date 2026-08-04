@@ -1,0 +1,19 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Follow } from '../follows/follow.entity';
+import { User } from '../users/user.entity';
+import { Video } from './video.entity';
+import { VideoComment } from './video-comment.entity';
+import { VideoLike } from './video-like.entity';
+import { VideosController } from './videos.controller';
+import { VideosService } from './videos.service';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([Video, VideoLike, VideoComment, Follow, User]),
+  ],
+  controllers: [VideosController],
+  providers: [VideosService],
+  exports: [VideosService],
+})
+export class VideosModule {}

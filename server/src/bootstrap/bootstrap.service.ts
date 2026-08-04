@@ -1,16 +1,113 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
+import { VideosService } from '../videos/videos.service';
 
-/** 启动初始化：开发环境预置管理员账号（手机号验证码登录即为 admin） */
+/** 开发环境预置的演示作者（避免与真实注册手机号冲突） */
+interface DemoAuthor {
+  phone: string;
+  nickname: string;
+  avatar: string;
+}
+
+/** 开发环境预置的演示短视频 */
+interface DemoVideo {
+  authorPhone: string;
+  title: string;
+  cover: string;
+  duration: number;
+  music: string;
+  tags: string[];
+}
+
+/** 演示作者 */
+const DEMO_AUTHORS: DemoAuthor[] = [
+  {
+    phone: '13900000001',
+    nickname: '阿茶',
+    avatar: 'https://i.pravatar.cc/150?img=44',
+  },
+  {
+    phone: '13900000002',
+    nickname: '手作小匠',
+    avatar: 'https://i.pravatar.cc/150?img=12',
+  },
+  {
+    phone: '13900000003',
+    nickname: '织织',
+    avatar: 'https://i.pravatar.cc/150?img=45',
+  },
+];
+
+/** 演示短视频（封面走 picsum 占位服务） */
+const DEMO_VIDEOS: DemoVideo[] = [
+  {
+    authorPhone: '13900000001',
+    title: '奶油胶手机壳翻车现场…挤花手抖，结果意外解锁了"云朵渐变"？',
+    cover: 'https://picsum.photos/seed/diyseed1/720/1280',
+    duration: 15,
+    music: '《Lofi 手作日常》- Chill Beats',
+    tags: ['奶油胶', '手机壳', '翻车现场'],
+  },
+  {
+    authorPhone: '13900000002',
+    title: '蜡烛脱模的瞬间真的绝了！9:16 沉浸式卡点，全程高能。',
+    cover: 'https://picsum.photos/seed/diyseed2/720/1280',
+    duration: 19,
+    music: '《烛光》- 卡点神曲',
+    tags: ['香薰蜡烛', '脱模', '卡点'],
+  },
+  {
+    authorPhone: '13900000003',
+    title: '羊毛毡新手避坑：买材料前一定要先买工具！戳针三件套 + 泡沫垫。',
+    cover: 'https://picsum.photos/seed/diyseed3/720/1280',
+    duration: 42,
+    music: '《羊毛毡小调》- 手工 BGM',
+    tags: ['羊毛毡', '新手避坑', '手作'],
+  },
+  {
+    authorPhone: '13900000001',
+    title: '给闺蜜串的生日手链，12 颗菩提 + 绿松石混搭，独一无二！',
+    cover: 'https://picsum.photos/seed/diyseed4/720/1280',
+    duration: 24,
+    music: '《珠光》- 轻快手作',
+    tags: ['串珠', '手链', '闺蜜礼物'],
+  },
+  {
+    authorPhone: '13900000002',
+    title: '第一次尝试拍摄手作过程 Vlog，从拼装到打磨，记得看到最后～',
+    cover: 'https://picsum.photos/seed/diyseed5/720/1280',
+    duration: 58,
+    music: '《手作时光》- 氛围音乐',
+    tags: ['Vlog', '手作', '教程'],
+  },
+  {
+    authorPhone: '13900000003',
+    title: '用钩针钩一个星黛露玩偶，从零开始 15 分钟速成教程！',
+    cover: 'https://picsum.photos/seed/diyseed6/720/1280',
+    duration: 37,
+    music: '《毛线球》- 手工编织',
+    tags: ['钩针', '星黛露', '玩偶'],
+  },
+];
+
+/** 启动初始化：开发环境预置管理员账号 + 演示短视频 */
 @Injectable()
 export class BootstrapService implements OnApplicationBootstrap {
   private readonly logger = new Logger(BootstrapService.name);
   private readonly ADMIN_PHONE = '13800000000';
 
-  constructor(private readonly users: UsersService) {}
+  constructor(
+    private readonly users: UsersService,
+    private readonly videos: VideosService,
+  ) {}
 
   async onApplicationBootstrap() {
     if (process.env.NODE_ENV === 'production') return;
+    await this.ensureAdmin();
+    await this.seedDemoVideos();
+  }
+
+  private async ensureAdmin() {
     const admin = await this.users.findByPhone(this.ADMIN_PHONE);
     if (!admin) {
       await this.users.create({
@@ -23,5 +120,37 @@ export class BootstrapService implements OnApplicationBootstrap {
       await this.users.setRole(admin.id, 'admin');
       this.logger.log(`已将 ${this.ADMIN_PHONE} 角色更新为 admin`);
     }
+  }
+
+  /** 短视频表为空时预置演示数据，保证信息流可演示 */
+  private async seedDemoVideos() {
+    const count = await this.videos.countVideos();
+    if (count > 0) return;
+
+    // 创建/复用演示作者并补齐昵称头像
+    const authorByPhone = new Map<string, number>();
+    for (const a of DEMO_AUTHORS) {
+      const user = await this.users.findByPhoneOrCreate(a.phone);
+      await this.users.updateProfile(user.id, {
+        nickname: a.nickname,
+        avatar: a.avatar,
+      });
+      authorByPhone.set(a.phone, user.id);
+    }
+
+    for (const v of DEMO_VIDEOS) {
+      const userId = authorByPhone.get(v.authorPhone);
+      if (!userId) continue;
+      await this.videos.create(userId, {
+        title: v.title,
+        content: v.title,
+        cover: v.cover,
+        videoUrl: v.cover,
+        duration: v.duration,
+        music: v.music,
+        tags: v.tags,
+      });
+    }
+    this.logger.log(`已预置 ${DEMO_VIDEOS.length} 条演示短视频`);
   }
 }
