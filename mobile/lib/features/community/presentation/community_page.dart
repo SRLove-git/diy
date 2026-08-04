@@ -8,6 +8,7 @@ import '../../../core/chat_api.dart';
 import '../../../widgets/state_widgets.dart';
 import '../data/mock_community_datasource.dart';
 import '../../../pages/community/create_post_page.dart';
+import '../../../pages/community/user_profile_page.dart';
 import '../data/mock_community_repository.dart';
 import '../domain/community_models.dart';
 import '../domain/community_repository.dart';
@@ -82,6 +83,13 @@ class _CommunityPageState extends State<CommunityPage> {
   void _onAvatarTap() => widget.onSwitchTab(3); // 切到个人主页
   void _onUserTap() => widget.onSwitchTab(3);
   void _onSearchTap() => _showToast('找频道 / 找内容（演示）');
+
+  /// 点击帖子作者头像：打开用户主页展示页面
+  void _openUserProfile(FeedPost post) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => UserProfilePage(post: post)),
+    );
+  }
 
   Future<void> _onPublish() async {
     final created = await Navigator.of(context).push<bool>(
@@ -179,6 +187,7 @@ class _CommunityPageState extends State<CommunityPage> {
                     padding: const EdgeInsets.only(bottom: 16),
                     child: FeedCard(
                       post: post,
+                      onAvatarTap: () => _openUserProfile(post),
                       onLike: () => _onLike(post),
                       onComment: () => _onComment(post),
                       onShare: () => _onShare(post),

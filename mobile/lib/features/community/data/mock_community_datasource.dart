@@ -5,6 +5,8 @@ import '../domain/community_models.dart';
 /// 模拟后端返回的结构化数据。图片走 picsum / pravatar 占位服务，
 /// 组件内带加载/失败兜底，断网时依然可完整展示 UI 骨架。
 /// 接入真实 API 后由 `ApiCommunityRepository` 替代，数据源可整体删除。
+///
+/// authorId 映射到后端真实用户（id 16-25），使关注/私信可用。
 abstract final class MockCommunityDataSource {
   MockCommunityDataSource._();
 
@@ -37,10 +39,23 @@ abstract final class MockCommunityDataSource {
         aspectRatio: 1,
       );
 
+  // ── 作者 ID 常量（对齐后端 users 表 16-25）──────────────────
+  static const _aMatthew = 16;
+  static const _aAcha = 17;
+  static const _aZhizhi = 18;
+  static const _aAqiang = 19;
+  static const _aTaotao = 20;
+  static const _aLabi = 21;
+  static const _aBubu = 22;
+  static const _aZhuzhu = 23;
+  static const _aShouzuo = 24;
+  static const _aAche = 25;
+
   static final List<FeedPost> posts = [
     // ── 1. 单图片帖子 ──────────────────────────────────────────
     FeedPost(
       id: 1,
+      authorId: _aMatthew,
       avatar: 'https://i.pravatar.cc/150?img=32',
       username: 'matthew',
       channelTag: '#芙宁娜的后花园',
@@ -66,6 +81,7 @@ abstract final class MockCommunityDataSource {
     // ── 2. 两张图片帖子 ────────────────────────────────────────
     FeedPost(
       id: 2,
+      authorId: _aAcha,
       avatar: 'https://i.pravatar.cc/150?img=44',
       username: '阿茶',
       channelTag: '#手作日常',
@@ -90,6 +106,7 @@ abstract final class MockCommunityDataSource {
     // ── 3. 三张图片帖子（3 列正方形网格） ─────────────────────
     FeedPost(
       id: 3,
+      authorId: _aZhizhi,
       avatar: 'https://i.pravatar.cc/150?img=45',
       username: '织织',
       channelTag: '#羊毛毡实验室',
@@ -106,6 +123,7 @@ abstract final class MockCommunityDataSource {
     // ── 4. 四张图片帖子（2×2 网格） ────────────────────────────
     FeedPost(
       id: 4,
+      authorId: _aAqiang,
       avatar: 'https://i.pravatar.cc/150?img=59',
       username: '木工阿强',
       channelTag: '#木工坊',
@@ -130,6 +148,7 @@ abstract final class MockCommunityDataSource {
     // ── 5. 六张图片帖子（5-9 张 → 3×3 网格） ──────────────────
     FeedPost(
       id: 5,
+      authorId: _aTaotao,
       avatar: 'https://i.pravatar.cc/150?img=33',
       username: '陶陶',
       channelTag: '#陶艺研究所',
@@ -146,6 +165,7 @@ abstract final class MockCommunityDataSource {
     // ── 6. 九张图片帖子（3×3 满格） ────────────────────────────
     FeedPost(
       id: 6,
+      authorId: _aLabi,
       avatar: 'https://i.pravatar.cc/150?img=13',
       username: '蜡笔小新',
       channelTag: '#滴胶星球',
@@ -166,6 +186,7 @@ abstract final class MockCommunityDataSource {
     // ── 7. 超过九张图片帖子（第 9 张叠加 "+剩余"） ─────────────
     FeedPost(
       id: 7,
+      authorId: _aBubu,
       avatar: 'https://i.pravatar.cc/150?img=48',
       username: '布布',
       channelTag: '#串珠手作',
@@ -187,6 +208,7 @@ abstract final class MockCommunityDataSource {
     // ── 8. 横屏视频帖子（16:9 全宽） ───────────────────────────
     FeedPost(
       id: 8,
+      authorId: _aZhuzhu,
       avatar: 'https://i.pravatar.cc/150?img=52',
       username: '珠珠',
       channelTag: '#摄影手作',
@@ -218,6 +240,7 @@ abstract final class MockCommunityDataSource {
     // ── 9. 竖屏视频帖子（9:16 限高 600 裁剪） ──────────────────
     FeedPost(
       id: 9,
+      authorId: _aShouzuo,
       avatar: 'https://i.pravatar.cc/150?img=12',
       username: '手作小匠',
       channelTag: '#手作vlog',
@@ -241,6 +264,7 @@ abstract final class MockCommunityDataSource {
     // ── 10. 图片 + 视频混合帖子（按顺序统一进入媒体网格） ──────
     FeedPost(
       id: 10,
+      authorId: _aAche,
       avatar: 'https://i.pravatar.cc/150?img=15',
       username: '阿澈',
       channelTag: '#芙宁娜的后花园',

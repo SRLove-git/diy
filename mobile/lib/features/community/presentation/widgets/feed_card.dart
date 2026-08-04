@@ -17,12 +17,16 @@ class FeedCard extends StatefulWidget {
     required this.onLike,
     required this.onComment,
     required this.onShare,
+    this.onAvatarTap,
   });
 
   final FeedPost post;
   final VoidCallback onLike;
   final VoidCallback onComment;
   final VoidCallback onShare;
+
+  /// 点击作者头像（跳转用户主页）
+  final VoidCallback? onAvatarTap;
 
   @override
   State<FeedCard> createState() => _FeedCardState();
@@ -108,7 +112,7 @@ class _FeedCardState extends State<FeedCard>
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
       child: Row(
         children: [
-          CommunityAvatar(user: author, size: 40),
+          CommunityAvatar(user: author, size: 40, onTap: widget.onAvatarTap),
           const SizedBox(width: 10),
           Expanded(
             child: Column(

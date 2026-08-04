@@ -72,8 +72,8 @@ export class ChatService {
     return conv;
   }
 
-  /** 创建或复用与指定用户的会话 */
-  async createOrGet(userId: number, peerUserId: number): Promise<Conversation> {
+  /** 创建或复用与指定用户的会话（返回与列表一致的格式，含 peer 信息） */
+  async createOrGet(userId: number, peerUserId: number) {
     if (peerUserId === userId)
       throw new BadRequestException('不能和自己发起会话');
     const peer = await this.users.findOneBy({ id: peerUserId });
@@ -82,18 +82,19 @@ export class ChatService {
 
     const [a, b] = [Math.min(userId, peerUserId), Math.max(userId, peerUserId)];
     let conv = await this.conversations.findOneBy({ userAId: a, userBId: b });
-    if (conv) return conv;
-    try {
-      conv = await this.conversations.save(
-        this.conversations.create({ userAId: a, userBId: b }),
-      );
-      return conv;
-    } catch {
-      // 并发创建时靠唯一约束兜底，返回已存在的会话
-      conv = await this.conversations.findOneBy({ userAId: a, userBId: b });
-      if (conv) return conv;
-      throw new Error('创建会话失败');
+    if (!conv) {
+      try {
+        conv = await this.conversations.save(
+          this.conversations.create({ userAId: a, userBId: b }),
+        );
+      } catch {
+        // 并发创建时靠唯一约束兜底，返回已存在的会话
+        conv = await this.conversations.findOneBy({ userAId: a, userBId: b });
+        if (conv) return this._formatConv(conv, peerUserId, peer);
+        throw new Error('创建会话失败');
+      }
     }
+    return this._formatConv(conv, peerUserId, peer);
   }
 
   /** 当前用户全部会话的对端用户 ID（在线状态广播用） */
@@ -364,5 +365,22 @@ export class ChatService {
       { readAt },
     );
     return { readAt, peerId };
+  }
+
+  /** 格式化单条会话为前端友好格式（用于 createOrGet 等单条查询） */
+  private _formatConv(conv: Conversation, peerId: number, peerUser: User) {
+    return {
+      id: conv.id,
+      peer: {
+        id: peerId,
+        nickname: peerUser.nickname,
+        avatar: peerUser.avatar,
+        online: false,
+      },
+      lastMessagePreview: conv.lastMessagePreview,
+      lastMessageAt: conv.lastMessageAt,
+      unreadCount: 0,
+      pinned: conv.pinnedAt != null,
+    };
   }
 }

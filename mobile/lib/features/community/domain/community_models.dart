@@ -41,6 +41,7 @@ class MediaItem {
 class FeedPost {
   const FeedPost({
     required this.id,
+    required this.authorId,
     required this.avatar,
     required this.username,
     required this.channelTag,
@@ -56,6 +57,9 @@ class FeedPost {
   });
 
   final int id;
+
+  /// 作者的后端用户 ID（关注/私信用）
+  final int authorId;
 
   /// 作者头像 URL（为空时展示渐变首字头像）
   final String avatar;
@@ -89,6 +93,7 @@ class FeedPost {
 
   FeedPost copyWith({int? likeCount, bool? liked}) => FeedPost(
         id: id,
+        authorId: authorId,
         avatar: avatar,
         username: username,
         channelTag: channelTag,
