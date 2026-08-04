@@ -11,6 +11,7 @@ import 'pages/chat/conversation_list_page.dart';
 import 'pages/home_page.dart';
 import 'pages/login_page.dart';
 import 'pages/profile_page.dart';
+import 'pages/short_video_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -93,7 +94,7 @@ class AuthGate extends StatelessWidget {
   }
 }
 
-/// 底部 4 Tab：首页 / 发现 / 消息 / 个人主页（液态玻璃样式）
+/// 底部 5 Tab：首页 / 社区 / 视频 / 消息 / 个人主页（液态玻璃样式）
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -114,7 +115,10 @@ class _MainShellState extends State<MainShell> {
       CommunityPage(
         onSwitchTab: (navIndex) => setState(() => _index = navIndex),
       ),
-      ConversationListPage(onTapAvatar: () => setState(() => _index = 3)),
+      ShortVideoPage(
+        onRefreshFeed: () => setState(() => _index = 1),
+      ),
+      ConversationListPage(onTapAvatar: () => setState(() => _index = 4)),
       const ProfilePage(),
     ];
   }
@@ -150,21 +154,25 @@ class _MainShellState extends State<MainShell> {
         ),
         GlassTab(
           icon: _icon(1, Icons.explore_outlined, Icons.explore_rounded),
-          label: '发现',
+          label: '社区',
+        ),
+        GlassTab(
+          icon: _icon(2, Icons.videocam_outlined, Icons.videocam_rounded),
+          label: '视频',
         ),
         GlassTab(
           icon: unread > 0
               ? GlassBadge(
                   count: unread,
-                  child: _icon(2, Icons.chat_bubble_outline_rounded,
+                  child: _icon(3, Icons.chat_bubble_outline_rounded,
                       Icons.chat_bubble_rounded),
                 )
-              : _icon(2, Icons.chat_bubble_outline_rounded,
+              : _icon(3, Icons.chat_bubble_outline_rounded,
                   Icons.chat_bubble_rounded),
           label: '消息',
         ),
         GlassTab(
-          icon: _icon(3, Icons.person_outline_rounded, Icons.person_rounded),
+          icon: _icon(4, Icons.person_outline_rounded, Icons.person_rounded),
           label: '个人',
         ),
       ],

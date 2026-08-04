@@ -170,6 +170,22 @@ export class PostsController {
     return this.community.addHistory(user.id, id);
   }
 
+  // ──── View ────
+
+  /** 记录浏览（浏览量 +1） */
+  @Post(':id/view')
+  postView(@Param('id', ParseIntPipe) id: number) {
+    return this.community.recordView(id).then(() => ({ ok: true }));
+  }
+
+  // ──── Share ────
+
+  /** 记录分享（分享数 +1） */
+  @Post(':id/share')
+  postShare(@Param('id', ParseIntPipe) id: number) {
+    return this.community.recordShare(id).then(() => ({ ok: true }));
+  }
+
   // ──── User profile posts ────
 
   /** 查看某个用户发布的作品 */

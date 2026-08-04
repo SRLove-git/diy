@@ -15,10 +15,19 @@ import '../chat/chat_page.dart';
 /// 传入 [post] 时，头部与帖子使用该帖作者的头像 / 昵称；否则使用示例数据。
 /// 「私信」创建会话进入聊天页，「关注」走关注接口并切换状态，失败时 Toast 提示。
 class UserProfilePage extends StatefulWidget {
-  const UserProfilePage({super.key, this.post});
+  const UserProfilePage({super.key, this.post, this.userId, this.nickname, this.avatar});
 
   /// 来源帖（用于展示作者头像 / 昵称）
   final FeedPost? post;
+
+  /// 直接指定用户 ID（优先级高于 post.authorId）
+  final int? userId;
+
+  /// 直接指定昵称（优先级高于 post.username）
+  final String? nickname;
+
+  /// 直接指定头像（优先级高于 post.avatar）
+  final String? avatar;
 
   // ---- 页面配色（按设计指导）----
   static const Color _primary = Color(0xFF2962FF); // 主按钮蓝
@@ -31,11 +40,14 @@ class UserProfilePage extends StatefulWidget {
 }
 
 class _UserProfilePageState extends State<UserProfilePage> {
-  /// 作者用户 id（取 post.authorId，而非帖子 id）
-  int get _userId => widget.post?.authorId ?? 0;
-  String get _nickname => widget.post?.username ?? '泪.';
-  String get _avatar =>
-      widget.post?.avatar ?? 'https://i.pravatar.cc/150?img=32';
+  /// 用户 id（直接参数 > post.authorId > 0）
+  int get _userId => widget.userId ?? widget.post?.authorId ?? 0;
+  String get _nickname => widget.nickname ?? widget.post?.username ?? '泪.';
+  String get _avatar {
+    final raw = widget.avatar ?? widget.post?.avatar ?? '';
+    if (raw.isNotEmpty) return ChatApi.resolveUrl(raw);
+    return 'https://i.pravatar.cc/150?img=32';
+  }
 
   /// 关注关系（null 表示尚未加载）
   FollowStatus? _follow;

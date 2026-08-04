@@ -487,7 +487,9 @@ class _ConversationTile extends StatelessWidget {
 
   Widget _avatar(BuildContext context, String nickname, String avatar) {
     final colors = AppColors.of(context);
-    final valid = avatar.startsWith('http://') || avatar.startsWith('https://');
+    final valid = avatar.startsWith('http://') ||
+        avatar.startsWith('https://') ||
+        avatar.startsWith('/uploads/');
     // 对端在线状态（presence 事件实时更新）
     final online = ChatService.instance.isPeerOnline(conversation.peerId) ||
         conversation.peerOnline;
@@ -504,7 +506,7 @@ class _ConversationTile extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: valid
               ? Image.network(
-                  avatar,
+                  ChatApi.resolveUrl(avatar),
                   fit: BoxFit.cover,
                   errorBuilder: (_, _, _) => _initial(nickname),
                 )

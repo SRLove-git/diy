@@ -14,7 +14,10 @@ import '../../core/app_colors.dart';
 import '../../core/auth_service.dart';
 import '../../core/chat_api.dart';
 import '../../core/chat_service.dart';
+import '../../core/follow_api.dart';
 import '../../core/local_chat_store.dart';
+import '../community/user_profile_page.dart';
+import '../../widgets/follow_button.dart';
 import '../../widgets/image_viewer.dart';
 import '../../widgets/state_widgets.dart';
 
@@ -91,8 +94,12 @@ class _ChatPageState extends State<ChatPage> {
   AudioPlayer? _player;
   /// 当前正在播放的消息标识（id 或 clientMsgId）
   String? _playingKey;
-  /// 是否已把本地缓存 sender_id=0 的本机消息修正为真实 id
+  /// 已把本地缓存 sender_id=0 的本机消息修正为真实 id
   bool _fixedLocalSender = false;
+
+  // 关注状态
+  FollowStatus? _followStatus;
+  bool _followBusy = false;
 
   /// 当前用户 id：实时读取（登录态恢复时 _fetchMe 异步，initState 阶段 user 可能为 null，
   /// 若固定成 0 会导致所有消息被判定为"对方"，出现全部在左侧的显示错误）
@@ -114,6 +121,7 @@ class _ChatPageState extends State<ChatPage> {
     });
     _sub = ChatService.instance.events.listen(_onEvent);
     _loadHistory();
+    _loadFollowStatus();
   }
 
   @override
@@ -169,6 +177,37 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  /// 加载当前用户与聊天对方的关注关系
+  Future<void> _loadFollowStatus() async {
+    try {
+      final s = await FollowApi.status(widget.conversation.peerId);
+      if (mounted) setState(() => _followStatus = s);
+    } catch (_) {
+      // 加载失败忽略，不影响聊天功能
+    }
+  }
+
+  /// 切换关注状态
+  Future<void> _toggleFollow(bool following) async {
+    if (_followBusy) return;
+    setState(() => _followBusy = true);
+    try {
+      final s = await FollowApi.setFollow(
+        widget.conversation.peerId,
+        following: following,
+      );
+      if (mounted) setState(() => _followStatus = s);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('操作失败，请重试')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _followBusy = false);
+    }
+  }
+
   void _onEvent(ChatEvent event) {
     if (event is NewMessageEvent) {
       final m = event.message;
@@ -206,6 +245,8 @@ class _ChatPageState extends State<ChatPage> {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(event.reason)));
       }
+      // 刷新关注状态，确保 banner 及时出现
+      _loadFollowStatus();
     }
   }
 
@@ -746,6 +787,7 @@ class _ChatPageState extends State<ChatPage> {
           children: [
             Column(
               children: [
+                _buildFollowBanner(),
                 Expanded(child: _buildMessages()),
                 _buildInputBar(),
               ],
@@ -796,6 +838,57 @@ class _ChatPageState extends State<ChatPage> {
     return n.isEmpty ? '用户 #${widget.conversation.peerId}' : n;
   }
 
+  /// 关注状态提示条：互关显示绿色标签，未互关提示关注按钮
+  Widget _buildFollowBanner() {
+    final s = _followStatus;
+    // 加载中或无状态时不显示（已互关也无需提示）
+    if (s == null || s.mutual) return const SizedBox.shrink();
+    final colors = AppColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: s.following
+            ? const Color(0xFFF0F9EB)
+            : const Color(0xFFFFF7E6),
+        border: Border(
+          bottom: BorderSide(color: colors.divider),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            s.following ? Icons.check_circle_outline : Icons.info_outline,
+            size: 16,
+            color: s.following
+                ? const Color(0xFF34C759)
+                : const Color(0xFFFF9500),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              s.following
+                  ? '已关注，等待对方回关后即可畅聊'
+                  : '关注对方后即可畅聊',
+              style: TextStyle(
+                fontSize: 13,
+                color: s.following
+                    ? const Color(0xFF2A7A3A)
+                    : const Color(0xFF996A00),
+              ),
+            ),
+          ),
+          if (!s.following)
+            FollowButton(
+              following: false,
+              enabled: !_followBusy,
+              compact: true,
+              onChanged: _toggleFollow,
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMessages() {
     if (_loading) return const LoadingWidget();
     if (_error != null) {
@@ -832,6 +925,7 @@ class _ChatPageState extends State<ChatPage> {
           meNickname: AuthService.instance.user?.nickname ?? '',
           peerAvatar: widget.conversation.peerAvatar,
           peerNickname: widget.conversation.peerNickname,
+          peerId: widget.conversation.peerId,
           playing: _playingKey == _msgKey(vm),
           onPlay: () => _togglePlay(vm),
           onResend: () => _resend(vm),
@@ -1149,6 +1243,7 @@ class _MessageBubble extends StatelessWidget {
     required this.onPlay,
     required this.onTapImage,
     required this.imageHeroTag,
+    required this.peerId,
     this.meAvatar = '',
     this.meNickname = '',
     this.peerAvatar = '',
@@ -1172,6 +1267,9 @@ class _MessageBubble extends StatelessWidget {
   final String meNickname;
   final String peerAvatar;
   final String peerNickname;
+
+  /// 聊天对方用户 ID（点击头像跳转个人主页）
+  final int peerId;
 
   @override
   Widget build(BuildContext context) {
@@ -1215,7 +1313,21 @@ class _MessageBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!mine) ...[
-            _AvatarBubble(avatar: peerAvatar, nickname: peerNickname),
+            GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => UserProfilePage(
+                      userId: peerId,
+                      nickname: peerNickname,
+                      avatar: peerAvatar,
+                    ),
+                  ),
+                );
+              },
+              child:
+                  _AvatarBubble(avatar: peerAvatar, nickname: peerNickname),
+            ),
             const SizedBox(width: 8),
           ],
           Flexible(
@@ -1235,7 +1347,20 @@ class _MessageBubble extends StatelessWidget {
           ),
           if (mine) ...[
             const SizedBox(width: 8),
-            _AvatarBubble(avatar: meAvatar, nickname: meNickname),
+            GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => UserProfilePage(
+                      userId: meId,
+                      nickname: meNickname,
+                      avatar: meAvatar,
+                    ),
+                  ),
+                );
+              },
+              child: _AvatarBubble(avatar: meAvatar, nickname: meNickname),
+            ),
           ],
         ],
       ),

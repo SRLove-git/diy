@@ -2,6 +2,22 @@ import 'package:dio/dio.dart';
 
 import 'api_client.dart';
 
+/// 作者简要信息（嵌入列表响应）
+class AuthorInfo {
+  const AuthorInfo({
+    required this.nickname,
+    required this.avatar,
+  });
+
+  final String nickname;
+  final String avatar;
+
+  factory AuthorInfo.fromJson(Map<String, dynamic> json) => AuthorInfo(
+        nickname: (json['nickname'] ?? '') as String,
+        avatar: (json['avatar'] ?? '') as String,
+      );
+}
+
 /// 评论数据模型
 class Comment {
   const Comment({
@@ -10,6 +26,7 @@ class Comment {
     required this.postId,
     required this.content,
     required this.createdAt,
+    this.author,
   });
 
   final int id;
@@ -17,6 +34,7 @@ class Comment {
   final int postId;
   final String content;
   final String createdAt;
+  final AuthorInfo? author;
 
   factory Comment.fromJson(Map<String, dynamic> json) => Comment(
         id: json['id'] as int,
@@ -24,6 +42,31 @@ class Comment {
         postId: json['postId'] as int,
         content: (json['content'] ?? '') as String,
         createdAt: (json['createdAt'] ?? '') as String,
+        author: json['author'] != null
+            ? AuthorInfo.fromJson(json['author'] as Map<String, dynamic>)
+            : null,
+      );
+}
+
+/// 媒体项
+class PostMedia {
+  const PostMedia({
+    required this.type,
+    required this.url,
+    this.aspectRatio,
+    this.duration,
+  });
+
+  final String type; // image | video
+  final String url;
+  final double? aspectRatio;
+  final double? duration; // 秒
+
+  factory PostMedia.fromJson(Map<String, dynamic> json) => PostMedia(
+        type: (json['type'] ?? 'image') as String,
+        url: (json['url'] ?? '') as String,
+        aspectRatio: (json['aspectRatio'] as num?)?.toDouble(),
+        duration: (json['duration'] as num?)?.toDouble(),
       );
 }
 
@@ -40,11 +83,20 @@ class Post {
     required this.collectCount,
     required this.commentCount,
     required this.createdAt,
+    this.title = '',
+    this.location = '',
+    this.medias = const [],
+    this.channelTag = '',
+    this.viewCount = 0,
+    this.shareCount = 0,
+    this.author,
   });
 
   final int id;
   final int userId;
+  final String title;
   final String content;
+  final String location;
   final List<String> images;
   final List<String> tags;
   final String status;
@@ -52,11 +104,18 @@ class Post {
   final int collectCount;
   final int commentCount;
   final String createdAt;
+  final List<PostMedia> medias;
+  final String channelTag;
+  final int viewCount;
+  final int shareCount;
+  final AuthorInfo? author;
 
   factory Post.fromJson(Map<String, dynamic> json) => Post(
         id: json['id'] as int,
         userId: json['userId'] as int,
+        title: (json['title'] ?? '') as String,
         content: (json['content'] ?? '') as String,
+        location: (json['location'] ?? '') as String,
         images: ((json['images'] ?? []) as List)
             .map((e) => e.toString())
             .toList(),
@@ -68,6 +127,15 @@ class Post {
         collectCount: (json['collectCount'] ?? 0) as int,
         commentCount: (json['commentCount'] ?? 0) as int,
         createdAt: (json['createdAt'] ?? '') as String,
+        medias: ((json['medias'] ?? []) as List)
+            .map((e) => PostMedia.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        channelTag: (json['channelTag'] ?? '') as String,
+        viewCount: (json['viewCount'] ?? 0) as int,
+        shareCount: (json['shareCount'] ?? 0) as int,
+        author: json['author'] != null
+            ? AuthorInfo.fromJson(json['author'] as Map<String, dynamic>)
+            : null,
       );
 }
 
@@ -113,12 +181,36 @@ class PostApi {
     required String content,
     required List<String> images,
     required List<String> tags,
+    String? title,
+    String? location,
+    List<Map<String, dynamic>>? medias,
+    String? channelTag,
   }) async {
-    final resp = await ApiClient.instance.post(
-      '/posts',
-      data: {'content': content, 'images': images, 'tags': tags},
-    );
+    final data = <String, dynamic>{
+      'content': content,
+      'images': images,
+      'tags': tags,
+    };
+    if (title != null && title.isNotEmpty) data['title'] = title;
+    if (location != null && location.isNotEmpty) data['location'] = location;
+    if (medias != null && medias.isNotEmpty) data['medias'] = medias;
+    if (channelTag != null && channelTag.isNotEmpty) data['channelTag'] = channelTag;
+    final resp = await ApiClient.instance.post('/posts', data: data);
     return Post.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  // --- View ---
+
+  /// 记录浏览（浏览量 +1）
+  static Future<void> recordView(int postId) async {
+    await ApiClient.instance.post('/posts/$postId/view');
+  }
+
+  // --- Share ---
+
+  /// 记录分享（分享数 +1）
+  static Future<void> recordShare(int postId) async {
+    await ApiClient.instance.post('/posts/$postId/share');
   }
 
   // --- Like ---
