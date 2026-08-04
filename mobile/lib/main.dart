@@ -104,22 +104,24 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _index = 0;
-  late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
     ChatService.instance.ensureConnected();
-    _pages = [
-      const HomePage(),
-      CommunityPage(
-        onSwitchTab: (navIndex) => setState(() => _index = navIndex),
-      ),
-      ShortVideoPage(),
-      ConversationListPage(onTapAvatar: () => setState(() => _index = 4)),
-      const ProfilePage(),
-    ];
   }
+
+  /// IndexedStack 子页常驻内存，需把「当前 Tab 是否可见」传给视频页，
+  /// 切换走后暂停播放，避免关闭视频页面后视频仍在后台播放。
+  List<Widget> get _pages => [
+        const HomePage(),
+        CommunityPage(
+          onSwitchTab: (navIndex) => setState(() => _index = navIndex),
+        ),
+        ShortVideoPage(active: _index == 2),
+        ConversationListPage(onTapAvatar: () => setState(() => _index = 4)),
+        const ProfilePage(),
+      ];
 
   @override
   Widget build(BuildContext context) {

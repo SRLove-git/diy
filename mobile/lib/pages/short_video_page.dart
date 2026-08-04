@@ -22,7 +22,10 @@ import 'short_video_models.dart';
 /// 点赞/评论/分享/浏览/关注均实时上报服务端；发布流程（拍摄页 → 发布页）成功后
 /// 把新视频插入推荐流顶部。
 class ShortVideoPage extends StatefulWidget {
-  const ShortVideoPage({super.key});
+  const ShortVideoPage({super.key, this.active = true});
+
+  /// 所在 Tab 是否可见（IndexedStack 常驻内存，切换走后置 false 以暂停播放）
+  final bool active;
 
   @override
   State<ShortVideoPage> createState() => _ShortVideoPageState();
@@ -87,6 +90,13 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
   void initState() {
     super.initState();
     _loadRecommend();
+  }
+
+  @override
+  void didUpdateWidget(ShortVideoPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Tab 可见性变化时重建，通知当前视频暂停/恢复播放
+    if (widget.active != oldWidget.active && mounted) setState(() {});
   }
 
   @override
@@ -335,6 +345,7 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
                   key: ValueKey(feed[i].id),
                   video: feed[i],
                   active: i == _currentIndex,
+                  pageActive: widget.active,
                   followed: _followedIds.contains(feed[i].authorId),
                   onDoubleTapLike: () => _toggleLike(feed[i]),
                   onFollow: () => _toggleFollow(feed[i]),
@@ -499,6 +510,7 @@ class _VideoItemPage extends StatefulWidget {
     super.key,
     required this.video,
     required this.active,
+    required this.pageActive,
     required this.followed,
     required this.onDoubleTapLike,
     required this.onFollow,
@@ -512,6 +524,9 @@ class _VideoItemPage extends StatefulWidget {
 
   /// 是否为当前页（当前页自动播放，离屏暂停并复位）
   final bool active;
+
+  /// 所在 Tab 是否可见（切换走后暂停播放，避免视频在后台继续播）
+  final bool pageActive;
 
   /// 当前用户是否已关注该作者
   final bool followed;
@@ -551,6 +566,10 @@ class _VideoItemPageState extends State<_VideoItemPage>
   }
 
   bool _playing = false;
+
+  /// 本视频是否曾真正播放过（区分「首次进入视频 Tab 自动播放」与
+  /// 「从其他 Tab 切回保持暂停」）
+  bool _everVisible = false;
 
   /// 真实视频播放器（网络视频；视频作品播放画面，加载失败回退 Mock 封面）
   VideoPlayerController? _videoCtrl;
@@ -619,8 +638,8 @@ class _VideoItemPageState extends State<_VideoItemPage>
       ctrl.addListener(_onVideoTick);
       if (!mounted) return;
       setState(() => _videoReady = true);
-      // 若当前页 active 自动开始播放
-      if (widget.active) {
+      // 当前页且所在 Tab 可见才自动开始播放
+      if (widget.active && widget.pageActive) {
         await ctrl.play();
         if (mounted) setState(() => _playing = true);
       }
@@ -647,29 +666,52 @@ class _VideoItemPageState extends State<_VideoItemPage>
     }
   }
 
+  /// 暂停播放（翻页滑走 或 切换 Tab 离开时）：真实播放器暂停到当前位置，Mock 复位
+  void _pausePlayback() {
+    if (_videoReady) {
+      _videoCtrl?.pause();
+    } else {
+      _progress.stop();
+      _progress.reset();
+    }
+    _playing = false;
+    // 失活时重置上报记录，重新激活后才会重新上报角标
+    _lastReportedBadge = '';
+  }
+
+  /// 恢复播放：真实播放器继续播，Mock 从暂停位置继续
+  void _resumePlayback() {
+    if (_videoReady) {
+      _videoCtrl?.play();
+    } else {
+      _progress.forward(from: _progress.value);
+    }
+    _playing = true;
+    _emitBadge();
+  }
+
   @override
   void didUpdateWidget(_VideoItemPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.active != oldWidget.active) {
-      if (widget.active) {
-        if (_videoReady) {
-          _videoCtrl?.play();
-        } else {
-          _progress.forward(from: _progress.value);
-        }
-        _playing = true;
-        _emitBadge();
+    // 当前视频是否真正可见可播 = 是当前页 且 所在 Tab 可见
+    final wasVisible = oldWidget.active && oldWidget.pageActive;
+    final nowVisible = widget.active && widget.pageActive;
+    if (wasVisible && !nowVisible) {
+      // 离开：翻页滑走 或 切换到其他 Tab → 一律暂停
+      _pausePlayback();
+    } else if (!wasVisible && nowVisible) {
+      if (widget.active && !oldWidget.active) {
+        // 翻页切到本页：自动播放（TikTok 式）
+        _resumePlayback();
+        _everVisible = true;
+      } else if (!_everVisible) {
+        // 首次进入视频 Tab：自动播放当前视频
+        _resumePlayback();
+        _everVisible = true;
       } else {
-        // 失活暂停；真实播放器暂停到当前位置，Mock 复位
-        if (_videoReady) {
-          _videoCtrl?.pause();
-        } else {
-          _progress.stop();
-          _progress.reset();
-        }
+        // 从其他 Tab 切回来：保持暂停，等用户点击播放
         _playing = false;
-        // 失活时重置上报记录，重新激活后才会重新上报角标
-        _lastReportedBadge = '';
+        _emitBadge();
       }
     }
     // 视频对象变化（如翻页复用）时重新上报角标
