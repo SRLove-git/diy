@@ -1,0 +1,400 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../../../core/app_colors.dart';
+import '../../../core/chat_api.dart';
+import '../../../core/post_api.dart';
+
+/// 社区作品发布编辑页面
+///
+/// 结构：
+/// - AppBar：左侧返回箭头，中间标题"发新帖"，右上角蓝色圆角"发表"按钮
+/// - 内容输入区：多行文本输入，hint "分享新鲜事…"
+/// - 图片选择区：横向滚动，已选缩略图 + 添加按钮
+/// - 功能列表项：标记位置 / 自主声明 / 高级设置
+/// - 底部工具栏：表情图标、文本T图标
+class PublishPostPage extends StatefulWidget {
+  const PublishPostPage({super.key});
+
+  @override
+  State<PublishPostPage> createState() => _PublishPostPageState();
+}
+
+class _PublishPostPageState extends State<PublishPostPage> {
+  final TextEditingController _textController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
+
+  /// 已选图片的本地文件路径列表
+  final List<String> _selectedImages = [];
+  /// 最大可选图片数
+  static const int _maxImages = 9;
+  /// 是否正在发布中
+  bool _publishing = false;
+
+  /// 从相册选图
+  Future<void> _pickImage() async {
+    if (_selectedImages.length >= _maxImages) return;
+    final images = await _picker.pickMultiImage(
+      imageQuality: 80,
+      limit: _maxImages - _selectedImages.length,
+    );
+    if (images.isNotEmpty) {
+      setState(() => _selectedImages.addAll(images.map((e) => e.path)));
+    }
+  }
+
+  /// 移除已选图片
+  void _removeImage(int index) {
+    setState(() => _selectedImages.removeAt(index));
+  }
+
+  /// 上传图片并发布帖子
+  Future<void> _onPublish() async {
+    final content = _textController.text.trim();
+    if (content.isEmpty && _selectedImages.isEmpty) {
+      _showError('请输入内容或选择图片');
+      return;
+    }
+
+    setState(() => _publishing = true);
+    try {
+      // 1. 先上传所有图片
+      final uploadedUrls = <String>[];
+      for (final path in _selectedImages) {
+        final url = await ChatApi.uploadImage(path, folder: 'post');
+        uploadedUrls.add(url);
+      }
+
+      // 2. 创建帖子
+      await PostApi.create(
+        content: content,
+        images: uploadedUrls,
+        tags: [],
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('发表成功'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 1),
+        ),
+      );
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _publishing = false);
+      _showError(e.toString());
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.red[400],
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: _buildAppBar(colors),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              // 内容输入区
+              _buildContentInput(colors),
+              // 图片选择区域
+              _buildImagePicker(colors),
+              // 分割线
+              Divider(height: 1, color: colors.divider),
+              // 功能列表项
+              _buildSettingsList(colors),
+              // 弹性空间
+              const Expanded(child: SizedBox()),
+              // 分割线
+              Divider(height: 1, color: colors.divider),
+              // 底部工具栏
+              _buildBottomToolbar(colors),
+            ],
+          ),
+          // 发布中遮罩
+          if (_publishing) _buildPublishingOverlay(),
+        ],
+      ),
+    );
+  }
+
+  /// 发布中遮罩层
+  Widget _buildPublishingOverlay() {
+    return Container(
+      color: Colors.black26,
+      alignment: Alignment.center,
+      child: const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(color: Colors.white),
+          SizedBox(height: 16),
+          Text(
+            '发布中…',
+            style: TextStyle(color: Colors.white, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 自定义 AppBar：左侧返回箭头 + 中间标题 + 右侧蓝色发表按钮
+  PreferredSizeWidget _buildAppBar(AppColors colors) {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0.5,
+      shadowColor: Colors.black12,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+        color: colors.textPrimary,
+        onPressed: _publishing ? null : () => Navigator.of(context).pop(),
+      ),
+      title: const Text(
+        '发新帖',
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: Colors.black,
+        ),
+      ),
+      centerTitle: true,
+      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: TextButton(
+            onPressed: _publishing ? null : _onPublish,
+            style: TextButton.styleFrom(
+              backgroundColor: const Color(0xFF4E8BFF),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            child: const Text('发表', style: TextStyle(fontSize: 14)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 内容输入区：多行文本输入框，hint "分享新鲜事…"
+  Widget _buildContentInput(AppColors colors) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: TextField(
+        controller: _textController,
+        maxLines: 5,
+        minLines: 3,
+        enabled: !_publishing,
+        style: TextStyle(
+          fontSize: 16,
+          color: colors.textPrimary,
+          height: 1.5,
+        ),
+        decoration: InputDecoration(
+          hintText: '分享新鲜事…',
+          hintStyle: TextStyle(
+            color: colors.textSecondary,
+            fontSize: 16,
+          ),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
+        ),
+        textInputAction: TextInputAction.newline,
+      ),
+    );
+  }
+
+  /// 图片选择区域：横向滚动，已选缩略图 + 添加按钮
+  Widget _buildImagePicker(AppColors colors) {
+    final hasImages = _selectedImages.isNotEmpty;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 0, 16, hasImages ? 12 : 0),
+      child: SizedBox(
+        height: 88,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: _selectedImages.length + 1,
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
+          itemBuilder: (_, i) {
+            if (i == _selectedImages.length) {
+              return _buildAddButton(colors);
+            }
+            return _buildImageThumb(i);
+          },
+        ),
+      ),
+    );
+  }
+
+  /// 图片缩略图（圆角矩形，显示本地文件，带删除按钮）
+  Widget _buildImageThumb(int index) {
+    return Stack(
+      children: [
+        // 圆角矩形缩略图，显示本地图片
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.file(
+            File(_selectedImages[index]),
+            width: 80,
+            height: 80,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => Container(
+              width: 80,
+              height: 80,
+              color: Colors.grey[200],
+              child: const Icon(Icons.broken_image, color: Colors.grey),
+            ),
+          ),
+        ),
+        // 右上角删除按钮
+        Positioned(
+          top: -2,
+          right: -2,
+          child: GestureDetector(
+            onTap: () => _removeImage(index),
+            child: Container(
+              width: 20,
+              height: 20,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.black54,
+              ),
+              child: const Icon(Icons.close, color: Colors.white, size: 14),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 添加图片按钮：白色方形 + 灰色加号
+  Widget _buildAddButton(AppColors colors) {
+    final isFull = _selectedImages.length >= _maxImages;
+    return GestureDetector(
+      onTap: isFull ? null : _pickImage,
+      child: Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          color: isFull ? colors.divider : colors.placeholder,
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          Icons.add,
+          size: 32,
+          color: isFull ? colors.textSecondary.withValues(alpha: 0.4) : colors.textSecondary,
+        ),
+      ),
+    );
+  }
+
+  /// 功能列表项：标记位置 / 自主声明 / 高级设置
+  Widget _buildSettingsList(AppColors colors) {
+    return Column(
+      children: [
+        _buildSettingItem(Icons.location_on_outlined, '标记位置', colors, true),
+        _buildSettingItem(Icons.verified_outlined, '自主声明', colors, true),
+        _buildSettingItem(Icons.tune, '高级设置', colors, false),
+      ],
+    );
+  }
+
+  /// 单个设置列表项
+  Widget _buildSettingItem(
+    IconData icon,
+    String title,
+    AppColors colors,
+    bool showDivider,
+  ) {
+    return Column(
+      children: [
+        InkWell(
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('$title（演示）'),
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 1),
+              ),
+            );
+          },
+          child: SizedBox(
+            height: 56,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Icon(icon, size: 22, color: Colors.black87),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(fontSize: 15, color: Colors.black87),
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, size: 22, color: colors.textSecondary),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (showDivider)
+          Padding(
+            padding: const EdgeInsets.only(left: 50),
+            child: Divider(height: 1, color: colors.divider),
+          ),
+      ],
+    );
+  }
+
+  /// 底部工具栏：表情图标 + 文本T图标
+  Widget _buildBottomToolbar(AppColors colors) {
+    return Container(
+      height: 48,
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          IconButton(
+            icon: Icon(Icons.emoji_emotions_outlined, size: 24),
+            color: colors.textSecondary,
+            onPressed: () {},
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40),
+          ),
+          IconButton(
+            icon: Icon(Icons.text_fields, size: 24),
+            color: colors.textSecondary,
+            onPressed: () {},
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -6,21 +6,20 @@ import '../../../core/app_colors.dart';
 import '../../../core/auth_service.dart';
 import '../../../core/chat_api.dart';
 import '../../../widgets/state_widgets.dart';
-import '../data/mock_community_datasource.dart';
-import '../../../pages/community/create_post_page.dart';
 import '../../../pages/community/user_profile_page.dart';
-import '../data/mock_community_repository.dart';
+import '../data/api_community_repository.dart';
 import '../domain/community_models.dart';
 import '../domain/community_repository.dart';
 import 'community_palette.dart';
 import 'widgets/community_sheets.dart';
 import 'widgets/feed_card.dart';
+import 'publish_post_page.dart';
 
 /// 社区频道信息流页：Header + 搜索栏 + 动态 Feed
 ///
 /// 结构：SafeArea > CustomScrollView（SliverAppBar / 搜索栏 / Feed 列表）。
-/// 数据经 [CommunityRepository] 注入，当前为 Mock 实现，
-/// 接入后端时替换注入对象即可（见 MockCommunityRepository 注释）。
+/// 数据经 [CommunityRepository] 注入，当前为真实 API 实现（[ApiCommunityRepository]），
+/// 测试时替换为 [MockCommunityRepository] 即可。
 class CommunityPage extends StatefulWidget {
   const CommunityPage({super.key, required this.onSwitchTab});
 
@@ -32,7 +31,7 @@ class CommunityPage extends StatefulWidget {
 }
 
 class _CommunityPageState extends State<CommunityPage> {
-  final CommunityRepository _repository = MockCommunityRepository();
+  final CommunityRepository _repository = ApiCommunityRepository();
 
   final List<FeedPost> _posts = [];
   bool _loading = true;
@@ -91,13 +90,6 @@ class _CommunityPageState extends State<CommunityPage> {
     );
   }
 
-  Future<void> _onPublish() async {
-    final created = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const CreatePostPage()),
-    );
-    if (created == true) _load();
-  }
-
   Future<void> _onLike(FeedPost post) async {
     final liked = !post.liked;
     setState(() => _apply(post, (p) => p.copyWith(
@@ -120,15 +112,28 @@ class _CommunityPageState extends State<CommunityPage> {
   Future<void> _onComment(FeedPost post) async {
     final comments = await _repository.fetchComments(post.id);
     if (!mounted) return;
+    final auth = AuthService.instance.user;
     await showCommentSheet(
       context,
       post: post,
       comments: comments,
-      currentUser: MockCommunityDataSource.me,
+      currentUser: CommunityUser(
+        id: auth?.id ?? 0,
+        nickname: auth?.nickname ?? '我',
+        avatarUrl: auth?.avatar ?? '',
+      ),
     );
   }
 
   void _onShare(FeedPost post) => showShareSheet(context);
+
+  /// 打开发布页面，返回后自动刷新列表
+  Future<void> _openPublish() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const PublishPostPage()),
+    );
+    _load();
+  }
 
   // --- 视图 ---
 
@@ -236,15 +241,12 @@ class _CommunityPageState extends State<CommunityPage> {
         ),
       ),
       actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: IconButton(
-            icon: Icon(Icons.add_rounded,
-                size: 28, color: colors.textPrimary),
-            tooltip: '发布',
-            onPressed: _onPublish,
-          ),
+        IconButton(
+          icon: Icon(Icons.camera_alt_outlined, color: colors.textPrimary, size: 24),
+          onPressed: _openPublish,
+          tooltip: '发新帖',
         ),
+        const SizedBox(width: 4),
       ],
     );
   }

@@ -206,14 +206,16 @@ class ChatApi {
     return ChatMessage.fromJson(resp.data as Map<String, dynamic>);
   }
 
-  /// 上传聊天图片，返回可访问的相对路径（如 /uploads/chat/2026/08/xxx.jpg）
-  static Future<String> uploadImage(String filePath) async {
+  /// 上传图片，返回可访问的相对路径（如 /uploads/chat/2026/08/xxx.jpg）
+  /// [folder] 可选 'chat'（默认）| 'avatar' | 'post'
+  static Future<String> uploadImage(String filePath, {String folder = 'chat'}) async {
     final form = FormData.fromMap({
       'file': await MultipartFile.fromFile(filePath),
     });
     final resp = await ApiClient.instance.post(
       '/uploads/images',
       data: form,
+      queryParameters: {'folder': folder},
       options: Options(contentType: Headers.multipartFormDataContentType),
     );
     return (resp.data as Map<String, dynamic>)['url'] as String;

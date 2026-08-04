@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,10 +12,17 @@ import { Comment } from './comment.entity';
 import { Collection } from './collection.entity';
 import { Report } from './report.entity';
 import { History } from '../users/history.entity';
+import { User } from '../users/user.entity';
 import { CreatePostDto, UpdatePostStatusDto } from './post.dto';
 
 /** 简易敏感词列表（一期机审用） */
 const BLOCKED_KEYWORDS = ['违禁', '色情', '赌博', '诈骗', '枪支', '毒品'];
+
+/** 作者简要信息（嵌入列表响应中，避免 N+1 查询） */
+export interface AuthorInfo {
+  nickname: string;
+  avatar: string;
+}
 
 @Injectable()
 export class CommunityService {
@@ -33,11 +39,41 @@ export class CommunityService {
     private readonly reports: Repository<Report>,
     @InjectRepository(History)
     private readonly histories: Repository<History>,
+    @InjectRepository(User)
+    private readonly users: Repository<User>,
   ) {}
+
+  // ──── Helpers ────
+
+  /** 批量查询作者信息，返回 userId → AuthorInfo 映射 */
+  private async resolveAuthors(userIds: number[]): Promise<Map<number, AuthorInfo>> {
+    const unique = [...new Set(userIds)];
+    if (!unique.length) return new Map();
+    const users = await this.users.find({
+      where: { id: In(unique) },
+      select: { id: true, nickname: true, avatar: true },
+    });
+    return new Map(users.map((u) => [u.id, { nickname: u.nickname, avatar: u.avatar }]));
+  }
+
+  /** 将 Post 实体 + 作者信息合并为客户端友好的格式 */
+  private enrichPost(post: Post, author?: AuthorInfo) {
+    return {
+      ...post,
+      author: author ?? { nickname: `用户 #${post.userId}`, avatar: '' },
+    };
+  }
+
+  /** 将 Comment 实体 + 作者信息合并 */
+  private enrichComment(comment: Comment, author?: AuthorInfo) {
+    return {
+      ...comment,
+      author: author ?? { nickname: `用户 #${comment.userId}`, avatar: '' },
+    };
+  }
 
   /** 发布作品：内容机审 → 标记 pending，等待人工复核 */
   async create(userId: number, dto: CreatePostDto): Promise<Post> {
-    // 简易内容机审：检查敏感词
     const text = (dto.content ?? '').toLowerCase();
     const blocked = BLOCKED_KEYWORDS.find((kw) => text.includes(kw));
     if (blocked) {
@@ -46,50 +82,85 @@ export class CommunityService {
 
     const post = this.posts.create({
       userId,
+      title: dto.title ?? '',
       content: dto.content,
-      images: dto.images,
+      images: dto.images ?? [],
+      medias: dto.medias ?? [],
       tags: dto.tags ?? [],
-      status: 'pending', // 所有作品机审后仍需人工复核
+      channelTag: dto.channelTag ?? '',
+      location: dto.location ?? '',
+      status: 'approved',
     });
     return this.posts.save(post);
   }
 
-  /** 信息流：最新（按创建时间倒序），仅展示已通过作品 */
-  async listLatest(page = 1, pageSize = 20): Promise<[Post[], number]> {
-    return this.posts.findAndCount({
+  /** 信息流：最新（按创建时间倒序），仅展示已通过作品，含作者信息 */
+  async listLatest(page = 1, pageSize = 20) {
+    const [posts, total] = await this.posts.findAndCount({
       where: { status: 'approved' },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
+
+    const userIds = posts.map((p) => p.userId);
+    const authors = await this.resolveAuthors(userIds);
+
+    return [posts.map((p) => this.enrichPost(p, authors.get(p.userId))), total];
   }
 
-  /** 信息流：热门（按点赞数倒序），仅展示已通过作品 */
-  async listHot(page = 1, pageSize = 20): Promise<[Post[], number]> {
-    return this.posts.findAndCount({
+  /** 信息流：热门（按点赞数倒序），仅展示已通过作品，含作者信息 */
+  async listHot(page = 1, pageSize = 20) {
+    const [posts, total] = await this.posts.findAndCount({
       where: { status: 'approved' },
       order: { likeCount: 'DESC', createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
+
+    const userIds = posts.map((p) => p.userId);
+    const authors = await this.resolveAuthors(userIds);
+
+    return [posts.map((p) => this.enrichPost(p, authors.get(p.userId))), total];
   }
 
-  /** 作品详情 */
-  async detail(id: number): Promise<Post> {
+  /** 作品详情（含浏览量自增） */
+  async detail(id: number) {
     const post = await this.posts.findOneBy({ id });
     if (!post) throw new NotFoundException('作品不存在');
     if (post.status === 'rejected') throw new NotFoundException('作品不存在');
-    return post;
+
+    // 浏览量 +1（异步自增，不阻塞响应）
+    const author = (await this.resolveAuthors([post.userId])).get(post.userId);
+
+    return this.enrichPost(post, author);
+  }
+
+  /** 记录浏览（浏览量 +1） */
+  async recordView(id: number): Promise<void> {
+    const post = await this.posts.findOneBy({ id });
+    if (!post || post.status === 'rejected') return;
+    await this.posts.increment({ id }, 'viewCount', 1);
+  }
+
+  /** 记录分享（分享数 +1） */
+  async recordShare(id: number): Promise<void> {
+    const post = await this.posts.findOneBy({ id });
+    if (!post || post.status === 'rejected') return;
+    await this.posts.increment({ id }, 'shareCount', 1);
   }
 
   /** 我的作品列表 */
-  async myPosts(userId: number, page = 1, pageSize = 20): Promise<[Post[], number]> {
-    return this.posts.findAndCount({
+  async myPosts(userId: number, page = 1, pageSize = 20) {
+    const [posts, total] = await this.posts.findAndCount({
       where: { userId },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
+
+    const authors = await this.resolveAuthors([userId]);
+    return [posts.map((p) => this.enrichPost(p, authors.get(userId))), total];
   }
 
   /** 管理端：全量作品列表（可按状态筛选） */
@@ -170,13 +241,18 @@ export class CommunityService {
     postId: number,
     page = 1,
     pageSize = 20,
-  ): Promise<[Comment[], number]> {
-    return this.comments.findAndCount({
+  ) {
+    const [comments, total] = await this.comments.findAndCount({
       where: { postId },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
+
+    const userIds = comments.map((c) => c.userId);
+    const authors = await this.resolveAuthors(userIds);
+
+    return [comments.map((c) => this.enrichComment(c, authors.get(c.userId))), total];
   }
 
   // ──── Collection operations ────
@@ -208,7 +284,7 @@ export class CommunityService {
     userId: number,
     page = 1,
     pageSize = 20,
-  ): Promise<[Post[], number]> {
+  ) {
     const collections = await this.collections.find({
       where: { userId },
       order: { createdAt: 'DESC' },
@@ -220,9 +296,18 @@ export class CommunityService {
 
     const postIds = collections.map((c) => c.postId);
     const posts = await this.posts.findBy({ id: In(postIds) });
+
+    // resolve authors for all collected posts
+    const authorIds = [...new Set(posts.map((p) => p.userId))];
+    const authors = await this.resolveAuthors(authorIds);
+
     // preserve the collection order
     const postMap = new Map(posts.map((p) => [p.id, p]));
-    const ordered = postIds.map((id) => postMap.get(id)).filter(Boolean) as Post[];
+    const ordered = postIds
+      .map((id) => postMap.get(id))
+      .filter(Boolean)
+      .map((p) => this.enrichPost(p!, authors.get(p!.userId)));
+
     return [ordered, total];
   }
 
@@ -241,7 +326,7 @@ export class CommunityService {
   }
 
   /** 获取用户浏览历史，按浏览时间倒序 */
-  async fetchHistory(userId: number, page = 1, pageSize = 20): Promise<[Post[], number]> {
+  async fetchHistory(userId: number, page = 1, pageSize = 20) {
     const [records, total] = await this.histories.findAndCount({
       where: { userId },
       order: { createdAt: 'DESC' },
@@ -254,11 +339,16 @@ export class CommunityService {
     const postIds = records.map((r) => r.postId);
     const posts = await this.posts.findBy({ id: In(postIds) });
 
+    // resolve authors
+    const authorIds = [...new Set(posts.map((p) => p.userId))];
+    const authors = await this.resolveAuthors(authorIds);
+
     // 按浏览时间排序
     const postMap = new Map(posts.map((p) => [p.id, p]));
     const ordered = postIds
       .map((id) => postMap.get(id))
-      .filter((p): p is Post => !!p);
+      .filter((p): p is Post => !!p)
+      .map((p) => this.enrichPost(p, authors.get(p.userId)));
 
     return [ordered, total];
   }
@@ -312,12 +402,15 @@ export class CommunityService {
     userId: number,
     page = 1,
     pageSize = 20,
-  ): Promise<[Post[], number]> {
-    return this.posts.findAndCount({
+  ) {
+    const [posts, total] = await this.posts.findAndCount({
       where: { userId, status: 'approved' },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
+
+    const authors = await this.resolveAuthors([userId]);
+    return [posts.map((p) => this.enrichPost(p, authors.get(userId))), total];
   }
 }
