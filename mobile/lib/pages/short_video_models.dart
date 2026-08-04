@@ -1,3 +1,4 @@
+import '../core/chat_api.dart';
 import '../features/community/domain/community_models.dart';
 
 /// 短视频领域模型（信息流单条）
@@ -60,6 +61,30 @@ class ShortVideo {
   final List<CommunityComment> comments;
 
   final bool liked;
+
+  /// 从服务端信息流条目解析（对应 videos 模块 VideoItem 响应）。
+  /// 头像/封面兼容 http(s) 与 /uploads/ 相对路径，统一解析为绝对地址。
+  factory ShortVideo.fromServerJson(Map<String, dynamic> json) {
+    final author = (json['author'] as Map<String, dynamic>?) ?? const {};
+    final avatar = (author['avatar'] ?? '') as String;
+    final cover = (json['cover'] ?? '') as String;
+    return ShortVideo(
+      id: json['id'] as int,
+      authorId: ((json['userId'] ?? author['id']) as num).toInt(),
+      user: (author['nickname'] ?? '') as String,
+      avatar: avatar.isEmpty ? '' : ChatApi.resolveUrl(avatar),
+      title: (json['title'] ?? '') as String,
+      cover: cover.isEmpty ? '' : ChatApi.resolveUrl(cover),
+      duration: Duration(seconds: ((json['duration'] ?? 0) as num).toInt()),
+      likeCount: ((json['likeCount'] ?? 0) as num).toInt(),
+      commentCount: ((json['commentCount'] ?? 0) as num).toInt(),
+      shareCount: ((json['shareCount'] ?? 0) as num).toInt(),
+      followCount: ((author['followCount'] ?? 0) as num).toInt(),
+      tags: ((json['tags'] ?? []) as List).map((e) => e.toString()).toList(),
+      music: (json['music'] ?? '') as String,
+      liked: (json['liked'] ?? false) as bool,
+    );
+  }
 
   ShortVideo copyWith({
     int? likeCount,

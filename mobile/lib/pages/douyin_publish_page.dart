@@ -1,13 +1,22 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
 
-import '../core/post_api.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../core/video_api.dart';
+import 'short_video_models.dart';
 
 /// 抖音风格作品发布编辑页面
 ///
 /// 深色暗黑主题，模仿抖音发布作品页面 UI。
-/// 包含：视频预览区、图片缩略图选择、文本输入、话题标签、功能选项、底部操作栏。
+/// 支持从相册选择视频素材（可带封面图），上传后通过 [VideoApi] 发布为短视频，
+/// 发布成功后以 [ShortVideo] 回传给上一页（拍摄页/信息流）。
 class DouyinPublishPage extends StatefulWidget {
-  const DouyinPublishPage({super.key});
+  const DouyinPublishPage({super.key, this.initialVideo});
+
+  /// 拍摄页选中的视频文件（可为空，进入后在页内再选）
+  final XFile? initialVideo;
 
   @override
   State<DouyinPublishPage> createState() => _DouyinPublishPageState();
@@ -16,8 +25,21 @@ class DouyinPublishPage extends StatefulWidget {
 class _DouyinPublishPageState extends State<DouyinPublishPage> {
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
+  final _picker = ImagePicker();
+
+  /// 已选视频素材
+  XFile? _video;
+
+  /// 已选封面图（可选，不选则信息流展示占位封面）
+  XFile? _cover;
 
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _video = widget.initialVideo;
+  }
 
   @override
   void dispose() {
@@ -26,42 +48,66 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
     super.dispose();
   }
 
-  /// 提交发布作品
+  /// 从相册选择视频素材
+  Future<void> _pickVideo() async {
+    final file = await _picker.pickVideo(source: ImageSource.gallery);
+    if (file == null) return;
+    setState(() => _video = file);
+  }
+
+  /// 从相册选择封面图
+  Future<void> _pickCover() async {
+    final file = await _picker.pickImage(source: ImageSource.gallery);
+    if (file == null) return;
+    setState(() => _cover = file);
+  }
+
+  /// 上传视频 + 封面并发布，成功后回传创建的 [ShortVideo]
   Future<void> _submit() async {
+    final video = _video;
+    if (video == null) {
+      _toast('请先选择视频素材');
+      return;
+    }
     final title = _titleCtrl.text.trim();
     final desc = _descCtrl.text.trim();
-
     if (title.isEmpty && desc.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请填写标题或描述')),
-      );
+      _toast('请填写标题或描述');
       return;
     }
 
     setState(() => _submitting = true);
     try {
-      // 素材选择功能待实现，当前提交无图帖子
-      final post = await PostApi.create(
-        content: desc.isEmpty ? title : '$title\n$desc',
-        images: const [],
-        tags: const [],
+      final videoUrl = await VideoApi.uploadVideo(video.path);
+      var cover = '';
+      if (_cover != null) {
+        cover = await VideoApi.uploadCover(_cover!.path);
+      }
+      final created = await VideoApi.create(
         title: title,
+        content: desc.isEmpty ? title : '$title\n$desc',
+        cover: cover,
+        videoUrl: videoUrl,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('发布成功，等待审核')),
-        );
-        Navigator.pop(context, post);
+        _toast('发布成功');
+        Navigator.pop(context, created);
       }
+    } on DioException catch (e) {
+      if (mounted) _toast('发布失败：${VideoApi.messageOf(e)}');
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('发布失败：$e')),
-        );
-      }
+      if (mounted) _toast('发布失败：$e');
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  void _toast(String msg) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
+      );
   }
 
   // ---------- 配色常量 ----------
@@ -120,9 +166,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
           const Spacer(),
           // 预览按钮
           GestureDetector(
-            onTap: () {
-              // TODO: 预览功能
-            },
+            onTap: () => _toast(_video == null ? '请先选择视频素材' : '预览（演示）'),
             child: const Text(
               '预览',
               style: TextStyle(color: _white, fontSize: 15),
@@ -138,36 +182,65 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
   Widget _buildPreviewArea() {
     return Column(
       children: [
-        // 手机样式视频预览卡片（素材选择功能待实现，先显示空态）
+        // 手机样式视频预览卡片
         Center(
-          child: Container(
-            width: 200,
-            height: 340,
-            decoration: BoxDecoration(
-              color: _btnBg,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _border, width: 2),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Container(
-                    color: _btnBg,
-                    child: const Center(
-                      child: Icon(Icons.videocam, color: _hint, size: 48),
+          child: GestureDetector(
+            onTap: _pickVideo,
+            child: Container(
+              width: 200,
+              height: 340,
+              decoration: BoxDecoration(
+                color: _btnBg,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _border, width: 2),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // 背景：封面图 / 占位
+                    if (_cover != null)
+                      Image.file(
+                        File(_cover!.path),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _placeholder(),
+                      )
+                    else
+                      _placeholder(),
+                    // 播放按钮叠加
+                    const Center(
+                      child: Icon(
+                        Icons.play_circle_outline,
+                        color: _white,
+                        size: 56,
+                      ),
                     ),
-                  ),
-                  // 播放按钮叠加
-                  const Center(
-                    child: Icon(
-                      Icons.play_circle_outline,
-                      color: _white,
-                      size: 56,
-                    ),
-                  ),
-                ],
+                    // 底部素材名称
+                    if (_video != null)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 6,
+                          ),
+                          color: Colors.black54,
+                          child: Text(
+                            _fileName(_video!.name),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: _white,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -175,34 +248,88 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
 
         const SizedBox(height: 12),
 
-        // 添加素材按钮
+        // 素材操作按钮
         SizedBox(
           height: 60,
           child: ListView(
             scrollDirection: Axis.horizontal,
             children: [
-              GestureDetector(
-                onTap: () {
-                  // TODO: 添加素材
-                },
-                child: Container(
-                  width: 52,
-                  height: 52,
-                  margin: const EdgeInsets.only(left: 8),
-                  decoration: BoxDecoration(
-                    color: _btnBg,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: _border),
-                  ),
-                  child: const Icon(Icons.add, color: _white, size: 24),
-                ),
+              _assetBtn(
+                icon: _video == null ? Icons.add : Icons.swap_horiz,
+                label: _video == null ? '添加视频' : '更换视频',
+                onTap: _pickVideo,
               ),
+              if (_video != null) ...[
+                _assetBtn(
+                  icon: Icons.image_outlined,
+                  label: _cover == null ? '选择封面' : '更换封面',
+                  onTap: _pickCover,
+                ),
+                if (_cover != null)
+                  _assetBtn(
+                    icon: Icons.close,
+                    label: '移除封面',
+                    onTap: () => setState(() => _cover = null),
+                  ),
+              ],
             ],
           ),
         ),
       ],
     );
   }
+
+  Widget _placeholder() {
+    return Container(
+      color: _btnBg,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            _video == null ? Icons.videocam : Icons.movie_outlined,
+            color: _hint,
+            size: 48,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _video == null ? '点击添加视频素材' : '已选择视频',
+            style: const TextStyle(color: _hint, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _assetBtn({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 72,
+        height: 52,
+        margin: const EdgeInsets.only(right: 8),
+        decoration: BoxDecoration(
+          color: _btnBg,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: _border),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: _white, size: 20),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(color: _white, fontSize: 10)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _fileName(String name) =>
+      name.length > 18 ? '${name.substring(0, 17)}…' : name;
 
   // ===================== 文本输入区域 =====================
   Widget _buildTextInputs() {
@@ -342,7 +469,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
           children: [
             // 提示文字
             const Text(
-              '发布成功后将保存内容至本地',
+              '发布后将同步到短视频信息流',
               style: TextStyle(color: _hint, fontSize: 11),
             ),
             const SizedBox(height: 10),

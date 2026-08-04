@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'douyin_publish_page.dart';
+import 'short_video_models.dart';
 
 /// 抖音风格作品拍摄页面（仅 UI，不实现真实相机功能）
 ///
@@ -21,6 +23,8 @@ class _ShootPageState extends State<ShootPage> {
 
   /// 底部 Tab：0=相机(默认选中) 1=敬请期待
   int _tabIndex = 0;
+
+  final _picker = ImagePicker();
 
   static const _white = Colors.white;
   static const _gray = Color(0xFF999999);
@@ -175,7 +179,7 @@ class _ShootPageState extends State<ShootPage> {
                 const SizedBox(width: 46),
                 _buildShutter(),
                 const SizedBox(width: 46),
-                _sideButton(Icons.image_outlined, '相册'),
+                _sideButton(Icons.image_outlined, '相册', onTap: _pickFromAlbum),
               ],
             ),
             const SizedBox(height: 22),
@@ -227,13 +231,11 @@ class _ShootPageState extends State<ShootPage> {
     );
   }
 
-  /// 大圆形快门按钮：外圈粗白圆环 + 内部白色快门；拍摄后进入作品发布页
+  /// 大圆形快门按钮：外圈粗白圆环 + 内部白色快门；进入作品发布页。
+  /// 发布成功后把 [ShortVideo] 结果回传给上一页（短视频信息流）。
   Widget _buildShutter() {
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const DouyinPublishPage()),
-      ),
+      onTap: () => _openPublishPage(),
       child: Container(
         width: 78,
         height: 78,
@@ -252,10 +254,31 @@ class _ShootPageState extends State<ShootPage> {
     );
   }
 
+  /// 相册按钮：从系统相册选择视频后直接进入发布流程
+  Future<void> _pickFromAlbum() async {
+    final file = await _picker.pickVideo(source: ImageSource.gallery);
+    if (file == null) return;
+    if (!mounted) return;
+    await _openPublishPage(initialVideo: file);
+  }
+
+  /// 进入作品发布页；若发布成功则携带结果关闭拍摄页
+  Future<void> _openPublishPage({XFile? initialVideo}) async {
+    final result = await Navigator.push<ShortVideo>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DouyinPublishPage(initialVideo: initialVideo),
+      ),
+    );
+    if (result != null && mounted) {
+      Navigator.pop(context, result);
+    }
+  }
+
   /// 快门两侧按钮：方形占位 + 下方文字
-  Widget _sideButton(IconData icon, String label) {
+  Widget _sideButton(IconData icon, String label, {VoidCallback? onTap}) {
     return GestureDetector(
-      onTap: () {}, // 仅 UI，功能后续接入
+      onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

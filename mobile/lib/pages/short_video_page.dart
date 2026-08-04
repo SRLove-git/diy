@@ -1,9 +1,11 @@
 import 'dart:ui';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../core/auth_service.dart';
+import '../core/follow_api.dart';
+import '../core/video_api.dart';
 import '../features/community/domain/community_models.dart';
 import 'shoot_page.dart';
 import 'short_video_models.dart';
@@ -13,6 +15,10 @@ import 'short_video_models.dart';
 /// 竖屏全屏视频滑动（Mock 播放：AnimationController 模拟进度并循环），
 /// 双击点赞、右侧交互栏（关注/点赞/评论/分享/旋转唱片）、底部信息区，
 /// 顶部「关注 / 推荐」双 Feed 与「+发布」入口。
+///
+/// 数据来自后端 videos 模块：推荐流加载全部已通过视频，关注流加载已关注作者的视频；
+/// 点赞/评论/分享/浏览/关注均实时上报服务端；发布流程（拍摄页 → 发布页）成功后
+/// 把新视频插入推荐流顶部。
 class ShortVideoPage extends StatefulWidget {
   const ShortVideoPage({super.key});
 
@@ -23,23 +29,60 @@ class ShortVideoPage extends StatefulWidget {
 class _ShortVideoPageState extends State<ShortVideoPage> {
   final PageController _pageCtrl = PageController();
 
-  /// 视频列表（待接入后端真实数据，当前为空；点赞/评论数在此更新）
-  final List<ShortVideo> _videos = [];
+  /// 推荐信息流（服务端数据）
+  List<ShortVideo> _recommend = [];
 
-  /// 已关注作者 ID 集合
+  /// 关注信息流（服务端数据，进入关注 Tab 时拉取）
+  List<ShortVideo> _following = [];
+
+  /// 已关注作者 ID 集合（驱动关注徽标 / 关注 Feed 过滤）
   final Set<int> _followedIds = {};
 
   /// 0=关注 1=推荐
   int _tabIndex = 1;
   int _currentIndex = 0;
 
-  /// 当前 Feed：推荐=全部；关注=已关注作者的视频
-  List<ShortVideo> get _feed => _tabIndex == 1
-      ? _videos
-      : _videos.where((v) => _followedIds.contains(v.authorId)).toList();
+  bool _initialLoading = true;
+  String? _error;
 
-  /// 按 id 定位 _videos 中的索引（-1 表示已不在列表）
-  int _indexOf(ShortVideo v) => _videos.indexWhere((x) => x.id == v.id);
+  /// 推荐流分页状态
+  int _recommendPage = 1;
+  bool _hasMore = true;
+  bool _loadingMore = false;
+
+  /// 当前 Feed：推荐=全部；关注=已关注作者的视频
+  List<ShortVideo> get _feed =>
+      _tabIndex == 1 ? _recommend : _following;
+
+  ShortVideo? _find(int id) {
+    for (final v in _recommend) {
+      if (v.id == id) return v;
+    }
+    for (final v in _following) {
+      if (v.id == id) return v;
+    }
+    return null;
+  }
+
+  /// 用最新对象替换两个列表中的同名视频（点赞/评论数在此更新）
+  void _updateVideo(ShortVideo updated) {
+    setState(() {
+      _recommend = [
+        for (final x in _recommend)
+          if (x.id == updated.id) updated else x,
+      ];
+      _following = [
+        for (final x in _following)
+          if (x.id == updated.id) updated else x,
+      ];
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecommend();
+  }
 
   @override
   void dispose() {
@@ -47,12 +90,93 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
     super.dispose();
   }
 
-  /// 打开作品拍摄页（仅 UI，拍摄/发布功能后续接入）
-  void _onPublish() {
-    Navigator.push(
+  // ==================== 数据加载 ====================
+
+  Future<void> _loadRecommend() async {
+    setState(() {
+      _initialLoading = true;
+      _error = null;
+    });
+    try {
+      final r = await VideoApi.fetchRecommend(page: 1);
+      if (!mounted) return;
+      setState(() {
+        _recommend = r.items;
+        _recommendPage = 1;
+        _hasMore = r.total > r.items.length;
+        _initialLoading = false;
+      });
+      _recordView(r.items.firstOrNull);
+    } on DioException catch (e) {
+      _onLoadFailed(VideoApi.messageOf(e));
+    } catch (e) {
+      _onLoadFailed(e.toString());
+    }
+  }
+
+  Future<void> _loadFollowing() async {
+    try {
+      final r = await VideoApi.fetchFollowing(page: 1);
+      if (!mounted) return;
+      setState(() {
+        _following = r.items;
+        _error = null;
+      });
+    } catch (_) {
+      // 关注流失败保留旧数据，错误态仅用于推荐流为空时
+    }
+  }
+
+  /// 滑动到底加载下一页（仅推荐流）
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore || _tabIndex != 1) return;
+    setState(() => _loadingMore = true);
+    try {
+      final r = await VideoApi.fetchRecommend(page: _recommendPage + 1);
+      if (!mounted) return;
+      setState(() {
+        _recommend = [..._recommend, ...r.items];
+        _recommendPage++;
+        _hasMore = _recommend.length < r.total;
+      });
+    } catch (_) {
+      // 加载更多失败静默，下次滑到底再试
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  void _onLoadFailed(String msg) {
+    if (!mounted) return;
+    setState(() {
+      _initialLoading = false;
+      _error = msg;
+    });
+  }
+
+  /// 记录浏览（浏览量 +1，失败静默）
+  void _recordView(ShortVideo? v) {
+    if (v == null) return;
+    VideoApi.recordView(v.id).catchError((_) {});
+  }
+
+  // ==================== 交互 ====================
+
+  /// 打开作品拍摄页；发布成功后把新视频插入推荐流顶部
+  Future<void> _onPublish() async {
+    final created = await Navigator.push<ShortVideo>(
       context,
       MaterialPageRoute(builder: (_) => const ShootPage()),
     );
+    if (created == null || !mounted) return;
+    setState(() {
+      _recommend = [created, ..._recommend];
+      _following = [created, ..._following];
+      _tabIndex = 1;
+      _currentIndex = 0;
+    });
+    if (_pageCtrl.hasClients) _pageCtrl.jumpToPage(0);
+    _toast('发布成功');
   }
 
   void _switchTab(int index) {
@@ -62,73 +186,92 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
       _currentIndex = 0;
     });
     if (_pageCtrl.hasClients) _pageCtrl.jumpToPage(0);
+    if (index == 0 && _following.isEmpty) _loadFollowing();
+  }
+
+  void _onPageChanged(int i) {
+    setState(() => _currentIndex = i);
+    final feed = _feed;
+    if (i >= 0 && i < feed.length) {
+      _recordView(feed[i]);
+      if (i >= feed.length - 1) _loadMore();
+    }
   }
 
   void _toggleLike(ShortVideo v) {
-    final idx = _indexOf(v);
-    if (idx < 0) return;
-    final cur = _videos[idx];
-    final liked = !cur.liked;
-    setState(() {
-      _videos[idx] = cur.copyWith(
-        liked: liked,
-        likeCount: cur.likeCount + (liked ? 1 : -1),
-      );
+    final liked = !v.liked;
+    _updateVideo(
+      v.copyWith(liked: liked, likeCount: v.likeCount + (liked ? 1 : -1)),
+    );
+    VideoApi.toggleLike(v.id).then((serverLiked) {
+      if (serverLiked == liked) return;
+      final cur = _find(v.id);
+      if (cur == null) return;
+      _updateVideo(cur.copyWith(
+        liked: serverLiked,
+        likeCount: cur.likeCount + (serverLiked ? 1 : -1),
+      ));
+    }).catchError((_) {
+      // 失败回滚
+      final cur = _find(v.id);
+      if (cur == null) return;
+      _updateVideo(cur.copyWith(liked: v.liked, likeCount: v.likeCount));
     });
   }
 
   void _toggleFollow(ShortVideo v) {
+    final following = !_followedIds.contains(v.authorId);
     setState(() {
-      if (!_followedIds.add(v.authorId)) {
-        _followedIds.remove(v.authorId);
-      }
+      following
+          ? _followedIds.add(v.authorId)
+          : _followedIds.remove(v.authorId);
     });
-    // 关注 Feed 取关后列表可能缩短/清空，回退索引
-    if (_tabIndex == 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final f = _feed;
-        setState(
-          () => _currentIndex = f.isEmpty
-              ? 0
-              : (_currentIndex >= f.length ? f.length - 1 : _currentIndex),
-        );
+    FollowApi.setFollow(v.authorId, following: following).then((_) {
+      // 关注 Feed 取关后列表变化，重新拉取
+      if (_tabIndex == 0) _loadFollowing();
+    }).catchError((_) {
+      // 失败回滚
+      if (!mounted) return;
+      setState(() {
+        following
+            ? _followedIds.remove(v.authorId)
+            : _followedIds.add(v.authorId);
       });
-    }
+    });
   }
 
   void _onCommentAdded(ShortVideo v) {
-    final idx = _indexOf(v);
-    if (idx < 0) return;
-    final cur = _videos[idx];
-    setState(() {
-      _videos[idx] = cur.copyWith(commentCount: cur.commentCount + 1);
-    });
+    final cur = _find(v.id);
+    if (cur != null) {
+      _updateVideo(cur.copyWith(commentCount: cur.commentCount + 1));
+    }
   }
 
   void _openComments(ShortVideo v) {
-    final user = AuthService.instance.user;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _CommentSheet(
         video: v,
-        me: CommunityUser(
-          id: user?.id ?? 0,
-          nickname: user?.nickname ?? '',
-          avatarUrl: user?.avatar ?? '',
-        ),
         onAdded: () => _onCommentAdded(v),
       ),
     );
   }
 
-  void _openShare() {
+  void _openShare(ShortVideo v) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => const _ShareSheet(),
+      builder: (_) => _ShareSheet(
+        onShared: () {
+          VideoApi.recordShare(v.id).catchError((_) {});
+          final cur = _find(v.id);
+          if (cur != null) {
+            _updateVideo(cur.copyWith(shareCount: cur.shareCount + 1));
+          }
+        },
+      ),
     );
   }
 
@@ -144,6 +287,8 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
       );
   }
 
+  // ==================== 构建 ====================
+
   @override
   Widget build(BuildContext context) {
     final feed = _feed;
@@ -152,7 +297,11 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
       body: Stack(
         children: [
           // ── 视频 Feed（竖屏滑动，文字/右侧栏随视频一起滑动） ──
-          if (feed.isEmpty)
+          if (_initialLoading)
+            const Center(
+              child: CircularProgressIndicator(color: Colors.white54),
+            )
+          else if (feed.isEmpty)
             _buildEmptyFollow()
           else
             PageView.builder(
@@ -160,7 +309,7 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
               controller: _pageCtrl,
               scrollDirection: Axis.vertical,
               itemCount: feed.length,
-              onPageChanged: (i) => setState(() => _currentIndex = i),
+              onPageChanged: _onPageChanged,
               itemBuilder: (_, i) => AnimatedBuilder(
                 animation: _pageCtrl,
                 builder: (context, child) {
@@ -187,7 +336,7 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
                   onFollow: () => _toggleFollow(feed[i]),
                   onLike: () => _toggleLike(feed[i]),
                   onComment: () => _openComments(feed[i]),
-                  onShare: _openShare,
+                  onShare: () => _openShare(feed[i]),
                 ),
               ),
             ),
@@ -270,15 +419,33 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
             size: 56,
           ),
           const SizedBox(height: 12),
-          const Text(
-            '暂无视频内容',
-            style: TextStyle(color: Colors.white70, fontSize: 15),
+          Text(
+            _error != null ? '视频加载失败' : '暂无视频内容',
+            style: const TextStyle(color: Colors.white70, fontSize: 15),
           ),
           const SizedBox(height: 4),
-          const Text(
-            '视频数据接入中，敬请期待',
-            style: TextStyle(color: Color(0xFF777788), fontSize: 12.5),
+          Text(
+            _error ?? '视频数据接入中，敬请期待',
+            style: const TextStyle(color: Color(0xFF777788), fontSize: 12.5),
           ),
+          if (_error != null) ...[
+            const SizedBox(height: 14),
+            GestureDetector(
+              onTap: _loadRecommend,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white12,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Text(
+                  '重新加载',
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -414,34 +581,46 @@ class _VideoItemPageState extends State<_VideoItemPage>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 视频封面（Mock 播放载体）
-            Image.network(
-              video.cover,
-              fit: BoxFit.cover,
-              frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                if (wasSynchronouslyLoaded || frame != null) return child;
-                return Container(
-                  color: const Color(0xFF14141C),
-                  child: const Center(
-                    child: Icon(
-                      Icons.movie_outlined,
-                      color: Color(0xFF3A3A48),
-                      size: 48,
-                    ),
-                  ),
-                );
-              },
-              errorBuilder: (_, _, _) => Container(
+            // 视频封面（Mock 播放载体；无封面时展示占位图）
+            if (video.cover.isEmpty)
+              Container(
                 color: const Color(0xFF14141C),
                 child: const Center(
                   child: Icon(
-                    Icons.broken_image_outlined,
+                    Icons.movie_outlined,
                     color: Color(0xFF3A3A48),
                     size: 48,
                   ),
                 ),
+              )
+            else
+              Image.network(
+                video.cover,
+                fit: BoxFit.cover,
+                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                  if (wasSynchronouslyLoaded || frame != null) return child;
+                  return Container(
+                    color: const Color(0xFF14141C),
+                    child: const Center(
+                      child: Icon(
+                        Icons.movie_outlined,
+                        color: Color(0xFF3A3A48),
+                        size: 48,
+                      ),
+                    ),
+                  );
+                },
+                errorBuilder: (_, _, _) => Container(
+                  color: const Color(0xFF14141C),
+                  child: const Center(
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      color: Color(0xFF3A3A48),
+                      size: 48,
+                    ),
+                  ),
+                ),
               ),
-            ),
 
             // 暂停态中央播放键（播放态隐藏）
             AnimatedSwitcher(
@@ -632,39 +811,41 @@ class _VideoItemPageState extends State<_VideoItemPage>
             ),
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            children: [
-              for (final t in v.tags)
-                Text(
-                  '#$t',
-                  style: const TextStyle(
-                    color: Color(0xFFAACCFF),
-                    fontSize: 13,
+          if (v.tags.isNotEmpty)
+            Wrap(
+              spacing: 6,
+              children: [
+                for (final t in v.tags)
+                  Text(
+                    '#$t',
+                    style: const TextStyle(
+                      color: Color(0xFFAACCFF),
+                      fontSize: 13,
+                    ),
+                  ),
+              ],
+            ),
+          if (v.tags.isNotEmpty) const SizedBox(height: 8),
+          if (v.music.isNotEmpty)
+            Row(
+              children: [
+                const Icon(
+                  Icons.music_note_rounded,
+                  color: Colors.white,
+                  size: 14,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    v.music,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5),
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(
-                Icons.music_note_rounded,
-                color: Colors.white,
-                size: 14,
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  v.music,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 12.5),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
+              ],
+            ),
+          if (v.music.isNotEmpty) const SizedBox(height: 6),
         ],
       ),
     );
@@ -792,18 +973,27 @@ class _RightRailState extends State<_RightRail>
               border: Border.all(color: Colors.white, width: 2),
             ),
             clipBehavior: Clip.antiAlias,
-            child: Image.network(
-              v.avatar,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                color: const Color(0xFF2C2C36),
-                child: const Icon(
-                  Icons.person,
-                  color: Colors.white70,
-                  size: 22,
-                ),
-              ),
-            ),
+            child: v.avatar.isEmpty
+                ? Container(
+                    color: const Color(0xFF2C2C36),
+                    child: const Icon(
+                      Icons.person,
+                      color: Colors.white70,
+                      size: 22,
+                    ),
+                  )
+                : Image.network(
+                    v.avatar,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      color: const Color(0xFF2C2C36),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.white70,
+                        size: 22,
+                      ),
+                    ),
+                  ),
           ),
           Positioned(
             bottom: -9,
@@ -892,18 +1082,27 @@ class _MusicDiscState extends State<_MusicDisc>
           border: Border.all(color: Colors.white70, width: 1.2),
         ),
         child: ClipOval(
-          child: Image.network(
-            widget.cover,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => Container(
-              color: const Color(0xFF2C2C36),
-              child: const Icon(
-                Icons.music_note,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
-          ),
+          child: widget.cover.isEmpty
+              ? Container(
+                  color: const Color(0xFF2C2C36),
+                  child: const Icon(
+                    Icons.music_note,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                )
+              : Image.network(
+                  widget.cover,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    color: const Color(0xFF2C2C36),
+                    child: const Icon(
+                      Icons.music_note,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+                ),
         ),
       ),
     );
@@ -917,12 +1116,10 @@ class _MusicDiscState extends State<_MusicDisc>
 class _CommentSheet extends StatefulWidget {
   const _CommentSheet({
     required this.video,
-    required this.me,
     required this.onAdded,
   });
 
   final ShortVideo video;
-  final CommunityUser me;
 
   /// 每新增一条评论回调（用于更新外层计数）
   final VoidCallback onAdded;
@@ -932,8 +1129,15 @@ class _CommentSheet extends StatefulWidget {
 }
 
 class _CommentSheetState extends State<_CommentSheet> {
-  late final List<CommunityComment> _comments = List.of(widget.video.comments);
+  List<CommunityComment> _comments = [];
+  bool _loading = true;
   final _inputCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadComments();
+  }
 
   @override
   void dispose() {
@@ -941,21 +1145,40 @@ class _CommentSheetState extends State<_CommentSheet> {
     super.dispose();
   }
 
-  void _send() {
+  Future<void> _loadComments() async {
+    try {
+      final r = await VideoApi.fetchComments(widget.video.id);
+      if (!mounted) return;
+      setState(() {
+        _comments = r.items;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _send() async {
     final text = _inputCtrl.text.trim();
     if (text.isEmpty) return;
-    setState(() {
-      _comments.insert(
-        0,
-        CommunityComment(
-          user: widget.me,
-          content: text,
-          createdAt: DateTime.now().toIso8601String(),
+    try {
+      final comment = await VideoApi.addComment(widget.video.id, text);
+      if (!mounted) return;
+      setState(() {
+        _comments.insert(0, comment);
+        _inputCtrl.clear();
+      });
+      widget.onAdded();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('评论失败：$e'),
+          behavior: SnackBarBehavior.floating,
         ),
       );
-      _inputCtrl.clear();
-    });
-    widget.onAdded();
+    }
   }
 
   @override
@@ -1002,19 +1225,27 @@ class _CommentSheetState extends State<_CommentSheet> {
           ),
           const Divider(height: 1, color: Colors.white12),
           Expanded(
-            child: _comments.isEmpty
+            child: _loading
                 ? const Center(
-                    child: Text(
-                      '还没有评论，来抢沙发～',
-                      style: TextStyle(color: Color(0xFF8A8A96)),
+                    child: CircularProgressIndicator(
+                      color: Colors.white30,
                     ),
                   )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(14),
-                    itemCount: _comments.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 14),
-                    itemBuilder: (_, i) => _CommentRow(comment: _comments[i]),
-                  ),
+                : _comments.isEmpty
+                    ? const Center(
+                        child: Text(
+                          '还没有评论，来抢沙发～',
+                          style: TextStyle(color: Color(0xFF8A8A96)),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(14),
+                        itemCount: _comments.length,
+                        separatorBuilder: (_, _) =>
+                            const SizedBox(height: 14),
+                        itemBuilder: (_, i) =>
+                            _CommentRow(comment: _comments[i]),
+                      ),
           ),
           _buildInput(),
         ],
@@ -1147,7 +1378,10 @@ class _CommentRow extends StatelessWidget {
 // =====================================================================
 
 class _ShareSheet extends StatelessWidget {
-  const _ShareSheet();
+  const _ShareSheet({this.onShared});
+
+  /// 用户选择任一分享渠道时回调（上报分享数）
+  final VoidCallback? onShared;
 
   static const _options = [
     (icon: Icons.link_rounded, label: '复制链接'),
@@ -1158,6 +1392,7 @@ class _ShareSheet extends StatelessWidget {
 
   void _pick(BuildContext context, String label) {
     Navigator.pop(context);
+    onShared?.call();
     if (label == '复制链接') {
       Clipboard.setData(
         const ClipboardData(text: 'https://diy.example.com/video/1'),

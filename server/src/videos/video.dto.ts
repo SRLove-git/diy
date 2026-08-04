@@ -21,20 +21,22 @@ export class CreateVideoDto {
   @IsOptional()
   content?: string;
 
-  /** 封面 URL */
+  /** 封面 URL（可空：无封面时客户端展示占位图） */
   @IsString()
   @MaxLength(500)
-  cover: string;
+  @IsOptional()
+  cover?: string;
 
   /** 视频文件 URL */
   @IsString()
   @MaxLength(500)
   videoUrl: string;
 
-  /** 视频时长（秒） */
+  /** 视频时长（秒，缺省默认 15，客户端未解析出真实时长时用） */
   @IsInt()
   @Min(1, { message: '时长必须大于 0 秒' })
-  duration: number;
+  @IsOptional()
+  duration?: number;
 
   /** 配乐名称 */
   @IsString()
