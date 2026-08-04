@@ -18,6 +18,17 @@ void main() {
       expect(videoAspectLabel(16 / 9), '16:9');
     });
 
+    test('converts camera sensor ratio for portrait preview', () {
+      expect(
+        orientedCameraAspectRatio(16 / 9, isLandscape: false),
+        closeTo(9 / 16, 0.001),
+      );
+      expect(
+        orientedCameraAspectRatio(16 / 9, isLandscape: true),
+        closeTo(16 / 9, 0.001),
+      );
+    });
+
     test('fits landscape and portrait frames inside bounds', () {
       expect(
         containAspectSize(const Size(400, 800), 16 / 9),

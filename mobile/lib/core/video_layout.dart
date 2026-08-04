@@ -26,6 +26,15 @@ double normalizeVideoAspectRatio(double? value, {double fallback = 9 / 16}) {
 bool isLandscapeVideo(double? aspectRatio) =>
     normalizeVideoAspectRatio(aspectRatio) > 1.05;
 
+/// 相机插件返回的是传感器横向宽高比；竖持手机时需要取倒数。
+double orientedCameraAspectRatio(
+  double sensorAspectRatio, {
+  required bool isLandscape,
+}) {
+  final sensor = normalizeVideoAspectRatio(sensorAspectRatio, fallback: 1);
+  return isLandscape ? sensor : 1 / sensor;
+}
+
 String videoAspectLabel(double? aspectRatio) {
   final ratio = normalizeVideoAspectRatio(aspectRatio);
   if ((ratio - 9 / 16).abs() < 0.08) return '9:16';

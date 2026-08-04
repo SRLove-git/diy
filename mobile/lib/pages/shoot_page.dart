@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../core/music_api.dart';
@@ -355,7 +356,17 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
     final camera = _camera!;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final ratio = _modeIndex == 1 ? _aspectPreset.ratio : 9 / 16;
+        final ratio = _modeIndex == 1 ? _aspectPreset.ratio : 3 / 4;
+        final orientation =
+            camera.value.lockedCaptureOrientation ??
+            camera.value.deviceOrientation;
+        final isLandscape =
+            orientation == DeviceOrientation.landscapeLeft ||
+            orientation == DeviceOrientation.landscapeRight;
+        final previewRatio = orientedCameraAspectRatio(
+          camera.value.aspectRatio,
+          isLandscape: isLandscape,
+        );
         final frame = containAspectSize(
           Size(constraints.maxWidth, constraints.maxHeight),
           ratio,
@@ -367,7 +378,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
               width: frame.width,
               height: frame.height,
               child: coverVideoFrame(
-                sourceAspectRatio: camera.value.aspectRatio,
+                sourceAspectRatio: previewRatio,
                 child: CameraPreview(camera),
               ),
             ),
