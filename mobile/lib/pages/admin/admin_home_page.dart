@@ -4,6 +4,7 @@ import '../../core/app_colors.dart';
 import '../../core/auth_service.dart';
 import '../checkin/scan_checkin_page.dart';
 import 'admin_dashboard_page.dart';
+import 'admin_members_page.dart';
 import 'admin_notifications_page.dart';
 import 'admin_orders_page.dart';
 import 'admin_posts_page.dart';
@@ -45,6 +46,11 @@ class AdminHomePage extends StatelessWidget {
         icon: Icons.notifications_outlined,
         label: '通知管理',
         page: AdminNotificationsPage(),
+      ),
+      (
+        icon: Icons.card_membership_outlined,
+        label: '会员运营',
+        page: AdminMembersPage(),
       ),
     ];
 

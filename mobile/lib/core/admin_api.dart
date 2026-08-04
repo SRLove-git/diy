@@ -392,6 +392,115 @@ class AdminNotificationTemplate {
       );
 }
 
+// ─── 会员运营 ───
+
+class AdminMembership {
+  const AdminMembership({
+    required this.id,
+    required this.userId,
+    required this.memberNo,
+    required this.levelName,
+    required this.expireAt,
+    required this.updatedAt,
+  });
+
+  final int id;
+  final int userId;
+  final String memberNo;
+  final String levelName;
+  final String expireAt;
+  final String updatedAt;
+
+  factory AdminMembership.fromJson(Map<String, dynamic> json) =>
+      AdminMembership(
+        id: json['id'] as int,
+        userId: (json['userId'] as num?)?.toInt() ?? 0,
+        memberNo: (json['memberNo'] ?? '') as String,
+        levelName: (json['levelName'] ?? '手作会员') as String,
+        expireAt: (json['expireAt'] ?? '') as String,
+        updatedAt: (json['updatedAt'] ?? '') as String,
+      );
+}
+
+class AdminMemberPlan {
+  const AdminMemberPlan({
+    required this.id,
+    required this.name,
+    required this.durationDays,
+    required this.price,
+    required this.originalPrice,
+    required this.benefits,
+    required this.badge,
+    required this.recommended,
+    required this.enabled,
+  });
+
+  final int id;
+  final String name;
+  final int durationDays;
+  final double price;
+  final double originalPrice;
+  final List<String> benefits;
+  final String badge;
+  final bool recommended;
+  final bool enabled;
+
+  factory AdminMemberPlan.fromJson(Map<String, dynamic> json) =>
+      AdminMemberPlan(
+        id: json['id'] as int,
+        name: (json['name'] ?? '') as String,
+        durationDays: (json['durationDays'] as num?)?.toInt() ?? 0,
+        price: _toDoubleValue(json['price']),
+        originalPrice: _toDoubleValue(json['originalPrice']),
+        benefits: ((json['benefits'] ?? []) as List)
+            .map((e) => e.toString())
+            .toList(),
+        badge: (json['badge'] ?? '') as String,
+        recommended: json['recommended'] == true,
+        enabled: json['enabled'] != false,
+      );
+
+  static double _toDoubleValue(Object? value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+}
+
+class AdminCoupon {
+  const AdminCoupon({
+    required this.id,
+    required this.title,
+    required this.amount,
+    required this.threshold,
+    required this.expireAt,
+    required this.stock,
+    required this.membersOnly,
+    required this.enabled,
+  });
+
+  final int id;
+  final String title;
+  final String amount;
+  final String threshold;
+  final DateTime expireAt;
+  final int stock;
+  final bool membersOnly;
+  final bool enabled;
+
+  factory AdminCoupon.fromJson(Map<String, dynamic> json) => AdminCoupon(
+        id: json['id'] as int,
+        title: (json['title'] ?? '') as String,
+        amount: (json['amount'] ?? '') as String,
+        threshold: (json['threshold'] ?? '无门槛') as String,
+        expireAt:
+            DateTime.tryParse(json['expireAt']?.toString() ?? '') ??
+            DateTime.now(),
+        stock: (json['stock'] as num?)?.toInt() ?? 0,
+        membersOnly: json['membersOnly'] != false,
+        enabled: json['enabled'] != false,
+      );
+}
+
 /// 分页结果（后端统一返回 [items, total] 元组）
 class Paged<T> {
   const Paged({required this.items, required this.total});
@@ -627,5 +736,83 @@ class AdminApi {
 
   static Future<void> removeTemplate(int id) async {
     await ApiClient.instance.delete('/admin/notifications/templates/$id');
+  }
+
+  // ─── 会员运营 ───
+
+  static Future<Paged<AdminMembership>> fetchMemberships({int page = 1}) async {
+    final resp = await ApiClient.instance.get(
+      '/admin/members',
+      queryParameters: {'page': page},
+    );
+    final data = resp.data as List;
+    return Paged(
+      items: ((data.isNotEmpty ? data[0] : const []) as List)
+          .map((e) => AdminMembership.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      total: data.length > 1 ? (data[1] as num?)?.toInt() ?? 0 : 0,
+    );
+  }
+
+  static Future<List<AdminMemberPlan>> fetchMemberPlans() async {
+    final resp = await ApiClient.instance.get('/admin/members/plans');
+    return (resp.data as List)
+        .map((e) => AdminMemberPlan.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<AdminMemberPlan> createMemberPlan(
+    Map<String, dynamic> data,
+  ) async {
+    final resp = await ApiClient.instance.post('/admin/members/plans', data: data);
+    return AdminMemberPlan.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  static Future<AdminMemberPlan> updateMemberPlan(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    final resp = await ApiClient.instance.patch(
+      '/admin/members/plans/$id',
+      data: data,
+    );
+    return AdminMemberPlan.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  static Future<void> toggleMemberPlan(int id, bool enabled) async {
+    await ApiClient.instance.patch(
+      '/admin/members/plans/$id/enabled',
+      data: {'enabled': enabled},
+    );
+  }
+
+  static Future<List<AdminCoupon>> fetchCoupons() async {
+    final resp = await ApiClient.instance.get('/admin/members/coupons');
+    return (resp.data as List)
+        .map((e) => AdminCoupon.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<AdminCoupon> createCoupon(Map<String, dynamic> data) async {
+    final resp = await ApiClient.instance.post('/admin/members/coupons', data: data);
+    return AdminCoupon.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  static Future<AdminCoupon> updateCoupon(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    final resp = await ApiClient.instance.patch(
+      '/admin/members/coupons/$id',
+      data: data,
+    );
+    return AdminCoupon.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  static Future<void> toggleCoupon(int id, bool enabled) async {
+    await ApiClient.instance.patch(
+      '/admin/members/coupons/$id/enabled',
+      data: {'enabled': enabled},
+    );
   }
 }
