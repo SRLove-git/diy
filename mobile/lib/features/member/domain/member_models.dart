@@ -54,6 +54,21 @@ class MemberPlan {
   final bool recommended;
 
   String get durationLabel => '$durationDays 天';
+
+  factory MemberPlan.fromJson(Map<String, dynamic> json) => MemberPlan(
+        id: '${json['id']}',
+        name: (json['name'] ?? '') as String,
+        durationDays: (json['durationDays'] ?? 0) as int,
+        price: _toDouble(json['price']),
+        originalPrice: _toDouble(json['originalPrice']),
+        benefits: ((json['benefits'] ?? []) as List)
+            .map((item) => item.toString())
+            .toList(),
+        badge: (json['badge'] as String?)?.trim().isEmpty == true
+            ? null
+            : json['badge'] as String?,
+        recommended: json['recommended'] == true,
+      );
 }
 
 /// 我的会员信息（会员编号 / 有效期 / 开通续费到期状态）
@@ -83,6 +98,15 @@ class MyMembership {
     final days = expireAt!.difference(DateTime.now()).inDays;
     return days < 0 ? 0 : days;
   }
+
+  factory MyMembership.fromJson(Map<String, dynamic> json) => MyMembership(
+        memberNo: (json['memberNo'] ?? '') as String,
+        levelName: (json['levelName'] ?? '手作会员') as String,
+        status: MemberStatus.fromName(json['status'] as String?),
+        expireAt: json['expireAt'] == null
+            ? null
+            : DateTime.tryParse(json['expireAt'].toString()),
+      );
 }
 
 /// 会员专属预约 / 到店体验价格
@@ -147,6 +171,50 @@ class MemberCoupon {
         expireAt: expireAt,
         received: received ?? this.received,
       );
+
+  factory MemberCoupon.fromJson(Map<String, dynamic> json) => MemberCoupon(
+        id: '${json['id']}',
+        title: (json['title'] ?? '') as String,
+        amount: (json['amount'] ?? '') as String,
+        threshold: (json['threshold'] ?? '') as String,
+        expireAt: DateTime.tryParse(json['expireAt'].toString()) ??
+            DateTime.now(),
+        received: json['received'] == true,
+      );
+}
+
+class MemberWalletCoupon {
+  const MemberWalletCoupon({
+    required this.userCouponId,
+    required this.title,
+    required this.amount,
+    required this.threshold,
+    required this.expireAt,
+    required this.status,
+    required this.receivedAt,
+  });
+
+  final String userCouponId;
+  final String title;
+  final String amount;
+  final String threshold;
+  final DateTime expireAt;
+  final String status;
+  final DateTime? receivedAt;
+
+  factory MemberWalletCoupon.fromJson(Map<String, dynamic> json) =>
+      MemberWalletCoupon(
+        userCouponId: '${json['userCouponId']}',
+        title: (json['title'] ?? '') as String,
+        amount: (json['amount'] ?? '') as String,
+        threshold: (json['threshold'] ?? '') as String,
+        expireAt: DateTime.tryParse(json['expireAt'].toString()) ??
+            DateTime.now(),
+        status: (json['status'] ?? 'unused') as String,
+        receivedAt: json['receivedAt'] == null
+            ? null
+            : DateTime.tryParse(json['receivedAt'].toString()),
+      );
 }
 
 /// 会员专属活动
@@ -172,4 +240,9 @@ class MemberActivity {
 
   /// 标签，如 `限会员` / `双倍积分`
   final String tag;
+}
+
+double _toDouble(dynamic value) {
+  if (value is num) return value.toDouble();
+  return double.tryParse(value?.toString() ?? '') ?? 0;
 }

@@ -1,6 +1,11 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/app_colors.dart';
+import '../../core/chat_api.dart';
 import '../../core/post_api.dart';
 
 /// 作品发布页：图文 ≤9 图、文案、标签
@@ -14,7 +19,8 @@ class CreatePostPage extends StatefulWidget {
 class _CreatePostPageState extends State<CreatePostPage> {
   final _contentCtrl = TextEditingController();
   final _tagCtrl = TextEditingController();
-  final _images = <String>[]; // 图片 URL 列表
+  final _picker = ImagePicker();
+  final _images = <String>[]; // 图片本地路径列表
   final _tags = <String>[];
   bool _submitting = false;
 
@@ -42,46 +48,20 @@ class _CreatePostPageState extends State<CreatePostPage> {
     setState(() => _tags.remove(tag));
   }
 
-  void _addImage() {
-    // 一期：使用占位图片 URL（后续接入 OSS 上传）
+  Future<void> _addImage() async {
     if (_images.length >= 9) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('最多上传 9 张图片')));
       return;
     }
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        final urlCtrl = TextEditingController();
-        return AlertDialog(
-          title: const Text('添加图片'),
-          content: TextField(
-            controller: urlCtrl,
-            decoration: const InputDecoration(
-              hintText: '粘贴图片 URL（一期占位，后续接入 OSS 上传）',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final url = urlCtrl.text.trim();
-                if (url.isNotEmpty) {
-                  setState(() => _images.add(url));
-                }
-                Navigator.pop(ctx);
-              },
-              child: const Text('添加'),
-            ),
-          ],
-        );
-      },
+    final files = await _picker.pickMultiImage(
+      imageQuality: 85,
+      limit: 9 - _images.length,
+      maxWidth: 1600,
     );
+    if (files.isEmpty || !mounted) return;
+    setState(() => _images.addAll(files.map((file) => file.path)));
   }
 
   Future<void> _submit() async {
@@ -95,12 +75,22 @@ class _CreatePostPageState extends State<CreatePostPage> {
 
     setState(() => _submitting = true);
     try {
-      await PostApi.create(content: content, images: _images, tags: _tags);
+      final uploadedImages = <String>[];
+      for (final path in _images) {
+        uploadedImages.add(await ChatApi.uploadImage(path, folder: 'post'));
+      }
+      await PostApi.create(content: content, images: uploadedImages, tags: _tags);
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('发布成功，等待审核')));
         Navigator.pop(context, true);
+      }
+    } on DioException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(PostApi.messageOf(e))));
       }
     } catch (e) {
       if (mounted) {
@@ -154,7 +144,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
               runSpacing: 8,
               children: [
                 ..._images.map(
-                  (url) => Stack(
+                  (path) => Stack(
                     children: [
                       Container(
                         width: 100,
@@ -162,7 +152,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(8),
                           image: DecorationImage(
-                            image: NetworkImage(url),
+                            image: FileImage(File(path)),
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -171,7 +161,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                         top: 2,
                         right: 2,
                         child: GestureDetector(
-                          onTap: () => setState(() => _images.remove(url)),
+                          onTap: () => setState(() => _images.remove(path)),
                           child: Container(
                             decoration: const BoxDecoration(
                               color: Colors.black54,

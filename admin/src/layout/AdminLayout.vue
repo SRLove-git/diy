@@ -20,6 +20,7 @@ function logout() {
         <RouterLink to="/orders">订单管理</RouterLink>
         <RouterLink to="/posts">作品审核</RouterLink>
         <RouterLink to="/users">用户管理</RouterLink>
+        <RouterLink to="/members">会员运营</RouterLink>
         <RouterLink to="/reports">举报处理</RouterLink>
         <RouterLink to="/notifications">通知管理</RouterLink>
       </nav>

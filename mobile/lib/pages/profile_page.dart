@@ -7,6 +7,12 @@ import '../core/auth_service.dart';
 import '../core/chat_api.dart';
 import '../core/follow_api.dart';
 import '../core/post_api.dart';
+import '../features/member/presentation/member_plan_page.dart';
+import 'profile/my_favorites_page.dart';
+import 'profile/my_history_page.dart';
+import 'profile/my_wallet_page.dart';
+import 'profile/my_works_page.dart';
+import 'profile/order_list_page.dart';
 import '../widgets/image_viewer.dart';
 import '../widgets/state_widgets.dart';
 import 'admin/admin_home_page.dart';
@@ -23,6 +29,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _posts = <Post>[];
   bool _loading = true;
   String? _error;
@@ -223,66 +230,21 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  /// 账号菜单（☰ 或用户名下拉）：账号设置 / 切换账号 / 退出登录
-  void _openAccountMenu() {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 管理员专属：管理后台入口
-            if (AuthService.instance.isAdmin)
-              ListTile(
-                leading: const Icon(Icons.admin_panel_settings_outlined),
-                title: const Text('管理后台'),
-                trailing: const Icon(Icons.chevron_right, size: 20),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const AdminHomePage()),
-                  );
-                },
-              ),
-            ListTile(
-              leading: const Icon(Icons.settings_outlined),
-              title: const Text('账号设置'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _toast('账号设置功能开发中');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.swap_horiz),
-              title: const Text('切换账号'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _toast('切换账号功能开发中');
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.logout, color: AppColors.of(ctx).danger),
-              title: Text(
-                '退出登录',
-                style: TextStyle(color: AppColors.of(ctx).danger),
-              ),
-              onTap: () {
-                Navigator.pop(ctx);
-                AuthService.instance.logout();
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
+  void _openFunctionPanel() {
+    _scaffoldKey.currentState?.openEndDrawer();
+  }
+
+  void _openFeaturePage(Widget page) {
+    Navigator.of(context).pop();
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: Colors.transparent,
+      endDrawer: _buildFunctionDrawer(),
       body: SafeArea(
         child: ListenableBuilder(
           listenable: AuthService.instance,
@@ -318,7 +280,7 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           // 中间：用户名 + 下拉箭头（切换账号/账号设置）
           GestureDetector(
-            onTap: _openAccountMenu,
+            onTap: _editProfile,
             behavior: HitTestBehavior.opaque,
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -348,7 +310,7 @@ class _ProfilePageState extends State<ProfilePage> {
             right: 4,
             child: IconButton(
               icon: Icon(Icons.menu_rounded, color: colors.textPrimary),
-              onPressed: _openAccountMenu,
+              onPressed: _openFunctionPanel,
             ),
           ),
         ],
@@ -495,6 +457,135 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Widget _buildFunctionDrawer() {
+    const entries = [
+      (icon: Icons.workspace_premium_outlined, label: '会员套餐', page: MemberPlanPage()),
+      (icon: Icons.wallet_giftcard_outlined, label: '卡包', page: MyWalletPage()),
+      (icon: Icons.favorite_border, label: '点赞与收藏', page: MyFavoritesPage()),
+      (icon: Icons.palette_outlined, label: '个人作品', page: MyWorksPage()),
+      (icon: Icons.history, label: '观看历史', page: MyHistoryPage()),
+      (icon: Icons.receipt_long_outlined, label: '我的订单', page: OrderListPage()),
+    ];
+    final colors = AppColors.of(context);
+    final user = AuthService.instance.user;
+    final name = user?.nickname.isNotEmpty == true ? user!.nickname : '手作新人';
+
+    return Drawer(
+      width: MediaQuery.of(context).size.width * 0.78,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.horizontal(left: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '功能中心',
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          name,
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(Icons.close_rounded, color: colors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: colors.placeholder,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Column(
+                      children: entries.map((entry) {
+                        return _FunctionTile(
+                          icon: entry.icon,
+                          label: entry.label,
+                          onTap: () => _openFeaturePage(entry.page),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: colors.placeholder,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Column(
+                      children: [
+                        if (AuthService.instance.isAdmin)
+                          _FunctionTile(
+                            icon: Icons.admin_panel_settings_outlined,
+                            label: '管理后台',
+                            onTap: () => _openFeaturePage(const AdminHomePage()),
+                          ),
+                        _FunctionTile(
+                          icon: Icons.settings_outlined,
+                          label: '账号设置',
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            _toast('账号设置功能开发中');
+                          },
+                        ),
+                        _FunctionTile(
+                          icon: Icons.swap_horiz,
+                          label: '切换账号',
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            _toast('切换账号功能开发中');
+                          },
+                        ),
+                        _FunctionTile(
+                          icon: Icons.logout,
+                          label: '退出登录',
+                          labelColor: colors.danger,
+                          iconColor: colors.danger,
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            AuthService.instance.logout();
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ─── 5. 内容导航 Tab（帖子 / Reels / 标记） ───
   Widget _buildContentTabs() {
     final colors = AppColors.of(context);
@@ -579,6 +670,68 @@ class _ProfilePageState extends State<ProfilePage> {
       child: EmptyWidget(
         icon: _tab == 1 ? Icons.movie_outlined : Icons.person_pin_outlined,
         message: _tab == 1 ? '还没有视频作品' : '暂无标记内容',
+      ),
+    );
+  }
+}
+
+class _FunctionTile extends StatelessWidget {
+  const _FunctionTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.iconColor,
+    this.labelColor,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? iconColor;
+  final Color? labelColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final resolvedIconColor = iconColor ?? colors.textPrimary;
+    final resolvedLabelColor = labelColor ?? colors.textPrimary;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: const Color(0x1AFF718D),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, size: 20, color: resolvedIconColor),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: resolvedLabelColor,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: colors.textSecondary,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

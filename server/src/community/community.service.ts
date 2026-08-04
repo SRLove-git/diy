@@ -225,6 +225,34 @@ export class CommunityService {
     return new Set(likes.map((l) => l.postId));
   }
 
+  async getMyLikes(
+    userId: number,
+    page = 1,
+    pageSize = 20,
+  ) {
+    const likes = await this.likes.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    const total = await this.likes.count({ where: { userId } });
+    if (!likes.length) return [[], total];
+
+    const postIds = likes.map((item) => item.postId);
+    const posts = await this.posts.findBy({ id: In(postIds) });
+    const authorIds = [...new Set(posts.map((post) => post.userId))];
+    const authors = await this.resolveAuthors(authorIds);
+    const postMap = new Map(posts.map((post) => [post.id, post]));
+
+    const ordered = postIds
+      .map((id) => postMap.get(id))
+      .filter((post): post is Post => !!post)
+      .map((post) => this.enrichPost(post, authors.get(post.userId)));
+
+    return [ordered, total];
+  }
+
   // ──── Comment operations ────
 
   async addComment(userId: number, postId: number, content: string): Promise<Comment> {

@@ -16,7 +16,8 @@ class MyFavoritesPage extends StatefulWidget {
 }
 
 class _MyFavoritesPageState extends State<MyFavoritesPage> {
-  final _posts = <Post>[];
+  final _favoritePosts = <Post>[];
+  final _likedPosts = <Post>[];
   bool _loading = true;
   String? _error;
 
@@ -32,11 +33,18 @@ class _MyFavoritesPageState extends State<MyFavoritesPage> {
       _error = null;
     });
     try {
-      final result = await PostApi.fetchFavorites();
+      final results = await Future.wait([
+        PostApi.fetchLikedPosts(),
+        PostApi.fetchFavorites(),
+      ]);
       if (mounted) {
         setState(() {
-          _posts.clear();
-          _posts.addAll(result.items);
+          _likedPosts
+            ..clear()
+            ..addAll(results[0].items);
+          _favoritePosts
+            ..clear()
+            ..addAll(results[1].items);
         });
       }
     } catch (e) {
@@ -57,11 +65,22 @@ class _MyFavoritesPageState extends State<MyFavoritesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('点赞与收藏')),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: _buildBody(),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('点赞与收藏'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: '我赞过的'),
+              Tab(text: '我收藏的'),
+            ],
+          ),
+        ),
+        body: RefreshIndicator(
+          onRefresh: _load,
+          child: _buildBody(),
+        ),
       ),
     );
   }
@@ -82,15 +101,33 @@ class _MyFavoritesPageState extends State<MyFavoritesPage> {
       );
     }
 
-    if (_posts.isEmpty) {
+    return TabBarView(
+      children: [
+        _buildList(
+          _likedPosts,
+          icon: Icons.favorite_border,
+          emptyMessage: '还没有点赞作品',
+        ),
+        _buildList(
+          _favoritePosts,
+          icon: Icons.bookmark_border,
+          emptyMessage: '还没有收藏作品',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildList(
+    List<Post> posts, {
+    required IconData icon,
+    required String emptyMessage,
+  }) {
+    if (posts.isEmpty) {
       return ListView(
         children: [
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.6,
-            child: const EmptyWidget(
-              icon: Icons.bookmark_border,
-              message: '还没有收藏作品',
-            ),
+            child: EmptyWidget(icon: icon, message: emptyMessage),
           ),
         ],
       );
@@ -98,15 +135,15 @@ class _MyFavoritesPageState extends State<MyFavoritesPage> {
 
     return ListView.separated(
       padding: const EdgeInsets.all(12),
-      itemCount: _posts.length,
+      itemCount: posts.length,
       separatorBuilder: (ctx, i) => const SizedBox(height: 12),
       itemBuilder: (_, i) => _PostCard(
-        post: _posts[i],
+        post: posts[i],
         onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => PostDetailPage(postId: _posts[i].id),
+              builder: (_) => PostDetailPage(postId: posts[i].id),
             ),
           );
         },

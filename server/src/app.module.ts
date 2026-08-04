@@ -14,6 +14,7 @@ import { BootstrapService } from './bootstrap/bootstrap.service';
 import { GlobalJwtModule } from './common/global-jwt.module';
 import { HealthController } from './health/health.controller';
 import { MusicModule } from './music/music.module';
+import { MembersModule } from './members/members.module';
 import { RedisModule } from './redis/redis.module';
 import { StoresModule } from './stores/stores.module';
 import { UploadsModule } from './uploads/uploads.module';
@@ -51,6 +52,7 @@ import { VideosModule } from './videos/videos.module';
     DashboardModule,
     VideosModule,
     MusicModule,
+    MembersModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService, BootstrapService],

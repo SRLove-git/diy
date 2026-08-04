@@ -1,8 +1,10 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/app_colors.dart';
+import '../../../core/post_api.dart';
 import '../../../widgets/state_widgets.dart';
-import '../data/mock_member_repository.dart';
+import '../data/api_member_repository.dart';
 import '../domain/member_models.dart';
 import '../domain/member_repository.dart';
 
@@ -18,7 +20,7 @@ class MemberPlanPage extends StatefulWidget {
 }
 
 class _MemberPlanPageState extends State<MemberPlanPage> {
-  final MemberRepository _repo = MockMemberRepository();
+  final MemberRepository _repo = const ApiMemberRepository();
 
   MyMembership? _membership;
   List<MemberPlan> _plans = [];
@@ -145,13 +147,21 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
   /// 领取优惠券（Mock：本地置为已领取）
   Future<void> _receiveCoupon(MemberCoupon coupon) async {
     if (coupon.received) return;
-    setState(() {
-      _coupons = [
-        for (final c in _coupons)
-          c.id == coupon.id ? c.copyWith(received: true) : c,
-      ];
-    });
-    _toast('${coupon.title} 已领取，可在到店核销时使用');
+    try {
+      await _repo.receiveCoupon(coupon.id);
+      if (!mounted) return;
+      setState(() {
+        _coupons = [
+          for (final c in _coupons)
+            c.id == coupon.id ? c.copyWith(received: true) : c,
+        ];
+      });
+      _toast('${coupon.title} 已领取，可在到店核销时使用');
+    } catch (e) {
+      if (!mounted) return;
+      final message = e is DioException ? PostApi.messageOf(e) : '领取失败，请稍后再试';
+      _toast(message);
+    }
   }
 
   void _toast(String msg) {

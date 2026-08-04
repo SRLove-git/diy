@@ -11,6 +11,7 @@ import 'pages/home_page.dart';
 import 'pages/login_page.dart';
 import 'pages/profile_page.dart';
 import 'pages/short_video_page.dart';
+import 'widgets/glass_bottom_nav.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -230,10 +231,6 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _index = 0;
 
-  // iOS 风格底部导航主色
-  static const _selectedColor = Color(0xFFFF718D);
-  static const _unselectedColor = Color(0xFF999999);
-
   @override
   void initState() {
     super.initState();
@@ -265,158 +262,37 @@ class _MainShellState extends State<MainShell> {
   }
 
   Widget _buildBottomBar(int unread) {
-    final bottom = MediaQuery.of(context).padding.bottom;
-    const barHeight = 60.0;
-    final totalHeight = barHeight + bottom + 0.5; // +0.5 for top border
-
-    return Container(
-      height: totalHeight,
-      decoration: const BoxDecoration(
-        color: Color(0xFAFFFFFF),
-        border: Border(top: BorderSide(color: Color(0x14FF718D), width: 0.8)),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x147A4754),
-            blurRadius: 16,
-            offset: Offset(0, -4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          SizedBox(
-            height: barHeight,
-            child: Row(
-              children: [
-                _navItem(0, Icons.home_outlined, Icons.home_rounded, '首页'),
-                _navItem(
-                  1,
-                  Icons.explore_outlined,
-                  Icons.explore_rounded,
-                  '社区',
-                ),
-                _navItem(
-                  2,
-                  Icons.videocam_outlined,
-                  Icons.videocam_rounded,
-                  '视频',
-                ),
-                _navItemWithBadge(
-                  3,
-                  Icons.chat_bubble_outline_rounded,
-                  Icons.chat_bubble_rounded,
-                  '消息',
-                  unread,
-                ),
-                _navItem(
-                  4,
-                  Icons.person_outline_rounded,
-                  Icons.person_rounded,
-                  '我的',
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: bottom),
-        ],
-      ),
-    );
-  }
-
-  Widget _navItem(int i, IconData outline, IconData filled, String label) {
-    final selected = _index == i;
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => setState(() => _index = i),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              selected ? filled : outline,
-              size: 22,
-              color: selected ? _selectedColor : _unselectedColor,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                color: selected ? _selectedColor : _unselectedColor,
-              ),
-            ),
-          ],
+    return GlassBottomNav(
+      currentIndex: _index,
+      chatUnread: unread,
+      onSelect: (index) => setState(() => _index = index),
+      items: const [
+        (
+          icon: Icons.home_outlined,
+          activeIcon: Icons.home_rounded,
+          label: '首页',
         ),
-      ),
-    );
-  }
-
-  Widget _navItemWithBadge(
-    int i,
-    IconData outline,
-    IconData filled,
-    String label,
-    int unread,
-  ) {
-    final selected = _index == i;
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => setState(() => _index = i),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(
-                  selected ? filled : outline,
-                  size: 22,
-                  color: selected ? _selectedColor : _unselectedColor,
-                ),
-                if (unread > 0)
-                  Positioned(
-                    top: -4,
-                    right: -12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 1,
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFF718D),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        unread > 99 ? '99+' : '$unread',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                color: selected ? _selectedColor : _unselectedColor,
-              ),
-            ),
-          ],
+        (
+          icon: Icons.explore_outlined,
+          activeIcon: Icons.explore_rounded,
+          label: '社区',
         ),
-      ),
+        (
+          icon: Icons.videocam_outlined,
+          activeIcon: Icons.videocam_rounded,
+          label: '视频',
+        ),
+        (
+          icon: Icons.chat_bubble_outline_rounded,
+          activeIcon: Icons.chat_bubble_rounded,
+          label: '消息',
+        ),
+        (
+          icon: Icons.person_outline_rounded,
+          activeIcon: Icons.person_rounded,
+          label: '我的',
+        ),
+      ],
     );
   }
 }

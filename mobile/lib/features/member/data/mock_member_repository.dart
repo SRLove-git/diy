@@ -160,6 +160,26 @@ class MockMemberRepository implements MemberRepository {
   Future<List<MemberCoupon>> fetchCoupons() => _delay(coupons);
 
   @override
+  Future<List<MemberWalletCoupon>> fetchWallet() => _delay(
+        coupons
+            .map(
+              (coupon) => MemberWalletCoupon(
+                userCouponId: coupon.id,
+                title: coupon.title,
+                amount: coupon.amount,
+                threshold: coupon.threshold,
+                expireAt: coupon.expireAt,
+                status: coupon.received ? 'used' : 'unused',
+                receivedAt: DateTime.now(),
+              ),
+            )
+            .toList(),
+      );
+
+  @override
+  Future<void> receiveCoupon(String couponId) async {}
+
+  @override
   Future<List<MemberActivity>> fetchActivities() => _delay(activities);
 
   /// 开通 / 续费：有效期按所选套餐时长顺延

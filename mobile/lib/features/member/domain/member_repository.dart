@@ -18,6 +18,12 @@ abstract interface class MemberRepository {
   /// 会员优惠券
   Future<List<MemberCoupon>> fetchCoupons();
 
+  /// 我的卡包
+  Future<List<MemberWalletCoupon>> fetchWallet();
+
+  /// 领取优惠券
+  Future<void> receiveCoupon(String couponId);
+
   /// 会员专属活动
   Future<List<MemberActivity>> fetchActivities();
 

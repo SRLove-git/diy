@@ -295,6 +295,15 @@ class PostApi {
     return (items: items, total: resp.data[1] as int);
   }
 
+  /// 获取我点赞过的作品
+  static Future<({List<Post> items, int total})> fetchLikedPosts({int page = 1}) async {
+    final resp = await ApiClient.instance.get('/posts/my-likes', queryParameters: {'page': page});
+    final items = ((resp.data[0] ?? []) as List)
+        .map((e) => Post.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return (items: items, total: resp.data[1] as int);
+  }
+
   // --- History ---
 
   /// 记录浏览历史

@@ -76,6 +76,16 @@ export class PostsController {
     return this.community.getMyCollections(user.id, page);
   }
 
+  /** 我的点赞列表（必须在 :id 路由前） */
+  @Get('my-likes')
+  @UseGuards(JwtAuthGuard)
+  myLikes(
+    @CurrentUser() user: AuthUser,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+  ) {
+    return this.community.getMyLikes(user.id, page);
+  }
+
   /** 获取我的浏览历史（需在 @Get(':id') 之前声明，避免路由被 :id 吞掉） */
   @Get('history')
   @UseGuards(JwtAuthGuard)
