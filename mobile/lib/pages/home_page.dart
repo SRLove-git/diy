@@ -123,6 +123,11 @@ class _HomePageState extends State<HomePage> {
                   child: FeatureEntryRow(
                     isAdmin: isAdmin,
                     onBooking: _openBooking,
+                    onAdminHome: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const AdminHomePage(),
+                      ),
+                    ),
                     onCheckIn: () => Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => isAdmin
@@ -135,21 +140,6 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 ),
-                if (isAdmin) ...[
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: AdminEntryCard(
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const AdminHomePage(),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
                 const SliverToBoxAdapter(child: ShortcutBar()),
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
@@ -294,116 +284,18 @@ class _NotificationButton extends StatelessWidget {
   }
 }
 
-/// 管理员专属入口：仅管理员账号可见，点击进入管理后台（与网页管理端同一套功能）
-class AdminEntryCard extends StatelessWidget {
-  const AdminEntryCard({super.key, required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return _TapScale(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(18, 15, 14, 15),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [Color(0xFF453C4C), Color(0xFF6E4E63)],
-          ),
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x33453C4C),
-              blurRadius: 16,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: Colors.white.withAlpha(30),
-                borderRadius: BorderRadius.circular(13),
-              ),
-              child: const Icon(
-                Icons.admin_panel_settings_outlined,
-                color: Colors.white,
-                size: 26,
-              ),
-            ),
-            const SizedBox(width: 14),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        '管理后台',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      _AdminEntryTag(),
-                    ],
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    '门店 · 订单 · 作品 · 用户 · 会员运营',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: Colors.white70,
-              size: 26,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AdminEntryTag extends StatelessWidget {
-  const _AdminEntryTag();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(28),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: const Text(
-        '管理员',
-        style: TextStyle(color: Colors.white70, fontSize: 10),
-      ),
-    );
-  }
-}
-
 class FeatureEntryRow extends StatelessWidget {
   const FeatureEntryRow({
     super.key,
     required this.onBooking,
+    required this.onAdminHome,
     required this.onCheckIn,
     required this.onMembership,
     required this.isAdmin,
   });
 
   final VoidCallback onBooking;
+  final VoidCallback onAdminHome;
   final VoidCallback onCheckIn;
   final VoidCallback onMembership;
   final bool isAdmin;
@@ -411,13 +303,22 @@ class FeatureEntryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entries = [
-      _FeatureEntry(
-        icon: Icons.event_available_rounded,
-        colors: const [Color(0xFFFF9BB0), Color(0xFFFF6687)],
-        title: '到店预约',
-        subtitle: '预约手作时间',
-        onTap: onBooking,
-      ),
+      if (isAdmin)
+        _FeatureEntry(
+          icon: Icons.admin_panel_settings_rounded,
+          colors: const [Color(0xFF453C4C), Color(0xFF6E4E63)],
+          title: '管理后台',
+          subtitle: '门店 · 订单 · 数据',
+          onTap: onAdminHome,
+        )
+      else
+        _FeatureEntry(
+          icon: Icons.event_available_rounded,
+          colors: const [Color(0xFFFF9BB0), Color(0xFFFF6687)],
+          title: '到店预约',
+          subtitle: '预约手作时间',
+          onTap: onBooking,
+        ),
       _FeatureEntry(
         icon: isAdmin ? Icons.qr_code_scanner_rounded : Icons.qr_code_2_rounded,
         colors: const [Color(0xFFA895FF), Color(0xFF7563EC)],
