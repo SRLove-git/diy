@@ -25,6 +25,21 @@ class VideoApi {
     return _parseList(resp.data);
   }
 
+  /// 按关键词搜索视频（标题 / 文案 / 配乐 / 地点 / 标签）
+  static Future<({List<ShortVideo> items, int total})> search(
+    String keyword, {
+    int page = 1,
+  }) async {
+    final resp = await ApiClient.instance.get(
+      '/videos',
+      queryParameters: {
+        'page': page,
+        if (keyword.trim().isNotEmpty) 'q': keyword.trim(),
+      },
+    );
+    return _parseList(resp.data);
+  }
+
   /// 关注信息流（已关注作者的视频，需登录）
   static Future<({List<ShortVideo> items, int total})> fetchFollowing({
     int page = 1,

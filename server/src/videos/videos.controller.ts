@@ -24,8 +24,9 @@ export class VideosController {
   @Get()
   recommend(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('q') q?: string,
   ) {
-    return this.videos.recommendFeed(undefined, page);
+    return this.videos.recommendFeed(undefined, page, 20, q ?? '');
   }
 
   /** 关注信息流（已关注作者的视频，需登录） */
