@@ -44,6 +44,14 @@ class FollowStatus {
 class FollowApi {
   FollowApi._();
 
+  /// 我关注的人（发起群聊选人用）
+  static Future<List<FollowUser>> fetchFollowing() async {
+    final resp = await ApiClient.instance.get('/follows/following');
+    return (resp.data as List)
+        .map((e) => FollowUser.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   /// 查询与目标用户的关注关系
   static Future<FollowStatus> status(int targetId) async {
     final resp = await ApiClient.instance.get('/follows/$targetId');
@@ -65,4 +73,26 @@ class FollowApi {
   /// 头像绝对地址（兼容 /uploads/ 相对路径）
   static String resolveAvatar(String avatar) =>
       avatar.isEmpty ? '' : ChatApi.resolveUrl(avatar);
+}
+
+/// 我关注的人（简版用户信息）
+class FollowUser {
+  const FollowUser({
+    required this.id,
+    required this.nickname,
+    required this.avatar,
+  });
+
+  final int id;
+  final String nickname;
+  final String avatar;
+
+  String get resolvedAvatar =>
+      avatar.isEmpty ? '' : ChatApi.resolveUrl(avatar);
+
+  factory FollowUser.fromJson(Map<String, dynamic> json) => FollowUser(
+        id: (json['id'] as num).toInt(),
+        nickname: (json['nickname'] ?? '') as String,
+        avatar: (json['avatar'] ?? '') as String,
+      );
 }

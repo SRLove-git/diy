@@ -14,6 +14,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { CreatePostDto } from './post.dto';
 import { CreateCommentDto } from './comment.dto';
+import { ReportReasonDto } from './report.dto';
 import { CommunityService } from './community.service';
 
 /** 客户端：社区作品（发布/列表/详情） */
@@ -30,14 +31,32 @@ export class PostsController {
 
   /** 最新信息流（仅展示已通过审核的作品） */
   @Get()
-  latest(@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number) {
-    return this.community.listLatest(page);
+  latest(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('q') q?: string,
+    @Query('channel') channel?: string,
+  ) {
+    return this.community.listLatest(page, 20, q ?? '', channel ?? '');
   }
 
   /** 热门信息流 */
   @Get('hot')
-  hot(@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number) {
-    return this.community.listHot(page);
+  hot(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('q') q?: string,
+    @Query('channel') channel?: string,
+  ) {
+    return this.community.listHot(page, 20, q ?? '', channel ?? '');
+  }
+
+  /** 关注流：我关注的人的作品（必须在 :id 路由前） */
+  @Get('following')
+  @UseGuards(JwtAuthGuard)
+  following(
+    @CurrentUser() user: AuthUser,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+  ) {
+    return this.community.followingFeed(user.id, page);
   }
 
   /** 我的作品列表 */
@@ -178,6 +197,19 @@ export class PostsController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.community.addHistory(user.id, id);
+  }
+
+  // ──── Report ────
+
+  /** 举报作品 */
+  @Post(':id/report')
+  @UseGuards(JwtAuthGuard)
+  createReport(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ReportReasonDto,
+  ) {
+    return this.community.createReport(user.id, id, dto.reason);
   }
 
   // ──── View ────

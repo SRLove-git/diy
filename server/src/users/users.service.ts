@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
+import { In, Like, Repository } from 'typeorm';
 import { User } from './user.entity';
 
 @Injectable()
@@ -11,6 +11,28 @@ export class UsersService {
 
   findByPhone(phone: string): Promise<User | null> {
     return this.users.findOneBy({ phone });
+  }
+
+  /** 按手机号搜索用户（添加好友用）：精确匹配，排除自己与被封禁账号 */
+  async searchByPhone(phone: string): Promise<
+    Array<{ id: number; nickname: string; avatar: string; phoneMasked: string }>
+  > {
+    const keyword = (phone ?? '').trim();
+    if (!keyword) return [];
+    const user = await this.users.findOneBy({
+      phone: keyword,
+      isBanned: false,
+    });
+    if (!user) return [];
+    const masked = `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}`;
+    return [
+      {
+        id: user.id,
+        nickname: user.nickname || `用户 #${user.id}`,
+        avatar: user.avatar,
+        phoneMasked: masked,
+      },
+    ];
   }
 
   findByUsername(username: string): Promise<User | null> {
@@ -32,6 +54,12 @@ export class UsersService {
 
   findById(id: number): Promise<User | null> {
     return this.users.findOneBy({ id });
+  }
+
+  /** 批量按 ID 查用户 */
+  findByIds(ids: number[]): Promise<User[]> {
+    if (!ids.length) return Promise.resolve([]);
+    return this.users.find({ where: { id: In(ids) } });
   }
 
   create(data: Partial<User>): Promise<User> {

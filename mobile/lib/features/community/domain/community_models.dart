@@ -91,7 +91,13 @@ class FeedPost {
 
   final bool liked;
 
-  FeedPost copyWith({int? likeCount, bool? liked}) => FeedPost(
+  FeedPost copyWith({
+    int? likeCount,
+    int? commentCount,
+    int? shareCount,
+    bool? liked,
+  }) =>
+      FeedPost(
         id: id,
         authorId: authorId,
         avatar: avatar,
@@ -100,8 +106,8 @@ class FeedPost {
         content: content,
         medias: medias,
         likeCount: likeCount ?? this.likeCount,
-        commentCount: commentCount,
-        shareCount: shareCount,
+        commentCount: commentCount ?? this.commentCount,
+        shareCount: shareCount ?? this.shareCount,
         viewCount: viewCount,
         reactions: reactions,
         previewComments: previewComments,

@@ -20,7 +20,9 @@ import { WebSocket } from 'ws';
 import type { JwtPayload } from '../auth/auth.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { ChatService, type MessageContentType } from './chat.service';
+import { GroupsService } from './groups.service';
 import type { Message } from './message.entity';
+import type { GroupMessage } from './group-message.entity';
 
 interface ChatFrame {
   type?: string;
@@ -37,7 +39,7 @@ const CHAT_CHANNEL = 'chat:events';
 interface RemoteEvent {
   /** 发布实例 ID（接收端据此跳过自己，避免重复推送） */
   source: string;
-  kind: 'newMessage' | 'read' | 'presence';
+  kind: 'newMessage' | 'groupNewMessage' | 'read' | 'presence';
   /** 目标用户（各实例按本地连接表判断是否推送） */
   toUserIds: number[];
   payload: Record<string, unknown>;
@@ -76,6 +78,7 @@ export class ChatGateway
 
   constructor(
     private readonly chat: ChatService,
+    private readonly groups: GroupsService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     @Inject(REDIS_CLIENT)
@@ -226,6 +229,9 @@ export class ChatGateway
       case 'read':
         void this.onRead(userId, client, frame);
         break;
+      case 'groupSend':
+        void this.onGroupSend(userId, client, frame);
+        break;
     }
   }
 
@@ -310,6 +316,62 @@ export class ChatGateway
     }
   }
 
+  private async onGroupSend(
+    userId: number,
+    client: WebSocket,
+    frame: ChatFrame,
+  ): Promise<void> {
+    const groupId = Number(frame.groupId);
+    const clientMsgId = frame.clientMsgId;
+    const content = frame.content;
+    if (!groupId || typeof content !== 'string' || !content.trim()) {
+      this.reply(client, {
+        type: 'error',
+        code: 'bad_request',
+        message: '参数不合法',
+      });
+      return;
+    }
+    const contentType: MessageContentType =
+      frame.contentType === 'image'
+        ? 'image'
+        : frame.contentType === 'voice'
+          ? 'voice'
+          : 'text';
+    try {
+      const { message, memberIds } = await this.groups.sendMessage(
+        userId,
+        groupId,
+        contentType,
+        content,
+      );
+      this.sendToUser(userId, {
+        type: 'groupSent',
+        clientMsgId: clientMsgId ?? null,
+        message: this.serializeGroupMessage(message),
+      });
+      const payload = {
+        type: 'groupNewMessage',
+        groupId,
+        message: this.serializeGroupMessage(message),
+      };
+      for (const uid of memberIds) {
+        if (uid === userId) continue;
+        if (await this.chat.isUserOnline(uid)) {
+          this.sendToUser(uid, payload);
+          this.publish({ kind: 'groupNewMessage', toUserIds: [uid], payload });
+        }
+      }
+    } catch (e) {
+      this.reply(client, {
+        type: 'error',
+        code: 'send_failed',
+        clientMsgId: clientMsgId ?? null,
+        message: e instanceof HttpException ? e.message : '发送失败',
+      });
+    }
+  }
+
   /** REST 发消息后的实时转发（同样以 Redis 在线状态判断是否推送） */
   async broadcastNewMessage(message: Message, peerId: number): Promise<void> {
     if (await this.chat.isUserOnline(peerId)) {
@@ -319,6 +381,27 @@ export class ChatGateway
       };
       this.sendToUser(peerId, payload);
       this.publish({ kind: 'newMessage', toUserIds: [peerId], payload });
+    }
+  }
+
+  /** REST 发群消息后的实时转发（推给在线成员，不含发送者） */
+  async broadcastGroupMessage(
+    message: Record<string, unknown>,
+    memberIds: number[],
+    groupId: number,
+  ): Promise<void> {
+    const senderId = Number(message.senderId) || 0;
+    const payload = {
+      type: 'groupNewMessage',
+      groupId,
+      message: this.serializeGroupMessage(message),
+    };
+    for (const uid of memberIds) {
+      if (uid === senderId) continue;
+      if (await this.chat.isUserOnline(uid)) {
+        this.sendToUser(uid, payload);
+        this.publish({ kind: 'groupNewMessage', toUserIds: [uid], payload });
+      }
     }
   }
 
@@ -350,6 +433,22 @@ export class ChatGateway
       readAt: message.readAt?.toISOString?.() ?? message.readAt ?? null,
       createdAt:
         message.createdAt?.toISOString?.() ?? message.createdAt ?? null,
+    };
+  }
+
+  /** 群消息转 msgpack 安全的纯对象（Date → ISO 字符串） */
+  private serializeGroupMessage(
+    message: Record<string, unknown> | GroupMessage,
+  ): Record<string, unknown> {
+    const raw = message as Record<string, unknown>;
+    return {
+      id: raw.id,
+      groupId: raw.groupId,
+      senderId: raw.senderId,
+      contentType: raw.contentType,
+      content: raw.content,
+      createdAt: (raw.createdAt as Date)?.toISOString?.() ?? raw.createdAt ?? null,
+      author: raw.author ?? null,
     };
   }
 

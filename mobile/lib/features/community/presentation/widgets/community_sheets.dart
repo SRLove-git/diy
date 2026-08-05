@@ -1,25 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/chat_api.dart';
+import '../../../../core/post_api.dart';
 import '../../domain/community_models.dart';
 import '../community_palette.dart';
 import 'community_avatar.dart';
 
 /// 底部弹层集合：评论 / 分享 / 更多操作
 
-/// 评论弹层：展示评论列表 + 输入框（Mock，本地追加）
+/// 评论弹层：展示评论列表 + 输入框（真实接口发布评论）
 Future<void> showCommentSheet(
   BuildContext context, {
   required FeedPost post,
   required List<CommunityComment> comments,
   required CommunityUser currentUser,
+  VoidCallback? onCommentAdded,
 }) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) =>
-        _CommentSheet(post: post, comments: comments, currentUser: currentUser),
+        _CommentSheet(
+      post: post,
+      comments: comments,
+      currentUser: currentUser,
+      onCommentAdded: onCommentAdded,
+    ),
   );
 }
 
@@ -28,11 +36,13 @@ class _CommentSheet extends StatefulWidget {
     required this.post,
     required this.comments,
     required this.currentUser,
+    this.onCommentAdded,
   });
 
   final FeedPost post;
   final List<CommunityComment> comments;
   final CommunityUser currentUser;
+  final VoidCallback? onCommentAdded;
 
   @override
   State<_CommentSheet> createState() => _CommentSheetState();
@@ -48,20 +58,40 @@ class _CommentSheetState extends State<_CommentSheet> {
     super.dispose();
   }
 
-  void _send() {
+  Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    setState(() {
-      _comments.insert(
-        0,
-        CommunityComment(
-          user: widget.currentUser,
-          content: text,
-          createdAt: DateTime.now().toIso8601String(),
+    try {
+      final comment = await PostApi.addComment(widget.post.id, text);
+      if (!mounted) return;
+      setState(() {
+        _comments.insert(
+          0,
+          CommunityComment(
+            user: CommunityUser(
+              id: comment.userId,
+              nickname: comment.author?.nickname ?? widget.currentUser.nickname,
+              avatarUrl: comment.author != null
+                  ? ChatApi.resolveUrl(comment.author!.avatar)
+                  : widget.currentUser.avatarUrl,
+            ),
+            content: comment.content,
+            createdAt: comment.createdAt,
+          ),
+        );
+        _controller.clear();
+      });
+      widget.onCommentAdded?.call();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('评论失败，请稍后再试'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 1),
         ),
       );
-      _controller.clear();
-    });
+    }
   }
 
   @override
@@ -242,17 +272,24 @@ class _CommentRow extends StatelessWidget {
   }
 }
 
-/// 分享弹层
-Future<void> showShareSheet(BuildContext context) {
+/// 分享弹层：复制链接 / 微信 / 朋友圈 / 更多（复制链接走系统剪贴板，其余记录分享数）
+Future<void> showShareSheet(
+  BuildContext context, {
+  required FeedPost post,
+  VoidCallback? onShared,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.transparent,
-    builder: (_) => const _ShareSheet(),
+    builder: (_) => _ShareSheet(post: post, onShared: onShared),
   );
 }
 
 class _ShareSheet extends StatelessWidget {
-  const _ShareSheet();
+  const _ShareSheet({required this.post, this.onShared});
+
+  final FeedPost post;
+  final VoidCallback? onShared;
 
   static const _options = [
     (icon: Icons.link_rounded, label: '复制链接'),
@@ -265,12 +302,15 @@ class _ShareSheet extends StatelessWidget {
     Navigator.pop(context);
     if (label == '复制链接') {
       Clipboard.setData(
-        const ClipboardData(text: 'https://diy.example.com/post/1'),
+        ClipboardData(text: 'https://diy.example.com/post/${post.id}'),
       );
     }
+    // 记录分享数（复制链接与分享到渠道均计入）
+    PostApi.recordShare(post.id).catchError((_) {});
+    onShared?.call();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(label == '复制链接' ? '链接已复制' : '分享到 $label（演示）'),
+        content: Text(label == '复制链接' ? '链接已复制' : '已生成分享链接，去 $label 分享吧'),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 1),
       ),
@@ -357,17 +397,24 @@ class _ShareSheet extends StatelessWidget {
   }
 }
 
-/// 更多操作弹层
-Future<void> showMoreSheet(BuildContext context) {
+/// 更多操作弹层：收藏 / 不感兴趣 / 举报（真实接口）
+Future<void> showMoreSheet(
+  BuildContext context, {
+  required FeedPost post,
+  VoidCallback? onCollectedChanged,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.transparent,
-    builder: (_) => const _MoreSheet(),
+    builder: (_) => _MoreSheet(post: post, onCollectedChanged: onCollectedChanged),
   );
 }
 
 class _MoreSheet extends StatelessWidget {
-  const _MoreSheet();
+  const _MoreSheet({required this.post, this.onCollectedChanged});
+
+  final FeedPost post;
+  final VoidCallback? onCollectedChanged;
 
   static const _actions = [
     (icon: Icons.bookmark_border_rounded, label: '收藏作品'),
@@ -419,19 +466,76 @@ class _MoreSheet extends StatelessWidget {
                               : const Color(0xFF2B2B33)),
                   ),
                 ),
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${a.label}（演示）'),
-                      behavior: SnackBarBehavior.floating,
-                      duration: const Duration(seconds: 1),
-                    ),
-                  );
-                },
+                onTap: () => _onTap(context, a.label),
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _onTap(BuildContext context, String label) async {
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context);
+    if (label == '收藏作品') {
+      await _toggleCollect(messenger);
+    } else if (label == '不感兴趣') {
+      _toast(messenger, '已减少此类内容');
+    } else if (label == '举报') {
+      await _showReportDialog(messenger);
+    }
+  }
+
+  Future<void> _toggleCollect(ScaffoldMessengerState messenger) async {
+    try {
+      final collected = await PostApi.toggleCollect(post.id);
+      onCollectedChanged?.call();
+      _toast(messenger, collected ? '已收藏' : '已取消收藏');
+    } catch (_) {
+      _toast(messenger, '操作失败，请稍后再试');
+    }
+  }
+
+  Future<void> _showReportDialog(ScaffoldMessengerState messenger) async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: messenger.context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('举报作品'),
+        content: TextField(
+          controller: controller,
+          maxLength: 200,
+          maxLines: 3,
+          decoration: const InputDecoration(hintText: '请描述举报原因…'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text('提交举报'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (reason == null || reason.isEmpty) return;
+    try {
+      await PostApi.report(post.id, reason);
+      _toast(messenger, '举报已提交，我们会尽快处理');
+    } catch (_) {
+      _toast(messenger, '举报失败，请稍后再试');
+    }
+  }
+
+  void _toast(ScaffoldMessengerState messenger, String message) {
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 1),
       ),
     );
   }

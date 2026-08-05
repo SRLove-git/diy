@@ -26,6 +26,7 @@ class DouyinPublishPage extends StatefulWidget {
     super.key,
     this.initialVideo,
     this.initialImage,
+    this.initialImages,
     this.initialMusic,
     this.durationSeconds,
     this.initialEdit,
@@ -37,6 +38,9 @@ class DouyinPublishPage extends StatefulWidget {
 
   /// 拍摄页照片模式拍下的照片（照片作品：以照片为封面，配背景音乐）
   final XFile? initialImage;
+
+  /// 相册页按选择顺序带入的照片笔记素材。
+  final List<XFile>? initialImages;
 
   /// 拍摄页选中的配乐名（可空）
   final String? initialMusic;
@@ -91,6 +95,9 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
     _aspectRatio = widget.initialAspectRatio ?? widget.initialEdit?.aspectRatio;
     if (widget.initialImage != null) {
       _photos.add(widget.initialImage!);
+    }
+    if (widget.initialImages != null) {
+      _photos.addAll(widget.initialImages!.take(_maxPhotos));
     }
     if (widget.initialMusic != null && widget.initialMusic!.isNotEmpty) {
       _music = MusicItem(

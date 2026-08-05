@@ -267,3 +267,207 @@ class ChatApi {
     return '网络异常，请稍后再试';
   }
 }
+
+// ──── 群聊模型 ────
+
+/// 群聊会话
+class GroupChat {
+  const GroupChat({
+    required this.id,
+    required this.name,
+    required this.ownerId,
+    required this.memberCount,
+    required this.memberAvatars,
+    required this.unreadCount,
+    required this.isOwner,
+    this.lastMessagePreview,
+    this.lastMessageAt,
+  });
+
+  final int id;
+  final String name;
+  final int ownerId;
+  final int memberCount;
+  final List<String> memberAvatars;
+  final int unreadCount;
+  final bool isOwner;
+  final String? lastMessagePreview;
+  final DateTime? lastMessageAt;
+
+  /// 去掉类型前缀后的预览文本
+  String get lastMessageText {
+    final p = lastMessagePreview;
+    if (p == null) return '';
+    if (p.startsWith('image:')) return '[图片]';
+    if (p.startsWith('voice:')) return '[语音]';
+    if (p.startsWith('text:')) return p.substring(5);
+    return p;
+  }
+
+  GroupChat copyWith({
+    String? lastMessagePreview,
+    DateTime? lastMessageAt,
+    int? unreadCount,
+  }) =>
+      GroupChat(
+        id: id,
+        name: name,
+        ownerId: ownerId,
+        memberCount: memberCount,
+        memberAvatars: memberAvatars,
+        unreadCount: unreadCount ?? this.unreadCount,
+        isOwner: isOwner,
+        lastMessagePreview: lastMessagePreview ?? this.lastMessagePreview,
+        lastMessageAt: lastMessageAt ?? this.lastMessageAt,
+      );
+
+  factory GroupChat.fromJson(Map<String, dynamic> json) => GroupChat(
+        id: (json['id'] as num).toInt(),
+        name: (json['name'] ?? '') as String,
+        ownerId: (json['ownerId'] as num?)?.toInt() ?? 0,
+        memberCount: (json['memberCount'] as num?)?.toInt() ?? 0,
+        memberAvatars: ((json['memberAvatars'] ?? []) as List)
+            .map((e) => e.toString())
+            .toList(),
+        unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
+        isOwner: json['isOwner'] == true,
+        lastMessagePreview: json['lastMessagePreview'] as String?,
+        lastMessageAt: json['lastMessageAt'] == null
+            ? null
+            : DateTime.tryParse(json['lastMessageAt'].toString()),
+      );
+}
+
+/// 群成员信息
+class GroupMemberInfo {
+  const GroupMemberInfo({
+    required this.id,
+    required this.nickname,
+    required this.avatar,
+  });
+
+  final int id;
+  final String nickname;
+  final String avatar;
+
+  factory GroupMemberInfo.fromJson(Map<String, dynamic> json) =>
+      GroupMemberInfo(
+        id: (json['id'] as num).toInt(),
+        nickname: (json['nickname'] ?? '') as String,
+        avatar: (json['avatar'] ?? '') as String,
+      );
+}
+
+/// 群消息（含发送者信息）
+class GroupMessage {
+  const GroupMessage({
+    required this.id,
+    required this.groupId,
+    required this.senderId,
+    required this.contentType,
+    required this.content,
+    required this.createdAt,
+    this.authorNickname = '',
+    this.authorAvatar = '',
+  });
+
+  final int id;
+  final int groupId;
+  final int senderId;
+  final String contentType;
+  final String content;
+  final DateTime createdAt;
+  final String authorNickname;
+  final String authorAvatar;
+
+  factory GroupMessage.fromJson(Map<String, dynamic> json) {
+    final author = (json['author'] ?? const {}) as Map<String, dynamic>;
+    return GroupMessage(
+      id: (json['id'] as num).toInt(),
+      groupId: (json['groupId'] as num?)?.toInt() ?? 0,
+      senderId: (json['senderId'] as num).toInt(),
+      contentType: (json['contentType'] ?? 'text') as String,
+      content: (json['content'] ?? '') as String,
+      createdAt: DateTime.tryParse((json['createdAt'] ?? '').toString()) ??
+          DateTime.now(),
+      authorNickname: (author['nickname'] ?? '') as String,
+      authorAvatar: (author['avatar'] ?? '') as String,
+    );
+  }
+}
+
+/// 群聊 REST API
+class GroupApi {
+  GroupApi._();
+
+  /// 创建群聊
+  static Future<GroupChat> createGroup({
+    required String name,
+    required List<int> memberIds,
+  }) async {
+    final resp = await ApiClient.instance.post('/groups', data: {
+      'name': name,
+      'memberIds': memberIds,
+    });
+    return GroupChat.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  /// 我的群列表
+  static Future<List<GroupChat>> fetchGroups() async {
+    final resp = await ApiClient.instance.get('/groups');
+    return ((resp.data as Map<String, dynamic>)['items'] ?? [])
+        .map((e) => GroupChat.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// 群成员
+  static Future<List<GroupMemberInfo>> fetchMembers(int groupId) async {
+    final resp = await ApiClient.instance.get('/groups/$groupId/members');
+    return (resp.data as List)
+        .map((e) => GroupMemberInfo.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// 群历史消息（游标分页）
+  static Future<({List<GroupMessage> items, int? nextCursor})> fetchMessages(
+    int groupId, {
+    int cursor = 0,
+    int limit = 50,
+  }) async {
+    final resp = await ApiClient.instance.get(
+      '/groups/$groupId/messages',
+      queryParameters: {'cursor': cursor, 'limit': limit},
+    );
+    final data = resp.data as Map<String, dynamic>;
+    return (
+      items: ((data['items'] ?? []) as List)
+          .map((e) => GroupMessage.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      nextCursor: data['nextCursor'] as int?,
+    );
+  }
+
+  /// REST 发群消息（WebSocket 兜底）
+  static Future<GroupMessage> sendMessage(
+    int groupId,
+    String content, {
+    String contentType = 'text',
+  }) async {
+    final resp = await ApiClient.instance.post(
+      '/groups/$groupId/messages',
+      data: {'content': content, 'contentType': contentType},
+    );
+    return GroupMessage.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  /// 标记群已读
+  static Future<void> markRead(int groupId, int lastMessageId) async {
+    await ApiClient.instance.post(
+      '/groups/$groupId/read',
+      data: {'lastMessageId': lastMessageId},
+    );
+  }
+
+  /// 提取后端错误信息
+  static String messageOf(DioException e) => ChatApi.messageOf(e);
+}

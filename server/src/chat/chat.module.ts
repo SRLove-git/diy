@@ -6,16 +6,31 @@ import { ChatController } from './chat.controller';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
 import { Conversation } from './conversation.entity';
+import { Group } from './group.entity';
+import { GroupMember } from './group-member.entity';
+import { GroupMessage } from './group-message.entity';
+import { GroupRead } from './group-read.entity';
+import { GroupsController } from './groups.controller';
+import { GroupsService } from './groups.service';
 import { Message } from './message.entity';
 import { MessageStatus } from './message_status.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Conversation, Message, MessageStatus, User]),
+    TypeOrmModule.forFeature([
+      Conversation,
+      Message,
+      MessageStatus,
+      Group,
+      GroupMember,
+      GroupMessage,
+      GroupRead,
+      User,
+    ]),
     FollowsModule,
   ],
-  controllers: [ChatController],
-  providers: [ChatService, ChatGateway],
-  exports: [ChatService],
+  controllers: [ChatController, GroupsController],
+  providers: [ChatService, GroupsService, ChatGateway],
+  exports: [ChatService, GroupsService],
 })
 export class ChatModule {}

@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { Follow } from './follow.entity';
 
@@ -63,6 +63,24 @@ export class FollowsService {
       followerCount,
       followingCount,
     };
+  }
+
+  /** 我关注的人（发起群聊选人用） */
+  async followingList(
+    userId: number,
+  ): Promise<Array<{ id: number; nickname: string; avatar: string }>> {
+    const rows = await this.follows.find({
+      where: { followerId: userId },
+      order: { createdAt: 'DESC' },
+    });
+    const ids = rows.map((r) => r.followeeId);
+    if (!ids.length) return [];
+    const users = await this.users.findByIds(ids);
+    return users.map((u) => ({
+      id: u.id,
+      nickname: u.nickname || `用户 #${u.id}`,
+      avatar: u.avatar,
+    }));
   }
 
   /** 设置关注/取消关注（幂等），返回最新状态 */

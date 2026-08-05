@@ -24,6 +24,12 @@ class NewMessageEvent extends ChatEvent {
   final ChatMessage message;
 }
 
+/// 收到新群消息
+class GroupNewMessageEvent extends ChatEvent {
+  const GroupNewMessageEvent(this.message);
+  final GroupMessage message;
+}
+
 /// 对端已读
 class ReadEvent extends ChatEvent {
   const ReadEvent(this.conversationId, this.readerId, this.readAt);
@@ -56,6 +62,7 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
 
   final _events = StreamController<ChatEvent>.broadcast();
   final _pendingSends = <String, Completer<ChatMessage?>>{};
+  final _pendingGroupSends = <String, Completer<GroupMessage?>>{};
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _sub;
   Timer? _heartbeat;
@@ -67,6 +74,9 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
   /// 会话列表缓存（列表页/入口角标共用）
   List<Conversation> conversations = const [];
 
+  /// 群聊列表缓存
+  List<GroupChat> groups = const [];
+
   /// 在线状态缓存：userId -> 在线（presence 事件更新）
   final Map<int, bool> _presence = {};
 
@@ -77,8 +87,10 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
   /// 查询指定用户是否在线（缺省回退到会话列表缓存）
   bool isPeerOnline(int userId) => _presence[userId] ?? false;
 
-  /// 未读总数（供入口角标）
-  int get totalUnread => conversations.fold(0, (sum, c) => sum + c.unreadCount);
+  /// 未读总数（单聊 + 群聊，供入口角标）
+  int get totalUnread =>
+      conversations.fold(0, (sum, c) => sum + c.unreadCount) +
+      groups.fold(0, (sum, g) => sum + g.unreadCount);
 
   /// 连接地址：http(s)://host:port/api → ws(s)://host:port/ws
   static Uri _wsUri() {
@@ -103,6 +115,7 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     _reconnectTimer = null;
     _closeChannel();
     conversations = const [];
+    groups = const [];
     _setState(ChatConnectionState.disconnected);
   }
 
@@ -159,6 +172,20 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
           if (message.id != null) {
             LocalChatStore.instance.markSent(clientMsgId, message.id!);
           }
+          break;
+        case 'groupSent':
+          final gClientMsgId = (frame['clientMsgId'] ?? '') as String;
+          final gMessage =
+              GroupMessage.fromJson(frame['message'] as Map<String, dynamic>);
+          _pendingGroupSends.remove(gClientMsgId)?.complete(gMessage);
+          break;
+        case 'groupNewMessage':
+          final rawGroupMsg = frame['message'];
+          if (rawGroupMsg is! Map) return;
+          final groupMessage = GroupMessage.fromJson(
+            Map<String, dynamic>.from(rawGroupMsg),
+          );
+          _onGroupNewMessage(groupMessage);
           break;
         case 'newMessage':
           final rawMsg = frame['message'];
@@ -238,6 +265,29 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     _events.add(NewMessageEvent(message));
   }
 
+  /// 新群消息：更新群缓存（预览 + 未读数）并广播事件
+  void _onGroupNewMessage(GroupMessage message) {
+    final idx = groups.indexWhere((g) => g.id == message.groupId);
+    if (idx >= 0) {
+      final old = groups[idx];
+      final list = [...groups];
+      final prefix = switch (message.contentType) {
+        'image' => 'image:',
+        'voice' => 'voice:',
+        _ => 'text:',
+      };
+      list[idx] = old.copyWith(
+        lastMessagePreview: '$prefix${message.content}',
+        lastMessageAt: message.createdAt,
+        unreadCount: old.unreadCount + 1,
+      );
+      _sortGroups(list);
+      groups = list;
+    }
+    notifyListeners();
+    _events.add(GroupNewMessageEvent(message));
+  }
+
   /// 在线状态变化：更新缓存 + 同步会话列表中的对端在线标记
   void _applyPresence(int userId, bool online) {
     _presence[userId] = online;
@@ -261,6 +311,14 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
       if (a.pinned != b.pinned) return a.pinned ? -1 : 1;
       return (b.lastMessageAt ?? epoch).compareTo(a.lastMessageAt ?? epoch);
     });
+  }
+
+  /// 群聊按最后消息时间倒序（与服务端排序一致）
+  static void _sortGroups(List<GroupChat> list) {
+    final epoch = DateTime.fromMillisecondsSinceEpoch(0);
+    list.sort(
+      (a, b) => (b.lastMessageAt ?? epoch).compareTo(a.lastMessageAt ?? epoch),
+    );
   }
 
   void _onDisconnected() {
@@ -340,6 +398,18 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final result = await ChatApi.fetchConversations();
       conversations = result.items;
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// 拉取群聊列表（刷新缓存）
+  Future<bool> refreshGroups() async {
+    try {
+      final result = await GroupApi.fetchGroups();
+      groups = result;
       notifyListeners();
       return true;
     } catch (_) {
@@ -445,6 +515,43 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  /// 发群消息：WebSocket 优先（等 groupSent 回执），超时/失败走 REST 兜底。
+  Future<GroupMessage?> sendGroupMessage({
+    required int groupId,
+    required String content,
+    required String clientMsgId,
+    String contentType = 'text',
+  }) async {
+    GroupMessage? confirmed;
+    if (connected) {
+      final completer = Completer<GroupMessage?>();
+      _pendingGroupSends[clientMsgId] = completer;
+      _sendBin({
+        'type': 'groupSend',
+        'groupId': groupId,
+        'clientMsgId': clientMsgId,
+        'contentType': contentType,
+        'content': content,
+      });
+      try {
+        confirmed = await completer.future.timeout(const Duration(seconds: 3));
+      } on TimeoutException {
+        confirmed = null;
+      } finally {
+        _pendingGroupSends.remove(clientMsgId);
+      }
+      if (confirmed != null) return confirmed;
+    } else {
+      if (_channel == null) _connect();
+    }
+    try {
+      return await GroupApi.sendMessage(groupId, content,
+          contentType: contentType);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// 标记已读：本地清零 + WS 通知对端 + REST 兜底
   Future<void> markRead(int conversationId) async {
     final idx = conversations.indexWhere((c) => c.id == conversationId);
@@ -459,6 +566,22 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
       await ChatApi.markRead(conversationId);
     } catch (_) {
       // REST 失败忽略，下次进入会话会再同步
+    }
+  }
+
+  /// 标记群已读：本地清零 + REST 同步
+  Future<void> markGroupRead(int groupId, int lastMessageId) async {
+    final idx = groups.indexWhere((g) => g.id == groupId);
+    if (idx >= 0 && groups[idx].unreadCount != 0) {
+      final list = [...groups];
+      list[idx] = list[idx].copyWith(unreadCount: 0);
+      groups = list;
+      notifyListeners();
+    }
+    try {
+      await GroupApi.markRead(groupId, lastMessageId);
+    } catch (_) {
+      // REST 失败忽略，下次进入群聊会再同步
     }
   }
 }

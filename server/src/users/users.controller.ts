@@ -1,4 +1,4 @@
-import { Body, Controller, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Query, UseGuards } from '@nestjs/common';
 import { UpdateProfileDto } from '../auth/auth.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
@@ -15,5 +15,12 @@ export class UsersController {
   async updateMe(@CurrentUser() user: AuthUser, @Body() dto: UpdateProfileDto) {
     await this.users.updateProfile(user.id, dto);
     return this.users.findById(user.id);
+  }
+
+  /** 按手机号搜索用户（添加好友） */
+  @Get('search')
+  @UseGuards(JwtAuthGuard)
+  async search(@Query('phone') phone?: string) {
+    return this.users.searchByPhone(phone ?? '');
   }
 }

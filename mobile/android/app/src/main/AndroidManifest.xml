@@ -4,6 +4,11 @@
     <!-- 聊天语音消息需要录音权限 -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Android 13+ 读取相册图片与视频 -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <!-- Android 12 及以下读取相册 -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <!-- 网络访问：聊天/上传/播放语音等（release 构建不会自动合并 debug 清单的 INTERNET） -->
     <uses-permission android:name="android.permission.INTERNET" />
     <application

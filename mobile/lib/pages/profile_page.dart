@@ -7,16 +7,18 @@ import '../core/auth_service.dart';
 import '../core/chat_api.dart';
 import '../core/follow_api.dart';
 import '../core/post_api.dart';
+import '../core/video_api.dart';
 import '../features/member/presentation/member_plan_page.dart';
+import 'short_video_models.dart';
 import 'profile/my_favorites_page.dart';
 import 'profile/my_history_page.dart';
 import 'profile/my_wallet_page.dart';
 import 'profile/my_works_page.dart';
 import 'profile/order_list_page.dart';
+import 'profile/reels_player_page.dart';
 import '../widgets/image_viewer.dart';
 import '../widgets/state_widgets.dart';
 import 'admin/admin_home_page.dart';
-import 'community/create_post_page.dart';
 import 'community/post_detail_page.dart';
 
 /// 个人主页：对齐《个人页面设计初稿》
@@ -33,7 +35,13 @@ class _ProfilePageState extends State<ProfilePage> {
   final _posts = <Post>[];
   bool _loading = true;
   String? _error;
-  int _tab = 0; // 0 帖子 / 1 Reels / 2 标记
+  int _tab = 0; // 0 帖子 / 1 Reels
+
+  /// 我的短视频作品（Reels Tab，懒加载）
+  final List<ShortVideo> _reels = [];
+  bool _reelsLoaded = false;
+  bool _reelsLoading = false;
+  String? _reelsError;
 
   /// 粉丝/关注数（来自关注接口）
   int _followerCount = 0;
@@ -83,12 +91,33 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _openCreate() async {
-    final created = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => const CreatePostPage()),
+  /// 拉取我的短视频作品
+  Future<void> _loadReels() async {
+    setState(() {
+      _reelsLoading = true;
+      _reelsError = null;
+    });
+    try {
+      final result = await VideoApi.fetchMine();
+      if (mounted) {
+        setState(() {
+          _reels
+            ..clear()
+            ..addAll(result.items);
+          _reelsLoaded = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _reelsError = '加载失败，请重试');
+    } finally {
+      if (mounted) setState(() => _reelsLoading = false);
+    }
+  }
+
+  void _openReels(ShortVideo video) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ReelsPlayerPage(video: video)),
     );
-    if (created == true) _loadPosts(); // 发布成功后刷新作品
   }
 
   void _openDetail(Post post) {
@@ -251,7 +280,11 @@ class _ProfilePageState extends State<ProfilePage> {
           builder: (context, _) {
             final user = AuthService.instance.user;
             return RefreshIndicator(
-              onRefresh: () => Future.wait([_loadPosts(), _loadStats()]),
+              onRefresh: () => Future.wait([
+                _loadPosts(),
+                _loadStats(),
+                if (_reelsLoaded) _loadReels(),
+              ]),
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
@@ -259,7 +292,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   _buildProfileInfo(user),
                   _buildActionButtons(),
                   _buildContentTabs(),
-                  _tab == 0 ? _buildPostGrid() : _buildTabEmpty(),
+                  _tab == 0 ? _buildPostGrid() : _buildReelsGrid(),
                 ],
               ),
             );
@@ -295,14 +328,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 Icon(Icons.arrow_drop_down, size: 20, color: colors.primary),
               ],
-            ),
-          ),
-          // 左侧：发布入口
-          Positioned(
-            left: 4,
-            child: IconButton(
-              icon: Icon(Icons.add_rounded, color: colors.primary),
-              onPressed: _openCreate,
             ),
           ),
           // 右侧：菜单
@@ -586,13 +611,12 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ─── 5. 内容导航 Tab（帖子 / Reels / 标记） ───
+  // ─── 5. 内容导航 Tab（帖子 / Reels） ───
   Widget _buildContentTabs() {
     final colors = AppColors.of(context);
     const tabs = [
       (icon: Icons.grid_view_rounded, label: '帖子'),
-      (icon: Icons.play_circle_outline, label: 'Reels'),
-      (icon: Icons.person_pin_outlined, label: '标记'),
+      (icon: Icons.play_circle_outline, label: '视频'),
     ];
     return Container(
       margin: const EdgeInsets.only(top: 16),
@@ -600,12 +624,17 @@ class _ProfilePageState extends State<ProfilePage> {
         border: Border(bottom: BorderSide(color: colors.divider)),
       ),
       child: Row(
-        children: List.generate(3, (i) {
+        children: List.generate(2, (i) {
           final active = _tab == i;
           final color = active ? colors.primary : colors.textSecondary;
           return Expanded(
             child: GestureDetector(
-              onTap: () => setState(() => _tab = i),
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                setState(() => _tab = i);
+                // 首次进入 Reels 时懒加载
+                if (i == 1 && !_reelsLoaded && !_reelsLoading) _loadReels();
+              },
               child: Column(
                 children: [
                   const SizedBox(height: 8),
@@ -664,12 +693,38 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildTabEmpty() {
-    return SizedBox(
-      height: 280,
-      child: EmptyWidget(
-        icon: _tab == 1 ? Icons.movie_outlined : Icons.person_pin_outlined,
-        message: _tab == 1 ? '还没有视频作品' : '暂无标记内容',
+  // ─── 7. 内容展示：Reels 三列宫格 ───
+  Widget _buildReelsGrid() {
+    if (_reelsLoading && !_reelsLoaded) {
+      return const SizedBox(height: 280, child: LoadingWidget());
+    }
+    if (_reelsError != null && _reels.isEmpty) {
+      return SizedBox(
+        height: 280,
+        child: AppErrorWidget(message: _reelsError!, onRetry: _loadReels),
+      );
+    }
+    if (_reels.isEmpty) {
+      return const SizedBox(
+        height: 280,
+        child: EmptyWidget(
+          icon: Icons.movie_outlined,
+          message: '还没有视频作品，去「视频」页发布吧',
+        ),
+      );
+    }
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _reels.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 2,
+        crossAxisSpacing: 2,
+      ),
+      itemBuilder: (_, i) => _ReelsCell(
+        video: _reels[i],
+        onTap: () => _openReels(_reels[i]),
       ),
     );
   }
@@ -748,18 +803,50 @@ class _GridCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      child:
-          post.images.isNotEmpty &&
-              (post.images.first.startsWith('http://') ||
-                  post.images.first.startsWith('https://'))
-          ? Image.network(
-              post.images.first,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _placeholder(context),
-            )
-          : _placeholder(context),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _cover.isNotEmpty
+              ? Image.network(
+                  _cover,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => _placeholder(context),
+                )
+              : _placeholder(context),
+          if (_hasVideo)
+            const Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: EdgeInsets.all(6),
+                child: Icon(
+                  Icons.play_circle_fill_rounded,
+                  color: Colors.white70,
+                  size: 22,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
+
+  /// 封面图：优先 medias 首项，其次 images 首项，兼容 /uploads/ 相对路径
+  String get _cover {
+    final mediaList = post.medias.isNotEmpty
+        ? post.medias
+        : post.images
+            .map(
+              (url) => PostMedia(type: 'image', url: url, aspectRatio: 4 / 5),
+            )
+            .toList();
+    if (mediaList.isEmpty) return '';
+    final raw = mediaList.first.url;
+    return raw.startsWith('http://') || raw.startsWith('https://')
+        ? raw
+        : ChatApi.resolveUrl(raw);
+  }
+
+  bool get _hasVideo => post.medias.any((m) => m.type == 'video');
 
   Widget _placeholder(BuildContext context) {
     final colors = AppColors.of(context);
@@ -768,4 +855,102 @@ class _GridCell extends StatelessWidget {
       child: Icon(Icons.image_outlined, color: colors.textSecondary),
     );
   }
+}
+
+/// Reels 宫格单元：视频封面
+class _ReelsCell extends StatelessWidget {
+  const _ReelsCell({required this.video, required this.onTap});
+
+  final ShortVideo video;
+  final VoidCallback onTap;
+
+  String get _cover {
+    if (video.cover.isNotEmpty) return video.cover;
+    if (video.photos.isNotEmpty) return video.photos.first;
+    return '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final isPhoto = video.isPhoto || video.videoUrl.isEmpty;
+    return InkWell(
+      onTap: onTap,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _cover.isNotEmpty
+              ? Image.network(
+                  _cover,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    color: colors.placeholder,
+                    child: Icon(
+                      Icons.movie_outlined,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                )
+              : Container(
+                  color: colors.placeholder,
+                  child: Icon(
+                    Icons.movie_outlined,
+                    color: colors.textSecondary,
+                  ),
+                ),
+          if (isPhoto)
+            const Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: EdgeInsets.all(6),
+                child: Icon(
+                  Icons.photo_outlined,
+                  color: Colors.white70,
+                  size: 18,
+                ),
+              ),
+            )
+          else ...[
+            const Align(
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.play_circle_fill_rounded,
+                color: Colors.white,
+                size: 40,
+              ),
+            ),
+            if (video.duration.inSeconds > 0)
+              Positioned(
+                right: 6,
+                bottom: 6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _formatDuration(video.duration),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+String _formatDuration(Duration d) {
+  final total = d.inSeconds;
+  final m = total ~/ 60;
+  final s = (total % 60).toString().padLeft(2, '0');
+  return '$m:$s';
 }

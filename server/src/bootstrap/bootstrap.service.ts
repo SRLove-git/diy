@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { MusicService } from '../music/music.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
 import { VideosService } from '../videos/videos.service';
 
@@ -118,6 +119,7 @@ export class BootstrapService implements OnApplicationBootstrap {
     private readonly users: UsersService,
     private readonly videos: VideosService,
     private readonly music: MusicService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async onApplicationBootstrap() {
@@ -125,6 +127,7 @@ export class BootstrapService implements OnApplicationBootstrap {
     await this.ensureAdmin();
     await this.seedDemoVideos();
     await this.seedDemoMusic();
+    await this.seedDemoNotifications();
   }
 
   private async ensureAdmin() {
@@ -188,5 +191,24 @@ export class BootstrapService implements OnApplicationBootstrap {
       });
     }
     this.logger.log('已确保预置演示配乐就绪');
+  }
+
+  /** 通知表为空时预置全员通知，便于首页角标/通知页演示 */
+  private async seedDemoNotifications() {
+    const count = await this.notifications.countAll();
+    if (count > 0) return;
+    await this.notifications.createAndSend({
+      title: '欢迎来到拾染爱恋手作工坊',
+      content: '新用户专享体验价 ¥39.9/次起，快去预约你第一次拼豆体验吧！',
+      targetType: 'all',
+      channels: 'push',
+    });
+    await this.notifications.createAndSend({
+      title: '社区作品征集活动开启',
+      content: '发布你的 DIY 作品参与评选，人气作品将获得门店专属体验券。',
+      targetType: 'all',
+      channels: 'push',
+    });
+    this.logger.log('已预置演示通知');
   }
 }

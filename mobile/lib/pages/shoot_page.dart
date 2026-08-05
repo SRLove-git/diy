@@ -1,13 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 
+import '../core/media_composer.dart';
 import '../core/music_api.dart';
 import '../core/video_layout.dart';
 import 'douyin_publish_page.dart';
+import 'media_picker_page.dart';
 import 'music_picker_sheet.dart';
 import 'post_edit_page.dart';
 import 'short_video_models.dart';
@@ -21,7 +23,8 @@ import 'short_video_models.dart';
 /// - 底部：拍摄模式（照片/视频）+ 快门区（快门/相册）+ Tab 栏（相机/敬请期待）
 ///
 /// 功能：视频模式真实录制 → 发布页上传发布；照片模式拍照 → 社区发帖；
-/// 相册模式从系统相册选视频 → 发布页；翻转/闪光灯实时控制相机。
+/// 相册模式支持图片/视频混选：纯图片发布笔记，含视频则按选择顺序合成后发布；
+/// 翻转/闪光灯实时控制相机。
 class ShootPage extends StatefulWidget {
   const ShootPage({super.key});
 
@@ -35,8 +38,6 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
 
   /// 底部 Tab：0=相机(默认选中) 1=敬请期待
   int _tabIndex = 0;
-
-  final _picker = ImagePicker();
 
   // ── 相机状态 ──
   CameraController? _camera;
@@ -264,15 +265,63 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
     }
   }
 
-  /// 相册按钮：从系统相册选择视频后先进入编辑页，再进发布流程
+  /// 相册按钮：打开应用内图片/视频混选页，并按选择顺序处理。
   Future<void> _pickFromAlbum() async {
-    final file = await _picker.pickVideo(source: ImageSource.gallery);
-    if (file == null) return;
-    if (!mounted) return;
-    final edit = await _openEditor(video: file);
+    final selected = await Navigator.push<List<SelectedMediaFile>>(
+      context,
+      MaterialPageRoute(builder: (_) => const MediaPickerPage(maxSelection: 9)),
+    );
+    if (selected == null || selected.isEmpty || !mounted) return;
+
+    final onlyPhotos = selected.every(
+      (item) => item.type == SelectedMediaType.image,
+    );
+    if (onlyPhotos) {
+      await _openPublishPage(
+        initialImages: selected.map((item) => XFile(item.path)).toList(),
+        musicTitle: _music?.title,
+      );
+      return;
+    }
+
+    File? videoFile;
+    if (selected.length == 1) {
+      videoFile = File(selected.single.path);
+    } else {
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const PopScope(
+          canPop: false,
+          child: AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 20),
+                Expanded(child: Text('正在按选择顺序拼接素材…')),
+              ],
+            ),
+          ),
+        ),
+      );
+      try {
+        videoFile = await MediaComposer.compose(selected);
+      } catch (_) {
+        if (mounted) _toast('素材拼接失败，请更换素材后重试');
+      } finally {
+        if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      }
+    }
+    if (videoFile == null || !mounted) return;
+
+    final video = XFile(videoFile.path);
+    final edit = await _openEditor(
+      video: video,
+      aspectRatio: selected.length > 1 ? 9 / 16 : null,
+    );
     if (edit == null || !mounted) return;
     await _openPublishPage(
-      initialVideo: file,
+      initialVideo: video,
       musicTitle: edit.music?.title ?? _music?.title,
       edit: edit,
       aspectRatio: edit.aspectRatio,
@@ -304,6 +353,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
   Future<void> _openPublishPage({
     XFile? initialVideo,
     XFile? initialImage,
+    List<XFile>? initialImages,
     int? durationSeconds,
     String? musicTitle,
     PostEditResult? edit,
@@ -315,6 +365,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
         builder: (_) => DouyinPublishPage(
           initialVideo: initialVideo,
           initialImage: initialImage,
+          initialImages: initialImages,
           initialMusic: musicTitle,
           durationSeconds: durationSeconds,
           initialEdit: edit,

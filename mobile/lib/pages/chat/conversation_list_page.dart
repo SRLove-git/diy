@@ -7,7 +7,10 @@ import '../../core/auth_service.dart';
 import '../../core/chat_api.dart';
 import '../../core/chat_service.dart';
 import '../../widgets/state_widgets.dart';
+import 'add_friend_page.dart';
 import 'chat_page.dart';
+import 'create_group_page.dart';
+import 'group_chat_page.dart';
 
 /// 列表筛选
 enum _Filter { all, unread }
@@ -59,12 +62,15 @@ class _ConversationListPageState extends State<ConversationListPage> {
       _loading = true;
       _error = null;
     });
-    final ok = await ChatService.instance.refreshConversations();
+    final results = await Future.wait([
+      ChatService.instance.refreshConversations(),
+      ChatService.instance.refreshGroups(),
+    ]);
     if (mounted) {
       setState(() {
         _loading = false;
         _loaded = true;
-        if (!ok) _error = '加载失败，请下拉重试';
+        if (!results.every((ok) => ok)) _error = '加载失败，请下拉重试';
       });
     }
   }
@@ -101,6 +107,60 @@ class _ConversationListPageState extends State<ConversationListPage> {
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => ChatPage(conversation: conv)))
         .then((_) => ChatService.instance.refreshConversations());
+  }
+
+  void _openGroupChat(GroupChat group) {
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => GroupChatPage(group: group)))
+        .then((_) => ChatService.instance.refreshGroups());
+  }
+
+  /// 右上角加号菜单：发起群聊 / 添加好友
+  void _openAddMenu() {
+    final colors = AppColors.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.group_add_outlined, color: colors.primary),
+              title: const Text('发起群聊'),
+              subtitle: const Text('选择已关注的好友，一起聊天'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _openCreateGroup();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.person_add_alt_outlined, color: colors.primary),
+              title: const Text('添加好友'),
+              subtitle: const Text('通过手机号搜索并添加'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _openAddFriend();
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openCreateGroup() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const CreateGroupPage()),
+    );
+    ChatService.instance.refreshGroups();
+  }
+
+  void _openAddFriend() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AddFriendPage()),
+    );
   }
 
   /// 长按条目：底部操作菜单（置顶 / 标已读 / 删除）
@@ -212,7 +272,14 @@ class _ConversationListPageState extends State<ConversationListPage> {
                 builder: (context, _) => _buildAvatar(),
               ),
               title: const Text('聊天'),
-              actions: [_buildFilterButton()],
+              actions: [
+                _buildFilterButton(),
+                IconButton(
+                  tooltip: '发起群聊 / 添加好友',
+                  icon: const Icon(Icons.add_circle_outline_rounded),
+                  onPressed: _openAddMenu,
+                ),
+              ],
             ),
             _buildSearchBar(),
             Expanded(
@@ -345,7 +412,8 @@ class _ConversationListPageState extends State<ConversationListPage> {
     if (_error != null && !_loaded) {
       return AppErrorWidget(message: _error!, onRetry: _load);
     }
-    if (ChatService.instance.conversations.isEmpty) {
+    final groups = ChatService.instance.groups;
+    if (groups.isEmpty && ChatService.instance.conversations.isEmpty) {
       return RefreshIndicator(
         onRefresh: _load,
         child: ListView(
@@ -360,7 +428,7 @@ class _ConversationListPageState extends State<ConversationListPage> {
         ),
       );
     }
-    if (convs.isEmpty) {
+    if (groups.isEmpty && convs.isEmpty) {
       // 搜索 / 筛选无结果
       return RefreshIndicator(
         onRefresh: _load,
@@ -375,21 +443,197 @@ class _ConversationListPageState extends State<ConversationListPage> {
     }
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView.separated(
+      child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(vertical: 4),
-        itemCount: convs.length,
-        separatorBuilder: (_, _) => Divider(
-          height: 1,
-          indent: 80,
-          color: AppColors.of(context).divider,
+        children: [
+          if (groups.isNotEmpty) ...[
+            _sectionHeader('群聊'),
+            for (final g in groups)
+              _GroupTile(
+                group: g,
+                timeText: _formatTime(g.lastMessageAt),
+                onTap: () => _openGroupChat(g),
+              ),
+          ],
+          if (convs.isNotEmpty) ...[
+            if (groups.isNotEmpty) _sectionHeader('聊天'),
+            for (var i = 0; i < convs.length; i++) ...[
+              if (i > 0)
+                Divider(
+                  height: 1,
+                  indent: 80,
+                  color: AppColors.of(context).divider,
+                ),
+              _ConversationTile(
+                conversation: convs[i],
+                timeText: _formatTime(convs[i].lastMessageAt),
+                onTap: () => _openChat(convs[i]),
+                onLongPress: () => _showActions(convs[i]),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionHeader(String title) {
+    final colors = AppColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: colors.textSecondary,
         ),
-        itemBuilder: (_, i) => _ConversationTile(
-          conversation: convs[i],
-          timeText: _formatTime(convs[i].lastMessageAt),
-          onTap: () => _openChat(convs[i]),
-          onLongPress: () => _showActions(convs[i]),
+      ),
+    );
+  }
+}
+
+/// 群聊条目
+class _GroupTile extends StatelessWidget {
+  const _GroupTile({
+    required this.group,
+    required this.timeText,
+    required this.onTap,
+  });
+
+  final GroupChat group;
+  final String timeText;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final avatar = group.memberAvatars.isNotEmpty
+        ? group.memberAvatars.first
+        : '';
+    final validAvatar =
+        avatar.startsWith('http://') ||
+        avatar.startsWith('https://') ||
+        avatar.startsWith('/uploads/');
+    final hasUnread = group.unreadCount > 0;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: colors.placeholder,
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: validAvatar
+                      ? Image.network(
+                          ChatApi.resolveUrl(avatar),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => _groupIcon(colors),
+                        )
+                      : _groupIcon(colors),
+                ),
+                // 群聊标识角标
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: colors.primary,
+                      border: Border.all(color: colors.surface, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.groups_rounded,
+                      size: 10,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          group.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (timeText.isNotEmpty)
+                        Text(
+                          timeText,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          group.lastMessageText.isEmpty
+                              ? '${group.memberCount} 人群聊'
+                              : group.lastMessageText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      if (hasUnread)
+                        Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.only(left: 8),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: colors.primary,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _groupIcon(AppColors colors) {
+    return Center(
+      child: Icon(
+        Icons.groups_rounded,
+        size: 24,
+        color: colors.textSecondary,
       ),
     );
   }

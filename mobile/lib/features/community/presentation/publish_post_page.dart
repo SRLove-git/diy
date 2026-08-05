@@ -44,6 +44,15 @@ class _PublishPostPageState extends State<PublishPostPage> {
   /// 是否正在发布中
   bool _publishing = false;
 
+  /// 标记位置（发布时写入 post.location）
+  String _location = '';
+
+  /// 高级设置：频道标签（发布时写入 post.channelTag，进入对应频道流）
+  String _channelTag = '';
+
+  /// 自主声明：是否声明原创（发布时写入 tags）
+  bool _originalDeclared = false;
+
   /// 从相册选图
   Future<void> _pickImage() async {
     if (_selectedImages.length >= _maxImages) return;
@@ -101,8 +110,10 @@ class _PublishPostPageState extends State<PublishPostPage> {
       await PostApi.create(
         content: content,
         images: uploadedUrls,
-        tags: [],
+        tags: _originalDeclared ? const ['原创'] : const [],
         medias: medias,
+        location: _location.isEmpty ? null : _location,
+        channelTag: _channelTag.isEmpty ? null : _channelTag,
       );
 
       if (!mounted) return;
@@ -450,9 +461,30 @@ class _PublishPostPageState extends State<PublishPostPage> {
   Widget _buildSettingsList(AppColors colors) {
     return Column(
       children: [
-        _buildSettingItem(Icons.location_on_outlined, '标记位置', colors, true),
-        _buildSettingItem(Icons.verified_outlined, '自主声明', colors, true),
-        _buildSettingItem(Icons.tune, '高级设置', colors, false),
+        _buildSettingItem(
+          Icons.location_on_outlined,
+          '标记位置',
+          _location.isEmpty ? '' : _location,
+          colors,
+          true,
+          _pickLocation,
+        ),
+        _buildSettingItem(
+          Icons.verified_outlined,
+          '自主声明',
+          _originalDeclared ? '已声明原创' : '未声明',
+          colors,
+          true,
+          _toggleOriginal,
+        ),
+        _buildSettingItem(
+          Icons.tune,
+          '高级设置',
+          _channelTag.isEmpty ? '' : _channelTag,
+          colors,
+          false,
+          _editChannel,
+        ),
       ],
     );
   }
@@ -461,21 +493,15 @@ class _PublishPostPageState extends State<PublishPostPage> {
   Widget _buildSettingItem(
     IconData icon,
     String title,
+    String value,
     AppColors colors,
     bool showDivider,
+    VoidCallback onTap,
   ) {
     return Column(
       children: [
         InkWell(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('$title（演示）'),
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 1),
-              ),
-            );
-          },
+          onTap: onTap,
           child: SizedBox(
             height: 56,
             child: Padding(
@@ -486,10 +512,14 @@ class _PublishPostPageState extends State<PublishPostPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      title,
-                      style: const TextStyle(
+                      value.isEmpty ? title : '$title：$value',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
                         fontSize: 15,
-                        color: Colors.black87,
+                        color: value.isEmpty
+                            ? Colors.black87
+                            : colors.textSecondary,
                       ),
                     ),
                   ),
@@ -510,6 +540,124 @@ class _PublishPostPageState extends State<PublishPostPage> {
           ),
       ],
     );
+  }
+
+  /// 标记位置：从常用地点中选择（写入 post.location）
+  Future<void> _pickLocation() async {
+    const locations = [
+      '手作市集',
+      '工作室',
+      '家里',
+      '咖啡店',
+      '学校',
+      '公园',
+    ];
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            const Text(
+              '标记位置',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            for (final l in locations)
+              ListTile(
+                dense: true,
+                title: Text(l),
+                trailing: _location == l
+                    ? Icon(Icons.check_rounded,
+                        color: AppColors.light.primary, size: 20)
+                    : null,
+                onTap: () => Navigator.pop(sheetContext, l),
+              ),
+            if (_location.isNotEmpty)
+              TextButton(
+                onPressed: () => Navigator.pop(sheetContext, ''),
+                child: const Text('不显示位置'),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (picked != null) setState(() => _location = picked);
+  }
+
+  /// 自主声明：原创声明开关
+  Future<void> _toggleOriginal() async {
+    final value = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('自主声明'),
+        content: SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('声明为原创作品'),
+          value: _originalDeclared,
+          onChanged: (v) => Navigator.pop(dialogContext, v),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('取消'),
+          ),
+        ],
+      ),
+    );
+    if (value != null) setState(() => _originalDeclared = value);
+  }
+
+  /// 高级设置：频道标签（进入对应频道信息流）
+  Future<void> _editChannel() async {
+    final controller = TextEditingController(text: _channelTag);
+    final value = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '频道标签',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              maxLength: 20,
+              decoration: const InputDecoration(
+                hintText: '如：#手作日常 / #陶艺研究所',
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(sheetContext, controller.text.trim()),
+                child: const Text('保存'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    if (value == null) return;
+    var tag = value;
+    if (tag.isNotEmpty && !tag.startsWith('#')) tag = '#$tag';
+    setState(() => _channelTag = tag);
   }
 
   /// 底部工具栏：表情图标 + 文本T图标

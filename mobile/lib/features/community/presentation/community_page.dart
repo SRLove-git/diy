@@ -11,6 +11,7 @@ import '../data/api_community_repository.dart';
 import '../domain/community_models.dart';
 import '../domain/community_repository.dart';
 import 'community_palette.dart';
+import 'discover/discover_search_page.dart';
 import 'widgets/community_sheets.dart';
 import 'widgets/feed_card.dart';
 import 'publish_post_page.dart';
@@ -18,23 +19,29 @@ import 'publish_post_page.dart';
 /// 社区频道信息流页：Header + 搜索栏 + 动态 Feed
 ///
 /// 结构：SafeArea > CustomScrollView（SliverAppBar / 搜索栏 / Feed 列表）。
-/// 数据经 [CommunityRepository] 注入，当前为真实 API 实现（[ApiCommunityRepository]），
-/// 测试时替换为 [MockCommunityRepository] 即可。
+/// 数据经 [CommunityRepository] 注入，当前为真实 API 实现（[ApiCommunityRepository]）。
 class CommunityPage extends StatefulWidget {
-  const CommunityPage({super.key, required this.onSwitchTab});
+  const CommunityPage({super.key, required this.onSwitchTab, this.repository});
 
   /// 切换底部主 Tab（首页/发现/消息/个人主页），由外层壳注入
   final ValueChanged<int> onSwitchTab;
+
+  /// 数据仓库（默认接入真实后端；测试时注入 Mock 实现）
+  final CommunityRepository? repository;
 
   @override
   State<CommunityPage> createState() => _CommunityPageState();
 }
 
 class _CommunityPageState extends State<CommunityPage> {
-  final CommunityRepository _repository = ApiCommunityRepository();
+  late final CommunityRepository _repository =
+      widget.repository ?? ApiCommunityRepository();
 
   final List<FeedPost> _posts = [];
+  int _page = 1;
+  bool _hasMore = true;
   bool _loading = true;
+  bool _loadingMore = false;
   String? _error;
 
   @override
@@ -47,14 +54,17 @@ class _CommunityPageState extends State<CommunityPage> {
     setState(() {
       _loading = true;
       _error = null;
+      _page = 1;
+      _hasMore = true;
     });
     try {
-      final posts = await _repository.fetchFeed();
+      final posts = await _repository.fetchFeed(page: _page);
       if (!mounted) return;
       setState(() {
         _posts
           ..clear()
           ..addAll(posts);
+        _hasMore = posts.length >= 10;
         _loading = false;
       });
     } catch (_) {
@@ -67,20 +77,32 @@ class _CommunityPageState extends State<CommunityPage> {
     }
   }
 
-  // --- 交互 ---
-
-  void _showToast(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 1),
-      ),
-    );
+  /// 上拉加载下一页
+  Future<void> _loadMore() async {
+    if (_loading || _loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final posts = await _repository.fetchFeed(page: _page + 1);
+      if (!mounted) return;
+      setState(() {
+        _posts.addAll(posts);
+        _page += 1;
+        _hasMore = posts.length >= 10;
+        _loadingMore = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingMore = false);
+    }
   }
 
+  // --- 交互 ---
+
   void _onAvatarTap() => widget.onSwitchTab(3); // 切到个人主页
-  void _onSearchTap() => _showToast('找频道 / 找内容（演示）');
+  void _onSearchTap() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const DiscoverSearchPage()),
+    );
+  }
 
   /// 点击帖子作者头像：打开用户主页展示页面
   void _openUserProfile(FeedPost post) {
@@ -116,6 +138,10 @@ class _CommunityPageState extends State<CommunityPage> {
       context,
       post: post,
       comments: comments,
+      onCommentAdded: () {
+        if (!mounted) return;
+        setState(() => _apply(post, (p) => p.copyWith(commentCount: p.commentCount + 1)));
+      },
       currentUser: CommunityUser(
         id: auth?.id ?? 0,
         nickname: auth?.nickname ?? '我',
@@ -124,7 +150,16 @@ class _CommunityPageState extends State<CommunityPage> {
     );
   }
 
-  void _onShare(FeedPost post) => showShareSheet(context);
+  void _onShare(FeedPost post) {
+    showShareSheet(
+      context,
+      post: post,
+      onShared: () {
+        if (!mounted) return;
+        setState(() => _apply(post, (p) => p.copyWith(shareCount: p.shareCount + 1)));
+      },
+    );
+  }
 
   /// 打开发布页面，返回后自动刷新列表
   Future<void> _openPublish() async {
@@ -145,13 +180,17 @@ class _CommunityPageState extends State<CommunityPage> {
         child: RefreshIndicator(
           color: colors.primary,
           onRefresh: _load,
-          child: _buildBody(),
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _onScroll,
+            child: _buildBody(),
+          ),
         ),
       ),
     );
   }
 
   Widget _buildBody() {
+    final colors = AppColors.of(context);
     if (_loading) return const _SkeletonFeed();
 
     if (_error != null) {
@@ -182,27 +221,59 @@ class _CommunityPageState extends State<CommunityPage> {
         else
           SliverPadding(
             padding: const EdgeInsets.only(bottom: 24),
-            sliver: SliverList.builder(
-              itemCount: _posts.length,
-              itemBuilder: (_, i) {
-                final post = _posts[i];
-                return _EntranceItem(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: FeedCard(
-                      post: post,
-                      onAvatarTap: () => _openUserProfile(post),
-                      onLike: () => _onLike(post),
-                      onComment: () => _onComment(post),
-                      onShare: () => _onShare(post),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (_, i) {
+                  // 底部加载/到底提示
+                  if (i >= _posts.length) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Center(
+                        child: _hasMore
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(strokeWidth: 2.4),
+                              )
+                            : Text(
+                                '没有更多了',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                      ),
+                    );
+                  }
+                  final post = _posts[i];
+                  return _EntranceItem(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: FeedCard(
+                        post: post,
+                        onAvatarTap: () => _openUserProfile(post),
+                        onLike: () => _onLike(post),
+                        onComment: () => _onComment(post),
+                        onShare: () => _onShare(post),
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+                childCount: _posts.length + 1,
+              ),
             ),
           ),
       ],
     );
+  }
+
+  /// 滚动到底部附近自动加载下一页
+  bool _onScroll(ScrollNotification notification) {
+    if (notification.metrics.pixels >=
+        notification.metrics.maxScrollExtent - 400) {
+      _loadMore();
+    }
+    return false;
   }
 
   /// 顶部 Header：70px，左侧 40x40 头像 + 「频道」，右侧 用户/收藏 icon

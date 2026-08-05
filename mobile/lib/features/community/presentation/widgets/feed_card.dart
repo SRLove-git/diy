@@ -185,11 +185,14 @@ class _FeedCardState extends State<FeedCard>
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       child: Row(
         children: [
-          Text(
-            '浏览 ${formatCount(post.viewCount)}',
-            style: TextStyle(fontSize: 12.5, color: colors.textSecondary),
+          Expanded(
+            child: Text(
+              '浏览 ${formatCount(post.viewCount)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12.5, color: colors.textSecondary),
+            ),
           ),
-          const Spacer(),
           // 点赞
           GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -217,7 +220,7 @@ class _FeedCardState extends State<FeedCard>
               ],
             ),
           ),
-          const SizedBox(width: 20),
+          const SizedBox(width: 14),
           // 评论
           GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -238,7 +241,7 @@ class _FeedCardState extends State<FeedCard>
               ],
             ),
           ),
-          const SizedBox(width: 20),
+          const SizedBox(width: 14),
           // 分享
           GestureDetector(
             behavior: HitTestBehavior.opaque,

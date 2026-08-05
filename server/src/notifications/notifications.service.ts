@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { Notification, NotificationTarget } from './notification.entity';
+import { NotificationRead } from './notification-read.entity';
 import { NotificationTemplate } from './notification-template.entity';
 
 @Injectable()
@@ -12,6 +13,8 @@ export class NotificationsService {
     private readonly notificationRepo: Repository<Notification>,
     @InjectRepository(NotificationTemplate)
     private readonly templateRepo: Repository<NotificationTemplate>,
+    @InjectRepository(NotificationRead)
+    private readonly readRepo: Repository<NotificationRead>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
   ) {}
@@ -46,9 +49,141 @@ export class NotificationsService {
     return { items, total, page, pageSize };
   }
 
+  /** 通知总数（用于预置数据判断） */
+  async countAll(): Promise<number> {
+    return this.notificationRepo.count();
+  }
+
   /** 删除通知 */
   async remove(id: number): Promise<void> {
     await this.notificationRepo.delete(id);
+  }
+
+  // ─── 用户端：我的通知 ───
+
+  /** 当前用户可见的通知（全体 / 本人角色 / 定向本人），仅已发送 */
+  async myNotifications(
+    userId: number,
+    page = 1,
+    pageSize = 20,
+  ) {
+    const role = await this.resolveRole(userId);
+    const applicable = await this.applicableNotifications(userId, role);
+    const ids = applicable.map((n) => n.id);
+    if (!ids.length) return { items: [], total: 0, unread: 0, page, pageSize };
+
+    const readRows = await this.readRepo.find({
+      where: { userId, notificationId: In(ids) },
+      select: { notificationId: true },
+    });
+    const readSet = new Set(readRows.map((r) => r.notificationId));
+
+    const total = applicable.length;
+    const unread = applicable.filter((n) => !readSet.has(n.id)).length;
+    const start = (page - 1) * pageSize;
+    const pageItems = applicable.slice(start, start + pageSize);
+
+    return {
+      items: pageItems.map((n) => ({
+        id: n.id,
+        title: n.title,
+        content: n.content,
+        channel: n.channels,
+        createdAt: n.createdAt,
+        sentAt: n.sentAt,
+        read: readSet.has(n.id),
+      })),
+      total,
+      unread,
+      page,
+      pageSize,
+    };
+  }
+
+  /** 未读通知数 */
+  async unreadCount(userId: number): Promise<number> {
+    const role = await this.resolveRole(userId);
+    const applicable = await this.applicableNotifications(userId, role);
+    if (!applicable.length) return 0;
+    const rows = await this.readRepo.find({
+      where: { userId },
+      select: { notificationId: true },
+    });
+    const readSet = new Set(rows.map((r) => r.notificationId));
+    return applicable.filter((n) => !readSet.has(n.id)).length;
+  }
+
+  /** 标记单条已读 */
+  async markRead(userId: number, notificationId: number) {
+    const notification = await this.notificationRepo.findOneBy({
+      id: notificationId,
+      sent: true,
+    });
+    if (!notification) return { ok: true };
+    await this.saveRead(userId, notificationId);
+    return { ok: true };
+  }
+
+  /** 全部标记已读 */
+  async markAllRead(userId: number) {
+    const role = await this.resolveRole(userId);
+    const applicable = await this.applicableNotifications(userId, role);
+    for (const n of applicable) {
+      await this.saveRead(userId, n.id);
+    }
+    return { ok: true };
+  }
+
+  /** 当前用户可见的通知实体（按发送时间倒序） */
+  private async applicableNotifications(
+    userId: number,
+    role: string,
+  ): Promise<Notification[]> {
+    const rows = await this.notificationRepo.find({
+      where: { sent: true },
+      order: { createdAt: 'DESC' },
+    });
+    return rows.filter((n) => this.appliesTo(n, userId, role));
+  }
+
+  /** 用户角色（兜底普通用户） */
+  private async resolveRole(userId: number): Promise<string> {
+    const user = await this.userRepo.findOneBy({ id: userId });
+    return user?.role ?? 'user';
+  }
+
+  /** 通知是否对当前用户可见 */
+  private appliesTo(
+    n: Notification,
+    userId: number,
+    role: string,
+  ): boolean {
+    switch (n.targetType) {
+      case 'all':
+        return true;
+      case 'role':
+        return n.targetRole === role;
+      case 'user':
+        return (n.targetUserIds ?? '')
+          .split(',')
+          .map(Number)
+          .filter(Boolean)
+          .includes(userId);
+      default:
+        return false;
+    }
+  }
+
+  /** 幂等写入已读记录 */
+  private async saveRead(userId: number, notificationId: number) {
+    if (
+      await this.readRepo.existsBy({ userId, notificationId })
+    ) {
+      return;
+    }
+    await this.readRepo.save(
+      this.readRepo.create({ userId, notificationId }),
+    );
   }
 
   // ─── 模板 CRUD ───

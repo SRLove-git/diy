@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import 'package:diy_mobile/features/community/data/mock_community_repository.dart';
 import 'package:diy_mobile/features/community/presentation/community_page.dart';
 
 void main() {
   Future<void> pumpPage(WidgetTester tester) async {
+    // 测试环境无 .env 资源，直接注入 API 基址（AppConfig/AuthService 依赖）
+    dotenv.testLoad(mergeWith: {'API_BASE_URL': 'http://localhost:3000/api'});
+
     // 模拟手机竖屏视口（360x780 逻辑像素）
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 3.0;
@@ -12,7 +17,10 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: CommunityPage(onSwitchTab: (_) {}),
+        home: CommunityPage(
+          onSwitchTab: (_) {},
+          repository: MockCommunityRepository(),
+        ),
       ),
     );
     // 等 Mock 仓库延迟(450ms) + 入场动画完成
@@ -23,10 +31,9 @@ void main() {
   testWidgets('频道页渲染：Header / 搜索栏 / 信息流', (WidgetTester tester) async {
     await pumpPage(tester);
 
-    // 顶部 Header：频道标题 + 用户/收藏 icon
-    expect(find.text('频道'), findsOneWidget);
-    expect(find.byIcon(Icons.person_outline_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.bookmark_border_rounded), findsOneWidget);
+    // 顶部 Header：社区标题 + 发布 icon
+    expect(find.text('社区'), findsOneWidget);
+    expect(find.byIcon(Icons.camera_alt_outlined), findsOneWidget);
 
     // 搜索栏
     expect(find.text('找频道/找内容'), findsOneWidget);

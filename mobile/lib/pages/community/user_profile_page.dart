@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/chat_api.dart';
 import '../../core/chat_service.dart';
 import '../../core/follow_api.dart';
+import '../../core/post_api.dart';
 import '../../features/community/domain/community_models.dart';
 import '../chat/chat_page.dart';
+import 'post_detail_page.dart';
 
 /// 用户主页展示页面
 ///
@@ -59,10 +62,32 @@ class _UserProfilePageState extends State<UserProfilePage> {
   FollowStatus? _follow;
   bool _followBusy = false;
 
+  /// 该用户发布的真实作品列表
+  final List<Post> _posts = [];
+  bool _postsLoading = true;
+
   @override
   void initState() {
     super.initState();
     _loadFollow();
+    _loadPosts();
+  }
+
+  /// 拉取该用户的已通过作品
+  Future<void> _loadPosts() async {
+    try {
+      final result = await PostApi.fetchByUser(_userId);
+      if (mounted) {
+        setState(() {
+          _posts
+            ..clear()
+            ..addAll(result.items);
+          _postsLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _postsLoading = false);
+    }
   }
 
   /// 查询与作者的关注关系（后端不可用时保持默认未关注态）
@@ -105,6 +130,42 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
   }
 
+  /// 更多：分享主页（复制链接）
+  Future<void> _showMore() async {
+    final messenger = ScaffoldMessenger.of(context);
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.link_rounded),
+              title: const Text('分享主页'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                Clipboard.setData(
+                  ClipboardData(
+                    text: 'https://diy.example.com/user/$_userId',
+                  ),
+                );
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('主页链接已复制'),
+                    behavior: SnackBarBehavior.floating,
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -127,7 +188,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
               Icons.more_horiz,
               color: UserProfilePage._textPrimary,
             ),
-            onPressed: () => _toast(context, '更多（演示）'),
+            onPressed: _showMore,
           ),
         ],
       ),
@@ -139,43 +200,57 @@ class _UserProfilePageState extends State<UserProfilePage> {
           _buildActions(context),
           const Divider(height: 16, thickness: 0.5, color: Color(0xFFF0E5E8)),
           // ---- 帖子列表 ----
-          // 第一个帖子（按设计指导详细复刻）
-          _PostItem(
-            avatar: _avatar,
-            nickname: _nickname,
-            tag: '#视频素材',
-            title: '苦しみを知る',
-            imageUrl: 'https://picsum.photos/seed/profile1/900/1125',
-            likeText: '爱了 3',
-            viewText: '浏览 220',
-            commentCount: '3',
-          ),
-          const Divider(height: 16, thickness: 0.5, color: Color(0xFFF0E5E8)),
-          // 补充示例帖子（延续同一结构）
-          _PostItem(
-            avatar: _avatar,
-            nickname: _nickname,
-            tag: '#手作日常',
-            title: '手作の時間',
-            imageUrl: 'https://picsum.photos/seed/profile2/900/1125',
-            likeText: '爱了 12',
-            viewText: '浏览 512',
-            commentCount: '6',
-          ),
-          const Divider(height: 16, thickness: 0.5, color: Color(0xFFF0E5E8)),
-          _PostItem(
-            avatar: _avatar,
-            nickname: _nickname,
-            tag: '#日常碎片',
-            title: '小さな幸せ',
-            imageUrl: 'https://picsum.photos/seed/profile3/900/1125',
-            likeText: '爱了 27',
-            viewText: '浏览 1.2千',
-            commentCount: '15',
-          ),
+          if (_postsLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 40),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else if (_posts.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 40),
+              child: Center(
+                child: Text(
+                  'TA 还没有发布作品',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: UserProfilePage._textSecondary,
+                  ),
+                ),
+              ),
+            )
+          else
+            for (final p in _posts) ...[
+              _PostItem(
+                avatar: _avatar,
+                nickname: _nickname,
+                tag: p.channelTag.isNotEmpty ? p.channelTag : '#作品',
+                title: p.content,
+                imageUrl: _postCover(p),
+                likeText: '爱了 ${formatCount(p.likeCount)}',
+                viewText: '浏览 ${formatCount(p.viewCount)}',
+                commentCount: '${p.commentCount}',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => PostDetailPage(postId: p.id),
+                  ),
+                ),
+              ),
+              const Divider(
+                height: 16,
+                thickness: 0.5,
+                color: Color(0xFFF0E5E8),
+              ),
+            ],
         ],
       ),
     );
+  }
+
+  /// 帖子封面：优先媒体首项，回退 images 首图
+  String _postCover(Post p) {
+    final media = p.medias.isNotEmpty ? p.medias.first.url : '';
+    final url = media.isNotEmpty ? media : (p.images.isNotEmpty ? p.images.first : '');
+    return url.isEmpty ? '' : ChatApi.resolveUrl(url);
   }
 
   /// 用户信息区域：左侧圆形头像，右侧昵称 + LV5 + 资料行
@@ -422,6 +497,7 @@ class _PostItem extends StatelessWidget {
     required this.likeText,
     required this.viewText,
     required this.commentCount,
+    this.onTap,
   });
 
   final String avatar;
@@ -436,12 +512,16 @@ class _PostItem extends StatelessWidget {
   /// 如「浏览 220」
   final String viewText;
   final String commentCount;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         // 作者行：小圆形头像 + 昵称 + 灰色标签
         Padding(
           padding: const EdgeInsets.only(top: 14, bottom: 10),
@@ -583,7 +663,8 @@ class _PostItem extends StatelessWidget {
             ],
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 }

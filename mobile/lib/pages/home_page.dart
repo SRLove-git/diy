@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import '../core/api_client.dart';
 import '../core/appointment_api.dart';
 import '../core/auth_service.dart';
+import '../core/chat_api.dart';
+import '../core/notification_api.dart';
+import '../core/post_api.dart';
 import '../features/home/presentation/palette.dart';
 import '../features/member/presentation/member_plan_page.dart';
 import 'admin/admin_dashboard_page.dart';
@@ -20,6 +23,10 @@ import 'booking/booking_flow_page.dart';
 import 'checkin/my_checkin_qr_page.dart';
 import 'checkin/scan_checkin_page.dart';
 import 'checkin/service_timer_page.dart';
+import 'community/post_detail_page.dart';
+import 'home/coupon_center_page.dart';
+import 'home/works_list_page.dart';
+import 'notifications/notification_list_page.dart';
 
 class MockProduct {
   const MockProduct({
@@ -48,14 +55,17 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   List<Appointment> _activeAppointments = [];
+  int _unreadCount = 0;
   Timer? _tickTimer;
   Timer? _pollTimer;
+  Timer? _unreadTimer;
 
   @override
   void initState() {
     super.initState();
     if (!widget.loadActiveAppointments) return;
     _loadActiveAppointments();
+    _loadUnreadCount();
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted &&
           _activeAppointments.any(
@@ -70,13 +80,35 @@ class _HomePageState extends State<HomePage> {
       const Duration(seconds: 3),
       (_) => _loadActiveAppointments(),
     );
+    _unreadTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _loadUnreadCount(),
+    );
   }
 
   @override
   void dispose() {
     _tickTimer?.cancel();
     _pollTimer?.cancel();
+    _unreadTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final count = await NotificationApi.fetchUnreadCount();
+      if (!mounted) return;
+      setState(() => _unreadCount = count);
+    } catch (_) {
+      // 未读数获取失败时保持上次角标，不阻塞首页
+    }
+  }
+
+  Future<void> _openNotifications() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const NotificationListPage()),
+    );
+    _loadUnreadCount();
   }
 
   Future<void> _loadActiveAppointments() async {
@@ -125,7 +157,12 @@ class _HomePageState extends State<HomePage> {
             return CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
-                SliverToBoxAdapter(child: HomeHeader(isAdmin: isAdmin)),
+                SliverToBoxAdapter(
+                  child: HomeHeader(
+                    unreadCount: _unreadCount,
+                    onNotifications: _openNotifications,
+                  ),
+                ),
                 SliverToBoxAdapter(
                   child: FeatureEntryRow(
                     isAdmin: isAdmin,
@@ -162,7 +199,11 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 26)),
-                const SliverToBoxAdapter(child: HotRecommendSection()),
+                SliverToBoxAdapter(
+                  child: HotRecommendSection(
+                    enabled: widget.loadActiveAppointments,
+                  ),
+                ),
                 if (_activeAppointments.isNotEmpty) ...[
                   const SliverToBoxAdapter(child: SizedBox(height: 28)),
                   SliverToBoxAdapter(
@@ -183,12 +224,25 @@ class _HomePageState extends State<HomePage> {
 }
 
 class HomeHeader extends StatelessWidget {
-  const HomeHeader({super.key, required this.isAdmin});
+  const HomeHeader({
+    super.key,
+    required this.unreadCount,
+    required this.onNotifications,
+  });
 
-  final bool isAdmin;
+  final int unreadCount;
+  final VoidCallback onNotifications;
 
   @override
   Widget build(BuildContext context) {
+    final user = AuthService.instance.user;
+    final avatar = user?.avatar;
+    final hasNetworkAvatar =
+        avatar != null &&
+        avatar.isNotEmpty &&
+        (avatar.startsWith('http://') ||
+            avatar.startsWith('https://') ||
+            avatar.startsWith('/uploads/'));
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 15, 18, 19),
       child: Row(
@@ -221,7 +275,10 @@ class HomeHeader extends StatelessWidget {
               ],
             ),
           ),
-          _NotificationButton(count: isAdmin ? 12 : 6),
+          _NotificationButton(
+            count: unreadCount,
+            onTap: onNotifications,
+          ),
           const SizedBox(width: 14),
           Container(
             width: 44,
@@ -232,14 +289,17 @@ class HomeHeader extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: ClipOval(
-              child: Image.asset(
-                'assets/images/home/avatar.png',
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const ColoredBox(
-                  color: Color(0xFFFFDCE5),
-                  child: Icon(Icons.person, color: HomePalette.primary),
-                ),
-              ),
+              child: hasNetworkAvatar
+                  ? Image.network(
+                      ChatApi.resolveUrl(avatar),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const _AvatarFallback(),
+                    )
+                  : const Image(
+                      image: AssetImage('assets/images/home/avatar.png'),
+                      fit: BoxFit.cover,
+                      errorBuilder: _AvatarFallback.errorBuilder,
+                    ),
             ),
           ),
         ],
@@ -248,49 +308,77 @@ class HomeHeader extends StatelessWidget {
   }
 }
 
+class _AvatarFallback extends StatelessWidget {
+  const _AvatarFallback();
+
+  static Widget errorBuilder(
+    BuildContext context,
+    Object error,
+    StackTrace? stackTrace,
+  ) =>
+      const _AvatarFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Color(0xFFFFDCE5),
+      child: Icon(Icons.person, color: HomePalette.primary),
+    );
+  }
+}
+
 class _NotificationButton extends StatelessWidget {
-  const _NotificationButton({required this.count});
+  const _NotificationButton({required this.count, required this.onTap});
 
   final int count;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: 38,
       height: 44,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          const Align(
-            alignment: Alignment.bottomLeft,
-            child: Icon(
-              Icons.notifications_none_rounded,
-              color: HomePalette.textPrimary,
-              size: 28,
-            ),
-          ),
-          Positioned(
-            top: 0,
-            right: 0,
-            child: Container(
-              constraints: const BoxConstraints(minWidth: 22, minHeight: 22),
-              padding: const EdgeInsets.symmetric(horizontal: 5),
-              alignment: Alignment.center,
-              decoration: const BoxDecoration(
-                color: HomePalette.badgeRed,
-                shape: BoxShape.circle,
+      child: InkResponse(
+        radius: 22,
+        onTap: onTap,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Align(
+              alignment: Alignment.bottomLeft,
+              child: Icon(
+                Icons.notifications_none_rounded,
+                color: HomePalette.textPrimary,
+                size: 28,
               ),
-              child: Text(
-                '$count',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
+            ),
+            if (count > 0)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Container(
+                  constraints: const BoxConstraints(
+                    minWidth: 22,
+                    minHeight: 22,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: HomePalette.badgeRed,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    count > 99 ? '99+' : '$count',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -476,11 +564,13 @@ class ShortcutBar extends StatelessWidget {
               SizedBox(
                 width: itemWidth,
                 child: _ShortcutItem(
-                  icon: item.icon,
-                  label: item.label,
-                  colors: item.colors,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => item.page),
+                  entry: _ShortcutData(
+                    icon: item.icon,
+                    label: item.label,
+                    colors: item.colors,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => item.page),
+                    ),
                   ),
                 ),
               ),
@@ -489,26 +579,31 @@ class ShortcutBar extends StatelessWidget {
       );
     }
 
-    const items = [
+    final items = [
       _ShortcutData(
         icon: Icons.auto_awesome_rounded,
         label: '新品推荐',
-        colors: [Color(0xFFFF8199), Color(0xFFFF506F)],
+        colors: const [Color(0xFFFF8199), Color(0xFFFF506F)],
+        onTap: () =>
+            _push(context, const WorksListPage(mode: WorksListMode.latest)),
       ),
       _ShortcutData(
         icon: Icons.redeem_rounded,
         label: '领券中心',
-        colors: [Color(0xFFFFC05B), Color(0xFFFF9D29)],
+        colors: const [Color(0xFFFFC05B), Color(0xFFFF9D29)],
+        onTap: () => _push(context, const CouponCenterPage()),
       ),
       _ShortcutData(
         icon: Icons.workspace_premium_rounded,
         label: '会员专享',
-        colors: [Color(0xFFA37AFF), Color(0xFF774CE8)],
+        colors: const [Color(0xFFA37AFF), Color(0xFF774CE8)],
+        onTap: () => _push(context, const MemberPlanPage()),
       ),
       _ShortcutData(
         icon: Icons.local_fire_department_rounded,
         label: '热门排行',
-        colors: [Color(0xFF83CCFF), Color(0xFF5799EC)],
+        colors: const [Color(0xFF83CCFF), Color(0xFF5799EC)],
+        onTap: () => _push(context, const WorksListPage(mode: WorksListMode.hot)),
       ),
     ];
 
@@ -517,60 +612,46 @@ class ShortcutBar extends StatelessWidget {
       child: Row(
         children: items
             .map(
-              (item) => Expanded(
-                child: _ShortcutItem(
-                  icon: item.icon,
-                  label: item.label,
-                  colors: item.colors,
-                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${item.label}即将上线'),
-                      duration: const Duration(seconds: 1),
-                    ),
-                  ),
-                ),
-              ),
+              (item) => Expanded(child: _ShortcutItem(entry: item)),
             )
             .toList(),
       ),
     );
   }
+
+  void _push(BuildContext context, Widget page) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  }
 }
 
 class _ShortcutItem extends StatelessWidget {
   const _ShortcutItem({
-    required this.icon,
-    required this.label,
-    required this.colors,
-    required this.onTap,
+    required this.entry,
   });
 
-  final IconData icon;
-  final String label;
-  final List<Color> colors;
-  final VoidCallback onTap;
+  final _ShortcutData entry;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: label,
+      label: entry.label,
       child: InkResponse(
         radius: 34,
-        onTap: onTap,
+        onTap: entry.onTap,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             _GradientIcon(
-              icon: icon,
-              colors: colors,
+              icon: entry.icon,
+              colors: entry.colors,
               size: 46,
               iconSize: 23,
               radius: 23,
             ),
             const SizedBox(height: 10),
             Text(
-              label,
+              entry.label,
               maxLines: 1,
               style: const TextStyle(
                 color: HomePalette.textPrimary,
@@ -590,11 +671,13 @@ class _ShortcutData {
     required this.icon,
     required this.label,
     required this.colors,
+    required this.onTap,
   });
 
   final IconData icon;
   final String label;
   final List<Color> colors;
+  final VoidCallback onTap;
 }
 
 class _AdminShortcutData {
@@ -815,11 +898,51 @@ class PromoBanner extends StatelessWidget {
   }
 }
 
-class HotRecommendSection extends StatelessWidget {
-  const HotRecommendSection({super.key});
+class HotRecommendSection extends StatefulWidget {
+  const HotRecommendSection({super.key, this.enabled = true});
+
+  /// 是否加载远程数据（关闭时仅展示内置示例，供测试/离线使用）
+  final bool enabled;
+
+  @override
+  State<HotRecommendSection> createState() => _HotRecommendSectionState();
+}
+
+class _HotRecommendSectionState extends State<HotRecommendSection> {
+  List<HomeWorkItem> _works = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.enabled) _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final result = await PostApi.fetchHot(page: 1);
+      if (!mounted) return;
+      setState(() {
+        _works = result.items
+            .take(6)
+            .map(HomeWorkItem.fromPost)
+            .where((item) => item.cover.isNotEmpty)
+            .toList();
+      });
+    } catch (_) {
+      // 接口不可用时回退到内置示例
+    }
+  }
+
+  void _openMore() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const WorksListPage(mode: WorksListMode.hot)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final useMock = _works.isEmpty;
+    final count = useMock ? _mockProducts.length : _works.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -839,7 +962,7 @@ class HotRecommendSection extends StatelessWidget {
               ),
               InkWell(
                 borderRadius: BorderRadius.circular(16),
-                onTap: () {},
+                onTap: _openMore,
                 child: const Padding(
                   padding: EdgeInsets.symmetric(vertical: 5, horizontal: 2),
                   child: Row(
@@ -870,13 +993,155 @@ class HotRecommendSection extends StatelessWidget {
             physics: const BouncingScrollPhysics(),
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _mockProducts.length,
+            itemCount: count,
             separatorBuilder: (_, _) => const SizedBox(width: 10),
-            itemBuilder: (context, index) =>
-                ProductCard(product: _mockProducts[index], index: index),
+            itemBuilder: (context, index) => useMock
+                ? ProductCard(product: _mockProducts[index], index: index)
+                : WorkCard(work: _works[index]),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// 首页热门推荐卡片数据（由社区作品映射而来）
+class HomeWorkItem {
+  const HomeWorkItem({
+    required this.id,
+    required this.title,
+    required this.cover,
+    required this.authorName,
+    required this.likes,
+    required this.collections,
+  });
+
+  final int id;
+  final String title;
+  final String cover;
+  final String authorName;
+  final int likes;
+  final int collections;
+
+  factory HomeWorkItem.fromPost(Post post) {
+    final mediaList = post.medias.isNotEmpty
+        ? post.medias
+        : post.images
+            .map(
+              (url) => PostMedia(type: 'image', url: url, aspectRatio: 4 / 5),
+            )
+            .toList();
+    final cover = mediaList.isEmpty ? '' : ChatApi.resolveUrl(mediaList.first.url);
+    return HomeWorkItem(
+      id: post.id,
+      title: post.content.isEmpty ? post.title : post.content,
+      cover: cover,
+      authorName: post.author?.nickname ?? '用户 #${post.userId}',
+      likes: post.likeCount,
+      collections: post.collectCount,
+    );
+  }
+}
+
+class WorkCard extends StatelessWidget {
+  const WorkCard({super.key, required this.work});
+
+  final HomeWorkItem work;
+
+  @override
+  Widget build(BuildContext context) {
+    final cardWidth = (MediaQuery.sizeOf(context).width * 0.30).clamp(
+      112.0,
+      132.0,
+    );
+    return _TapScale(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PostDetailPage(postId: work.id),
+          ),
+        );
+      },
+      child: SizedBox(
+        width: cardWidth,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                work.cover,
+                width: cardWidth,
+                height: 126,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Container(
+                  width: cardWidth,
+                  height: 126,
+                  color: const Color(0xFFF6F1F2),
+                  child: const Icon(
+                    Icons.image_outlined,
+                    color: Color(0xFFC9C1C3),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 9),
+            Text(
+              work.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF343034),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              work.authorName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF6F6A6D),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(
+                  Icons.workspace_premium_outlined,
+                  size: 14,
+                  color: Color(0xFFA8A2A5),
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  _formatCount(work.collections),
+                  style: const TextStyle(
+                    color: Color(0xFFA8A2A5),
+                    fontSize: 10,
+                  ),
+                ),
+                const Spacer(),
+                const Icon(
+                  Icons.favorite_border_rounded,
+                  size: 14,
+                  color: Color(0xFFE49AA9),
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  _formatCount(work.likes),
+                  style: const TextStyle(
+                    color: Color(0xFFA8A2A5),
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

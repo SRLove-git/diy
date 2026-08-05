@@ -11,6 +11,7 @@ import { Like } from './like.entity';
 import { Comment } from './comment.entity';
 import { Collection } from './collection.entity';
 import { Report } from './report.entity';
+import { Follow } from '../follows/follow.entity';
 import { History } from '../users/history.entity';
 import { User } from '../users/user.entity';
 import { CreatePostDto, UpdatePostStatusDto } from './post.dto';
@@ -37,6 +38,8 @@ export class CommunityService {
     private readonly collections: Repository<Collection>,
     @InjectRepository(Report)
     private readonly reports: Repository<Report>,
+    @InjectRepository(Follow)
+    private readonly follows: Repository<Follow>,
     @InjectRepository(History)
     private readonly histories: Repository<History>,
     @InjectRepository(User)
@@ -95,13 +98,14 @@ export class CommunityService {
   }
 
   /** 信息流：最新（按创建时间倒序），仅展示已通过作品，含作者信息 */
-  async listLatest(page = 1, pageSize = 20) {
-    const [posts, total] = await this.posts.findAndCount({
-      where: { status: 'approved' },
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    });
+  async listLatest(page = 1, pageSize = 20, q = '', channel = '') {
+    const [posts, total] = await this.feedQuery(
+      { createdAt: 'DESC' },
+      page,
+      pageSize,
+      q,
+      channel,
+    ).getManyAndCount();
 
     const userIds = posts.map((p) => p.userId);
     const authors = await this.resolveAuthors(userIds);
@@ -110,17 +114,70 @@ export class CommunityService {
   }
 
   /** 信息流：热门（按点赞数倒序），仅展示已通过作品，含作者信息 */
-  async listHot(page = 1, pageSize = 20) {
-    const [posts, total] = await this.posts.findAndCount({
-      where: { status: 'approved' },
-      order: { likeCount: 'DESC', createdAt: 'DESC' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    });
+  async listHot(page = 1, pageSize = 20, q = '', channel = '') {
+    const [posts, total] = await this.feedQuery(
+      { likeCount: 'DESC', createdAt: 'DESC' },
+      page,
+      pageSize,
+      q,
+      channel,
+    ).getManyAndCount();
 
     const userIds = posts.map((p) => p.userId);
     const authors = await this.resolveAuthors(userIds);
 
+    return [posts.map((p) => this.enrichPost(p, authors.get(p.userId))), total];
+  }
+
+  /**
+   * 已通过作品的分页查询构造器。
+   * q：按标题/文案/频道/标签模糊搜索；channel：按频道标签精确筛选。
+   */
+  private feedQuery(
+    order: Record<string, 'ASC' | 'DESC'>,
+    page: number,
+    pageSize: number,
+    q = '',
+    channel = '',
+  ) {
+    const qb = this.posts
+      .createQueryBuilder('post')
+      .where('post.status = :status', { status: 'approved' })
+      .orderBy(order)
+      .skip((page - 1) * pageSize)
+      .take(pageSize);
+
+    const keyword = (q ?? '').trim();
+    if (keyword) {
+      qb.andWhere(
+        '(post.title LIKE :kw OR post.content LIKE :kw OR post.channelTag LIKE :kw OR post.tags LIKE :kw)',
+        { kw: `%${keyword}%` },
+      );
+    }
+    const tag = (channel ?? '').trim();
+    if (tag) {
+      qb.andWhere('post.channelTag = :channel', { channel: tag });
+    }
+    return qb;
+  }
+
+  /** 关注流：我关注的人发布的已通过作品（按时间倒序） */
+  async followingFeed(userId: number, page = 1, pageSize = 20) {
+    const followRows = await this.follows.find({
+      where: { followerId: userId },
+      select: { followeeId: true },
+    });
+    const followeeIds = followRows.map((r) => r.followeeId);
+    if (!followeeIds.length) return [[], 0];
+
+    const [posts, total] = await this.posts.findAndCount({
+      where: { userId: In(followeeIds), status: 'approved' },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+
+    const authors = await this.resolveAuthors(followeeIds);
     return [posts.map((p) => this.enrichPost(p, authors.get(p.userId))), total];
   }
 

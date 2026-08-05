@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
+import '../../../../core/chat_api.dart';
+import '../../../../core/post_api.dart';
+import '../../../../pages/community/author_profile_page.dart';
+import '../../../../pages/community/post_detail_page.dart';
+import '../publish_post_page.dart';
+import 'discover_search_page.dart';
+
 // =============================================================================
 // 数据模型
 // =============================================================================
@@ -8,10 +15,11 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 /// 帖子类型
 enum PostType { image, video, grid }
 
-/// 社区发现页帖子模型
+/// 社区发现页帖子模型（由后端 [Post] 映射而来）
 class DiscoverPost {
   const DiscoverPost({
     required this.id,
+    required this.userId,
     required this.image,
     this.images = const [],
     required this.title,
@@ -19,11 +27,13 @@ class DiscoverPost {
     required this.avatar,
     required this.likes,
     this.type = PostType.image,
-    this.duration = '',
+    this.duration,
     this.aspectRatio = 3 / 4,
+    this.liked = false,
   });
 
   final int id;
+  final int userId;
   final String image;
   final List<String> images;
   final String title;
@@ -31,154 +41,70 @@ class DiscoverPost {
   final String avatar;
   final int likes;
   final PostType type;
-  final String duration;
-  final double aspectRatio;
-}
 
-/// 模拟数据：至少 12 条帖子
-List<DiscoverPost> generateMockPosts() {
-  return const [
-    // 1. 单图 - 美乐蒂作品
-    DiscoverPost(
-      id: 1,
-      image: 'https://picsum.photos/seed/diy1/400/520',
-      title: '做了超可爱的美乐蒂～\n少女心爆棚💗',
-      username: '草莓奶油',
-      avatar: 'https://picsum.photos/seed/ava1/100/100',
-      likes: 328,
-      aspectRatio: 3 / 4,
-    ),
-    // 2. 视频教程
-    DiscoverPost(
-      id: 2,
-      image: 'https://picsum.photos/seed/diy2/400/580',
-      title: '拼豆入门教程｜零基础也能做出超萌挂件',
-      username: '手作达人Lily',
-      avatar: 'https://picsum.photos/seed/ava2/100/100',
-      likes: 1205,
-      type: PostType.video,
-      duration: '03:28',
-      aspectRatio: 3 / 4.3,
-    ),
-    // 3. 单图 - 库洛米
-    DiscoverPost(
-      id: 3,
-      image: 'https://picsum.photos/seed/diy3/400/480',
-      title: '库洛米也太适合做拼豆了吧🖤',
-      username: '暗黑甜心',
-      avatar: 'https://picsum.photos/seed/ava3/100/100',
-      likes: 256,
-      aspectRatio: 1 / 1.2,
-    ),
-    // 4. 四宫格 - 制作过程
-    DiscoverPost(
-      id: 4,
-      image: 'https://picsum.photos/seed/diy4a/400/500',
-      images: [
-        'https://picsum.photos/seed/diy4a/200/200',
-        'https://picsum.photos/seed/diy4b/200/200',
-        'https://picsum.photos/seed/diy4c/200/200',
-        'https://picsum.photos/seed/diy4d/200/200',
-      ],
-      title: '星黛露制作全过程✨每一步都好治愈',
-      username: '兔兔收集家',
-      avatar: 'https://picsum.photos/seed/ava4/100/100',
-      likes: 891,
-      type: PostType.grid,
-      aspectRatio: 3 / 4,
-    ),
-    // 5. 单图
-    DiscoverPost(
-      id: 5,
-      image: 'https://picsum.photos/seed/diy5/400/540',
-      title: '新品预告！玉桂狗系列明天上线☁️',
-      username: '拾染爱恋官方',
-      avatar: 'https://picsum.photos/seed/ava5/100/100',
-      likes: 2103,
-      aspectRatio: 3 / 4.1,
-    ),
-    // 6. 视频
-    DiscoverPost(
-      id: 6,
-      image: 'https://picsum.photos/seed/diy6/400/470',
-      title: '30秒看完一块拼豆的诞生🎬',
-      username: '拼豆小天才',
-      avatar: 'https://picsum.photos/seed/ava6/100/100',
-      likes: 667,
-      type: PostType.video,
-      duration: '00:30',
-      aspectRatio: 1 / 1.1,
-    ),
-    // 7. 单图 - Hello Kitty
-    DiscoverPost(
-      id: 7,
-      image: 'https://picsum.photos/seed/diy7/400/600',
-      title: '给闺蜜做了一套Hello Kitty杯垫🎀超满意',
-      username: '粉色泡泡糖',
-      avatar: 'https://picsum.photos/seed/ava7/100/100',
-      likes: 445,
-      aspectRatio: 2 / 3,
-    ),
-    // 8. 四宫格 - 配色分享
-    DiscoverPost(
-      id: 8,
-      image: 'https://picsum.photos/seed/diy8a/400/490',
-      images: [
-        'https://picsum.photos/seed/diy8a/200/200',
-        'https://picsum.photos/seed/diy8b/200/200',
-        'https://picsum.photos/seed/diy8c/200/200',
-        'https://picsum.photos/seed/diy8d/200/200',
-      ],
-      title: '今日配色灵感｜奶油马卡龙色系组合🎨',
-      username: '配色美学',
-      avatar: 'https://picsum.photos/seed/ava8/100/100',
-      likes: 532,
-      type: PostType.grid,
-      aspectRatio: 3 / 4,
-    ),
-    // 9. 单图
-    DiscoverPost(
-      id: 9,
-      image: 'https://picsum.photos/seed/diy9/400/510',
-      title: '周末宅家做了一天手工，太解压了😌',
-      username: '治愈系手作',
-      avatar: 'https://picsum.photos/seed/ava9/100/100',
-      likes: 167,
-      aspectRatio: 3 / 4.1,
-    ),
-    // 10. 视频
-    DiscoverPost(
-      id: 10,
-      image: 'https://picsum.photos/seed/diy10/400/560',
-      title: '无火香薰蜡烛手作🕯️过程太美了',
-      username: '香气日记',
-      avatar: 'https://picsum.photos/seed/ava10/100/100',
-      likes: 943,
-      type: PostType.video,
-      duration: '05:12',
-      aspectRatio: 3 / 4.2,
-    ),
-    // 11. 单图 - 布丁狗
-    DiscoverPost(
-      id: 11,
-      image: 'https://picsum.photos/seed/diy11/400/530',
-      title: '布丁狗钥匙扣🔑越看越可爱',
-      username: '每天都要可爱',
-      avatar: 'https://picsum.photos/seed/ava11/100/100',
-      likes: 208,
-      aspectRatio: 3 / 4,
-    ),
-    // 12. 单图 - 作品合集
-    DiscoverPost(
-      id: 12,
-      image: 'https://picsum.photos/seed/diy12/400/490',
-      title: '入坑一个月，看看我的作品全家福👨‍👩‍👧‍👦',
-      username: '新手小裁缝',
-      avatar: 'https://picsum.photos/seed/ava12/100/100',
-      likes: 789,
-      aspectRatio: 1 / 1.2,
-    ),
-  ];
+  /// 视频时长（秒）
+  final double? duration;
+  final double aspectRatio;
+  final bool liked;
+
+  /// 将后端作品映射为发现页卡片模型
+  factory DiscoverPost.fromPost(Post p) {
+    final mediaList = p.medias.isNotEmpty
+        ? p.medias
+        : p.images
+            .map((u) => PostMedia(type: 'image', url: u, aspectRatio: 4 / 5))
+            .toList();
+    final cover = mediaList.isEmpty ? '' : mediaList.first.url;
+    final aspectRatio =
+        mediaList.isEmpty ? 3 / 4 : (mediaList.first.aspectRatio ?? 3 / 4);
+    final hasVideo = mediaList.any((m) => m.type == 'video');
+    final imageUrls = mediaList
+        .where((m) => m.type == 'image')
+        .map((m) => m.url)
+        .take(4)
+        .toList();
+
+    double? videoDur;
+    for (final m in mediaList) {
+      if (m.type == 'video' && m.duration != null) {
+        videoDur = m.duration;
+        break;
+      }
+    }
+
+    return DiscoverPost(
+      id: p.id,
+      userId: p.userId,
+      image: ChatApi.resolveUrl(cover),
+      images: imageUrls.map(ChatApi.resolveUrl).toList(),
+      title: p.content,
+      username: p.author?.nickname ?? '用户 #${p.userId}',
+      avatar: (p.author != null && p.author!.avatar.isNotEmpty)
+          ? ChatApi.resolveUrl(p.author!.avatar)
+          : '',
+      likes: p.likeCount,
+      type: hasVideo
+          ? PostType.video
+          : (imageUrls.length >= 2 ? PostType.grid : PostType.image),
+      duration: videoDur,
+      aspectRatio: aspectRatio,
+    );
+  }
+
+  DiscoverPost copyWith({int? likes, bool? liked}) => DiscoverPost(
+        id: id,
+        userId: userId,
+        image: image,
+        images: images,
+        title: title,
+        username: username,
+        avatar: avatar,
+        likes: likes ?? this.likes,
+        type: type,
+        duration: duration,
+        aspectRatio: aspectRatio,
+        liked: liked ?? this.liked,
+      );
 }
 
 /// 点赞数格式化
@@ -192,6 +118,15 @@ String _formatLikeCount(int n) {
     return '${v.toStringAsFixed(1)}k';
   }
   return '$n';
+}
+
+/// 视频时长格式化（秒 → mm:ss）
+String formatDuration(double? seconds) {
+  if (seconds == null || seconds <= 0) return '';
+  final total = seconds.round();
+  final m = (total ~/ 60).toString().padLeft(2, '0');
+  final s = (total % 60).toString().padLeft(2, '0');
+  return '$m:$s';
 }
 
 // =============================================================================
@@ -213,7 +148,7 @@ class DiscoverColors {
 }
 
 // =============================================================================
-// DiscoverPage - 社区发现主页
+// DiscoverPage - 社区发现主页（真实接口数据）
 // =============================================================================
 
 class DiscoverPage extends StatefulWidget {
@@ -229,7 +164,179 @@ class _DiscoverPageState extends State<DiscoverPage> {
   int _topTabIndex = 0; // 0=发现, 1=关注
   int _categoryIndex = 0; // 推荐/最新/热门...
 
-  final List<DiscoverPost> _posts = generateMockPosts();
+  final List<DiscoverPost> _posts = [];
+  int _page = 1;
+  bool _hasMore = true;
+  bool _loading = true;
+  bool _loadingMore = false;
+  String? _error;
+
+  static const _pageSize = 20;
+  static const _categories = ['推荐', '最新', '热门', '教程', '日常', '活动'];
+
+  bool get _isFollowing => _topTabIndex == 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  /// 按当前 Tab / 分类拉取数据
+  Future<({List<DiscoverPost> items, int total})> _fetch({required int page}) async {
+    if (_isFollowing) {
+      final r = await PostApi.fetchFollowing(page: page);
+      return (
+        items: r.items.map(DiscoverPost.fromPost).toList(),
+        total: r.total,
+      );
+    }
+    switch (_categories[_categoryIndex]) {
+      case '最新':
+        final r = await PostApi.fetchLatest(page: page);
+        return (
+          items: r.items.map(DiscoverPost.fromPost).toList(),
+          total: r.total,
+        );
+      case '推荐':
+      case '热门':
+        final r = await PostApi.fetchHot(page: page);
+        return (
+          items: r.items.map(DiscoverPost.fromPost).toList(),
+          total: r.total,
+        );
+      default:
+        // 教程 / 日常 / 活动：按关键词搜索
+        final r = await PostApi.fetchLatest(page: page, q: _categories[_categoryIndex]);
+        return (
+          items: r.items.map(DiscoverPost.fromPost).toList(),
+          total: r.total,
+        );
+    }
+  }
+
+  /// 批量加载点赞状态（未登录 / 失败时忽略）
+  Future<Map<int, bool>> _fetchLiked(List<int> ids) async {
+    if (ids.isEmpty) return {};
+    try {
+      return await PostApi.batchLiked(ids);
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+      _page = 1;
+      _hasMore = true;
+    });
+    try {
+      final result = await _fetch(page: 1);
+      final likedMap = await _fetchLiked(result.items.map((p) => p.id).toList());
+      if (!mounted) return;
+      setState(() {
+        _posts
+          ..clear()
+          ..addAll(
+            result.items
+                .map((p) => p.copyWith(liked: likedMap[p.id] ?? false)),
+          );
+        _hasMore = result.items.length >= _pageSize;
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = '加载失败，请下拉重试';
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loading || _loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final result = await _fetch(page: _page + 1);
+      if (!mounted) return;
+      setState(() {
+        _posts.addAll(result.items);
+        _page += 1;
+        _hasMore = result.items.length >= _pageSize;
+        _loadingMore = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  /// 切换 Tab / 分类时重置并刷新
+  void _onTabChanged(int i) {
+    if (i == _topTabIndex) return;
+    setState(() => _topTabIndex = i);
+    _load();
+  }
+
+  void _onCategoryChanged(int i) {
+    if (i == _categoryIndex) return;
+    setState(() => _categoryIndex = i);
+    _load();
+  }
+
+  bool _onScroll(ScrollNotification notification) {
+    if (notification.metrics.pixels >=
+        notification.metrics.maxScrollExtent - 400) {
+      _loadMore();
+    }
+    return false;
+  }
+
+  /// 点赞 / 取消点赞（乐观更新，失败回滚）
+  Future<void> _toggleLike(DiscoverPost post) async {
+    final i = _posts.indexWhere((p) => p.id == post.id);
+    if (i < 0) return;
+    final liked = !post.liked;
+    setState(() {
+      _posts[i] = post.copyWith(
+        liked: liked,
+        likes: (post.likes + (liked ? 1 : -1)).clamp(0, 1 << 31),
+      );
+    });
+    try {
+      await PostApi.toggleLike(post.id);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _posts[i] = post);
+    }
+  }
+
+  void _openDetail(DiscoverPost post) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => PostDetailPage(postId: post.id)),
+    );
+  }
+
+  void _openAuthor(DiscoverPost post) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => AuthorProfilePage(userId: post.userId)),
+    );
+  }
+
+  Future<void> _openPublish() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const PublishPostPage()),
+    );
+    _load();
+  }
+
+  void _openSearch() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const DiscoverSearchPage()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -242,13 +349,24 @@ class _DiscoverPageState extends State<DiscoverPage> {
               children: [
                 TopTabBar(
                   selectedIndex: _topTabIndex,
-                  onChanged: (i) => setState(() => _topTabIndex = i),
+                  onChanged: _onTabChanged,
+                  onSearch: _openSearch,
                 ),
-                CategoryBar(
-                  selectedIndex: _categoryIndex,
-                  onChanged: (i) => setState(() => _categoryIndex = i),
+                if (!_isFollowing)
+                  CategoryBar(
+                    selectedIndex: _categoryIndex,
+                    onChanged: _onCategoryChanged,
+                  ),
+                Expanded(
+                  child: RefreshIndicator(
+                    color: DiscoverColors.primary,
+                    onRefresh: _load,
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: _onScroll,
+                      child: _buildBody(),
+                    ),
+                  ),
                 ),
-                Expanded(child: PostGrid(posts: _posts)),
               ],
             ),
             // 悬浮发布按钮
@@ -259,19 +377,92 @@ class _DiscoverPageState extends State<DiscoverPage> {
     );
   }
 
+  Widget _buildBody() {
+    if (_loading) {
+      return const _DiscoverSkeleton();
+    }
+    if (_error != null) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.55,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.wifi_off_rounded,
+                      size: 48, color: DiscoverColors.usernameColor),
+                  const SizedBox(height: 12),
+                  Text(_error!,
+                      style: const TextStyle(
+                          color: DiscoverColors.usernameColor, fontSize: 14)),
+                  const SizedBox(height: 12),
+                  OutlinedButton(onPressed: _load, child: const Text('重试')),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    if (_posts.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.55,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _isFollowing
+                        ? Icons.favorite_border_rounded
+                        : Icons.brush_outlined,
+                    size: 48,
+                    color: DiscoverColors.usernameColor,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _isFollowing ? '关注的人还没有发布作品' : '还没有作品，来发布第一个吧',
+                    style: const TextStyle(
+                        color: DiscoverColors.usernameColor, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    return PostGrid(
+      posts: _posts,
+      hasMore: _hasMore,
+      loadingMore: _loadingMore,
+      onTapPost: _openDetail,
+      onLikePost: _toggleLike,
+      onTapAuthor: _openAuthor,
+    );
+  }
+
   Widget _buildFab() {
     return Material(
       elevation: 6,
       shadowColor: DiscoverColors.primary.withValues(alpha: 0.4),
       shape: const CircleBorder(),
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: DiscoverColors.primary,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: _openPublish,
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: DiscoverColors.primary,
+          ),
+          child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
         ),
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
       ),
     );
   }
@@ -286,10 +477,12 @@ class TopTabBar extends StatelessWidget {
     super.key,
     required this.selectedIndex,
     required this.onChanged,
+    required this.onSearch,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onChanged;
+  final VoidCallback onSearch;
 
   static const _tabs = ['发现', '关注'];
 
@@ -361,7 +554,7 @@ class TopTabBar extends StatelessWidget {
                   color: DiscoverColors.searchIcon,
                   size: 24,
                 ),
-                onPressed: () {},
+                onPressed: onSearch,
               ),
             ),
           ),
@@ -434,19 +627,68 @@ class CategoryBar extends StatelessWidget {
 // =============================================================================
 
 class PostGrid extends StatelessWidget {
-  const PostGrid({super.key, required this.posts});
+  const PostGrid({
+    super.key,
+    required this.posts,
+    this.hasMore = false,
+    this.loadingMore = false,
+    this.onTapPost,
+    this.onLikePost,
+    this.onTapAuthor,
+  });
 
   final List<DiscoverPost> posts;
+  final bool hasMore;
+  final bool loadingMore;
+  final ValueChanged<DiscoverPost>? onTapPost;
+  final ValueChanged<DiscoverPost>? onLikePost;
+  final ValueChanged<DiscoverPost>? onTapAuthor;
 
   @override
   Widget build(BuildContext context) {
+    final showFooter = hasMore || loadingMore || posts.isNotEmpty;
     return MasonryGridView.count(
       crossAxisCount: 2,
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
-      itemCount: posts.length,
-      itemBuilder: (context, index) => PostCard(post: posts[index]),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 90),
+      physics: const AlwaysScrollableScrollPhysics(),
+      itemCount: posts.length + (showFooter ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index >= posts.length) {
+          return loadingMore
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.4),
+                    ),
+                  ),
+                )
+              : const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Center(
+                    child: Text(
+                      '没有更多了',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: DiscoverColors.usernameColor,
+                      ),
+                    ),
+                  ),
+                );
+        }
+        final post = posts[index];
+        return PostCard(
+          post: post,
+          onTap: onTapPost == null ? null : () => onTapPost!(post),
+          onLike: onLikePost == null ? null : () => onLikePost!(post),
+          onTapAuthor:
+              onTapAuthor == null ? null : () => onTapAuthor!(post),
+        );
+      },
     );
   }
 }
@@ -456,22 +698,34 @@ class PostGrid extends StatelessWidget {
 // =============================================================================
 
 class PostCard extends StatelessWidget {
-  const PostCard({super.key, required this.post});
+  const PostCard({
+    super.key,
+    required this.post,
+    this.onTap,
+    this.onLike,
+    this.onTapAuthor,
+  });
 
   final DiscoverPost post;
+  final VoidCallback? onTap;
+  final VoidCallback? onLike;
+  final VoidCallback? onTapAuthor;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: DiscoverColors.cardBg,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFDBDBDB), width: 0.6),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [_buildImageArea(), _buildTextArea(), _buildUserInfo()],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: DiscoverColors.cardBg,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: const Color(0xFFDBDBDB), width: 0.6),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [_buildImageArea(), _buildTextArea(), _buildUserInfo()],
+        ),
       ),
     );
   }
@@ -524,21 +778,19 @@ class PostCard extends StatelessWidget {
                 ),
               ),
             ),
-            if (post.duration.isNotEmpty)
+            if (formatDuration(post.duration).isNotEmpty)
               Positioned(
                 right: 6,
                 bottom: 6,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.65),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    post.duration,
+                    formatDuration(post.duration),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 11,
@@ -555,9 +807,8 @@ class PostCard extends StatelessWidget {
 
   /// 四宫格图片
   Widget _buildGridImages() {
-    final images = post.images.length >= 4
-        ? post.images.take(4).toList()
-        : post.images;
+    final images =
+        post.images.length >= 4 ? post.images.take(4).toList() : post.images;
     return AspectRatio(
       aspectRatio: 1,
       child: GridView.count(
@@ -604,28 +855,48 @@ class PostCard extends StatelessWidget {
       child: Row(
         children: [
           // 头像
-          ClipOval(
-            child: Image.network(
-              post.avatar,
-              width: 24,
-              height: 24,
-              fit: BoxFit.cover,
-              cacheWidth: 72,
-              errorBuilder: (_, _, _) => Container(
-                width: 24,
-                height: 24,
-                color: DiscoverColors.primaryLight,
-                child: Center(
-                  child: Text(
-                    post.username.isNotEmpty ? post.username[0] : '?',
-                    style: const TextStyle(
-                      color: DiscoverColors.primary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTapAuthor,
+            child: ClipOval(
+              child: post.avatar.isEmpty
+                  ? Container(
+                      width: 24,
+                      height: 24,
+                      color: DiscoverColors.primaryLight,
+                      child: Center(
+                        child: Text(
+                          post.username.isNotEmpty ? post.username[0] : '?',
+                          style: const TextStyle(
+                            color: DiscoverColors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    )
+                  : Image.network(
+                      post.avatar,
+                      width: 24,
+                      height: 24,
+                      fit: BoxFit.cover,
+                      cacheWidth: 72,
+                      errorBuilder: (_, _, _) => Container(
+                        width: 24,
+                        height: 24,
+                        color: DiscoverColors.primaryLight,
+                        child: Center(
+                          child: Text(
+                            post.username.isNotEmpty ? post.username[0] : '?',
+                            style: const TextStyle(
+                              color: DiscoverColors.primary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
             ),
           ),
           const SizedBox(width: 6),
@@ -642,20 +913,58 @@ class PostCard extends StatelessWidget {
             ),
           ),
           // 点赞
-          const Icon(
-            Icons.favorite_border_rounded,
-            color: DiscoverColors.usernameColor,
-            size: 16,
-          ),
-          const SizedBox(width: 3),
-          Text(
-            _formatLikeCount(post.likes),
-            style: const TextStyle(
-              fontSize: 12,
-              color: DiscoverColors.usernameColor,
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onLike,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  post.liked
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  color: post.liked
+                      ? DiscoverColors.primary
+                      : DiscoverColors.usernameColor,
+                  size: 16,
+                ),
+                const SizedBox(width: 3),
+                Text(
+                  _formatLikeCount(post.likes),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: DiscoverColors.usernameColor,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 首屏骨架屏
+class _DiscoverSkeleton extends StatelessWidget {
+  const _DiscoverSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    const block = Color(0xFFECECF0);
+    return MasonryGridView.count(
+      crossAxisCount: 2,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 90),
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 8,
+      itemBuilder: (_, i) => Container(
+        height: 180 + (i % 3) * 40,
+        decoration: BoxDecoration(
+          color: block,
+          borderRadius: BorderRadius.circular(6),
+        ),
       ),
     );
   }

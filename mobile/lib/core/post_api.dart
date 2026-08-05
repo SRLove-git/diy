@@ -110,6 +110,33 @@ class Post {
   final int shareCount;
   final AuthorInfo? author;
 
+  Post copyWith({
+    int? likeCount,
+    int? collectCount,
+    int? commentCount,
+    int? viewCount,
+    int? shareCount,
+  }) =>
+      Post(
+        id: id,
+        userId: userId,
+        title: title,
+        content: content,
+        location: location,
+        images: images,
+        tags: tags,
+        status: status,
+        likeCount: likeCount ?? this.likeCount,
+        collectCount: collectCount ?? this.collectCount,
+        commentCount: commentCount ?? this.commentCount,
+        createdAt: createdAt,
+        medias: medias,
+        channelTag: channelTag,
+        viewCount: viewCount ?? this.viewCount,
+        shareCount: shareCount ?? this.shareCount,
+        author: author,
+      );
+
   factory Post.fromJson(Map<String, dynamic> json) => Post(
         id: json['id'] as int,
         userId: json['userId'] as int,
@@ -143,18 +170,46 @@ class Post {
 class PostApi {
   PostApi._();
 
-  /// 最新信息流
-  static Future<({List<Post> items, int total})> fetchLatest({int page = 1}) async {
-    final resp = await ApiClient.instance.get('/posts', queryParameters: {'page': page});
+  /// 最新信息流（可按关键词 / 频道筛选）
+  static Future<({List<Post> items, int total})> fetchLatest({
+    int page = 1,
+    String? q,
+    String? channel,
+  }) async {
+    final resp = await ApiClient.instance.get('/posts', queryParameters: {
+      'page': page,
+      if (q != null && q.isNotEmpty) 'q': q,
+      if (channel != null && channel.isNotEmpty) 'channel': channel,
+    });
     final items = ((resp.data[0] ?? []) as List)
         .map((e) => Post.fromJson(e as Map<String, dynamic>))
         .toList();
     return (items: items, total: resp.data[1] as int);
   }
 
-  /// 热门信息流（按点赞数排序）
-  static Future<({List<Post> items, int total})> fetchHot({int page = 1}) async {
-    final resp = await ApiClient.instance.get('/posts/hot', queryParameters: {'page': page});
+  /// 热门信息流（按点赞数排序，可按关键词 / 频道筛选）
+  static Future<({List<Post> items, int total})> fetchHot({
+    int page = 1,
+    String? q,
+    String? channel,
+  }) async {
+    final resp = await ApiClient.instance.get('/posts/hot', queryParameters: {
+      'page': page,
+      if (q != null && q.isNotEmpty) 'q': q,
+      if (channel != null && channel.isNotEmpty) 'channel': channel,
+    });
+    final items = ((resp.data[0] ?? []) as List)
+        .map((e) => Post.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return (items: items, total: resp.data[1] as int);
+  }
+
+  /// 关注流：我关注的人的作品
+  static Future<({List<Post> items, int total})> fetchFollowing({int page = 1}) async {
+    final resp = await ApiClient.instance.get(
+      '/posts/following',
+      queryParameters: {'page': page},
+    );
     final items = ((resp.data[0] ?? []) as List)
         .map((e) => Post.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -271,6 +326,16 @@ class PostApi {
       data: {'content': content},
     );
     return Comment.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  // --- Report ---
+
+  /// 举报作品
+  static Future<void> report(int postId, String reason) async {
+    await ApiClient.instance.post(
+      '/posts/$postId/report',
+      data: {'reason': reason},
+    );
   }
 
   // --- Author profile ---

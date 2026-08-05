@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_colors.dart';
+import '../../core/chat_api.dart';
 import '../../core/post_api.dart';
 import '../../widgets/image_viewer.dart';
 import '../../widgets/state_widgets.dart';
@@ -131,6 +132,7 @@ class _PostCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final cover = _coverOf(post);
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
@@ -142,19 +144,32 @@ class _PostCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (post.images.isNotEmpty)
+            if (cover.isNotEmpty)
               Hero(
                 tag: 'post-img-${post.id}-0',
                 child: GestureDetector(
                   onTap: () => showImageViewer(
                     context,
-                    image: networkViewerImage(post.images.first),
+                    image: networkViewerImage(cover),
                     heroTag: 'post-img-${post.id}-0',
-                    precache: NetworkImage(post.images.first),
+                    precache: NetworkImage(cover),
                   ),
                   child: AspectRatio(
                     aspectRatio: 16 / 10,
-                    child: Image.network(post.images.first, fit: BoxFit.cover, width: double.infinity),
+                    child: Image.network(
+                      cover,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      errorBuilder: (_, _, _) => Container(
+                        color: colors.placeholder,
+                        child: Center(
+                          child: Icon(
+                            Icons.image_outlined,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -204,6 +219,22 @@ class _PostCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// 封面图：优先 medias 首项，其次 images 首项，兼容 /uploads/ 相对路径
+  String _coverOf(Post post) {
+    final mediaList = post.medias.isNotEmpty
+        ? post.medias
+        : post.images
+            .map(
+              (url) => PostMedia(type: 'image', url: url, aspectRatio: 4 / 5),
+            )
+            .toList();
+    if (mediaList.isEmpty) return '';
+    final raw = mediaList.first.url;
+    return raw.startsWith('http://') || raw.startsWith('https://')
+        ? raw
+        : ChatApi.resolveUrl(raw);
   }
 }
 

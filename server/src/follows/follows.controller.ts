@@ -19,6 +19,12 @@ import { FollowsService } from './follows.service';
 export class FollowsController {
   constructor(private readonly follows: FollowsService) {}
 
+  /** 我关注的人（发起群聊选人用，需在 :targetId 前声明） */
+  @Get('following')
+  following(@CurrentUser() user: AuthUser) {
+    return this.follows.followingList(user.id);
+  }
+
   /** 当前用户与目标用户的关注关系 + 目标粉丝/关注数 */
   @Get(':targetId')
   status(

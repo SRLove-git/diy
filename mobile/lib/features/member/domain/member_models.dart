@@ -144,6 +144,7 @@ class MemberCoupon {
     required this.threshold,
     required this.expireAt,
     this.received = false,
+    this.membersOnly = false,
   });
 
   final String id;
@@ -163,6 +164,9 @@ class MemberCoupon {
   /// 是否已领取
   final bool received;
 
+  /// 是否会员专享
+  final bool membersOnly;
+
   MemberCoupon copyWith({bool? received}) => MemberCoupon(
         id: id,
         title: title,
@@ -170,6 +174,7 @@ class MemberCoupon {
         threshold: threshold,
         expireAt: expireAt,
         received: received ?? this.received,
+        membersOnly: membersOnly,
       );
 
   factory MemberCoupon.fromJson(Map<String, dynamic> json) => MemberCoupon(
@@ -180,6 +185,7 @@ class MemberCoupon {
         expireAt: DateTime.tryParse(json['expireAt'].toString()) ??
             DateTime.now(),
         received: json['received'] == true,
+        membersOnly: json['membersOnly'] == true,
       );
 }
 
