@@ -39,6 +39,10 @@ import { User } from './user.entity';
 
 @Injectable()
 export class UsersService {
+  /** 用户名一年内只能修改一次 */
+  private static readonly USERNAME_CHANGE_INTERVAL_MS =
+    365 * 24 * 60 * 60 * 1000;
+
   constructor(
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @InjectRepository(User) private readonly users: Repository<User>,
@@ -154,6 +158,7 @@ export class UsersService {
       location?: string;
     },
   ) {
+    const user = await this.users.findOneBy({ id });
     const data: Record<string, unknown> = {};
     if (patch.nickname !== undefined) data.nickname = patch.nickname.trim();
     if (patch.avatar !== undefined) data.avatar = patch.avatar;
@@ -166,12 +171,21 @@ export class UsersService {
       if (username && username.length < 2) {
         throw new BadRequestException('用户名至少 2 位');
       }
-      data.username = username || null;
-      if (username) {
-        const taken = await this.users.findOneBy({ username });
+      const next = username || null;
+      if (next) {
+        const taken = await this.users.findOneBy({ username: next });
         if (taken && taken.id !== id) {
           throw new ConflictException('用户名已被占用');
         }
+      }
+      const current = user?.username ?? null;
+      if (next !== current) {
+        data.username = next;
+        data.usernameUpdatedAt = this.resolveUsernameChange(
+          user,
+          current,
+          next,
+        );
       }
     }
     return this.users.update({ id }, data);
@@ -181,8 +195,36 @@ export class UsersService {
     return this.users.update({ id }, { passwordHash: hash });
   }
 
-  setUsername(id: number, username: string) {
-    return this.users.update({ id }, { username });
+  /** 设置用户名（首次设置不限；修改需距上次修改满一年，用于设置密码时一并写入） */
+  async setUsername(id: number, username: string) {
+    const user = await this.users.findOneBy({ id });
+    const next = (username ?? '').trim() || null;
+    const current = user?.username ?? null;
+    const data: Record<string, unknown> = { username: next };
+    if (next !== current) {
+      data.usernameUpdatedAt = this.resolveUsernameChange(user, current, next);
+    }
+    return this.users.update({ id }, data);
+  }
+
+  /**
+   * 校验“用户名一年内只能修改一次”：首次设置不受限；
+   * 与当前值相同返回 null（不刷新修改时间），否则返回本次修改时间。
+   */
+  private resolveUsernameChange(
+    user: User | null,
+    current: string | null,
+    next: string | null,
+  ): Date | null {
+    if (next === current) return null;
+    const lastChangedAt = user?.usernameUpdatedAt;
+    if (lastChangedAt) {
+      const elapsed = Date.now() - new Date(lastChangedAt).getTime();
+      if (elapsed < UsersService.USERNAME_CHANGE_INTERVAL_MS) {
+        throw new BadRequestException('用户名一年内只能修改一次');
+      }
+    }
+    return new Date();
   }
 
   setRole(id: number, role: 'admin' | 'user') {

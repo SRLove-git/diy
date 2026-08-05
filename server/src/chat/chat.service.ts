@@ -259,7 +259,10 @@ export class ChatService {
         { uid: userId },
       )
       .where('m.conversationId = :cid', { cid: conversationId })
-      .andWhere('ms.id IS NULL OR ms.deletedAt IS NULL')
+      // 括号必须保留：AND 优先级高于 OR，不加括号会变成
+      // (conversationId = ? AND ms.id IS NULL) OR deletedAt IS NULL，
+      // 导致其他会话的消息也全部返回
+      .andWhere('(ms.id IS NULL OR ms.deletedAt IS NULL)')
       .orderBy('m.id', 'DESC')
       .take(take);
     if (cursor > 0) qb.andWhere('m.id < :cursor', { cursor });

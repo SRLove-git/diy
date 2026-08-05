@@ -23,6 +23,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   late String _nickname;
   late String _username;
+  late String _initialUsername;
+  late bool _usernameLocked;
   late String _bio;
   late String _gender;
   late String? _birthday;
@@ -35,7 +37,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
     super.initState();
     final user = AuthService.instance.user;
     _nickname = user?.nickname ?? '';
-    _username = user?.username ?? '';
+    _initialUsername = user?.username ?? '';
+    _username = _initialUsername;
+    final lastChangedAt = user?.usernameUpdatedAt;
+    // 用户名一年内只能修改一次：从未设置或已满一年时不锁定
+    _usernameLocked = _initialUsername.isNotEmpty &&
+        lastChangedAt != null &&
+        DateTime.now().difference(lastChangedAt).inDays < 365;
     _bio = user?.bio ?? '';
     _gender = user?.gender ?? 'secret';
     _birthday = user?.birthday;
@@ -57,6 +65,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (username.isNotEmpty &&
         !RegExp(r'^[a-zA-Z0-9_]{2,30}$').hasMatch(username)) {
       _toast('用户名需为 2-30 位字母、数字或下划线');
+      return;
+    }
+    if (_usernameLocked && username != _initialUsername) {
+      _toast('用户名一年内只能修改一次');
       return;
     }
     setState(() => _saving = true);
@@ -367,7 +379,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 _buildFormCard(colors),
                 const SizedBox(height: 16),
                 Text(
-                  '用户名可用于用户名 + 密码登录，仅支持字母、数字和下划线',
+                  '用户名可用于用户名 + 密码登录，仅支持字母、数字和下划线，'
+                  '一年内只能修改一次',
                   style: TextStyle(fontSize: 12, color: colors.textSecondary),
                 ),
               ],
@@ -463,15 +476,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
             label: '用户名',
             value: _username,
             placeholder: '未设置',
-            onTap: () async {
-              final v = await _promptText(
-                title: '修改用户名',
-                hint: '2-30 位字母、数字或下划线',
-                maxLength: 30,
-                initial: _username,
-              );
-              if (v != null && mounted) setState(() => _username = v);
-            },
+            onTap: _usernameLocked
+                ? () => _toast('用户名一年内只能修改一次')
+                : () async {
+                    final v = await _promptText(
+                      title: '修改用户名',
+                      hint: '2-30 位字母、数字或下划线',
+                      maxLength: 30,
+                      initial: _username,
+                    );
+                    if (v != null && mounted) setState(() => _username = v);
+                  },
+            showLock: _usernameLocked,
           ),
           _ProfileRow(
             label: '简介',
@@ -530,6 +546,7 @@ class _ProfileRow extends StatelessWidget {
     this.placeholder,
     this.isMultiline = false,
     this.isLast = false,
+    this.showLock = false,
   });
 
   final String label;
@@ -538,6 +555,7 @@ class _ProfileRow extends StatelessWidget {
   final String? placeholder;
   final bool isMultiline;
   final bool isLast;
+  final bool showLock;
 
   @override
   Widget build(BuildContext context) {
@@ -582,7 +600,11 @@ class _ProfileRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+              showLock
+                  ? Icon(Icons.lock_outline_rounded,
+                      color: colors.textSecondary, size: 18)
+                  : Icon(Icons.chevron_right_rounded,
+                      color: colors.textSecondary),
             ],
           ),
         ),

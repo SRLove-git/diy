@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:diy_mobile/features/tiktok_profile/model/tiktok_video_model.dart';
+import 'package:diy_mobile/features/tiktok_profile/page/fullscreen_video_page.dart';
 import 'package:diy_mobile/features/tiktok_profile/page/video_profile_page.dart';
 import 'package:diy_mobile/features/tiktok_profile/widget/music_marquee.dart';
 import 'package:diy_mobile/features/tiktok_profile/widget/video_action_rail.dart';
@@ -16,6 +17,8 @@ TiktokVideoModel _model({
   String music = '测试音乐',
   int viewCount = 123,
   int likeCount = 10,
+  List<String> photos = const [],
+  String videoUrl = 'http://example.com/video.mp4',
 }) =>
     TiktokVideoModel(
       video: ShortVideo(
@@ -33,7 +36,8 @@ TiktokVideoModel _model({
         followCount: 10,
         tags: const ['手作'],
         music: music,
-        videoUrl: 'http://example.com/video.mp4',
+        videoUrl: videoUrl,
+        photos: photos,
       ),
     );
 
@@ -76,6 +80,57 @@ void main() {
     await tester.tap(find.byType(VideoGridCard));
     await tester.pump(const Duration(milliseconds: 50));
     expect(doubled, 1);
+  });
+
+  testWidgets('笔记宫格卡片展示照片数角标', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 200,
+            height: 260,
+            child: VideoGridCard(
+              item: _model(photos: const ['a', 'b', 'c']),
+              photoCount: 3,
+              onTap: () {},
+              onDoubleTap: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.byIcon(Icons.photo_library_outlined), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
+    // 笔记（照片作品）不展示时长角标
+    expect(find.text('0:12'), findsNothing);
+  });
+
+  testWidgets('全屏播放页支持笔记多图左右轮播与页码角标', (tester) async {
+    final item = _model(
+      title: '手作笔记',
+      music: '',
+      photos: const ['a', 'b', 'c'],
+      videoUrl: '',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: FullscreenVideoPage(
+          videos: [item],
+          initialIndex: 0,
+          nickname: 'srlovice',
+        ),
+      ),
+    );
+    await tester.pump();
+    // 初始页码 1/3
+    expect(find.text('1/3'), findsOneWidget);
+    // 左滑切换第二张（固定坐标避免命中顶部覆盖层）
+    await tester.dragFrom(
+      const Offset(400, 320),
+      const Offset(-600, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('2/3'), findsOneWidget);
   });
 
   testWidgets('右侧操作栏展示五个动作且回调可触发', (tester) async {

@@ -16,6 +16,7 @@ class User {
     required this.avatar,
     required this.role,
     this.username,
+    this.usernameUpdatedAt,
     this.bio = '',
     this.gender = 'secret',
     this.birthday,
@@ -30,6 +31,9 @@ class User {
 
   /// 用户名（2-30 位字母/数字/下划线），null 表示未设置
   final String? username;
+
+  /// 用户名最近一次修改时间（一年内只能修改一次），null 表示从未修改
+  final DateTime? usernameUpdatedAt;
 
   /// 个人简介，空串表示未设置
   final String bio;
@@ -52,6 +56,8 @@ class User {
         avatar: (json['avatar'] ?? '') as String,
         role: (json['role'] ?? 'user') as String,
         username: json['username'] as String?,
+        usernameUpdatedAt:
+            DateTime.tryParse((json['usernameUpdatedAt'] as String?) ?? ''),
         bio: (json['bio'] ?? '') as String,
         gender: (json['gender'] ?? 'secret') as String,
         birthday: json['birthday'] as String?,

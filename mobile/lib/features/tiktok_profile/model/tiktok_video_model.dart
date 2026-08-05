@@ -47,6 +47,9 @@ class TiktokVideoModel {
   /// 视频文件 URL（照片作品为空）
   String get videoUrl => video.videoUrl;
 
+  /// 照片作品图片列表（笔记多图轮播；单图/视频作品为空）
+  List<String> get photos => video.photos;
+
   /// 是否照片作品（无视频流，仅封面图）
   bool get isPhoto => video.isPhoto || video.videoUrl.isEmpty;
 

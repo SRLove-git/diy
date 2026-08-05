@@ -337,14 +337,28 @@ export class CommunityService {
 
   // ──── Comment operations ────
 
-  async addComment(userId: number, postId: number, content: string): Promise<Comment> {
+  async addComment(
+    userId: number,
+    postId: number,
+    content: string,
+  ): Promise<Comment & { author: AuthorInfo }> {
     const post = await this.posts.findOneBy({ id: postId });
     if (!post) throw new NotFoundException('作品不存在');
 
     const comment = this.comments.create({ userId, postId, content });
     const saved = await this.comments.save(comment);
     await this.posts.increment({ id: postId }, 'commentCount', 1);
-    return saved;
+
+    // 与评论列表/短视频接口保持一致：发布后立即返回作者信息，
+    // 客户端可直接在本地列表头部展示完整昵称与头像，无需刷新页面。
+    const authors = await this.resolveAuthors([userId]);
+    return {
+      ...saved,
+      author: authors.get(userId) ?? {
+        nickname: `用户 #${userId}`,
+        avatar: '',
+      },
+    };
   }
 
   async getComments(

@@ -91,6 +91,10 @@ class _GroupChatPageState extends State<GroupChatPage> {
   List<GroupMemberInfo> _members = [];
   int _sending = 0;
 
+  /// 页面已因解散/被移出/主动退出而关闭；防止 WS 事件与群管理页返回结果
+  /// 两条路径重复 pop 把下层路由弹掉（黑屏卡死）。
+  bool _closed = false;
+
   int get _myId => AuthService.instance.user?.id ?? 0;
   late String _groupName;
 
@@ -150,10 +154,19 @@ class _GroupChatPageState extends State<GroupChatPage> {
       return;
     }
     if (event is GroupRemovedEvent && event.groupId == widget.group.id) {
-      if (!mounted) return;
-      _toast(event.reason == 'dissolved' ? '群聊已解散' : '你已被移出群聊');
-      Navigator.of(context).pop();
+      _closeWithToast(
+        event.reason == 'dissolved' ? '群聊已解散' : '你已被移出群聊',
+      );
     }
+  }
+
+  /// 关闭群聊页（幂等）：WS 群解散/移出事件与群管理页返回结果都会触发关闭，
+  /// 只允许第一次生效，避免重复 pop。
+  void _closeWithToast(String message) {
+    if (_closed || !mounted) return;
+    _closed = true;
+    _toast(message);
+    Navigator.of(context).pop();
   }
 
   /// 右上角入口：打开群管理（成员列表 / 拉人 / 退出 / 解散）
@@ -163,13 +176,12 @@ class _GroupChatPageState extends State<GroupChatPage> {
     );
     if (!mounted) return;
     if (result == 'left') {
-      _toast('已退出群聊');
-      Navigator.of(context).pop();
+      _closeWithToast('已退出群聊');
       return;
     }
-    if (result == 'dissolved') {
-      _toast('群聊已解散');
-      Navigator.of(context).pop();
+    if (result == 'dissolved' || result == 'removed') {
+      // 'removed'：群管理页已先收到 WS 解散事件自行关闭
+      _closeWithToast('群聊已解散');
       return;
     }
     _loadMembers();

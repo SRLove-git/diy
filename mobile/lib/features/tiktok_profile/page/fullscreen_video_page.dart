@@ -280,42 +280,45 @@ class _FullscreenVideoPageState extends State<FullscreenVideoPage> {
               ),
             ),
 
-            // 顶部区域：返回 + 昵称 + 全屏/更多
-            SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
-                child: Row(
-                  children: [
-                    _RoundIconButton(
-                      icon: Icons.arrow_back_rounded,
-                      onTap: () => Navigator.of(context).maybePop(),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        widget.nickname,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    if (currentCtrl != null) ...[
+            // 顶部区域：返回 + 昵称 + 全屏按钮
+            // 注意：必须用 Positioned 定位（而非 Stack 非定位子节点），
+            // 否则 StackFit.expand 会传紧约束给 Row，导致按钮被垂直居中。
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
+                  child: Row(
+                    children: [
                       _RoundIconButton(
-                        icon: Icons.crop_free_rounded,
-                        onTap: _enterLandscape,
+                        icon: Icons.arrow_back_rounded,
+                        onTap: () => Navigator.of(context).maybePop(),
                       ),
                       const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          widget.nickname,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      if (currentCtrl != null) ...[
+                        _RoundIconButton(
+                          icon: Icons.crop_free_rounded,
+                          onTap: _enterLandscape,
+                        ),
+                        const SizedBox(width: 6),
+                      ],
                     ],
-                    _RoundIconButton(
-                      icon: Icons.more_horiz_rounded,
-                      onTap: () => VideoMoreSheet.show(context, current),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -406,6 +409,10 @@ class _VideoPageState extends State<_VideoPage>
   /// 播放状态（由 chewie 通知同步，驱动暂停态中央播放键）
   bool _playing = false;
 
+  /// 笔记多图轮播（照片作品；单图/视频作品不使用）
+  final PageController _photoCtrl = PageController();
+  int _photoIndex = 0;
+
   /// 双击点赞爱心
   final GlobalKey<LikeBurstState> _burstKey = GlobalKey<LikeBurstState>();
 
@@ -486,6 +493,7 @@ class _VideoPageState extends State<_VideoPage>
     _chewieCtrl?.removeListener(_onChewieChanged);
     _chewieCtrl?.dispose();
     _videoCtrl?.dispose();
+    _photoCtrl.dispose();
     super.dispose();
   }
 
@@ -504,9 +512,32 @@ class _VideoPageState extends State<_VideoPage>
     widget.onDoubleTap();
   }
 
+  /// 笔记展示图：优先照片列表，回退封面
+  List<String> get _photos {
+    final photos = widget.item.video.photos
+        .where((u) => u.isNotEmpty)
+        .toList();
+    if (photos.isNotEmpty) return photos;
+    if (widget.item.cover.isNotEmpty) return [widget.item.cover];
+    return const [];
+  }
+
+  Widget _photoImage(String url) {
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      frameBuilder: (context, child, frame, sync) {
+        if (sync || frame != null) return child;
+        return _placeholder();
+      },
+      errorBuilder: (_, _, _) => _placeholder(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
+    final photos = _photos;
     return RepaintBoundary(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -515,16 +546,46 @@ class _VideoPageState extends State<_VideoPage>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 照片作品：封面图铺满
+            // 照片作品：多图左右轮播 / 单图铺满
             if (item.isPhoto) ...[
-              if (item.cover.isNotEmpty)
-                Image.network(
-                  item.cover,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => _placeholder(),
+              if (photos.length > 1)
+                PageView.builder(
+                  controller: _photoCtrl,
+                  itemCount: photos.length,
+                  onPageChanged: (i) {
+                    if (mounted) setState(() => _photoIndex = i);
+                  },
+                  itemBuilder: (_, i) => _photoImage(photos[i]),
                 )
+              else if (photos.isNotEmpty)
+                _photoImage(photos.first)
               else
                 _placeholder(),
+
+              // 多图页码角标（避免与顶部操作栏重叠，放在其下方）
+              if (photos.length > 1)
+                Positioned(
+                  top: MediaQuery.paddingOf(context).top + 62,
+                  right: 14,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${_photoIndex + 1}/${photos.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11.5,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ),
             ] else ...[
               // 视频作品：Chewie 播放器（overlay 已全屏裁剪）
               if (_ready && _chewieCtrl != null)

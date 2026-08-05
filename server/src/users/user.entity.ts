@@ -19,6 +19,10 @@ export class User {
   @Column({ type: 'varchar', unique: true, length: 30, nullable: true })
   username: string | null;
 
+  /** 用户名最近一次修改时间（一年内只能修改一次，首次设置不限制），null 表示从未修改 */
+  @Column({ type: 'datetime', nullable: true })
+  usernameUpdatedAt: Date | null;
+
   @Column({ default: '' })
   nickname: string;
 

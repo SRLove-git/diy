@@ -30,6 +30,9 @@ class _GroupManagePageState extends State<GroupManagePage> {
   bool _busy = false;
   StreamSubscription<ChatEvent>? _sub;
 
+  /// 页面已关闭（REST 返回结果 / WS 解散事件都可能触发 pop），防止重复 pop
+  bool _popped = false;
+
   /// 群主标识以服务端下发的 isOwner 为准（建群/刷新列表时计算）
   bool get _isOwner => widget.group.isOwner;
 
@@ -60,8 +63,15 @@ class _GroupManagePageState extends State<GroupManagePage> {
       return;
     }
     if (event is GroupRemovedEvent && event.groupId == widget.group.id) {
-      if (mounted) Navigator.of(context).pop('removed');
+      _close('removed');
     }
+  }
+
+  /// 关闭群管理页（幂等）
+  void _close([String? result]) {
+    if (_popped || !mounted) return;
+    _popped = true;
+    Navigator.of(context).pop(result);
   }
 
   Future<void> _load() async {
@@ -251,7 +261,7 @@ class _GroupManagePageState extends State<GroupManagePage> {
     try {
       await GroupApi.leaveGroup(widget.group.id);
       if (!mounted) return;
-      Navigator.of(context).pop('left');
+      _close('left');
       ChatService.instance.refreshGroups();
     } catch (e) {
       if (mounted) {
@@ -272,7 +282,7 @@ class _GroupManagePageState extends State<GroupManagePage> {
     try {
       await GroupApi.dissolveGroup(widget.group.id);
       if (!mounted) return;
-      Navigator.of(context).pop('dissolved');
+      _close('dissolved');
       ChatService.instance.refreshGroups();
     } catch (e) {
       if (mounted) {
@@ -671,6 +681,7 @@ class _GroupMembersPageState extends State<GroupMembersPage> {
   bool _loading = true;
   String? _error;
   StreamSubscription<ChatEvent>? _sub;
+  bool _popped = false;
 
   @override
   void initState() {
@@ -692,7 +703,9 @@ class _GroupMembersPageState extends State<GroupMembersPage> {
       return;
     }
     if (event is GroupRemovedEvent && event.groupId == widget.group.id) {
-      if (mounted) Navigator.of(context).pop();
+      if (_popped || !mounted) return;
+      _popped = true;
+      Navigator.of(context).pop();
     }
   }
 

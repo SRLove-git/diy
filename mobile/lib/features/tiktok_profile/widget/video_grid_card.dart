@@ -18,11 +18,19 @@ class VideoGridCard extends StatefulWidget {
     required this.item,
     required this.onTap,
     required this.onDoubleTap,
+    this.onLongPress,
+    this.photoCount = 0,
   });
 
   final TiktokVideoModel item;
   final VoidCallback onTap;
   final VoidCallback onDoubleTap;
+
+  /// 长按（个人主页 Tab 用于删除作品）
+  final VoidCallback? onLongPress;
+
+  /// 笔记照片张数；> 0 时右下角展示「照片数」角标替代视频时长
+  final int photoCount;
 
   @override
   State<VideoGridCard> createState() => _VideoGridCardState();
@@ -52,6 +60,7 @@ class _VideoGridCardState extends State<VideoGridCard> {
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
         onDoubleTap: _onDoubleTap,
+        onLongPress: widget.onLongPress,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -116,8 +125,40 @@ class _VideoGridCardState extends State<VideoGridCard> {
               ),
             ),
 
-            // 右下：时长角标（视频作品；照片作品不展示）
-            if (!item.isPhoto && item.duration > Duration.zero)
+            // 右下：时长角标（视频）或照片数角标（笔记）
+            if (widget.photoCount > 0)
+              Positioned(
+                right: 7,
+                bottom: 8,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.photo_library_outlined,
+                        color: Colors.white,
+                        size: 11,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${widget.photoCount}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          height: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (!item.isPhoto && item.duration > Duration.zero)
               Positioned(
                 right: 7,
                 bottom: 8,
