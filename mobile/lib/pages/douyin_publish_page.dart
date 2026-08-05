@@ -850,6 +850,8 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
           decoration: const InputDecoration(
             hintText: '添加标题',
             hintStyle: TextStyle(color: _hint, fontSize: 16),
+            filled: true,
+            fillColor: _btnBg,
             border: InputBorder.none,
             contentPadding: EdgeInsets.zero,
             isDense: true,
@@ -865,6 +867,8 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
           decoration: const InputDecoration(
             hintText: '添加作品描述...',
             hintStyle: TextStyle(color: _hint, fontSize: 14),
+            filled: true,
+            fillColor: _btnBg,
             border: InputBorder.none,
             contentPadding: EdgeInsets.zero,
             isDense: true,
