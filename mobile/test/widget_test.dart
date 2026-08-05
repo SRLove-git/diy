@@ -13,7 +13,7 @@ void main() {
     await tester.pumpWidget(const DiyApp());
 
     // 登录页元素
-    expect(find.text('拾染爱恋'), findsOneWidget);
+    expect(find.text('IDOL BEADS'), findsOneWidget);
     expect(find.text('登录'), findsOneWidget);
     expect(find.text('获取验证码'), findsOneWidget);
   });
@@ -21,7 +21,7 @@ void main() {
   testWidgets('全局主题使用统一品牌色和纯白背景', (tester) async {
     await tester.pumpWidget(const DiyApp());
 
-    final context = tester.element(find.text('拾染爱恋'));
+    final context = tester.element(find.text('IDOL BEADS'));
     final theme = Theme.of(context);
     expect(theme.colorScheme.primary, const Color(0xFFFF3040));
     expect(theme.scaffoldBackgroundColor, Colors.white);

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// 拾染爱恋 品牌色系
+/// IDOL BEADS 品牌色系
 class HomePalette {
   HomePalette._();
 

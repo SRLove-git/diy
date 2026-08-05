@@ -25,17 +25,17 @@ interface DemoVideo {
 const DEMO_AUTHORS: DemoAuthor[] = [
   {
     phone: '13900000001',
-    nickname: '阿茶',
-    avatar: 'https://i.pravatar.cc/150?img=44',
+    nickname: '珠珠',
+    avatar: 'https://i.pravatar.cc/150?img=33',
   },
   {
     phone: '13900000002',
-    nickname: '手作小匠',
+    nickname: '拼豆小匠',
     avatar: 'https://i.pravatar.cc/150?img=12',
   },
   {
     phone: '13900000003',
-    nickname: '织织',
+    nickname: '串串',
     avatar: 'https://i.pravatar.cc/150?img=45',
   },
 ];
@@ -44,51 +44,51 @@ const DEMO_AUTHORS: DemoAuthor[] = [
 const DEMO_VIDEOS: DemoVideo[] = [
   {
     authorPhone: '13900000001',
-    title: '奶油胶手机壳翻车现场…挤花手抖，结果意外解锁了"云朵渐变"？',
+    title: '拼豆新手第一课：镊子怎么夹才稳？摆豆不歪的 3 个小技巧，小白 10 分钟上手。',
     cover: 'https://picsum.photos/seed/diyseed1/720/1280',
     duration: 15,
-    music: '《Lofi 手作日常》- Chill Beats',
-    tags: ['奶油胶', '手机壳', '翻车现场'],
+    music: '《豆豆乐园》- 拼豆 BGM',
+    tags: ['拼豆', '新手教程', '摆豆技巧'],
   },
   {
     authorPhone: '13900000002',
-    title: '蜡烛脱模的瞬间真的绝了！9:16 沉浸式卡点，全程高能。',
+    title: '串珠手链 12 颗菩提 + 绿松石，闺蜜戴出去被问了一路在哪买的！',
     cover: 'https://picsum.photos/seed/diyseed2/720/1280',
     duration: 19,
-    music: '《烛光》- 卡点神曲',
-    tags: ['香薰蜡烛', '脱模', '卡点'],
-  },
-  {
-    authorPhone: '13900000003',
-    title: '羊毛毡新手避坑：买材料前一定要先买工具！戳针三件套 + 泡沫垫。',
-    cover: 'https://picsum.photos/seed/diyseed3/720/1280',
-    duration: 42,
-    music: '《羊毛毡小调》- 手工 BGM',
-    tags: ['羊毛毡', '新手避坑', '手作'],
-  },
-  {
-    authorPhone: '13900000001',
-    title: '给闺蜜串的生日手链，12 颗菩提 + 绿松石混搭，独一无二！',
-    cover: 'https://picsum.photos/seed/diyseed4/720/1280',
-    duration: 24,
     music: '《珠光》- 轻快手作',
     tags: ['串珠', '手链', '闺蜜礼物'],
   },
   {
+    authorPhone: '13900000003',
+    title: '拼豆定型翻车现场：温度太高豆子直接化成一滩…下次记得先垫烫纸！',
+    cover: 'https://picsum.photos/seed/diyseed3/720/1280',
+    duration: 42,
+    music: '《拼豆节拍》- 卡点神曲',
+    tags: ['拼豆', '定型', '翻车现场'],
+  },
+  {
+    authorPhone: '13900000001',
+    title: '第一次做立体拼豆，从图纸到成品全程 9:16 卡点，看得停不下来。',
+    cover: 'https://picsum.photos/seed/diyseed4/720/1280',
+    duration: 24,
+    music: '《手作时光》- 氛围音乐',
+    tags: ['立体拼豆', '卡点', '手作'],
+  },
+  {
     authorPhone: '13900000002',
-    title: '第一次尝试拍摄手作过程 Vlog，从拼装到打磨，记得看到最后～',
+    title: '拼豆像素图怎么设计？用手机画图软件 3 分钟搞定图纸，附配色思路。',
     cover: 'https://picsum.photos/seed/diyseed5/720/1280',
     duration: 58,
-    music: '《手作时光》- 氛围音乐',
-    tags: ['Vlog', '手作', '教程'],
+    music: '《串珠小调》- 手工串珠',
+    tags: ['拼豆', '图纸设计', '教程'],
   },
   {
     authorPhone: '13900000003',
-    title: '用钩针钩一个星黛露玩偶，从零开始 15 分钟速成教程！',
+    title: '串珠耳饰新手避坑：选珠、穿线、收尾三件套，别再买错材料啦！',
     cover: 'https://picsum.photos/seed/diyseed6/720/1280',
     duration: 37,
-    music: '《毛线球》- 手工编织',
-    tags: ['钩针', '星黛露', '玩偶'],
+    music: '《彩珠圆舞曲》- 轻音乐',
+    tags: ['串珠', '耳饰', '新手避坑'],
   },
 ];
 
@@ -101,12 +101,12 @@ interface DemoMusic {
 
 /** 演示配乐（音频走 SoundHelix 公共示例，客户端可试听） */
 const DEMO_MUSIC: DemoMusic[] = [
-  { title: 'Lofi 手作日常', artist: 'Chill Beats', duration: 180 },
-  { title: '烛光', artist: '卡点神曲', duration: 120 },
-  { title: '羊毛毡小调', artist: '手工 BGM', duration: 150 },
-  { title: '珠光', artist: '轻快手作', duration: 90 },
-  { title: '手作时光', artist: '氛围音乐', duration: 200 },
-  { title: '毛线球', artist: '手工编织', duration: 130 },
+  { title: '豆豆乐园', artist: '拼豆 BGM', duration: 180 },
+  { title: '珠光', artist: '轻快手作', duration: 120 },
+  { title: '拼豆节拍', artist: '卡点神曲', duration: 150 },
+  { title: '串珠小调', artist: '手工串珠', duration: 90 },
+  { title: '彩珠圆舞曲', artist: '轻音乐', duration: 200 },
+  { title: '手作时光', artist: '氛围音乐', duration: 130 },
 ];
 
 /** 启动初始化：开发环境预置管理员账号 + 演示短视频 */
@@ -198,14 +198,14 @@ export class BootstrapService implements OnApplicationBootstrap {
     const count = await this.notifications.countAll();
     if (count > 0) return;
     await this.notifications.createAndSend({
-      title: '欢迎来到拾染爱恋手作工坊',
-      content: '新用户专享体验价 ¥39.9/次起，快去预约你第一次拼豆体验吧！',
+      title: '欢迎来到 IDOL BEADS 拼豆乐园',
+      content: '新用户专享体验价 ¥39.9/次起，快去预约你的第一次拼豆体验吧！',
       targetType: 'all',
       channels: 'push',
     });
     await this.notifications.createAndSend({
-      title: '社区作品征集活动开启',
-      content: '发布你的 DIY 作品参与评选，人气作品将获得门店专属体验券。',
+      title: '拼豆作品征集活动开启',
+      content: '发布你的拼豆作品参与评选，人气作品将获得门店专属体验券。',
       targetType: 'all',
       channels: 'push',
     });

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// 拾染爱恋全局语义配色。
+/// IDOL BEADS 全局语义配色。
 ///
 /// 页面里不再直接写死颜色，统一通过 [AppColors.of] 取主题色，
 /// 保证切到深色模式时整站自动换色。

@@ -573,55 +573,123 @@ class _PostItem extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        // 大图 + 图片底部左下角爱心按钮
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: AspectRatio(
-            aspectRatio: 4 / 5,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
-                    color: UserProfilePage._tagBg,
-                    child: Icon(
-                      Icons.image_outlined,
-                      size: 40,
-                      color: UserProfilePage._textSecondary,
+        // 有封面：大图 + 图片底部左下角爱心按钮
+        if (imageUrl.isNotEmpty)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: AspectRatio(
+              aspectRatio: 4 / 5,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      color: UserProfilePage._tagBg,
+                      child: Icon(
+                        Icons.image_outlined,
+                        size: 40,
+                        color: UserProfilePage._textSecondary,
+                      ),
                     ),
                   ),
-                ),
-                Positioned(
-                  left: 10,
-                  bottom: 8,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.favorite_rounded,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        likeText,
-                        style: const TextStyle(
-                          fontSize: 12,
+                  Positioned(
+                    left: 10,
+                    bottom: 8,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.favorite_rounded,
                           color: Colors.white,
-                          shadows: [
-                            Shadow(color: Colors.black45, blurRadius: 3),
-                          ],
+                          size: 16,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 3),
+                        Text(
+                          likeText,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(color: Colors.black45, blurRadius: 3),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                ],
+              ),
+            ),
+          )
+        // 纯文字帖子：暖色渐变卡片 + 正文预览，替代图片占位
+        else
+          Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(minHeight: 150),
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFFFF3EE), Color(0xFFFFE9EF)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.edit_note_rounded,
+                      size: 16,
+                      color: UserProfilePage._primary,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      '纯文字动态',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: UserProfilePage._primary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  title.trim().isEmpty ? '分享一条纯文字动态' : title,
+                  maxLines: 5,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    height: 1.5,
+                    color: UserProfilePage._textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.favorite_rounded,
+                      color: UserProfilePage._primary,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      likeText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: UserProfilePage._textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-        ),
         // 底部状态栏：浏览 / 表情评论（数字）/ 评论气泡 / 分享箭头
         Padding(
           padding: const EdgeInsets.only(top: 10, bottom: 14),

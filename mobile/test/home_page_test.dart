@@ -22,12 +22,11 @@ void main() {
   testWidgets('首页在常见手机宽度展示所有核心模块', (tester) async {
     await pumpHome(tester, size: const Size(390, 844));
 
-    expect(find.text('拾染爱恋'), findsOneWidget);
+    expect(find.text('IDOL BEADS'), findsOneWidget);
     expect(find.text('到店预约'), findsOneWidget);
     expect(find.text('到店核销'), findsOneWidget);
     expect(find.text('会员套餐'), findsOneWidget);
     expect(find.text('创意拼豆手作工坊'), findsOneWidget);
-    expect(find.text('热门推荐'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

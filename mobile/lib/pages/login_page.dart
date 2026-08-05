@@ -195,7 +195,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  '拾染爱恋',
+                  'IDOL BEADS',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: colors.primary,

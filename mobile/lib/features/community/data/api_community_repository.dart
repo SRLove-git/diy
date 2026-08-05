@@ -45,24 +45,27 @@ class ApiCommunityRepository implements CommunityRepository {
   /// 将后端 [Post] 映射为领域模型 [FeedPost]
   static FeedPost _toFeedPost(Post p, bool liked) {
     // 优先使用 medias（新格式），回退到 images（旧格式）
-    final List<MediaItem> medias = p.medias.isNotEmpty
-        ? p.medias
-            .map((m) => MediaItem(
-                  type: m.type == 'video' ? MediaType.video : MediaType.image,
-                  url: ChatApi.resolveUrl(m.url),
-                  aspectRatio: m.aspectRatio ?? 1,
-                  duration: m.duration != null
-                      ? Duration(seconds: m.duration!.round())
-                      : null,
-                ))
-            .toList()
-        : p.images
-            .map((url) => MediaItem(
-                  type: MediaType.image,
-                  url: ChatApi.resolveUrl(url),
-                  aspectRatio: 4 / 5,
-                ))
-            .toList();
+    var medias = p.medias
+        .where((m) => m.url.trim().isNotEmpty)
+        .map((m) => MediaItem(
+              type: m.type == 'video' ? MediaType.video : MediaType.image,
+              url: ChatApi.resolveUrl(m.url),
+              aspectRatio: m.aspectRatio ?? 1,
+              duration: m.duration != null
+                  ? Duration(seconds: m.duration!.round())
+                  : null,
+            ))
+        .toList();
+    if (medias.isEmpty) {
+      medias = p.images
+          .where((url) => url.trim().isNotEmpty)
+          .map((url) => MediaItem(
+                type: MediaType.image,
+                url: ChatApi.resolveUrl(url),
+                aspectRatio: 4 / 5,
+              ))
+          .toList();
+    }
 
     return FeedPost(
       id: p.id,

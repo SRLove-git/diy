@@ -13,7 +13,7 @@ import 'discover_search_page.dart';
 // =============================================================================
 
 /// 帖子类型
-enum PostType { image, video, grid }
+enum PostType { image, video, grid, text }
 
 /// 社区发现页帖子模型（由后端 [Post] 映射而来）
 class DiscoverPost {
@@ -49,11 +49,15 @@ class DiscoverPost {
 
   /// 将后端作品映射为发现页卡片模型
   factory DiscoverPost.fromPost(Post p) {
-    final mediaList = p.medias.isNotEmpty
-        ? p.medias
-        : p.images
-            .map((u) => PostMedia(type: 'image', url: u, aspectRatio: 4 / 5))
-            .toList();
+    var mediaList = p.medias
+        .where((m) => m.url.trim().isNotEmpty)
+        .toList();
+    if (mediaList.isEmpty) {
+      mediaList = p.images
+          .where((u) => u.trim().isNotEmpty)
+          .map((u) => PostMedia(type: 'image', url: u, aspectRatio: 4 / 5))
+          .toList();
+    }
     final cover = mediaList.isEmpty ? '' : mediaList.first.url;
     final aspectRatio =
         mediaList.isEmpty ? 3 / 4 : (mediaList.first.aspectRatio ?? 3 / 4);
@@ -83,9 +87,11 @@ class DiscoverPost {
           ? ChatApi.resolveUrl(p.author!.avatar)
           : '',
       likes: p.likeCount,
-      type: hasVideo
-          ? PostType.video
-          : (imageUrls.length >= 2 ? PostType.grid : PostType.image),
+      type: mediaList.isEmpty
+          ? PostType.text
+          : hasVideo
+              ? PostType.video
+              : (imageUrls.length >= 2 ? PostType.grid : PostType.image),
       duration: videoDur,
       aspectRatio: aspectRatio,
     );
@@ -724,7 +730,12 @@ class PostCard extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [_buildImageArea(), _buildTextArea(), _buildUserInfo()],
+          children: [
+            _buildImageArea(),
+            // 纯文字卡片已在媒体区展示正文，标题区不再重复
+            if (post.type != PostType.text) _buildTextArea(),
+            _buildUserInfo(),
+          ],
         ),
       ),
     );
@@ -732,12 +743,67 @@ class PostCard extends StatelessWidget {
 
   /// 图片区域（单图 / 四宫格 / 视频封面）
   Widget _buildImageArea() {
+    if (post.type == PostType.text) return _buildTextTile();
     final w = post.type == PostType.grid
         ? _buildGridImages()
         : _buildSingleImage();
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
       child: w,
+    );
+  }
+
+  /// 纯文字帖子卡片：暖色渐变 + 正文预览，替代图片占位
+  Widget _buildTextTile() {
+    final title = post.title.trim();
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 150),
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFF3EE), Color(0xFFFFE9EF)],
+        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(6)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.edit_note_rounded,
+                size: 18,
+                color: DiscoverColors.primary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '纯文字',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: DiscoverColors.primary.withValues(alpha: 0.9),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            title.isEmpty ? '分享一条纯文字动态' : title,
+            maxLines: 8,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14,
+              height: 1.5,
+              color: Color(0xFF3D3836),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

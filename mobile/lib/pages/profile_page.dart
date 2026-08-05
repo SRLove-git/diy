@@ -812,7 +812,7 @@ class _GridCell extends StatelessWidget {
                   fit: BoxFit.cover,
                   errorBuilder: (_, _, _) => _placeholder(context),
                 )
-              : _placeholder(context),
+              : _textCell(context),
           if (_hasVideo)
             const Align(
               alignment: Alignment.topRight,
@@ -832,13 +832,17 @@ class _GridCell extends StatelessWidget {
 
   /// 封面图：优先 medias 首项，其次 images 首项，兼容 /uploads/ 相对路径
   String get _cover {
-    final mediaList = post.medias.isNotEmpty
-        ? post.medias
-        : post.images
-            .map(
-              (url) => PostMedia(type: 'image', url: url, aspectRatio: 4 / 5),
-            )
-            .toList();
+    var mediaList = post.medias
+        .where((m) => m.url.trim().isNotEmpty)
+        .toList();
+    if (mediaList.isEmpty) {
+      mediaList = post.images
+          .where((url) => url.trim().isNotEmpty)
+          .map(
+            (url) => PostMedia(type: 'image', url: url, aspectRatio: 4 / 5),
+          )
+          .toList();
+    }
     if (mediaList.isEmpty) return '';
     final raw = mediaList.first.url;
     return raw.startsWith('http://') || raw.startsWith('https://')
@@ -847,6 +851,54 @@ class _GridCell extends StatelessWidget {
   }
 
   bool get _hasVideo => post.medias.any((m) => m.type == 'video');
+
+  /// 纯文字帖子：暖色渐变 + 正文预览，替代图片占位
+  Widget _textCell(BuildContext context) {
+    final colors = AppColors.of(context);
+    final content = post.content.trim();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFF3EE), Color(0xFFFFE9EF)],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.edit_note_rounded, size: 16, color: colors.primary),
+              const SizedBox(width: 5),
+              Text(
+                '纯文字',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: colors.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Text(
+              content.isEmpty ? '分享一条纯文字动态' : content,
+              maxLines: 5,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12.5,
+                height: 1.5,
+                color: Color(0xFF3D3836),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _placeholder(BuildContext context) {
     final colors = AppColors.of(context);

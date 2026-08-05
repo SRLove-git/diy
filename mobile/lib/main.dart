@@ -44,7 +44,7 @@ class DiyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'DIY 手作工坊',
+      title: 'IDOL BEADS',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
@@ -53,7 +53,7 @@ class DiyApp extends StatelessWidget {
     );
   }
 
-  /// 按亮/暗模式构建统一的拾染爱恋视觉系统。
+  /// 按亮/暗模式构建统一的 IDOL BEADS 视觉系统。
   ThemeData _buildTheme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
     final palette = isDark ? AppColors.dark : AppColors.light;

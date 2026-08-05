@@ -198,12 +198,6 @@ class _HomePageState extends State<HomePage> {
                     child: PromoBanner(onTap: _openBooking),
                   ),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 26)),
-                SliverToBoxAdapter(
-                  child: HotRecommendSection(
-                    enabled: widget.loadActiveAppointments,
-                  ),
-                ),
                 if (_activeAppointments.isNotEmpty) ...[
                   const SliverToBoxAdapter(child: SizedBox(height: 28)),
                   SliverToBoxAdapter(
@@ -252,7 +246,7 @@ class HomeHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '拾染爱恋',
+                  'IDOL BEADS',
                   style: TextStyle(
                     color: HomePalette.primary,
                     fontSize: 25,
@@ -1024,13 +1018,17 @@ class HomeWorkItem {
   final int collections;
 
   factory HomeWorkItem.fromPost(Post post) {
-    final mediaList = post.medias.isNotEmpty
-        ? post.medias
-        : post.images
-            .map(
-              (url) => PostMedia(type: 'image', url: url, aspectRatio: 4 / 5),
-            )
-            .toList();
+    var mediaList = post.medias
+        .where((m) => m.url.trim().isNotEmpty)
+        .toList();
+    if (mediaList.isEmpty) {
+      mediaList = post.images
+          .where((url) => url.trim().isNotEmpty)
+          .map(
+            (url) => PostMedia(type: 'image', url: url, aspectRatio: 4 / 5),
+          )
+          .toList();
+    }
     final cover = mediaList.isEmpty ? '' : ChatApi.resolveUrl(mediaList.first.url);
     return HomeWorkItem(
       id: post.id,
@@ -1067,24 +1065,74 @@ class WorkCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                work.cover,
-                width: cardWidth,
-                height: 126,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
+            if (work.cover.isNotEmpty)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  work.cover,
                   width: cardWidth,
                   height: 126,
-                  color: const Color(0xFFF6F1F2),
-                  child: const Icon(
-                    Icons.image_outlined,
-                    color: Color(0xFFC9C1C3),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    width: cardWidth,
+                    height: 126,
+                    color: const Color(0xFFF6F1F2),
+                    child: const Icon(
+                      Icons.image_outlined,
+                      color: Color(0xFFC9C1C3),
+                    ),
                   ),
                 ),
+              )
+            else
+              Container(
+                width: cardWidth,
+                height: 126,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFFFF3EE), Color(0xFFFFE9EF)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(
+                          Icons.edit_note_rounded,
+                          size: 14,
+                          color: Color(0xFFFF718D),
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          '纯文字',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFFF718D),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      work.title,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF3D3836),
+                        fontSize: 12,
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
             const SizedBox(height: 9),
             Text(
               work.title,

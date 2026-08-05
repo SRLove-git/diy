@@ -415,7 +415,9 @@ class GroupApi {
   /// 我的群列表
   static Future<List<GroupChat>> fetchGroups() async {
     final resp = await ApiClient.instance.get('/groups');
-    return ((resp.data as Map<String, dynamic>)['items'] ?? [])
+    final data = resp.data as Map<String, dynamic>;
+    final items = (data['items'] ?? []) as List;
+    return items
         .map((e) => GroupChat.fromJson(e as Map<String, dynamic>))
         .toList();
   }
