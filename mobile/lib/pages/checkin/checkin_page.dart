@@ -102,13 +102,13 @@ class _CheckInPageState extends State<CheckInPage> {
                   counterText: '',
                   hintText: '000000',
                   hintStyle: const TextStyle(
-                    color: Color(0xFFD0D0D0),
+                    color: Palette.textTertiary,
                     letterSpacing: 12,
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                   ),
                   filled: true,
-                  fillColor: const Color(0xFFFFF0E8),
+                  fillColor: Palette.primaryLight,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -140,7 +140,7 @@ class _CheckInPageState extends State<CheckInPage> {
                     ? null
                     : _submit,
                 style: FilledButton.styleFrom(
-                  backgroundColor: colors.textPrimary,
+                  backgroundColor: colors.primary,
                   foregroundColor: colors.surface,
                 ),
                 child: Text(_submitting ? '核销中…' : '确认核销'),

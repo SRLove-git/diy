@@ -405,7 +405,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 height: 84,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Color(0xFFFFDCE5),
+                  color: Palette.accentLight,
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: _isValidImageUrl(user?.avatar)

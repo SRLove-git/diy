@@ -384,7 +384,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
               _miniTag(
                 t.enabled ? '启用' : '停用',
                 colors,
-                color: t.enabled ? const Color(0xFF2E9E5B) : colors.danger,
+                color: t.enabled ? Palette.success : colors.danger,
               ),
             ],
           ),

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../core/app_colors.dart';
 import '../core/chat_api.dart';
 import '../core/music_api.dart';
 
@@ -121,7 +122,7 @@ class _MusicPickerSheetState extends State<MusicPickerSheet> {
                             ? Icons.check_circle_rounded
                             : Icons.music_off_rounded,
                         color: widget.current == null
-                            ? const Color(0xFFFF718D)
+                            ? Palette.accent
                             : Colors.white,
                         size: 18,
                       ),
@@ -266,7 +267,7 @@ class _MusicPickerSheetState extends State<MusicPickerSheet> {
                   ? Icons.check_circle_rounded
                   : Icons.radio_button_unchecked,
               color: selected
-                  ? const Color(0xFFFF718D)
+                  ? Palette.accent
                   : const Color(0xFF4A4A56),
               size: 20,
             ),

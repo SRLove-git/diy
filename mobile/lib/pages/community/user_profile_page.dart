@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/app_colors.dart';
 import '../../core/chat_api.dart';
 import '../../core/chat_service.dart';
 import '../../core/follow_api.dart';
@@ -39,10 +40,11 @@ class UserProfilePage extends StatefulWidget {
   final String? avatar;
 
   // ---- 页面配色：与首页品牌风格统一 ----
-  static const Color _primary = Color(0xFFFF718D);
-  static const Color _textPrimary = Color(0xFF333033);
-  static const Color _textSecondary = Color(0xFF8F898C);
-  static const Color _tagBg = Color(0xFFFFF0F3);
+  static const Color _primary = Palette.primary;
+  static const Color _accent = Palette.accent;
+  static const Color _textPrimary = Palette.textPrimary;
+  static const Color _textSecondary = Palette.textSecondary;
+  static const Color _tagBg = Palette.iconBgPink;
 
   @override
   State<UserProfilePage> createState() => _UserProfilePageState();
@@ -169,10 +171,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFBFC),
+      backgroundColor: Palette.background,
       // 顶部：仅返回箭头 + 更多图标，无标题
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFFFBFC),
+        backgroundColor: Palette.background,
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
@@ -198,7 +200,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
           _buildUserInfo(),
           _buildSignature(),
           _buildActions(context),
-          const Divider(height: 16, thickness: 0.5, color: Color(0xFFF0E5E8)),
+          const Divider(height: 16, thickness: 0.5, color: Palette.divider),
           // ---- 帖子列表 ----
           if (_postsLoading)
             const Padding(
@@ -238,7 +240,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
               const Divider(
                 height: 16,
                 thickness: 0.5,
-                color: Color(0xFFF0E5E8),
+                color: Palette.divider,
               ),
             ],
         ],
@@ -633,7 +635,7 @@ class _PostItem extends StatelessWidget {
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFFFFF3EE), Color(0xFFFFE9EF)],
+                colors: [Palette.iconBgOrange, Palette.primaryLight],
               ),
               borderRadius: BorderRadius.circular(12),
             ),
@@ -645,7 +647,7 @@ class _PostItem extends StatelessWidget {
                     const Icon(
                       Icons.edit_note_rounded,
                       size: 16,
-                      color: UserProfilePage._primary,
+                      color: UserProfilePage._accent,
                     ),
                     const SizedBox(width: 5),
                     Text(
@@ -653,7 +655,7 @@ class _PostItem extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: UserProfilePage._primary,
+                        color: UserProfilePage._accent,
                       ),
                     ),
                   ],
@@ -674,7 +676,7 @@ class _PostItem extends StatelessWidget {
                   children: [
                     const Icon(
                       Icons.favorite_rounded,
-                      color: UserProfilePage._primary,
+                      color: UserProfilePage._accent,
                       size: 16,
                     ),
                     const SizedBox(width: 4),

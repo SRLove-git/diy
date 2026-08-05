@@ -165,7 +165,7 @@ class _PendingRow extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFFF3040),
+                    color: Palette.primary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -340,10 +340,10 @@ class _TrendChart extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _bar(t.users / maxVal, const Color(0xFF42A5F5)),
-                        _bar(t.appointments / maxVal, const Color(0xFFE8633A)),
-                        _bar(t.posts / maxVal, const Color(0xFF66BB6A)),
-                        _bar(t.videos / maxVal, const Color(0xFFAB47BC)),
+                        _bar(t.users / maxVal, Palette.purple),
+                        _bar(t.appointments / maxVal, Palette.primary),
+                        _bar(t.posts / maxVal, Palette.success),
+                        _bar(t.videos / maxVal, Palette.accent),
                       ],
                     ),
                   ),
@@ -397,13 +397,13 @@ class _Legend extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        item(const Color(0xFF42A5F5), '新注册'),
+        item(Palette.purple, '新注册'),
         const SizedBox(width: 20),
-        item(const Color(0xFFE8633A), '新预约'),
+        item(Palette.primary, '新预约'),
         const SizedBox(width: 20),
-        item(const Color(0xFF66BB6A), '新作品'),
+        item(Palette.success, '新作品'),
         const SizedBox(width: 20),
-        item(const Color(0xFFAB47BC), '短视频'),
+        item(Palette.accent, '短视频'),
       ],
     );
   }

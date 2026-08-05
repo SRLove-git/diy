@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 
+import '../../core/app_colors.dart';
 import '../../core/appointment_api.dart';
 import '../../core/geo_utils.dart';
 
@@ -279,12 +280,12 @@ class _UnsupportedMapHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ColoredBox(
-      color: Color(0xFFF0EEEA),
-      child: Center(
+    return ColoredBox(
+      color: Palette.surfaceAlt,
+      child: const Center(
         child: Text(
           '当前平台暂不支持地图',
-          style: TextStyle(color: Color(0xFF737373)),
+          style: TextStyle(color: Palette.textSecondary),
         ),
       ),
     );

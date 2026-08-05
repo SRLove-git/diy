@@ -216,7 +216,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除', style: TextStyle(color: Colors.red)),
+            child: const Text('删除', style: TextStyle(color: Palette.danger)),
           ),
         ],
       ),
@@ -464,7 +464,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   height: 90,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Color(0xFFFFDCE5),
+                    color: Palette.accentLight,
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: _isValidImageUrl(user?.avatar)
@@ -962,7 +962,7 @@ class _FunctionTile extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: const Color(0x1AFF718D),
+                  color: Palette.accentSoft,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, size: 20, color: resolvedIconColor),
@@ -1067,7 +1067,7 @@ class _GridCell extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFFFF3EE), Color(0xFFFFE9EF)],
+          colors: [Palette.iconBgOrange, Palette.primaryLight],
         ),
       ),
       child: Column(
@@ -1096,7 +1096,7 @@ class _GridCell extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 12.5,
                 height: 1.5,
-                color: Color(0xFF3D3836),
+                color: Palette.textPrimary,
               ),
             ),
           ),

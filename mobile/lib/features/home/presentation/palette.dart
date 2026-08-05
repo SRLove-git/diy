@@ -1,34 +1,36 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/app_colors.dart';
+
 /// IDOL BEADS 品牌色系
 class HomePalette {
   HomePalette._();
 
   // 背景
-  static const background = Color(0xFFFFFFFF);
+  static const background = Palette.background;
 
   // 主色
-  static const primary = Color(0xFFFF3040);
+  static const primary = Palette.primary;
 
   // 辅助色
   static const secondaryPink = Color(0xFFFFD9E2);
-  static const secondaryPurple = Color(0xFFB8A7FF);
+  static const secondaryPurple = Palette.purpleLight;
   static const secondaryYellow = Color(0xFFFFD58A);
 
   // 卡片
-  static const card = Color(0xFFFFFFFF);
+  static const card = Palette.surface;
 
   // 文字
-  static const textPrimary = Color(0xFF161616);
-  static const textSecondary = Color(0xFF737373);
+  static const textPrimary = Palette.textPrimary;
+  static const textSecondary = Palette.textSecondary;
 
   // 功能色
-  static const badgeRed = Color(0xFFFF3040);
-  static const bannerBg = Color(0xFFFFF0F1);
+  static const badgeRed = Palette.primary;
+  static const bannerBg = Palette.dangerLight;
 
   // 图标圆形背景色（低饱和度）
-  static const iconPinkBg = Color(0xFFFFF0F3);
-  static const iconPurpleBg = Color(0xFFF3F0FF);
-  static const iconYellowBg = Color(0xFFFFF8ED);
-  static const iconTealBg = Color(0xFFEDFAF8);
+  static const iconPinkBg = Palette.iconBgPink;
+  static const iconPurpleBg = Palette.iconBgPurple;
+  static const iconYellowBg = Palette.iconBgYellow;
+  static const iconTealBg = Palette.iconBgTeal;
 }

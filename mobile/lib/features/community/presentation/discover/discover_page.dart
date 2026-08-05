@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
+import '../../../../core/app_colors.dart';
 import '../../../../core/chat_api.dart';
 import '../../../../core/post_api.dart';
 import '../../../../pages/community/author_profile_page.dart';
@@ -142,15 +143,15 @@ String formatDuration(double? seconds) {
 class DiscoverColors {
   DiscoverColors._();
 
-  static const pageBg = Colors.white;
-  static const primary = Color(0xFFFF3040);
-  static const primaryLight = Color(0x14FF3040);
-  static const cardBg = Colors.white;
-  static const titleColor = Color(0xFF161616);
-  static const usernameColor = Color(0xFF737373);
-  static const unselectedText = Color(0xFF8E8E8E);
-  static const unselectedBg = Color(0xFFF5F5F5);
-  static const searchIcon = Color(0xFF161616);
+  static const pageBg = Palette.background;
+  static const primary = Palette.primary;
+  static const primaryLight = Palette.primaryTint;
+  static const cardBg = Palette.surface;
+  static const titleColor = Palette.textPrimary;
+  static const usernameColor = Palette.textSecondary;
+  static const unselectedText = Palette.textTertiary;
+  static const unselectedBg = Palette.surfaceAlt;
+  static const searchIcon = Palette.textPrimary;
 }
 
 // =============================================================================

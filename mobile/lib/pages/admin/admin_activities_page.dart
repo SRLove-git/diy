@@ -256,7 +256,7 @@ class _ActivityCard extends StatelessWidget {
                     activity.enabled ? '已上架' : '已下架',
                     style: TextStyle(
                       fontSize: 12,
-                      color: activity.enabled ? const Color(0xFF2E9E5B) : colors.textSecondary,
+                      color: activity.enabled ? Palette.success : colors.textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

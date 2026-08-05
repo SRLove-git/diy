@@ -445,18 +445,18 @@ class _PostDetailPageState extends State<PostDetailPage> {
               frameBuilder: (context, child, frame, syncLoaded) {
                 if (syncLoaded || frame != null) return child;
                 return Container(
-                  color: const Color(0xFFF0F0F0),
+                  color: Palette.surfaceAlt,
                   alignment: Alignment.center,
                   child: const CircularProgressIndicator(strokeWidth: 2),
                 );
               },
               errorBuilder: (_, _, _) => Container(
-                color: const Color(0xFFF0F0F0),
+                color: Palette.surfaceAlt,
                 alignment: Alignment.center,
                 child: const Icon(
                   Icons.broken_image_outlined,
                   size: 42,
-                  color: Color(0xFFAAAAAA),
+                  color: Palette.textTertiary,
                 ),
               ),
             ),
@@ -512,7 +512,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     (tag) => Text(
                       tag,
                       style: const TextStyle(
-                        color: Color(0xFF24558A),
+                      color: Palette.primary,
                         fontSize: 16,
                         height: 1.35,
                         fontWeight: FontWeight.w500,
@@ -853,7 +853,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       : Icons.star_border_rounded,
                   count: post.collectCount,
                   active: _collected,
-                  activeColor: const Color(0xFFFFB326),
+                  activeColor: Palette.warning,
                   color: colors.textPrimary,
                   onTap: _toggleCollect,
                 ),
@@ -927,7 +927,7 @@ class _FollowPill extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: following ? const Color(0xFFAAAAAA) : color,
+            color: following ? Palette.textTertiary : color,
             width: 1.2,
           ),
         ),
@@ -940,7 +940,7 @@ class _FollowPill extends StatelessWidget {
             : Text(
                 following ? '已关注' : '关注',
                 style: TextStyle(
-                  color: following ? const Color(0xFF777777) : color,
+                  color: following ? Palette.textSecondary : color,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),

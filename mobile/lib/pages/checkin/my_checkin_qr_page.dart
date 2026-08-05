@@ -132,7 +132,7 @@ class _MyCheckInQrPageState extends State<MyCheckInQrPage> {
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.of(ctx).textPrimary,
+              backgroundColor: AppColors.of(ctx).danger,
               foregroundColor: AppColors.of(ctx).surface,
             ),
             child: const Text('确认取消'),
@@ -190,7 +190,7 @@ class _MyCheckInQrPageState extends State<MyCheckInQrPage> {
                           const Icon(
                             Icons.qr_code_2,
                             size: 64,
-                            color: Color(0xFFD0D0D0),
+                            color: Palette.inputBorder,
                           ),
                           const SizedBox(height: 12),
                           Text(

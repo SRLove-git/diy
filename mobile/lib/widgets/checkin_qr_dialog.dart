@@ -44,7 +44,7 @@ Future<void> showCheckInQrDialog(BuildContext context, Appointment appt) {
               child: FilledButton(
                 onPressed: () => Navigator.of(ctx).pop(),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.of(ctx).textPrimary,
+                  backgroundColor: AppColors.of(ctx).primary,
                   foregroundColor: AppColors.of(ctx).surface,
                 ),
                 child: const Text('关闭'),

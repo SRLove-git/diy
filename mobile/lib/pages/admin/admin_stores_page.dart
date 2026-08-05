@@ -187,7 +187,7 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
               ),
               Text(
                 '★ ${s.rating.toStringAsFixed(1)}',
-                style: const TextStyle(fontSize: 13, color: Color(0xFFE6A23C)),
+                style: const TextStyle(fontSize: 13, color: Palette.warning),
               ),
             ],
           ),

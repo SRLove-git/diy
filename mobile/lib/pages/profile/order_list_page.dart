@@ -80,7 +80,7 @@ class _OrderListPageState extends State<OrderListPage>
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.of(ctx).textPrimary,
+              backgroundColor: AppColors.of(ctx).danger,
               foregroundColor: AppColors.of(ctx).surface,
             ),
             child: const Text('确认取消'),
@@ -146,9 +146,9 @@ class _OrderListPageState extends State<OrderListPage>
       case 'booked':
         return colors.textPrimary;
       case 'checked_in':
-        return const Color(0xFFE6A23C);
+        return Palette.warning;
       case 'in_service':
-        return const Color(0xFF2E9E5B);
+        return Palette.success;
       case 'completed':
         return colors.textSecondary;
       case 'cancelled':
@@ -206,7 +206,7 @@ class _OrderListPageState extends State<OrderListPage>
                           const Icon(
                             Icons.receipt_long_outlined,
                             size: 64,
-                            color: Color(0xFFD0D0D0),
+                            color: Palette.inputBorder,
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -341,7 +341,7 @@ class _OrderCard extends StatelessWidget {
                   FilledButton(
                     onPressed: onShowQr,
                     style: FilledButton.styleFrom(
-                      backgroundColor: colors.textPrimary,
+                      backgroundColor: colors.primary,
                       foregroundColor: colors.surface,
                       minimumSize: const Size(0, 32),
                       padding: const EdgeInsets.symmetric(horizontal: 12),

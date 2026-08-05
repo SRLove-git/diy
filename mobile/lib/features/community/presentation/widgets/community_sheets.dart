@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/app_colors.dart';
 import '../../../../core/chat_api.dart';
 import '../../../../core/post_api.dart';
 import '../../domain/community_models.dart';
@@ -202,7 +203,7 @@ class _CommentSheetState extends State<_CommentSheet> {
             ),
             const SizedBox(width: 6),
             IconButton(
-              icon: const Icon(Icons.send_rounded, color: Color(0xFFFF718D)),
+              icon: const Icon(Icons.send_rounded, color: Palette.accent),
               onPressed: _send,
             ),
           ],
@@ -370,7 +371,7 @@ class _ShareSheet extends StatelessWidget {
                             gradient: const LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [Color(0xFFFF718D), Color(0xFF8B73F6)],
+                              colors: [Palette.accent, Palette.purple],
                             ),
                           ),
                           child: Icon(o.icon, color: Colors.white, size: 24),

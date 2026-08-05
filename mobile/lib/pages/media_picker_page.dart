@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 
+import '../core/app_colors.dart';
 import '../core/media_composer.dart';
 
 class MediaPickerPage extends StatefulWidget {
@@ -313,8 +314,8 @@ class _MediaPickerPageState extends State<MediaPickerPage> {
             child: FilledButton(
               onPressed: _finishing ? null : _finish,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFFF2442),
-                disabledBackgroundColor: const Color(0xFFFF8A9C),
+                backgroundColor: Palette.primary,
+                disabledBackgroundColor: Palette.accent.withValues(alpha: 0.45),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -387,7 +388,7 @@ class _SelectedPreview extends StatelessWidget {
               height: 21,
               alignment: Alignment.center,
               decoration: const BoxDecoration(
-                color: Color(0xFFFF2442),
+                color: Palette.primary,
                 shape: BoxShape.circle,
               ),
               child: Text(
@@ -465,7 +466,7 @@ class _MediaTile extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: selectionIndex >= 0
-                    ? const Color(0xFFFF2442)
+                    ? Palette.primary
                     : Colors.black26,
                 border: Border.all(color: Colors.white, width: 2),
               ),

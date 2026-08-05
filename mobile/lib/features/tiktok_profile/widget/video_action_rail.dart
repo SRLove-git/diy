@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/app_colors.dart';
 import '../../../features/community/domain/community_models.dart';
 import '../model/tiktok_video_model.dart';
 
@@ -103,7 +104,7 @@ class _VideoActionRailState extends State<VideoActionRail>
               item.liked
                   ? Icons.favorite_rounded
                   : Icons.favorite_outline_rounded,
-              color: item.liked ? const Color(0xFFFF718D) : Colors.white,
+              color: item.liked ? Palette.accent : Colors.white,
               size: 32,
             ),
           ),

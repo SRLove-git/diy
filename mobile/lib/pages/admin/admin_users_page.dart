@@ -90,7 +90,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: banning ? AppColors.of(ctx).danger : const Color(0xFF2E9E5B),
+              backgroundColor: banning ? AppColors.of(ctx).danger : Palette.success,
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(banning ? '确认封禁' : '确认解封'),
@@ -273,9 +273,9 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
               ),
-              _tag(isAdmin ? '管理员' : '用户', isAdmin ? const Color(0xFFE6A23C) : colors.textSecondary),
+              _tag(isAdmin ? '管理员' : '用户', isAdmin ? Palette.warning : colors.textSecondary),
               const SizedBox(width: 6),
-              _tag(u.isBanned ? '已封禁' : '正常', u.isBanned ? colors.danger : const Color(0xFF2E9E5B)),
+              _tag(u.isBanned ? '已封禁' : '正常', u.isBanned ? colors.danger : Palette.success),
             ],
           ),
           const SizedBox(height: 8),
@@ -288,8 +288,8 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
             child: OutlinedButton(
               onPressed: () => _toggleBan(u),
               style: OutlinedButton.styleFrom(
-                foregroundColor: u.isBanned ? const Color(0xFF2E9E5B) : colors.danger,
-                side: BorderSide(color: u.isBanned ? const Color(0xFF2E9E5B) : colors.danger),
+                foregroundColor: u.isBanned ? Palette.success : colors.danger,
+                side: BorderSide(color: u.isBanned ? Palette.success : colors.danger),
                 minimumSize: const Size(0, 38),
               ),
               child: Text(u.isBanned ? '解封' : '封禁'),

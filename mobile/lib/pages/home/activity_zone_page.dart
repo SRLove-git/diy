@@ -101,11 +101,7 @@ class _ActivityZonePageState extends State<ActivityZonePage> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFB8A7FF), Color(0xFFFF8199)],
-        ),
+          gradient: Palette.gradientSunset,
         boxShadow: const [
           BoxShadow(
             color: Color(0x33B8A7FF),

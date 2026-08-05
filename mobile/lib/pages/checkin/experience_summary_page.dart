@@ -42,7 +42,7 @@ class ExperienceSummaryPage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.check_circle, size: 72, color: Color(0xFF2E9E5B)),
+            const Icon(Icons.check_circle, size: 72, color: Palette.success),
             const SizedBox(height: 16),
             Text(
               '体验结束',
@@ -86,7 +86,7 @@ class ExperienceSummaryPage extends StatelessWidget {
                   Navigator.of(context).popUntil((route) => route.isFirst);
                 },
                 style: FilledButton.styleFrom(
-                  backgroundColor: colors.textPrimary,
+                  backgroundColor: colors.primary,
                   foregroundColor: colors.surface,
                 ),
                 child: const Text('完成'),

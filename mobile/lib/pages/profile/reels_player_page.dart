@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/app_colors.dart';
 import '../../core/video_api.dart';
 import '../../features/community/domain/community_models.dart';
 import '../../features/community/presentation/widgets/video_player_widget.dart';
@@ -197,7 +198,7 @@ class _ReelsPlayerPageState extends State<ReelsPlayerPage>
                     scale: _burstScale.value,
                     child: const Icon(
                       Icons.favorite,
-                      color: Color(0xFFFF718D),
+                      color: Palette.accent,
                       size: 96,
                     ),
                   ),
@@ -258,7 +259,7 @@ class _ReelsPlayerPageState extends State<ReelsPlayerPage>
                       _liked
                           ? Icons.favorite_rounded
                           : Icons.favorite_outline_rounded,
-                      color: _liked ? const Color(0xFFFF718D) : Colors.white,
+                      color: _liked ? Palette.accent : Colors.white,
                       size: 34,
                     ),
                   ),

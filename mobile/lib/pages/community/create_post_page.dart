@@ -267,7 +267,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                         label: Text(t, style: const TextStyle(fontSize: 12)),
                         deleteIcon: const Icon(Icons.close, size: 14),
                         onDeleted: () => _removeTag(t),
-                        backgroundColor: const Color(0x1AFF718D),
+                        backgroundColor: Palette.accentSoft,
                         side: BorderSide.none,
                       ),
                     )

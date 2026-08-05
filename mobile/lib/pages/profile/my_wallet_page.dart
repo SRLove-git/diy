@@ -144,7 +144,7 @@ class _WalletCard extends StatelessWidget {
         gradient: LinearGradient(
           colors: isInactive
               ? const [Color(0xFFE7E2DC), Color(0xFFD4CDC6)]
-              : const [Color(0xFFFF8A5B), Color(0xFFFF718D)],
+              : const [Palette.coral, Palette.accent],
         ),
       ),
       child: Row(

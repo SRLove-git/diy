@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 
+import '../core/app_colors.dart';
 import '../core/music_api.dart';
 import '../core/media_composer.dart';
 import '../core/photo_filters.dart';
@@ -328,7 +329,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
   // ---------- 配色常量 ----------
   static const _bg = Color(0xFF121212);
   static const _btnBg = Color(0xFF2C2C2C);
-  static const _primary = Color(0xFFFF718D);
+  static const _primary = Palette.accent;
   static const _white = Colors.white;
   static const _hint = Color(0xFF888888);
   static const _border = Color(0xFF333333);

@@ -320,7 +320,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                         child: FilledButton(
                           onPressed: _canNext ? _goToSlots : null,
                           style: FilledButton.styleFrom(
-                            backgroundColor: colors.textPrimary,
+                            backgroundColor: colors.primary,
                             foregroundColor: colors.surface,
                           ),
                           child: const Text('下一步'),
@@ -346,7 +346,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                               ? (_step == 3 ? _submit : _onNext)
                               : null,
                           style: FilledButton.styleFrom(
-                            backgroundColor: colors.textPrimary,
+                            backgroundColor: colors.primary,
                             foregroundColor: colors.surface,
                           ),
                           child: Text(
@@ -472,7 +472,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFE4DA),
+                      color: Palette.primaryLight,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -492,7 +492,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(Icons.star, size: 16, color: Color(0xFFFFB300)),
+                const Icon(Icons.star, size: 16, color: Palette.warning),
                 const SizedBox(width: 2),
                 Text(
                   '${s.rating}',
@@ -619,7 +619,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
               return ChoiceChip(
                 label: Text(slot.label),
                 selected: selected,
-                selectedColor: const Color(0xFFFFE4DA),
+                selectedColor: Palette.primaryLight,
                 labelStyle: TextStyle(
                   color: colors.textPrimary,
                   fontWeight: selected ? FontWeight.bold : FontWeight.normal,
@@ -764,7 +764,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.check_circle, size: 72, color: Color(0xFF4CAF50)),
+          const Icon(Icons.check_circle, size: 72, color: Palette.success),
           const SizedBox(height: 16),
           Text('预约成功', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
@@ -776,7 +776,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFE4DA),
+              color: Palette.primaryLight,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
@@ -805,7 +805,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
             child: FilledButton(
               onPressed: () => Navigator.of(context).pop(),
               style: FilledButton.styleFrom(
-                backgroundColor: colors.textPrimary,
+                backgroundColor: colors.primary,
                 foregroundColor: colors.surface,
               ),
               child: const Text('完成'),
@@ -875,7 +875,7 @@ class _Card extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: enabled ? colors.surface : const Color(0xFFF0EEEA),
+          color: enabled ? colors.surface : Palette.surfaceAlt,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? colors.textPrimary : colors.divider,
@@ -940,17 +940,13 @@ class _StepperBtn extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: onTap == null
-              ? const Color(0xFFF0F0F0)
-              : const Color(0xFFFFE4DA),
+          color: onTap == null ? Palette.surfaceAlt : Palette.primaryLight,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
           icon,
           size: 20,
-          color: onTap == null
-              ? const Color(0xFFBDBDBD)
-              : colors.textPrimary,
+          color: onTap == null ? Palette.textTertiary : colors.textPrimary,
         ),
       ),
     );

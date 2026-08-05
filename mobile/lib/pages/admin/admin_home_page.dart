@@ -70,7 +70,7 @@ class AdminHomePage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFFFF718D),
+                color: Palette.accent,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(

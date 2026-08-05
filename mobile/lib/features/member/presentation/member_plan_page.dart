@@ -216,14 +216,14 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
   Widget _buildStatusCard() {
     final m = _membership!;
     final gradient = switch (m.status) {
-      MemberStatus.active => const [Color(0xFF7C6FF7), Color(0xFFFF718D)],
-      MemberStatus.expired => const [Color(0xFF9A9AA4), Color(0xFF6E6E7A)],
-      MemberStatus.none => const [Color(0xFFFFB347), Color(0xFFFF718D)],
+      MemberStatus.active => const [Palette.purple, Palette.accent],
+      MemberStatus.expired => const [Palette.textTertiary, Palette.textSecondary],
+      MemberStatus.none => const [Palette.gold, Palette.accent],
     };
     final (chipText, chipColor) = switch (m.status) {
-      MemberStatus.active => ('生效中', const Color(0xFF2E9E5B)),
-      MemberStatus.expired => ('已到期', const Color(0xFFD9453E)),
-      MemberStatus.none => ('未开通', const Color(0xFFFFB347)),
+      MemberStatus.active => ('生效中', Palette.success),
+      MemberStatus.expired => ('已到期', Palette.danger),
+      MemberStatus.none => ('未开通', Palette.gold),
     };
 
     final subtitle = switch (m.status) {

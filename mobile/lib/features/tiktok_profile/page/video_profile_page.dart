@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/app_colors.dart';
 import '../../../core/auth_service.dart';
 import '../provider/profile_videos_controller.dart';
 import '../widget/video_grid_card.dart';
@@ -126,7 +127,7 @@ class _VideoProfilePageState extends State<VideoProfilePage> {
               },
               child: RefreshIndicator(
                 onRefresh: ctrl.refresh,
-                color: const Color(0xFFFF718D),
+                color: Palette.accent,
                 backgroundColor: const Color(0xFF20202A),
                 displacement: 56,
                 child: CustomScrollView(

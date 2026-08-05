@@ -33,9 +33,9 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
   };
 
   static const _statusColors = {
-    'pending': Color(0xFFE6A23C),
-    'approved': Color(0xFF2E9E5B),
-    'rejected': Color(0xFFD9453E),
+    'pending': Palette.warning,
+    'approved': Palette.success,
+    'rejected': Palette.danger,
   };
 
   @override
@@ -276,7 +276,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                     color: colors.placeholder,
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: Text('#$t', style: const TextStyle(fontSize: 11, color: Color(0xFFE8633A))),
+                  child: Text('#$t', style: const TextStyle(fontSize: 11, color: Palette.primary)),
                 ),
               if (p.images.isNotEmpty)
                 Text(
@@ -304,7 +304,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
             const SizedBox(height: 8),
             Text(
               '驳回原因：${p.rejectReason}',
-              style: const TextStyle(fontSize: 12, color: Color(0xFFD9453E)),
+              style: const TextStyle(fontSize: 12, color: Palette.danger),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -318,7 +318,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                   child: FilledButton(
                     onPressed: () => _approve(p),
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF2E9E5B),
+                      backgroundColor: Palette.success,
                       minimumSize: const Size(0, 38),
                     ),
                     child: const Text('通过'),

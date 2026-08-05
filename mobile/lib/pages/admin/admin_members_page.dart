@@ -391,8 +391,8 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
                       const SizedBox(width: 6),
                       const _Tag(
                         label: '推荐',
-                        background: Color(0xFFFFE9EF),
-                        foreground: Color(0xFFFF5B7F),
+                        background: Palette.primaryLight,
+                        foreground: Palette.accent,
                       ),
                     ],
                     const SizedBox(width: 6),
@@ -401,7 +401,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
                       style: TextStyle(
                         fontSize: 12,
                         color: plan.enabled
-                            ? const Color(0xFF2FA35E)
+                            ? Palette.success
                             : colors.textSecondary,
                       ),
                     ),
@@ -413,7 +413,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFFF5B7F),
+                    color: Palette.accent,
                   ),
                 ),
                 if (plan.originalPrice > plan.price) ...[
@@ -496,8 +496,8 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
                     if (coupon.membersOnly)
                       const _Tag(
                         label: '仅会员',
-                        background: Color(0xFFF2ECFF),
-                        foreground: Color(0xFF7563EC),
+                        background: Palette.iconBgPurple,
+                        foreground: Palette.purple,
                       ),
                     const SizedBox(width: 6),
                     Text(
@@ -505,7 +505,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
                       style: TextStyle(
                         fontSize: 12,
                         color: coupon.enabled
-                            ? const Color(0xFF2FA35E)
+                            ? Palette.success
                             : colors.textSecondary,
                       ),
                     ),
@@ -517,7 +517,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFFF5B7F),
+                    color: Palette.accent,
                   ),
                 ),
                 const SizedBox(height: 4),

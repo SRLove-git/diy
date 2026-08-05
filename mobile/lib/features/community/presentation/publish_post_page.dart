@@ -153,7 +153,7 @@ class _PublishPostPageState extends State<PublishPostPage> {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFBFC),
+      backgroundColor: Palette.background,
       appBar: _buildAppBar(colors),
       body: Stack(
         children: [
@@ -201,7 +201,7 @@ class _PublishPostPageState extends State<PublishPostPage> {
   /// 自定义 AppBar：左侧返回箭头 + 中间标题 + 右侧品牌色发表按钮
   PreferredSizeWidget _buildAppBar(AppColors colors) {
     return AppBar(
-      backgroundColor: const Color(0xFFFFFBFC),
+      backgroundColor: Palette.background,
       elevation: 0.5,
       shadowColor: Colors.black12,
       leading: IconButton(

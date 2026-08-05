@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../core/app_colors.dart';
 import '../../../core/chat_api.dart';
 import '../../../core/video_api.dart';
 import '../../../core/video_layout.dart';
@@ -766,7 +767,7 @@ class _LandscapePlayerState extends State<_LandscapePlayer> {
                             thumbShape: const RoundSliderThumbShape(
                               enabledThumbRadius: 6,
                             ),
-                            activeTrackColor: const Color(0xFFFF718D),
+                            activeTrackColor: Palette.accent,
                             inactiveTrackColor: Colors.white24,
                             thumbColor: Colors.white,
                           ),

@@ -1135,7 +1135,7 @@ class _ChatPageState extends State<ChatPage> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: online
-                    ? const Color(0xFF34C759)
+                    ? Palette.success
                     : colors.textSecondary.withValues(alpha: 0.35),
               ),
             ),
@@ -1160,8 +1160,8 @@ class _ChatPageState extends State<ChatPage> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: s.following
-            ? const Color(0xFFF0F9EB)
-            : const Color(0xFFFFF7E6),
+            ? Palette.successLight
+            : Palette.warningLight,
         border: Border(
           bottom: BorderSide(color: colors.divider),
         ),
@@ -1172,8 +1172,8 @@ class _ChatPageState extends State<ChatPage> {
             s.following ? Icons.check_circle_outline : Icons.info_outline,
             size: 16,
             color: s.following
-                ? const Color(0xFF34C759)
-                : const Color(0xFFFF9500),
+                ? Palette.success
+                : Palette.warning,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -1417,37 +1417,37 @@ class _ChatPageState extends State<ChatPage> {
     final items = <({IconData icon, Color color, String label, VoidCallback onTap})>[
       (
         icon: Icons.photo_library_outlined,
-        color: const Color(0xFF5B7CFA),
+        color: Palette.purple,
         label: '图片',
         onTap: _loading ? () {} : () => _sendImage(ImageSource.gallery),
       ),
       (
         icon: Icons.photo_camera_outlined,
-        color: const Color(0xFF34C759),
+        color: Palette.success,
         label: '拍照',
         onTap: _loading ? () {} : () => _sendImage(ImageSource.camera),
       ),
       (
         icon: Icons.location_on_outlined,
-        color: const Color(0xFFFF9500),
+        color: Palette.orange,
         label: '位置',
         onTap: () => _toast('功能开发中'),
       ),
       (
         icon: Icons.videocam_outlined,
-        color: const Color(0xFFAF52DE),
+        color: Palette.accent,
         label: '视频',
         onTap: _loading ? () {} : () => _sendVideo(),
       ),
       (
         icon: Icons.folder_outlined,
-        color: const Color(0xFF8E8E93),
+        color: Palette.textTertiary,
         label: '文件',
         onTap: () => _toast('功能开发中'),
       ),
       (
         icon: Icons.badge_outlined,
-        color: const Color(0xFFE74C3C),
+        color: Palette.danger,
         label: '名片',
         onTap: () => _toast('功能开发中'),
       ),

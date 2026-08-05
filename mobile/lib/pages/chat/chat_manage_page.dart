@@ -183,7 +183,7 @@ class _ChatManagePageState extends State<ChatManagePage> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: online
-                          ? const Color(0xFF34C759)
+                          ? Palette.success
                           : colors.textSecondary.withValues(alpha: 0.35),
                     ),
                   );

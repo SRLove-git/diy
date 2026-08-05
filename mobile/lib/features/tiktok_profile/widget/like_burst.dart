@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/app_colors.dart';
+
 /// 双击点赞的爱心爆心动画（widget 组件层）
 ///
 /// 抖音式交互：双击视频/封面时，画面中央弹出一颗粉色爱心，
@@ -18,7 +20,7 @@ class LikeBurst extends StatefulWidget {
   const LikeBurst({
     super.key,
     this.size = 96,
-    this.color = const Color(0xFFFF718D),
+    this.color = Palette.accent,
   });
 
   /// 爱心尺寸

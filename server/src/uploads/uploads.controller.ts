@@ -1,13 +1,19 @@
 import {
   BadRequestException,
+  Catch,
   Controller,
+  ExceptionFilter,
+  HttpStatus,
   Inject,
+  PayloadTooLargeException,
   Post,
   Query,
   UploadedFile,
+  UseFilters,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import type { ArgumentsHost } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { randomUUID } from 'crypto';
 import { mkdirSync, unlinkSync } from 'fs';
@@ -53,6 +59,22 @@ const ALLOWED_VIDEO_MIMES = new Set([
   'video/x-matroska',
 ]);
 
+/** 短视频上传大小上限：手机高码率视频 2 分钟可达数百 MB，给足 1GB */
+const MAX_VIDEO_SIZE = 1024 * 1024 * 1024;
+
+/** multer 超限（LIMIT_FILE_SIZE）时返回友好中文提示，替代默认的 "File too large" */
+@Catch(PayloadTooLargeException)
+class UploadSizeExceptionFilter implements ExceptionFilter {
+  catch(_exception: PayloadTooLargeException, host: ArgumentsHost) {
+    const res = host.switchToHttp().getResponse();
+    res.status(HttpStatus.PAYLOAD_TOO_LARGE).json({
+      statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
+      message: '文件过大，请压缩后再上传',
+      error: 'Payload Too Large',
+    });
+  }
+}
+
 /** 当前月份子目录：yyyy/mm */
 function monthDir(): string {
   const d = new Date();
@@ -90,6 +112,7 @@ const ALLOWED_FOLDERS = new Set(['chat', 'avatar', 'post']);
  */
 @Controller('uploads')
 @UseGuards(JwtAuthGuard)
+@UseFilters(UploadSizeExceptionFilter)
 export class UploadsController {
   constructor(
     @Inject(UPLOAD_PROVIDER)
@@ -150,7 +173,7 @@ export class UploadsController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: multerStorage(),
-      limits: { fileSize: 200 * 1024 * 1024 },
+      limits: { fileSize: MAX_VIDEO_SIZE },
     }),
   )
   async uploadVideo(@UploadedFile() file?: Express.Multer.File) {

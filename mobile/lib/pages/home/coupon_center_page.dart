@@ -210,7 +210,7 @@ class _CouponCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFFFF3040),
+                              color: Palette.primary,
                             ),
                           ),
                         ),

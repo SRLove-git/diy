@@ -99,7 +99,7 @@ class _ActionSheet extends StatelessWidget {
     final color = action == MessageAction.delete
         ? colors.danger
         : action == MessageAction.recall
-            ? const Color(0xFFFF9500)
+            ? Palette.warning
             : colors.textPrimary;
     return InkWell(
       borderRadius: BorderRadius.circular(12),

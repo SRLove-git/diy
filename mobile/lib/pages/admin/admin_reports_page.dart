@@ -37,9 +37,9 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
   };
 
   static const _statusColors = {
-    'pending': Color(0xFFE6A23C),
-    'resolved': Color(0xFF67C23A),
-    'dismissed': Color(0xFF909399),
+    'pending': Palette.warning,
+    'resolved': Palette.success,
+    'dismissed': Palette.textTertiary,
   };
 
   @override
@@ -102,7 +102,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: action == 'resolve'
-                  ? const Color(0xFF2E9E5B)
+                  ? Palette.success
                   : AppColors.of(ctx).danger,
             ),
             onPressed: () => Navigator.pop(ctx, true),
@@ -293,7 +293,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
                   child: FilledButton(
                     onPressed: () => _operate(r, 'resolve'),
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF2E9E5B),
+                      backgroundColor: Palette.success,
                       minimumSize: const Size(0, 38),
                     ),
                     child: const Text('处理'),

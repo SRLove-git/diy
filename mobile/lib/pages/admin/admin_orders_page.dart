@@ -37,11 +37,11 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
   };
 
   static const _statusColors = {
-    'booked': Color(0xFFE8633A),
-    'checked_in': Color(0xFFE6A23C),
-    'in_service': Color(0xFF2E9E5B),
-    'completed': Color(0xFF8A8A8A),
-    'cancelled': Color(0xFFD9453E),
+    'booked': Palette.orange,
+    'checked_in': Palette.warning,
+    'in_service': Palette.success,
+    'completed': Palette.textTertiary,
+    'cancelled': Palette.danger,
   };
 
   @override
@@ -283,7 +283,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
           child: FilledButton(
             onPressed: () => _operate(o, isBooked ? 'checkin' : 'clockin'),
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF2E9E5B),
+              backgroundColor: Palette.success,
               minimumSize: const Size.fromHeight(40),
             ),
             child: Text(isBooked ? '核销' : '上钟'),

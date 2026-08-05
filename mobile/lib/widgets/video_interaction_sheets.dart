@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/app_colors.dart';
 import '../core/video_api.dart';
 import '../features/community/domain/community_models.dart';
 import '../pages/short_video_models.dart';
@@ -170,7 +171,7 @@ class _VideoCommentSheetState extends State<VideoCommentSheet> {
             ),
             const SizedBox(width: 6),
             IconButton(
-              icon: const Icon(Icons.send_rounded, color: Color(0xFFFF718D)),
+              icon: const Icon(Icons.send_rounded, color: Palette.accent),
               onPressed: _send,
             ),
           ],
@@ -338,7 +339,7 @@ class VideoShareSheet extends StatelessWidget {
                             gradient: LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [Color(0xFFFF718D), Color(0xFFD94F70)],
+                              colors: [Palette.accent, Palette.accentDark],
                             ),
                           ),
                           child: Icon(o.icon, color: Colors.white, size: 24),

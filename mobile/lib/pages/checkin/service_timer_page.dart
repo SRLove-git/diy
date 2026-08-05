@@ -130,7 +130,7 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.of(ctx).textPrimary,
+              backgroundColor: AppColors.of(ctx).primary,
               foregroundColor: AppColors.of(ctx).surface,
             ),
             child: const Text('确认下钟'),
@@ -343,7 +343,7 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
             Icon(
               _inService ? Icons.access_time_filled : Icons.login,
               size: 64,
-              color: _inService ? colors.textPrimary : const Color(0xFF2E9E5B),
+              color: _inService ? colors.textPrimary : Palette.success,
             ),
             const SizedBox(height: 20),
             // 状态文字
@@ -427,7 +427,7 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
                 child: FilledButton(
                   onPressed: _submitting ? null : _clockIn,
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E9E5B),
+                    backgroundColor: Palette.success,
                   ),
                   child: Text(_submitting ? '上钟中…' : '上钟 · 开始体验'),
                 ),

@@ -5,6 +5,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/app_colors.dart';
 import '../core/media_composer.dart';
 import '../core/music_api.dart';
 import '../core/video_layout.dart';
@@ -552,7 +553,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
             children: [
               const Icon(
                 Icons.fiber_manual_record,
-                color: Color(0xFFFF3B30),
+                color: Palette.primary,
                 size: 14,
               ),
               const SizedBox(width: 6),
@@ -777,7 +778,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
             ? Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFFFF718D),
+                  color: Palette.accent,
                 ),
                 child: const Center(
                   child: Icon(

@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+import '../core/app_colors.dart';
 import '../core/follow_api.dart';
 import '../core/photo_filters.dart';
 import '../core/route_observer.dart';
@@ -423,7 +424,7 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFFFF718D),
+                color: Palette.accent,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Row(
@@ -1023,7 +1024,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
                       scale: _burstScale.value,
                       child: const Icon(
                         Icons.favorite,
-                        color: Color(0xFFFF718D),
+                        color: Palette.accent,
                         size: 96,
                       ),
                     ),
@@ -1157,7 +1158,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
                                 value: display,
                                 minHeight: 3,
                                 backgroundColor: Colors.white24,
-                                color: const Color(0xFFFF718D),
+                                color: Palette.accent,
                               ),
                             );
                           },
@@ -1183,7 +1184,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
                                 value: display,
                                 minHeight: 3,
                                 backgroundColor: Colors.white24,
-                                color: const Color(0xFFFF718D),
+                                color: Palette.accent,
                               ),
                             );
                           },
@@ -1349,7 +1350,7 @@ class _RightRailState extends State<_RightRail>
             scale: _likeScale,
             child: Icon(
               v.liked ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
-              color: v.liked ? const Color(0xFFFF718D) : Colors.white,
+              color: v.liked ? Palette.accent : Colors.white,
               size: 34,
             ),
           ),
@@ -1426,7 +1427,7 @@ class _RightRailState extends State<_RightRail>
               height: 22,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: Color(0xFFFF718D),
+                color: Palette.accent,
               ),
               child: Icon(
                 widget.followed ? Icons.check_rounded : Icons.add_rounded,
@@ -1501,7 +1502,7 @@ class _MusicDiscState extends State<_MusicDisc>
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: const Color(0xFFFF718D),
+          color: Palette.accent,
           border: Border.all(color: Colors.white70, width: 1.2),
         ),
         child: ClipOval(
