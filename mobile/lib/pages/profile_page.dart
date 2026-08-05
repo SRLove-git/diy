@@ -35,10 +35,13 @@ class _ProfilePageState extends State<ProfilePage> {
   final _posts = <Post>[];
   bool _loading = true;
   String? _error;
-  int _tab = 0; // 0 帖子 / 1 Reels
+  int _tab = 0; // 0 帖子 / 1 笔记 / 2 视频
 
-  /// 我的短视频作品（Reels Tab，懒加载）
+  /// 我的短视频作品（视频 Tab，懒加载；仅含真实视频）
   final List<ShortVideo> _reels = [];
+
+  /// 我的笔记（纯图片组合作品，从视频接口拆分，懒加载）
+  final List<ShortVideo> _notes = [];
   bool _reelsLoaded = false;
   bool _reelsLoading = false;
   String? _reelsError;
@@ -100,10 +103,19 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final result = await VideoApi.fetchMine();
       if (mounted) {
+        // 拆分：无视频流的纯图片组合作品归入「笔记」，其余留在「视频」
+        final videos = <ShortVideo>[];
+        final notes = <ShortVideo>[];
+        for (final v in result.items) {
+          (v.isPhoto || v.videoUrl.isEmpty ? notes : videos).add(v);
+        }
         setState(() {
           _reels
             ..clear()
-            ..addAll(result.items);
+            ..addAll(videos);
+          _notes
+            ..clear()
+            ..addAll(notes);
           _reelsLoaded = true;
         });
       }
@@ -292,7 +304,11 @@ class _ProfilePageState extends State<ProfilePage> {
                   _buildProfileInfo(user),
                   _buildActionButtons(),
                   _buildContentTabs(),
-                  _tab == 0 ? _buildPostGrid() : _buildReelsGrid(),
+                  _tab == 0
+                      ? _buildPostGrid()
+                      : _tab == 1
+                      ? _buildNotesGrid()
+                      : _buildReelsGrid(),
                 ],
               ),
             );
@@ -616,6 +632,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final colors = AppColors.of(context);
     const tabs = [
       (icon: Icons.grid_view_rounded, label: '帖子'),
+      (icon: Icons.article_outlined, label: '笔记'),
       (icon: Icons.play_circle_outline, label: '视频'),
     ];
     return Container(
@@ -624,7 +641,7 @@ class _ProfilePageState extends State<ProfilePage> {
         border: Border(bottom: BorderSide(color: colors.divider)),
       ),
       child: Row(
-        children: List.generate(2, (i) {
+        children: List.generate(tabs.length, (i) {
           final active = _tab == i;
           final color = active ? colors.primary : colors.textSecondary;
           return Expanded(
@@ -632,8 +649,12 @@ class _ProfilePageState extends State<ProfilePage> {
               behavior: HitTestBehavior.opaque,
               onTap: () {
                 setState(() => _tab = i);
-                // 首次进入 Reels 时懒加载
-                if (i == 1 && !_reelsLoaded && !_reelsLoading) _loadReels();
+                // 首次进入「笔记 / 视频」时懒加载（同一接口拆分）
+                if ((i == 1 || i == 2) &&
+                    !_reelsLoaded &&
+                    !_reelsLoading) {
+                  _loadReels();
+                }
               },
               child: Column(
                 children: [
@@ -693,7 +714,43 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ─── 7. 内容展示：Reels 三列宫格 ───
+  // ─── 7. 内容展示：笔记三列宫格（纯图片组合作品） ───
+  Widget _buildNotesGrid() {
+    if (_reelsLoading && !_reelsLoaded) {
+      return const SizedBox(height: 280, child: LoadingWidget());
+    }
+    if (_reelsError != null && _notes.isEmpty) {
+      return SizedBox(
+        height: 280,
+        child: AppErrorWidget(message: _reelsError!, onRetry: _loadReels),
+      );
+    }
+    if (_notes.isEmpty) {
+      return const SizedBox(
+        height: 280,
+        child: EmptyWidget(
+          icon: Icons.article_outlined,
+          message: '还没有笔记，去「视频」页发布照片作品吧',
+        ),
+      );
+    }
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _notes.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 2,
+        crossAxisSpacing: 2,
+      ),
+      itemBuilder: (_, i) => _NoteCell(
+        video: _notes[i],
+        onTap: () => _openReels(_notes[i]),
+      ),
+    );
+  }
+
+  // ─── 8. 内容展示：视频三列宫格（仅真实视频） ───
   Widget _buildReelsGrid() {
     if (_reelsLoading && !_reelsLoaded) {
       return const SizedBox(height: 280, child: LoadingWidget());
@@ -994,6 +1051,86 @@ class _ReelsCell extends StatelessWidget {
                 ),
               ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 笔记宫格单元：纯图片组合作品封面 + 张数角标
+class _NoteCell extends StatelessWidget {
+  const _NoteCell({required this.video, required this.onTap});
+
+  final ShortVideo video;
+  final VoidCallback onTap;
+
+  /// 封面：优先照片列表首张，回退视频封面
+  String get _cover {
+    if (video.photos.isNotEmpty) return video.photos.first;
+    if (video.cover.isNotEmpty) return video.cover;
+    return '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return InkWell(
+      onTap: onTap,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _cover.isNotEmpty
+              ? Image.network(
+                  _cover,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    color: colors.placeholder,
+                    child: Icon(
+                      Icons.photo_library_outlined,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                )
+              : Container(
+                  color: colors.placeholder,
+                  child: Icon(
+                    Icons.photo_library_outlined,
+                    color: colors.textSecondary,
+                  ),
+                ),
+          if (video.photos.length > 1)
+            Positioned(
+              right: 6,
+              bottom: 6,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.photo_library_outlined,
+                      color: Colors.white,
+                      size: 12,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      '${video.photos.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
