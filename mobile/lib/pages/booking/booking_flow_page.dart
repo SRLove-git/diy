@@ -1,13 +1,37 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/appointment_api.dart';
+import '../../core/geo_utils.dart';
+import '../profile/order_list_page.dart';
+import 'store_map_view.dart';
 
 /// 预约流程：选店 → 日期/时段 → 人数/桌位 → 确认 → 生成预约单
 /// 对齐 D4 排期「可完成预约下单」检查点
 class BookingFlowPage extends StatefulWidget {
-  const BookingFlowPage({super.key});
+  const BookingFlowPage({
+    super.key,
+    this.storesLoader,
+    this.locate,
+    this.detailLoader,
+    this.mapBuilder,
+  });
+
+  /// 测试注入：门店列表加载
+  final Future<List<Store>> Function()? storesLoader;
+
+  /// 测试注入：定位（返回 null 表示未授权/定位失败）
+  final Future<GeoPoint?> Function()? locate;
+
+  /// 测试注入：门店详情（时段）
+  final Future<
+      ({Store store, List<StoreTable> tables, List<TimeSlot> slots})
+      > Function(int storeId)? detailLoader;
+
+  /// 测试注入：地图渲染
+  final StoreMapBuilder? mapBuilder;
 
   @override
   State<BookingFlowPage> createState() => _BookingFlowPageState();
@@ -17,9 +41,12 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
   int _step = 0; // 0 选店 1 日期时段 2 人数桌位 3 确认 4 成功
 
   // 步骤 0 数据
-  List<Store>? _stores;
+  List<Store> _stores = [];
   bool _storesLoading = true;
   String? _storesError;
+  GeoPoint? _userLocation;
+  final Map<int, GlobalKey> _storeKeys = {};
+  bool _userPicked = false;
 
   // 已选
   Store? _store;
@@ -49,13 +76,29 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
     setState(() {
       _storesLoading = true;
       _storesError = null;
+      _userPicked = false;
     });
     try {
-      final stores = await AppointmentApi.fetchStores();
+      // 门店列表与定位并行请求：列表先展示，定位到位后再按距离重排
+      final storesF = (widget.storesLoader ?? AppointmentApi.fetchStores)();
+      final locF = (widget.locate ?? _locate)();
+      final stores = await storesF;
       if (!mounted) return;
       setState(() {
         _stores = stores;
         _storesLoading = false;
+        if (!_userPicked && _step == 0 && stores.isNotEmpty) {
+          _selectStoreSilently(stores.first);
+        }
+      });
+      final location = await locF;
+      if (!mounted || location == null) return;
+      setState(() {
+        _userLocation = location;
+        _stores = _sortedByDistance(stores, location);
+        if (!_userPicked && _step == 0 && _stores.isNotEmpty) {
+          _selectStoreSilently(_stores.first);
+        }
       });
     } on DioException catch (e) {
       if (!mounted) return;
@@ -66,17 +109,56 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
     }
   }
 
-  Future<void> _selectStore(Store store) async {
-    setState(() {
-      _store = store;
-      _step = 1;
-      _slot = null;
-      _table = null;
-      _availability = [];
-      _date = DateTime.now();
+  /// 按用户定位重排门店（近 → 远）
+  List<Store> _sortedByDistance(List<Store> stores, GeoPoint location) {
+    final sorted = List.of(stores);
+    sorted.sort((a, b) {
+      final da = haversineKm(location, GeoPoint(lat: a.lat, lng: a.lng));
+      final db = haversineKm(location, GeoPoint(lat: b.lat, lng: b.lng));
+      return da.compareTo(db);
     });
+    return sorted;
+  }
+
+  /// 默认定位实现：请求定位权限后取当前坐标，失败返回 null
+  Future<GeoPoint?> _locate() async {
     try {
-      final detail = await AppointmentApi.fetchStoreDetail(store.id);
+      if (!await Geolocator.isLocationServiceEnabled()) return null;
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return null;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+      return GeoPoint(lat: pos.latitude, lng: pos.longitude);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 选中门店（仅标记，不跳转步骤），并预取时段
+  void _selectStoreSilently(Store store) {
+    _store = store;
+    _slot = null;
+    _table = null;
+    _availability = [];
+    _date = DateTime.now();
+    _prefetchDetail(store);
+  }
+
+  Future<void> _prefetchDetail(Store store) async {
+    try {
+      final detail = await (widget.detailLoader ?? AppointmentApi.fetchStoreDetail)(
+        store.id,
+      );
       if (!mounted || _store?.id != store.id) return;
       setState(() {
         _slots = detail.slots;
@@ -87,6 +169,33 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
         context,
       ).showSnackBar(SnackBar(content: Text(AppointmentApi.messageOf(e))));
     }
+  }
+
+  /// 点击地图标记：选中该门店并滚动列表到对应卡片
+  void _selectFromMap(Store store) {
+    setState(() {
+      _userPicked = true;
+      _selectStoreSilently(store);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final ctx = _keyFor(store).currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  GlobalKey _keyFor(Store store) =>
+      _storeKeys.putIfAbsent(store.id, () => GlobalKey());
+
+  void _goToSlots() {
+    if (_store == null) return;
+    setState(() => _step = 1);
   }
 
   void _selectSlot(TimeSlot slot) {
@@ -200,41 +309,54 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
         3 => _buildConfirmStep(context),
         _ => _buildSuccessStep(context),
       },
-      bottomNavigationBar: _step >= 1 && _step <= 3
+      bottomNavigationBar: _step <= 3
           ? SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    if (_step > 1)
+                    if (_step == 0)
                       Expanded(
-                        child: OutlinedButton(
-                          onPressed: _goBack,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: colors.textPrimary,
-                            side: BorderSide(color: colors.textPrimary),
+                        child: FilledButton(
+                          onPressed: _canNext ? _goToSlots : null,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: colors.textPrimary,
+                            foregroundColor: colors.surface,
                           ),
-                          child: const Text('上一步'),
+                          child: const Text('下一步'),
+                        ),
+                      )
+                    else ...[
+                      if (_step > 1)
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _goBack,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: colors.textPrimary,
+                              side: BorderSide(color: colors.textPrimary),
+                            ),
+                            child: const Text('上一步'),
+                          ),
+                        ),
+                      if (_step > 1) const SizedBox(width: 12),
+                      Expanded(
+                        flex: _step > 1 ? 1 : 2,
+                        child: FilledButton(
+                          onPressed: _canNext
+                              ? (_step == 3 ? _submit : _onNext)
+                              : null,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: colors.textPrimary,
+                            foregroundColor: colors.surface,
+                          ),
+                          child: Text(
+                            _step == 3
+                                ? (_submitting ? '提交中…' : '确认预约')
+                                : '下一步',
+                          ),
                         ),
                       ),
-                    if (_step > 1) const SizedBox(width: 12),
-                    Expanded(
-                      flex: _step > 1 ? 1 : 2,
-                      child: FilledButton(
-                        onPressed: _canNext
-                            ? (_step == 3 ? _submit : _onNext)
-                            : null,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: colors.textPrimary,
-                          foregroundColor: colors.surface,
-                        ),
-                        child: Text(
-                          _step == 3
-                              ? (_submitting ? '提交中…' : '确认预约')
-                              : '下一步',
-                        ),
-                      ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -265,8 +387,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
     if (_storesError != null) {
       return _ErrorRetry(message: _storesError!, onRetry: _loadStores);
     }
-    final stores = _stores ?? [];
-    if (stores.isEmpty) {
+    if (_stores.isEmpty) {
       return Center(
         child: Text(
           '暂无可预约门店',
@@ -274,70 +395,145 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
         ),
       );
     }
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: stores.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, i) {
-        final s = stores[i];
-        final selected = _store?.id == s.id;
-        return _Card(
-          selected: selected,
-          onTap: () => _selectStore(s),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      s.name,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                  if (selected)
-                    Icon(Icons.check_circle, color: colors.textPrimary),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  const Icon(Icons.star, size: 16, color: Color(0xFFFFB300)),
-                  const SizedBox(width: 2),
-                  Text(
-                    '${s.rating}',
-                    style: TextStyle(color: colors.textSecondary),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      s.address,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: colors.textSecondary),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(
-                    Icons.schedule,
-                    size: 16,
-                    color: colors.textSecondary,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    s.businessHours,
-                    style: TextStyle(color: colors.textSecondary),
-                  ),
-                ],
-              ),
+              Text('选择门店', style: Theme.of(context).textTheme.titleMedium),
+              const Spacer(),
+              if (_userLocation != null)
+                Text(
+                  '已按距离从近到远排序',
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                ),
             ],
           ),
-        );
-      },
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: StoreMapView(
+            data: StoreMapViewData(
+              stores: _stores,
+              userLocation: _userLocation,
+              selectedStoreId: _store?.id,
+              onSelectStore: _selectFromMap,
+            ),
+            builder: widget.mapBuilder,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            itemCount: _stores.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
+            itemBuilder: (context, i) => _buildStoreCard(context, _stores[i], i),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStoreCard(BuildContext context, Store s, int index) {
+    final colors = AppColors.of(context);
+    final selected = _store?.id == s.id;
+    final isNearest = _userLocation != null && index == 0;
+    final location = _userLocation;
+    final distance = location == null
+        ? null
+        : haversineKm(location, GeoPoint(lat: s.lat, lng: s.lng));
+    return KeyedSubtree(
+      key: _keyFor(s),
+      child: _Card(
+        key: Key('store-card-${s.id}'),
+        selected: selected,
+        onTap: () => setState(() {
+          _userPicked = true;
+          _selectStoreSilently(s);
+        }),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    s.name,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                if (isNearest) ...[
+                  Container(
+                    margin: const EdgeInsets.only(right: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFE4DA),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '最近',
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+                if (selected)
+                  Icon(Icons.check_circle, color: colors.textPrimary),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.star, size: 16, color: Color(0xFFFFB300)),
+                const SizedBox(width: 2),
+                Text(
+                  '${s.rating}',
+                  style: TextStyle(color: colors.textSecondary),
+                ),
+                if (distance != null) ...[
+                  const SizedBox(width: 10),
+                  Text(
+                    formatDistanceKm(distance),
+                    style: TextStyle(color: colors.textPrimary),
+                  ),
+                ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    s.address,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: colors.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  Icons.schedule,
+                  size: 16,
+                  color: colors.textSecondary,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  s.businessHours,
+                  style: TextStyle(color: colors.textSecondary),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -615,6 +811,20 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
               child: const Text('完成'),
             ),
           ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const OrderListPage()),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: colors.textPrimary,
+                side: BorderSide(color: colors.textPrimary),
+              ),
+              child: const Text('查看我的订单'),
+            ),
+          ),
         ],
       ),
     );
@@ -643,6 +853,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
 
 class _Card extends StatelessWidget {
   const _Card({
+    super.key,
     required this.selected,
     required this.onTap,
     required this.child,

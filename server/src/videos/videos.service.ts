@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Not, Repository } from 'typeorm';
 
@@ -255,6 +259,16 @@ export class VideosService {
     await this.videos.delete({ id });
   }
 
+  /** 用户端：删除自己的视频/照片作品（校验归属后物理删除） */
+  async deleteOwn(userId: number, videoId: number): Promise<void> {
+    const video = await this.videos.findOneBy({ id: videoId });
+    if (!video) throw new NotFoundException('作品不存在');
+    if (video.userId !== userId) {
+      throw new ForbiddenException('只能删除自己的作品');
+    }
+    await this.hardDelete(videoId);
+  }
+
   // ──── Detail ────
 
   /** 视频详情（已下架/驳回视为不存在） */
@@ -277,7 +291,7 @@ export class VideosService {
     return this.videos.count();
   }
 
-  async create(userId: number, dto: CreateVideoDto): Promise<Video> {
+  async create(userId: number, dto: CreateVideoDto): Promise<VideoItem> {
     const video = this.videos.create({
       userId,
       title: dto.title ?? '',
@@ -297,7 +311,9 @@ export class VideosService {
       location: dto.location ?? '',
       status: 'approved',
     });
-    return this.videos.save(video);
+    const saved = await this.videos.save(video);
+    const authors = await this.resolveAuthors([userId]);
+    return this.enrich([saved], authors, new Set<number>())[0];
   }
 
   // ──── Like operations ────

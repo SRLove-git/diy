@@ -31,6 +31,10 @@ export class MessageStatus {
   @Column({ type: 'datetime', nullable: true })
   readAt: Date | null;
 
+  /** 用户删除该消息的时间；非空 = 仅对当前用户隐藏（对端不受影响） */
+  @Column({ type: 'datetime', nullable: true })
+  deletedAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }

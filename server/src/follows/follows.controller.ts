@@ -5,6 +5,8 @@ import {
   Param,
   ParseIntPipe,
   Put,
+  DefaultValuePipe,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -32,6 +34,28 @@ export class FollowsController {
     @Param('targetId', ParseIntPipe) targetId: number,
   ) {
     return this.follows.status(user.id, targetId);
+  }
+
+  /** 某用户的粉丝列表（分页） */
+  @Get(':targetId/followers')
+  followers(
+    @CurrentUser() user: AuthUser,
+    @Param('targetId', ParseIntPipe) targetId: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
+  ) {
+    return this.follows.followers(targetId, user.id, page, limit);
+  }
+
+  /** 某用户的关注列表（分页） */
+  @Get(':targetId/following')
+  followingFor(
+    @CurrentUser() user: AuthUser,
+    @Param('targetId', ParseIntPipe) targetId: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
+  ) {
+    return this.follows.followingFor(targetId, user.id, page, limit);
   }
 
   /** 关注/取消关注目标用户（幂等），返回最新状态 */

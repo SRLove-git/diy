@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -66,6 +67,16 @@ export class VideosController {
   @UseGuards(JwtAuthGuard)
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateVideoDto) {
     return this.videos.create(user.id, dto);
+  }
+
+  /** 删除自己的视频/照片作品 */
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  deleteOwn(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.videos.deleteOwn(user.id, id).then(() => ({ deleted: true }));
   }
 
   /** 查看某个用户发布的视频 */

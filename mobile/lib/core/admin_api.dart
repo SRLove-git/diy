@@ -697,6 +697,11 @@ class AdminApi {
     await ApiClient.instance.patch('/admin/users/$id/ban', data: {'isBanned': isBanned});
   }
 
+  /// 强制下线：立即使该用户全部现有会话失效，需重新登录
+  static Future<void> forceOffline(int id) async {
+    await ApiClient.instance.patch('/admin/users/$id/offline');
+  }
+
   /// 删除某用户的全部作品（社区帖子 + 短视频/照片）
   static Future<({int posts, int videos})> deleteUserWorks(int id) async {
     final resp = await ApiClient.instance.delete('/admin/users/$id/works');
@@ -705,6 +710,11 @@ class AdminApi {
       posts: (data['posts'] as num?)?.toInt() ?? 0,
       videos: (data['videos'] as num?)?.toInt() ?? 0,
     );
+  }
+
+  /// 删除用户（含其作品、互动、关注、会员、预约、聊天等全部关联数据）
+  static Future<void> deleteUser(int id) async {
+    await ApiClient.instance.delete('/admin/users/$id');
   }
 
   // ─── 举报处理 ───

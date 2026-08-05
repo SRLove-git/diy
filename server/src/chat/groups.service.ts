@@ -8,9 +8,23 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, MoreThan, Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { Group } from './group.entity';
+import { GroupMessageDeletion } from './group-message-deletion.entity';
 import { GroupMember } from './group-member.entity';
 import { GroupMessage } from './group-message.entity';
 import { GroupRead } from './group-read.entity';
+import { isValidChatContent, RECALL_WINDOW_MS } from './chat.service';
+import type { MessageContentType } from './chat.service';
+
+/** 群聊消息类型归一化 */
+function normalizeType(t: string): MessageContentType {
+  return t === 'image'
+    ? 'image'
+    : t === 'voice'
+      ? 'voice'
+      : t === 'video'
+        ? 'video'
+        : 'text';
+}
 
 /** 群聊服务：建群 / 群列表 / 群消息 / 已读 / 成员 */
 @Injectable()
@@ -22,6 +36,8 @@ export class GroupsService {
     private readonly members: Repository<GroupMember>,
     @InjectRepository(GroupMessage)
     private readonly messages: Repository<GroupMessage>,
+    @InjectRepository(GroupMessageDeletion)
+    private readonly deletions: Repository<GroupMessageDeletion>,
     @InjectRepository(GroupRead)
     private readonly reads: Repository<GroupRead>,
     @InjectRepository(User)
@@ -120,7 +136,15 @@ export class GroupsService {
     const take = Math.min(Math.max(limit, 1), 100);
     const qb = this.messages
       .createQueryBuilder('m')
+      // 已删除（仅对自己隐藏）的群消息不返回
+      .leftJoin(
+        GroupMessageDeletion,
+        'gd',
+        'gd.messageId = m.id AND gd.userId = :uid',
+        { uid: userId },
+      )
       .where('m.groupId = :groupId', { groupId })
+      .andWhere('gd.id IS NULL')
       .orderBy('m.id', 'DESC')
       .take(take);
     if (cursor > 0) qb.andWhere('m.id < :cursor', { cursor });
@@ -137,19 +161,37 @@ export class GroupsService {
   async sendMessage(
     userId: number,
     groupId: number,
-    contentType: 'text' | 'image' | 'voice',
+    contentType: MessageContentType,
     content: string,
+    options: { replyToId?: number; forwarded?: boolean } = {},
   ) {
     await this.assertMember(groupId, userId);
+    const type = normalizeType(contentType);
+    if (!isValidChatContent(type, content)) {
+      throw new BadRequestException('消息内容不合法');
+    }
+    // 引用校验：被引用消息必须属于同一群，并生成快照预览
+    let replyPreview: string | null = null;
+    if (options.replyToId) {
+      const reply = await this.messages.findOneBy({
+        id: options.replyToId,
+        groupId,
+      });
+      if (!reply) throw new BadRequestException('被引用的消息不存在');
+      replyPreview = GroupsService.previewOf(reply);
+    }
     const message = await this.messages.save(
-      this.messages.create({ groupId, senderId: userId, contentType, content }),
+      this.messages.create({
+        groupId,
+        senderId: userId,
+        contentType: type,
+        content,
+        replyToId: options.replyToId ?? null,
+        replyPreview,
+        forwarded: options.forwarded ?? false,
+      }),
     );
-    const preview =
-      contentType === 'image'
-        ? 'image:'
-        : contentType === 'voice'
-          ? 'voice:'
-          : `text:${content}`;
+    const preview = GroupsService.previewOf(message);
     await this.groups.update(groupId, {
       lastMessageId: String(message.id),
       lastMessagePreview: preview,
@@ -162,6 +204,62 @@ export class GroupsService {
       memberIds,
       groupId,
     };
+  }
+
+  /** 群消息快照预览（引用气泡 / 群列表预览共用） */
+  static previewOf(message: GroupMessage): string {
+    if (message.recalledAt) return 'recalled:';
+    switch (message.contentType) {
+      case 'image':
+        return 'image:';
+      case 'voice':
+        return 'voice:';
+      case 'video':
+        return 'video:';
+      default:
+        return `text:${message.content.slice(0, 50)}`;
+    }
+  }
+
+  /**
+   * 撤回群消息：仅发送者、发送后 2 分钟内可撤回，对群内全部成员生效。
+   */
+  async recallGroupMessage(userId: number, groupId: number, messageId: number) {
+    await this.assertMember(groupId, userId);
+    const message = await this.messages.findOneBy({ id: messageId, groupId });
+    if (!message) throw new NotFoundException('消息不存在');
+    if (message.senderId !== userId) {
+      throw new ForbiddenException('只能撤回自己发送的消息');
+    }
+    if (message.recalledAt) throw new BadRequestException('消息已撤回');
+    const age = Date.now() - (message.createdAt?.getTime() ?? 0);
+    if (age > RECALL_WINDOW_MS) {
+      throw new BadRequestException('发送超过 2 分钟的消息不能撤回');
+    }
+    const recalledAt = new Date();
+    await this.messages.update(message.id, { recalledAt });
+    message.recalledAt = recalledAt;
+    const group = await this.groups.findOneBy({ id: groupId });
+    if (
+      group?.lastMessageId != null &&
+      String(group.lastMessageId) === String(message.id)
+    ) {
+      await this.groups.update(groupId, { lastMessagePreview: 'recalled:' });
+    }
+    return { message, memberIds: await this.groupMemberIds(groupId) };
+  }
+
+  /** 删除群消息（仅对自己隐藏，对端/群内其他成员不受影响） */
+  async deleteGroupMessage(userId: number, groupId: number, messageId: number) {
+    await this.assertMember(groupId, userId);
+    const message = await this.messages.findOneBy({ id: messageId, groupId });
+    if (!message) throw new NotFoundException('消息不存在');
+    try {
+      await this.deletions.insert({ groupId, messageId, userId });
+    } catch {
+      // 已删除过（唯一约束冲突）视为成功
+    }
+    return { ok: true };
   }
 
   /** 标记已读（游标为群内最大已读消息 id） */
@@ -182,6 +280,87 @@ export class GroupsService {
   }
 
   // ──── 成员 ────
+
+  /** 群创建后拉人：任意成员均可邀请有效用户入群（跳过已在群内的用户） */
+  async addMembers(userId: number, groupId: number, memberIds: number[]) {
+    await this.assertMember(groupId, userId);
+    const unique = [...new Set(memberIds)].filter((id) => id !== userId);
+    if (unique.length === 0) {
+      throw new BadRequestException('请选择需要邀请的成员');
+    }
+    const users = await this.users.findBy({ id: In(unique) });
+    if (users.length !== unique.length) {
+      throw new BadRequestException('存在无效的群成员');
+    }
+    if (users.some((u) => u.isBanned)) {
+      throw new BadRequestException('存在已被禁用的用户');
+    }
+
+    const existing = new Set(
+      (await this.members.findBy({ groupId })).map((m) => m.userId),
+    );
+    const fresh = unique.filter((id) => !existing.has(id));
+    if (!fresh.length) {
+      throw new BadRequestException('所选成员均已在群内');
+    }
+    for (const uid of fresh) {
+      await this.members.save(
+        this.members.create({ groupId, userId: uid }),
+      );
+    }
+    const memberIdsAll = [...existing, ...fresh];
+    return { addedCount: fresh.length, memberIds: memberIdsAll };
+  }
+
+  /** 退出群聊（群主不能直接退出，需解散群聊） */
+  async leave(userId: number, groupId: number) {
+    const group = await this.groups.findOneBy({ id: groupId });
+    if (!group) throw new NotFoundException('群聊不存在');
+    if (group.ownerId === userId) {
+      throw new BadRequestException('群主不能退出群聊，如需解散请使用「解散群聊」');
+    }
+    if (!(await this.isMember(groupId, userId))) {
+      throw new ForbiddenException('你不是该群成员');
+    }
+    await this.members.delete({ groupId, userId });
+    await this.reads.delete({ groupId, userId });
+    return { memberIds: await this.groupMemberIds(groupId) };
+  }
+
+  /** 群主踢人 */
+  async kickMember(ownerId: number, groupId: number, targetUserId: number) {
+    await this.assertOwner(groupId, ownerId);
+    if (targetUserId === ownerId) {
+      throw new BadRequestException('不能移出自己');
+    }
+    if (!(await this.isMember(groupId, targetUserId))) {
+      throw new BadRequestException('该用户不是群成员');
+    }
+    await this.members.delete({ groupId, userId: targetUserId });
+    await this.reads.delete({ groupId, userId: targetUserId });
+    return {
+      removedUserId: targetUserId,
+      memberIds: await this.groupMemberIds(groupId),
+    };
+  }
+
+  /** 群主解散群聊（删除群及全部成员/消息/已读记录） */
+  async dissolve(ownerId: number, groupId: number) {
+    await this.assertOwner(groupId, ownerId);
+    const memberIds = await this.groupMemberIds(groupId);
+    await this.messages.delete({ groupId });
+    await this.reads.delete({ groupId });
+    await this.members.delete({ groupId });
+    await this.groups.delete({ id: groupId });
+    return { memberIds };
+  }
+
+  /** 群主修改群名称 */
+  async rename(ownerId: number, groupId: number, name: string) {
+    await this.assertOwner(groupId, ownerId);
+    await this.groups.update(groupId, { name: name.trim() });
+    return { memberIds: await this.groupMemberIds(groupId) };
+  }
 
   async listMembers(groupId: number, viewerId?: number) {
     if (viewerId != null) await this.assertMember(groupId, viewerId);
@@ -220,6 +399,14 @@ export class GroupsService {
     if (!group) throw new NotFoundException('群聊不存在');
     if (!(await this.isMember(groupId, userId))) {
       throw new ForbiddenException('你不是该群成员');
+    }
+  }
+
+  private async assertOwner(groupId: number, userId: number) {
+    const group = await this.groups.findOneBy({ id: groupId });
+    if (!group) throw new NotFoundException('群聊不存在');
+    if (group.ownerId !== userId) {
+      throw new ForbiddenException('仅群主可执行该操作');
     }
   }
 

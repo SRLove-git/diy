@@ -15,14 +15,14 @@ import { Conversation } from './conversation.entity';
 import { Message } from './message.entity';
 import { MessageStatus } from './message_status.entity';
 
-/** 消息内容类型：text 文本/表情；image 图片（content 存 /uploads/chat/... 相对路径）；voice 语音（content 存 {url,duration} JSON） */
-export type MessageContentType = 'text' | 'image' | 'voice';
+/** 消息内容类型：text 文本/表情；image 图片；video 视频（content 存 /uploads/video/... 相对路径）；voice 语音（content 存 {url,duration} JSON） */
+export type MessageContentType = 'text' | 'image' | 'voice' | 'video';
 
 /** 未互相关注时，单会话最多可发送的消息条数 */
 const CHAT_LIMIT = 3;
 
-/** 聊天媒体内容必须是本站上传的相对路径 */
-const MEDIA_URL_RE = /^\/uploads\/chat\/[\w./-]+$/;
+/** 聊天媒体内容必须是本站上传的相对路径（图片走 chat/，视频走 video/） */
+const MEDIA_URL_RE = /^\/uploads\/(chat|video)\/[\w./-]+$/;
 
 /** 语音内容校验：JSON { url, duration }，url 必须是本站上传路径 */
 function isValidVoiceContent(content: string): boolean {
@@ -38,6 +38,20 @@ function isValidVoiceContent(content: string): boolean {
     return false;
   }
 }
+
+/** 消息内容合法性校验（单聊/群聊共用） */
+export function isValidChatContent(
+  type: MessageContentType,
+  content: string,
+): boolean {
+  const body = content.trim();
+  if (type === 'image' || type === 'video') return MEDIA_URL_RE.test(body);
+  if (type === 'voice') return isValidVoiceContent(body);
+  return body.length > 0;
+}
+
+/** 撤回时限（毫秒），群聊与单聊共用 */
+export const RECALL_WINDOW_MS = 2 * 60 * 1000;
 
 @Injectable()
 export class ChatService {
@@ -164,6 +178,7 @@ export class ChatService {
       .where('m.conversationId IN (:...ids)', { ids: convs.map((c) => c.id) })
       .andWhere('ms.userId = :userId', { userId })
       .andWhere('ms.readAt IS NULL')
+      .andWhere('ms.deletedAt IS NULL')
       .groupBy('m.conversationId')
       .getRawMany<{ conversationId: string; cnt: string }>();
     const unreadMap = new Map<number, number>(
@@ -236,7 +251,15 @@ export class ChatService {
     const take = Math.min(Math.max(limit, 1), 100);
     const qb = this.messages
       .createQueryBuilder('m')
+      // 已删除（仅对自己隐藏）的消息不返回：message_status 缺行视为未删除
+      .leftJoin(
+        MessageStatus,
+        'ms',
+        'ms.messageId = m.id AND ms.userId = :uid',
+        { uid: userId },
+      )
       .where('m.conversationId = :cid', { cid: conversationId })
+      .andWhere('ms.id IS NULL OR ms.deletedAt IS NULL')
       .orderBy('m.id', 'DESC')
       .take(take);
     if (cursor > 0) qb.andWhere('m.id < :cursor', { cursor });
@@ -259,6 +282,7 @@ export class ChatService {
     conversationId: number,
     contentType: MessageContentType,
     content: string,
+    options: { replyToId?: number; forwarded?: boolean } = {},
   ) {
     const conv = await this.findConversationForUser(conversationId, userId);
     const peerId = this.peerIdOf(conv, userId);
@@ -282,18 +306,31 @@ export class ChatService {
         ? 'image'
         : contentType === 'voice'
           ? 'voice'
-          : 'text';
+          : contentType === 'video'
+            ? 'video'
+            : 'text';
     const body = content.trim();
-    if (type === 'image') {
-      // 图片消息内容必须是本站上传的相对路径
-      if (!MEDIA_URL_RE.test(body))
-        throw new BadRequestException('图片地址不合法');
-    } else if (type === 'voice') {
-      // 语音消息内容必须是本站上传路径 + 时长的 JSON
-      if (!isValidVoiceContent(body))
-        throw new BadRequestException('语音内容不合法');
-    } else if (!body) {
-      throw new BadRequestException('消息内容不能为空');
+    if (!isValidChatContent(type, body)) {
+      const tip =
+        type === 'image'
+          ? '图片地址不合法'
+          : type === 'video'
+            ? '视频地址不合法'
+            : type === 'voice'
+              ? '语音内容不合法'
+              : '消息内容不能为空';
+      throw new BadRequestException(tip);
+    }
+
+    // 引用校验：被引用消息必须存在于同一会话，并生成快照预览
+    let replyPreview: string | null = null;
+    if (options.replyToId) {
+      const reply = await this.messages.findOneBy({
+        id: options.replyToId,
+        conversationId,
+      });
+      if (!reply) throw new BadRequestException('被引用的消息不存在');
+      replyPreview = ChatService.previewOf(reply);
     }
 
     const message = await this.messages.save(
@@ -302,6 +339,9 @@ export class ChatService {
         senderId: userId,
         contentType: type,
         content: body,
+        replyToId: options.replyToId ?? null,
+        replyPreview,
+        forwarded: options.forwarded ?? false,
       }),
     );
 
@@ -314,6 +354,21 @@ export class ChatService {
     });
 
     return { message, peerId };
+  }
+
+  /** 消息快照预览（引用气泡 / 会话列表预览共用） */
+  static previewOf(message: Message): string {
+    if (message.recalledAt) return 'recalled:';
+    switch (message.contentType) {
+      case 'image':
+        return 'image:';
+      case 'voice':
+        return 'voice:';
+      case 'video':
+        return 'video:';
+      default:
+        return `text:${message.content.slice(0, 50)}`;
+    }
   }
 
   /** 发送后的异步补全：参与者各自已读状态 + 会话最后消息冗余字段（同事务） */
@@ -329,7 +384,9 @@ export class ChatService {
           ? 'image:'
           : message.contentType === 'voice'
             ? 'voice:'
-            : `text:${message.content.slice(0, 50)}`;
+            : message.contentType === 'video'
+              ? 'video:'
+              : `text:${message.content.slice(0, 50)}`;
       await em.update(
         Conversation,
         { id: message.conversationId },
@@ -340,6 +397,75 @@ export class ChatService {
         },
       );
     });
+  }
+
+  /**
+   * 撤回消息：仅发送者本人、发送后 2 分钟内可撤回，撤回对双方生效。
+   * 若该消息为会话最后一条，同步把会话预览更新为撤回提示。
+   */
+  async recallMessage(
+    userId: number,
+    conversationId: number,
+    messageId: number,
+  ) {
+    const conv = await this.findConversationForUser(conversationId, userId);
+    const message = await this.messages.findOneBy({
+      id: messageId,
+      conversationId,
+    });
+    if (!message) throw new NotFoundException('消息不存在');
+    if (message.senderId !== userId) {
+      throw new ForbiddenException('只能撤回自己发送的消息');
+    }
+    if (message.recalledAt) throw new BadRequestException('消息已撤回');
+    const age = Date.now() - (message.createdAt?.getTime() ?? 0);
+    if (age > RECALL_WINDOW_MS) {
+      throw new BadRequestException('发送超过 2 分钟的消息不能撤回');
+    }
+    const recalledAt = new Date();
+    await this.messages.update(message.id, { recalledAt });
+    message.recalledAt = recalledAt;
+    // 会话最后一条消息被撤回时，列表预览同步为撤回提示
+    if (
+      conv.lastMessageId != null &&
+      String(conv.lastMessageId) === String(message.id)
+    ) {
+      await this.conversations.update(conv.id, {
+        lastMessagePreview: 'recalled:',
+      });
+    }
+    return { message, peerId: this.peerIdOf(conv, userId) };
+  }
+
+  /**
+   * 删除消息（仅对自己生效，对端不受影响）。
+   * 利用 message_status 的 per-user 行记录删除时间；缺行时补建。
+   */
+  async deleteMessage(
+    userId: number,
+    conversationId: number,
+    messageId: number,
+  ) {
+    await this.findConversationForUser(conversationId, userId);
+    const message = await this.messages.findOneBy({
+      id: messageId,
+      conversationId,
+    });
+    if (!message) throw new NotFoundException('消息不存在');
+    const existing = await this.messageStatus.findOneBy({ messageId, userId });
+    const now = new Date();
+    if (existing) {
+      await this.messageStatus.update(existing.id, { deletedAt: now });
+    } else {
+      // finalizeSend 尚未执行（消息刚发出）时直接补建删除标记
+      await this.messageStatus.insert({
+        messageId,
+        userId,
+        readAt: null,
+        deletedAt: now,
+      });
+    }
+    return { ok: true };
   }
 
   /** 批量标记已读，返回已读时间与对端用户 ID */

@@ -15,6 +15,7 @@ import { randomUUID } from 'crypto';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { SmsService } from '../sms/sms.service';
 import { UsersService } from '../users/users.service';
+import { kickKey } from './session-keys';
 
 const scrypt = promisify(scryptCb) as (
   password: string,
@@ -86,6 +87,8 @@ export class AuthService {
     await this.verifySmsCode(phone, code);
     const user = await this.users.findByPhoneOrCreate(phone);
     if (user.isBanned) throw new ForbiddenException('账号已被禁用');
+    // 强制下线/封禁的旧会话标记随重新登录清除
+    await this.redis.del(kickKey(user.id));
 
     const tokens = await this.signTokens(user.id);
     return { userId: user.id, ...tokens };
@@ -101,6 +104,7 @@ export class AuthService {
       throw new UnauthorizedException('手机号或密码错误');
     }
     if (user.isBanned) throw new ForbiddenException('账号已被禁用');
+    await this.redis.del(kickKey(user.id));
 
     const tokens = await this.signTokens(user.id);
     return { userId: user.id, ...tokens };
@@ -116,6 +120,7 @@ export class AuthService {
       throw new UnauthorizedException('用户名或密码错误');
     }
     if (user.isBanned) throw new ForbiddenException('账号已被禁用');
+    await this.redis.del(kickKey(user.id));
 
     const tokens = await this.signTokens(user.id);
     return { userId: user.id, ...tokens };
@@ -167,6 +172,16 @@ export class AuthService {
     const key = `refresh:${payload.sub}:${payload.jti}`;
     const exists = await this.redis.exists(key);
     if (!exists) throw new UnauthorizedException('登录已过期，请重新登录');
+
+    // 账号已删除/被禁用：禁止续期（封禁在登录处拦截，此处兜底已登录会话）
+    const user = await this.users.findById(payload.sub);
+    if (!user || user.isBanned) {
+      throw new UnauthorizedException('账号已被禁用，请重新登录');
+    }
+    // 强制下线：禁止用旧 refresh token 续期
+    if (await this.redis.exists(kickKey(payload.sub))) {
+      throw new UnauthorizedException('账号已被强制下线，请重新登录');
+    }
 
     await this.redis.del(key);
     return this.signTokens(payload.sub);

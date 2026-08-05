@@ -19,4 +19,28 @@ void main() {
       isTrue,
     );
   });
+
+  test('cover frame args seek, cap width and write jpg', () {
+    final args = MediaComposer.extractCoverArgs(
+      input: '/tmp/clip.mp4',
+      output: '/tmp/cover.jpg',
+      seconds: 1.25,
+      maxWidth: 720,
+    );
+
+    expect(args, [
+      '-y',
+      '-ss',
+      '1.25',
+      '-i',
+      '/tmp/clip.mp4',
+      '-frames:v',
+      '1',
+      '-vf',
+      'scale=min(720\\,iw):-2',
+      '-q:v',
+      '3',
+      '/tmp/cover.jpg',
+    ]);
+  });
 }

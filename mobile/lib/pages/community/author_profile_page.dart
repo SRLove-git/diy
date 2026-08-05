@@ -11,6 +11,7 @@ import '../../widgets/follow_button.dart';
 import '../../widgets/image_viewer.dart';
 import '../../widgets/state_widgets.dart';
 import '../chat/chat_page.dart';
+import 'follow_list_page.dart';
 import 'post_detail_page.dart';
 
 /// 作者主页：查看他人的作品列表
@@ -82,6 +83,16 @@ class _AuthorProfilePageState extends State<AuthorProfilePage> {
     } finally {
       if (mounted) setState(() => _followBusy = false);
     }
+  }
+
+  /// 打开粉丝/关注列表，返回后刷新关注关系
+  Future<void> _openFollowList(FollowListMode mode) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FollowListPage(userId: widget.userId, mode: mode),
+      ),
+    );
+    if (mounted) _load();
   }
 
   String _formatTime(String iso) {
@@ -172,9 +183,44 @@ class _AuthorProfilePageState extends State<AuthorProfilePage> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '${st?.followerCount ?? 0} 粉丝 · ${st?.followingCount ?? 0} 关注',
-                  style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                Row(
+                  children: [
+                    InkWell(
+                      onTap: () => _openFollowList(FollowListMode.followers),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '${st?.followerCount ?? 0} 粉丝',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      ' · ',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => _openFollowList(FollowListMode.following),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '${st?.followingCount ?? 0} 关注',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 if (st?.mutual == true) ...[
                   const SizedBox(height: 4),

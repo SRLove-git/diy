@@ -83,7 +83,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
         title: Text(banning ? '封禁用户' : '解封用户'),
         content: Text(
           banning
-              ? '确认封禁该用户？封禁后该用户将无法使用平台功能。'
+              ? '确认封禁该用户？封禁后该用户将无法使用平台功能，并会被强制下线。'
               : '确认解封该用户？解封后该用户可正常使用平台。',
         ),
         actions: [
@@ -110,13 +110,40 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     }
   }
 
-  Future<void> _deleteWorks(AdminUser u) async {
+  Future<void> _forceOffline(AdminUser u) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除用户作品'),
+        title: const Text('强制下线'),
         content: const Text(
-          '确认删除该用户发布的全部作品（社区帖子 + 短视频/照片）？删除后不可恢复，其点赞、评论、收藏与举报记录将一并清除。',
+          '确认强制该用户下线？其所有设备上的登录会话将立即失效，需要重新登录后才能继续使用。',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.of(ctx).danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确认下线'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await AdminApi.forceOffline(u.id);
+      if (mounted) _toast('已强制下线');
+    } on DioException catch (e) {
+      if (mounted) _toast(AdminApi.messageOf(e));
+    }
+  }
+
+  Future<void> _deleteUser(AdminUser u) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除用户'),
+        content: const Text(
+          '确认删除该用户？删除后不可恢复，该用户的账号、发布的全部作品（社区帖子 + 短视频/照片）、互动与聊天记录等数据将一并清除。',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
@@ -130,9 +157,9 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     );
     if (ok != true) return;
     try {
-      final result = await AdminApi.deleteUserWorks(u.id);
+      await AdminApi.deleteUser(u.id);
       if (mounted) {
-        _toast('已删除：社区作品 ${result.posts} 个、视频/照片 ${result.videos} 个');
+        _toast('已删除用户');
         _load();
       }
     } on DioException catch (e) {
@@ -272,13 +299,26 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: () => _deleteWorks(u),
+              onPressed: () => _forceOffline(u),
               style: OutlinedButton.styleFrom(
                 foregroundColor: colors.danger,
                 side: BorderSide(color: colors.danger),
                 minimumSize: const Size(0, 38),
               ),
-              child: const Text('删除作品'),
+              child: const Text('强制下线'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => _deleteUser(u),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: colors.danger,
+                side: BorderSide(color: colors.danger),
+                minimumSize: const Size(0, 38),
+              ),
+              child: const Text('删除用户'),
             ),
           ),
         ],

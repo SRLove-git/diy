@@ -254,6 +254,11 @@ class PostApi {
     return Post.fromJson(resp.data as Map<String, dynamic>);
   }
 
+  /// 删除自己的作品
+  static Future<void> deletePost(int postId) async {
+    await ApiClient.instance.delete('/posts/$postId');
+  }
+
   // --- View ---
 
   /// 记录浏览（浏览量 +1）

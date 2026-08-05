@@ -20,6 +20,60 @@ class SelectedMediaFile {
 class MediaComposer {
   MediaComposer._();
 
+  /// 从视频中抽取一帧生成封面 JPEG，返回临时文件。
+  ///
+  /// [seconds] 为抽帧时间点（秒，默认 0.5）；[maxWidth] 限制输出宽度（默认 720，
+  /// 较窄的视频不会被放大）。失败时抛出 [StateError]。
+  static Future<File> extractCoverFrame(
+    String videoPath, {
+    double seconds = 0.5,
+    int maxWidth = 720,
+  }) async {
+    final tempRoot = await getTemporaryDirectory();
+    final output = File(
+      p.join(
+        tempRoot.path,
+        'diy_cover_${DateTime.now().microsecondsSinceEpoch}.jpg',
+      ),
+    );
+    final session = await FFmpegKit.executeWithArguments(
+      extractCoverArgs(
+        input: videoPath,
+        output: output.path,
+        seconds: seconds,
+        maxWidth: maxWidth,
+      ),
+    );
+    final code = await session.getReturnCode();
+    if (!ReturnCode.isSuccess(code)) {
+      final logs = await session.getAllLogsAsString();
+      throw StateError('封面生成失败 (${code?.getValue()}): ${logs ?? ''}');
+    }
+    return output;
+  }
+
+  /// 抽帧命令参数（独立暴露便于单元测试）。
+  static List<String> extractCoverArgs({
+    required String input,
+    required String output,
+    required double seconds,
+    required int maxWidth,
+  }) => [
+    '-y',
+    '-ss',
+    seconds.toStringAsFixed(2),
+    '-i',
+    input,
+    '-frames:v',
+    '1',
+    '-vf',
+    // ffmpeg 滤镜里 min() 参数间的逗号必须转义，否则会被当作滤镜链分隔符
+    'scale=min($maxWidth\\,iw):-2',
+    '-q:v',
+    '3',
+    output,
+  ];
+
   static Future<File> compose(List<SelectedMediaFile> media) async {
     if (media.isEmpty ||
         !media.any((item) => item.type == SelectedMediaType.video)) {

@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -20,6 +21,9 @@ import '../community/user_profile_page.dart';
 import '../../widgets/follow_button.dart';
 import '../../widgets/image_viewer.dart';
 import '../../widgets/state_widgets.dart';
+import 'chat_video_viewer.dart';
+import 'message_action_sheet.dart';
+import 'chat_manage_page.dart';
 
 enum _SendState { pending, sent, failed }
 
@@ -77,6 +81,9 @@ class _ChatPageState extends State<ChatPage> {
   bool _voiceMode = false;
   /// 加号面板（小功能）是否显示
   bool _showMore = false;
+
+  /// 当前引用中的消息（输入栏上方显示引用条，发送后清除）
+  _ViewMsg? _replyTo;
 
   // 语音录制
   AudioRecorder? _recorder;
@@ -208,6 +215,23 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  /// 右上角入口：打开私聊聊天信息页（置顶 / 个人主页 / 删除）
+  Future<void> _openManage() async {
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => ChatManagePage(conversation: widget.conversation),
+      ),
+    );
+    if (!mounted) return;
+    if (result == 'deleted') {
+      _toast('会话已删除');
+      Navigator.of(context).pop();
+      return;
+    }
+    // 置顶等设置变化后刷新关注状态展示
+    _loadFollowStatus();
+  }
+
   void _onEvent(ChatEvent event) {
     if (event is NewMessageEvent) {
       final m = event.message;
@@ -229,6 +253,22 @@ class _ChatPageState extends State<ChatPage> {
           }
         }
       });
+    } else if (event is MessageRecalledEvent) {
+      if (event.conversationId != widget.conversation.id) return;
+      setState(() {
+        for (final vm in _msgs) {
+          if (vm.message.id == event.messageId &&
+              vm.message.recalledAt == null) {
+            vm.message = vm.message.copyWith(
+              recalledAt: event.recalledAt ?? DateTime.now(),
+            );
+          }
+        }
+      });
+      // 正在引用该消息时自动取消引用
+      if (_replyTo?.message.id == event.messageId) {
+        setState(() => _replyTo = null);
+      }
     } else if (event is ChatLimitEvent) {
       // 聊天受限：移除占位气泡并清理本地留底，提示互相关注后可畅聊。
       // 仅当气泡确实被移除时才提示（WS 与 REST 兜底会各触发一次，去重）。
@@ -372,8 +412,12 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _send() async {
     final text = _input.text.trim();
     if (text.isEmpty) return;
+    final replyTo = _replyTo;
     _input.clear();
-    setState(() => _showEmoji = false);
+    setState(() {
+      _showEmoji = false;
+      _replyTo = null;
+    });
     final clientMsgId = _genMsgId();
     final local = ChatMessage(
       id: null,
@@ -382,14 +426,27 @@ class _ChatPageState extends State<ChatPage> {
       content: text,
       createdAt: DateTime.now(),
       clientMsgId: clientMsgId,
+      replyToId: replyTo?.message.id,
+      replyPreview: replyTo != null ? _previewOf(replyTo) : null,
     );
     _insertPending(local);
     final confirmed = await ChatService.instance.sendMessage(
       conversationId: widget.conversation.id,
       content: text,
       clientMsgId: clientMsgId,
+      replyToId: replyTo?.message.id,
     );
     _applyResult(clientMsgId, confirmed, local);
+  }
+
+  /// 消息快照预览（本地待发送消息的引用气泡用；与服务端 previewOf 一致）
+  String _previewOf(_ViewMsg vm) {
+    final m = vm.message;
+    if (m.contentType == 'image') return 'image:';
+    if (m.contentType == 'voice') return 'voice:';
+    if (m.contentType == 'video') return 'video:';
+    final text = m.content.trim();
+    return 'text:${text.length > 50 ? text.substring(0, 50) : text}';
   }
 
   /// 选择图片并发送：本地预览 → 上传 → 发消息
@@ -444,6 +501,70 @@ class _ChatPageState extends State<ChatPage> {
       contentType: 'image',
     );
     _applyResult(clientMsgId, confirmed, fallback.copyWith(content: url));
+  }
+
+  /// 选择视频并发送：本地预览 → 上传 → 发消息
+  Future<void> _sendVideo() async {
+    final XFile? picked;
+    try {
+      picked = await ImagePicker().pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(minutes: 5),
+      );
+    } catch (_) {
+      return;
+    }
+    if (picked == null || !mounted) return;
+    setState(() => _showMore = false);
+    final clientMsgId = _genMsgId();
+    final local = ChatMessage(
+      id: null,
+      conversationId: widget.conversation.id,
+      senderId: _meId,
+      contentType: 'video',
+      content: '',
+      createdAt: DateTime.now(),
+      clientMsgId: clientMsgId,
+    );
+    _insertPending(local, localPath: picked.path);
+    await _uploadVideoAndSend(clientMsgId, picked.path, local);
+  }
+
+  /// 上传视频并发送（失败时以 fallback 标记失败态）
+  Future<void> _uploadVideoAndSend(
+    String clientMsgId,
+    String filePath,
+    ChatMessage fallback,
+  ) async {
+    String? url;
+    try {
+      url = await ChatApi.uploadVideo(filePath);
+    } catch (_) {
+      url = null;
+    }
+    if (url == null) {
+      _applyResult(clientMsgId, null, fallback);
+      return;
+    }
+    final confirmed = await ChatService.instance.sendMessage(
+      conversationId: widget.conversation.id,
+      content: url,
+      clientMsgId: clientMsgId,
+      contentType: 'video',
+    );
+    _applyResult(clientMsgId, confirmed, fallback.copyWith(content: url));
+  }
+
+  /// 点击视频气泡：全屏播放
+  Future<void> _openVideoViewer(_ViewMsg vm) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChatVideoViewer(
+          url: vm.message.content,
+          localPath: vm.message.content.isEmpty ? vm.localPath : null,
+        ),
+      ),
+    );
   }
 
   /// 点击图片气泡：全屏查看（共享元素动画，从原图放大铺满全屏）
@@ -505,6 +626,13 @@ class _ChatPageState extends State<ChatPage> {
       _uploadAndSend(clientMsgId, vm.localPath!, retry);
       return;
     }
+    // 视频上传失败（content 中 url 为空）：重新上传本地视频
+    if (vm.message.contentType == 'video' && vm.message.content.isEmpty && vm.localPath != null) {
+      final retry = vm.message.copyWith(clientMsgId: clientMsgId, content: '');
+      _replaceMsg(vm, _ViewMsg(message: retry, state: _SendState.pending, localPath: vm.localPath));
+      _uploadVideoAndSend(clientMsgId, vm.localPath!, retry);
+      return;
+    }
     // 语音上传失败（content 中 url 为空）：重新上传本地录音
     if (vm.message.contentType == 'voice' && vm.localPath != null) {
       final vi = _voiceInfo(vm.message);
@@ -528,6 +656,181 @@ class _ChatPageState extends State<ChatPage> {
           contentType: vm.message.contentType,
         )
         .then((confirmed) => _applyResult(clientMsgId, confirmed, retry));
+  }
+
+  // ---------- 消息长按操作：引用 / 复制 / 转发 / 删除 / 撤回 ----------
+
+  /// 长按消息气泡：弹出操作面板
+  Future<void> _showMessageActions(_ViewMsg vm) async {
+    final m = vm.message;
+    if (m.recalledAt != null) return; // 已撤回的消息不再显示操作
+    final mine = m.senderId == _meId;
+    final age = m.createdAt == null
+        ? Duration.zero
+        : DateTime.now().difference(m.createdAt!);
+    final canRecall = mine &&
+        m.id != null &&
+        vm.state != _SendState.pending &&
+        vm.state != _SendState.failed &&
+        age < const Duration(minutes: 2) &&
+        m.recalledAt == null;
+    final action = await showMessageActionSheet(
+      context,
+      contentType: m.contentType,
+      canRecall: canRecall,
+      // 未上服务端的本地消息（发送中/失败）无引用目标，不可引用
+      canQuote: m.id != null,
+    );
+    if (action == null || !mounted) return;
+    switch (action) {
+      case MessageAction.copy:
+        await _copyMessage(vm);
+        break;
+      case MessageAction.quote:
+        _quoteMessage(vm);
+        break;
+      case MessageAction.forward:
+        await _forwardMessage(vm);
+        break;
+      case MessageAction.recall:
+        await _recallMessage(vm);
+        break;
+      case MessageAction.delete:
+        await _deleteMessage(vm);
+        break;
+    }
+  }
+
+  /// 复制文本消息（含表情）
+  Future<void> _copyMessage(_ViewMsg vm) async {
+    final m = vm.message;
+    if (m.contentType != 'text') return;
+    await Clipboard.setData(ClipboardData(text: m.content));
+    if (mounted) _toast('已复制');
+  }
+
+  /// 引用消息：在输入栏上方显示引用条，发送时带上 replyToId
+  void _quoteMessage(_ViewMsg vm) {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _replyTo = vm;
+      _showEmoji = false;
+      _showMore = false;
+      _voiceMode = false;
+    });
+    _inputFocus.requestFocus();
+  }
+
+  /// 转发消息：选择目标会话后原样发送（标记 forwarded）
+  Future<void> _forwardMessage(_ViewMsg vm) async {
+    final m = vm.message;
+    if (m.content.isEmpty) {
+      _toast('该消息发送中或发送失败，暂不可转发');
+      return;
+    }
+    await showForwardPicker(
+      context,
+      excludeConversationId: widget.conversation.id,
+      onForward: (conv) async {
+        final clientMsgId = _genMsgId();
+        final confirmed = await ChatService.instance.sendMessage(
+          conversationId: conv.id,
+          content: m.content,
+          clientMsgId: clientMsgId,
+          contentType: m.contentType,
+          forwarded: true,
+        );
+        if (!mounted) return;
+        if (confirmed != null) {
+          _toast(
+            '已转发给 ${conv.peerNickname.isEmpty ? '用户 #${conv.peerId}' : conv.peerNickname}',
+          );
+        } else {
+          _toast('转发失败，请重试');
+        }
+      },
+    );
+  }
+
+  /// 删除消息（仅对自己隐藏，对方仍可见；服务端同步软删除）
+  Future<void> _deleteMessage(_ViewMsg vm) async {
+    final m = vm.message;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除消息'),
+        content: const Text('删除后仅自己不可见，对方仍可看到这条消息'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final id = m.id;
+    if (id != null) {
+      final ok = await ChatService.instance
+          .deleteMessage(widget.conversation.id, id);
+      if (!ok) {
+        if (mounted) _toast('删除失败，请重试');
+        return;
+      }
+    } else if (m.clientMsgId != null) {
+      // 未上服务端的本地消息（发送中/失败）：直接清理本地留底
+      LocalChatStore.instance.removeByClientMsgId(m.clientMsgId!);
+    }
+    setState(() => _msgs.removeWhere((v) => identical(v, vm)));
+    if (_replyTo == vm) setState(() => _replyTo = null);
+  }
+
+  /// 撤回消息（仅自己、2 分钟内；撤回后提示「重新编辑」）
+  Future<void> _recallMessage(_ViewMsg vm) async {
+    final id = vm.message.id;
+    if (id == null) return;
+    final recalled = await ChatService.instance
+        .recallMessage(widget.conversation.id, id);
+    if (!mounted) return;
+    if (recalled == null) {
+      _toast('撤回失败：发送超过 2 分钟的消息不能撤回');
+      return;
+    }
+    setState(() {
+      vm.message = vm.message.copyWith(
+        recalledAt: recalled.recalledAt ?? DateTime.now(),
+      );
+    });
+    if (_replyTo == vm) setState(() => _replyTo = null);
+    // 二次编辑：把原内容放回输入框，用户修改后重新发送
+    final text = vm.message.content;
+    if (vm.message.contentType == 'text' && text.trim().isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('已撤回'),
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: '重新编辑',
+            onPressed: () {
+              if (!mounted) return;
+              setState(() {
+                _input.text = text;
+                _input.selection =
+                    TextSelection.collapsed(offset: text.length);
+              });
+              _inputFocus.requestFocus();
+            },
+          ),
+        ),
+      );
+    } else {
+      _toast('已撤回');
+    }
   }
 
   // ---------- 输入区面板切换 ----------
@@ -780,7 +1083,16 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: _buildTitle()),
+      appBar: AppBar(
+        title: _buildTitle(),
+        actions: [
+          IconButton(
+            onPressed: _openManage,
+            tooltip: '聊天信息',
+            icon: const Icon(Icons.more_horiz_rounded),
+          ),
+        ],
+      ),
       body: SafeArea(
         // 录音中显示居中遮罩（麦克风 + 时长）
         child: Stack(
@@ -930,6 +1242,8 @@ class _ChatPageState extends State<ChatPage> {
           onPlay: () => _togglePlay(vm),
           onResend: () => _resend(vm),
           onTapImage: () => _openImageViewer(vm),
+          onTapVideo: () => _openVideoViewer(vm),
+          onLongPress: () => _showMessageActions(vm),
           imageHeroTag: 'chat-img-${vm.message.id ?? vm.message.clientMsgId}',
         );
       },
@@ -949,6 +1263,7 @@ class _ChatPageState extends State<ChatPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (_replyTo != null) _buildReplyBar(colors),
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 6, 6, 6),
             child: Row(
@@ -1009,6 +1324,38 @@ class _ChatPageState extends State<ChatPage> {
           ),
           if (_showEmoji) _buildEmojiPanel(),
           if (_showMore) _buildMorePanel(),
+        ],
+      ),
+    );
+  }
+
+  /// 引用条：显示在输入栏上方，展示被引用消息预览，可取消
+  Widget _buildReplyBar(AppColors colors) {
+    final m = _replyTo!.message;
+    final preview = m.replyPreview != null
+        ? chatPreviewText(m.replyPreview)
+        : chatPreviewText(_previewOf(_replyTo!));
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 8, 4, 4),
+      color: colors.surface,
+      child: Row(
+        children: [
+          Icon(Icons.format_quote_rounded,
+              size: 18, color: colors.textSecondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              preview.isEmpty ? '引用消息' : '引用：$preview',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 13, color: colors.textSecondary),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18),
+            tooltip: '取消引用',
+            onPressed: () => setState(() => _replyTo = null),
+          ),
         ],
       ),
     );
@@ -1089,8 +1436,8 @@ class _ChatPageState extends State<ChatPage> {
       (
         icon: Icons.videocam_outlined,
         color: const Color(0xFFAF52DE),
-        label: '视频通话',
-        onTap: () => _toast('功能开发中'),
+        label: '视频',
+        onTap: _loading ? () {} : () => _sendVideo(),
       ),
       (
         icon: Icons.folder_outlined,
@@ -1242,6 +1589,8 @@ class _MessageBubble extends StatelessWidget {
     required this.playing,
     required this.onPlay,
     required this.onTapImage,
+    required this.onTapVideo,
+    required this.onLongPress,
     required this.imageHeroTag,
     required this.peerId,
     this.meAvatar = '',
@@ -1261,6 +1610,12 @@ class _MessageBubble extends StatelessWidget {
   /// 点击图片气泡：全屏查看
   final VoidCallback onTapImage;
 
+  /// 点击视频气泡：全屏播放
+  final VoidCallback onTapVideo;
+
+  /// 长按消息气泡：弹出操作菜单
+  final VoidCallback onLongPress;
+
   /// 图片共享元素动画的 Hero tag（与查看器内 Hero 配对）
   final Object imageHeroTag;
   final String meAvatar;
@@ -1277,17 +1632,30 @@ class _MessageBubble extends StatelessWidget {
     final mine = m.senderId == meId;
     final isImage = m.contentType == 'image';
     final isVoice = m.contentType == 'voice';
+    final isVideo = m.contentType == 'video';
     final colors = AppColors.of(context);
+    // 已撤回：整行替换为居中小字提示，不再显示气泡
+    if (m.recalledAt != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Center(
+          child: Text(
+            mine ? '你撤回了一条消息' : '对方撤回了一条消息',
+            style: TextStyle(fontSize: 12, color: colors.textSecondary),
+          ),
+        ),
+      );
+    }
     final bubble = Container(
-      padding: (isImage || isVoice)
+      padding: (isImage || isVoice || isVideo)
           ? EdgeInsets.zero
           : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      constraints: isImage
+      constraints: (isImage || isVideo)
           ? null
           : BoxConstraints(
               maxWidth: MediaQuery.of(context).size.width * 0.72,
             ),
-      decoration: isImage
+      decoration: (isImage || isVideo)
           ? null
           : BoxDecoration(
               color: mine ? colors.primary : colors.surface,
@@ -1298,11 +1666,27 @@ class _MessageBubble extends StatelessWidget {
                 bottomRight: Radius.circular(mine ? 4 : 16),
               ),
             ),
-      child: isImage
-          ? _buildImage(context, colors)
-          : isVoice
-              ? _buildVoice(colors)
-              : _buildText(colors),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment:
+            mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          // 引用消息：气泡顶部展示被引用内容快照
+          if (m.replyToId != null) _buildQuote(colors),
+          if (isImage)
+            _buildImage(context, colors)
+          else if (isVoice)
+            _buildVoice(colors)
+          else if (isVideo)
+            _buildVideo(colors)
+          else
+            _buildText(colors),
+        ],
+      ),
+    );
+    final bubbleWithLongPress = GestureDetector(
+      onLongPress: onLongPress,
+      child: bubble,
     );
     // 微信风格：对方头像在左，自己头像在右
     return Padding(
@@ -1336,7 +1720,7 @@ class _MessageBubble extends StatelessWidget {
                   mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                bubble,
+                bubbleWithLongPress,
                 if (mine)
                   Padding(
                     padding: const EdgeInsets.only(right: 4, bottom: 2),
@@ -1375,6 +1759,99 @@ class _MessageBubble extends StatelessWidget {
         fontSize: 15,
         height: 1.4,
         color: mine ? Colors.white : colors.textPrimary,
+      ),
+    );
+  }
+
+  /// 引用条：气泡顶部的被引用消息快照
+  Widget _buildQuote(AppColors colors) {
+    final mine = vm.message.senderId == meId;
+    final preview = chatPreviewText(vm.message.replyPreview);
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: mine
+            ? Colors.white.withValues(alpha: 0.16)
+            : colors.placeholder.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 26,
+            decoration: BoxDecoration(
+              color: mine ? Colors.white70 : colors.primary,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              preview.isEmpty ? '引用消息' : preview,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                color: mine ? Colors.white70 : colors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 视频气泡：深色播放卡，点击全屏播放
+  Widget _buildVideo(AppColors colors) {
+    return GestureDetector(
+      onTap: onTapVideo,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 200,
+          height: 132,
+          color: Colors.black87,
+          child: Stack(
+            children: [
+              const Positioned.fill(
+                child: Center(
+                  child: Icon(
+                    Icons.play_circle_fill_rounded,
+                    color: Colors.white,
+                    size: 46,
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 8,
+                bottom: 8,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.videocam_outlined,
+                          size: 13, color: Colors.white),
+                      SizedBox(width: 4),
+                      Text(
+                        '视频',
+                        style: TextStyle(color: Colors.white, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -7,6 +7,8 @@ class Store {
     required this.id,
     required this.name,
     required this.address,
+    required this.lat,
+    required this.lng,
     required this.rating,
     required this.businessHours,
     required this.images,
@@ -15,6 +17,8 @@ class Store {
   final int id;
   final String name;
   final String address;
+  final double lat;
+  final double lng;
   final double rating;
   final String businessHours;
   final List<String> images;
@@ -23,6 +27,8 @@ class Store {
         id: json['id'] as int,
         name: json['name'] as String,
         address: json['address'] as String,
+        lat: (json['lat'] as num?)?.toDouble() ?? 0,
+        lng: (json['lng'] as num?)?.toDouble() ?? 0,
         rating: (json['rating'] as num?)?.toDouble() ?? 5,
         businessHours: (json['businessHours'] ?? '') as String,
         images: ((json['images'] ?? []) as List)

@@ -18,7 +18,9 @@ import type { IncomingMessage } from 'http';
 import type Redis from 'ioredis';
 import { WebSocket } from 'ws';
 import type { JwtPayload } from '../auth/auth.service';
+import { kickKey } from '../auth/session-keys';
 import { REDIS_CLIENT } from '../redis/redis.module';
+import { CHAT_CHANNEL } from './chat-events';
 import { ChatService, type MessageContentType } from './chat.service';
 import { GroupsService } from './groups.service';
 import type { Message } from './message.entity';
@@ -32,14 +34,20 @@ interface ChatFrame {
 /** Redis 在线状态 TTL（秒）：客户端 25s 心跳续期，60s 未续期视为离线 */
 const PRESENCE_TTL = 60;
 
-/** 跨实例事件频道：多实例部署时通过 Redis pub/sub 转发消息/已读/在线状态 */
-const CHAT_CHANNEL = 'chat:events';
-
 /** 跨实例转发事件 */
 interface RemoteEvent {
   /** 发布实例 ID（接收端据此跳过自己，避免重复推送） */
   source: string;
-  kind: 'newMessage' | 'groupNewMessage' | 'read' | 'presence' | 'notification';
+  kind:
+    | 'newMessage'
+    | 'groupNewMessage'
+    | 'messageRecalled'
+    | 'groupMessageRecalled'
+    | 'read'
+    | 'presence'
+    | 'notification'
+    | 'groupEvent'
+    | 'kick';
   /** 目标用户（各实例按本地连接表判断是否推送） */
   toUserIds: number[];
   payload: Record<string, unknown>;
@@ -137,6 +145,11 @@ export class ChatGateway
       return;
     }
 
+    // 强制下线/封禁：新连接立即拒绝（Redis 异常时降级放行，靠帧检查兜底）
+    void this.isKicked(userId).then((kicked) => {
+      if (kicked) client.close(4002, 'forced offline');
+    });
+
     let set = this.clients.get(userId);
     if (!set) {
       set = new Set();
@@ -160,6 +173,15 @@ export class ChatGateway
     client.on('error', () => {
       /* 避免未捕获错误告警 */
     });
+  }
+
+  /** 是否处于强制下线/封禁状态（Redis 异常时视为未下线，避免误踢） */
+  private async isKicked(userId: number): Promise<boolean> {
+    try {
+      return !!(await this.redis.exists(kickKey(userId)));
+    } catch {
+      return false;
+    }
   }
 
   handleDisconnect(client: WebSocket): void {
@@ -209,7 +231,16 @@ export class ChatGateway
     }
   }
 
-  private handleFrame(userId: number, client: WebSocket, buffer: Buffer): void {
+  private async handleFrame(
+    userId: number,
+    client: WebSocket,
+    buffer: Buffer,
+  ): Promise<void> {
+    // 已建立的长连接：下一帧（心跳 25s 内）检测到强制下线/封禁即断开
+    if (await this.isKicked(userId)) {
+      client.close(4003, 'forced offline');
+      return;
+    }
     let frame: ChatFrame;
     try {
       frame = decode(buffer) as ChatFrame;
@@ -263,6 +294,10 @@ export class ChatGateway
         Number(conversationId),
         type,
         content,
+        {
+          replyToId: Number(frame.replyToId) || undefined,
+          forwarded: frame.forwarded === true,
+        },
       );
       // 通过 sendToUser 发给发送方自己的所有连接（比 reply(client) 更可靠，后者可能因单连接状态异常丢帧）
       this.sendToUser(userId, {
@@ -345,6 +380,10 @@ export class ChatGateway
         groupId,
         contentType,
         content,
+        {
+          replyToId: Number(frame.replyToId) || undefined,
+          forwarded: frame.forwarded === true,
+        },
       );
       this.sendToUser(userId, {
         type: 'groupSent',
@@ -406,6 +445,41 @@ export class ChatGateway
     }
   }
 
+  /**
+   * 群成员变化（拉人/退出/踢人后通知群内成员）：
+   * 客户端收到后刷新群列表与成员缓存。
+   */
+  async broadcastGroupEvent(
+    groupId: number,
+    memberIds: number[],
+  ): Promise<void> {
+    const payload = { type: 'groupEvent', groupId, kind: 'memberChanged' };
+    for (const uid of memberIds) {
+      if (await this.chat.isUserOnline(uid)) {
+        this.sendToUser(uid, payload);
+        this.publish({ kind: 'groupEvent', toUserIds: [uid], payload });
+      }
+    }
+  }
+
+  /**
+   * 群被解散 / 成员被移出：通知相关用户移除本地群缓存。
+   * 若目标用户正打开该群聊页，客户端据此提示并退出页面。
+   */
+  async broadcastGroupRemoved(
+    groupId: number,
+    userIds: number[],
+    reason: 'dissolved' | 'kicked' = 'dissolved',
+  ): Promise<void> {
+    const payload = { type: 'groupEvent', groupId, kind: 'removed', reason };
+    for (const uid of userIds) {
+      if (await this.chat.isUserOnline(uid)) {
+        this.sendToUser(uid, payload);
+        this.publish({ kind: 'groupEvent', toUserIds: [uid], payload });
+      }
+    }
+  }
+
   /** REST 标记已读后的实时转发 */
   broadcastRead(
     conversationId: number,
@@ -442,6 +516,11 @@ export class ChatGateway
       senderId: message.senderId,
       contentType: message.contentType,
       content: message.content,
+      replyToId: message.replyToId ?? null,
+      replyPreview: message.replyPreview ?? null,
+      forwarded: message.forwarded ?? false,
+      recalledAt:
+        message.recalledAt?.toISOString?.() ?? message.recalledAt ?? null,
       readAt: message.readAt?.toISOString?.() ?? message.readAt ?? null,
       createdAt:
         message.createdAt?.toISOString?.() ?? message.createdAt ?? null,
@@ -459,9 +538,51 @@ export class ChatGateway
       senderId: raw.senderId,
       contentType: raw.contentType,
       content: raw.content,
-      createdAt: (raw.createdAt as Date)?.toISOString?.() ?? raw.createdAt ?? null,
+      replyToId: raw.replyToId ?? null,
+      replyPreview: raw.replyPreview ?? null,
+      forwarded: raw.forwarded ?? false,
+      recalledAt:
+        (raw.recalledAt as Date)?.toISOString?.() ?? raw.recalledAt ?? null,
+      createdAt:
+        (raw.createdAt as Date)?.toISOString?.() ?? raw.createdAt ?? null,
       author: raw.author ?? null,
     };
+  }
+
+  /**
+   * 撤回消息实时广播：发给发送者本人与对端，双方聊天页同步显示撤回提示。
+   */
+  broadcastMessageRecalled(
+    conversationId: number,
+    message: Message,
+    userIds: number[],
+  ): void {
+    const payload = {
+      type: 'messageRecalled',
+      conversationId,
+      message: this.serializeMessage(message),
+    };
+    for (const uid of userIds) {
+      this.sendToUser(uid, payload);
+      this.publish({ kind: 'messageRecalled', toUserIds: [uid], payload });
+    }
+  }
+
+  /** 群消息撤回实时广播：发给发送者与在线群成员 */
+  broadcastGroupMessageRecalled(
+    groupId: number,
+    message: Record<string, unknown> | GroupMessage,
+    memberIds: number[],
+  ): void {
+    const payload = {
+      type: 'groupMessageRecalled',
+      groupId,
+      message: this.serializeGroupMessage(message),
+    };
+    for (const uid of memberIds) {
+      this.sendToUser(uid, payload);
+      this.publish({ kind: 'groupMessageRecalled', toUserIds: [uid], payload });
+    }
   }
 
   private reply(client: WebSocket, payload: unknown): void {
@@ -487,6 +608,28 @@ export class ChatGateway
     }
   }
 
+  /**
+   * 强制下线：关闭该用户在本实例的全部 WebSocket 连接。
+   * 关闭前复核下线标记，避免管理端踢人瞬间用户恰好重新登录而误踢新会话。
+   */
+  private async kickLocalUser(
+    userId: number,
+    reason: 'forced_offline' | 'banned',
+  ): Promise<void> {
+    try {
+      if (!(await this.redis.exists(kickKey(userId)))) return;
+    } catch {
+      // Redis 异常时仍直接关闭，保证强制下线及时生效
+    }
+    const set = this.clients.get(userId);
+    if (!set) return;
+    for (const client of set) {
+      if (client.readyState === WebSocket.OPEN) {
+        client.close(4004, reason === 'banned' ? 'banned' : 'forced offline');
+      }
+    }
+  }
+
   /** 发布跨实例事件：携带本实例 ID，接收端据此跳过自己避免重复推送 */
   private publish(ev: Omit<RemoteEvent, 'source'>): void {
     this.pubsub
@@ -508,6 +651,17 @@ export class ChatGateway
       return;
     }
     if (!ev || ev.source === this.instanceId) return;
+    if (ev.kind === 'kick') {
+      // 强制下线：所有实例立即断开该用户的本地连接（来源为 'admin'，本实例也会收到）
+      const reason =
+        (ev.payload as { reason?: string } | undefined)?.reason === 'banned'
+          ? 'banned'
+          : 'forced_offline';
+      for (const uid of ev.toUserIds) {
+        void this.kickLocalUser(uid, reason);
+      }
+      return;
+    }
     for (const uid of ev.toUserIds) {
       this.sendToUser(uid, ev.payload as Record<string, unknown>);
     }

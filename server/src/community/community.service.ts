@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -266,6 +267,16 @@ export class CommunityService {
       this.histories.delete({ postId: id }),
     ]);
     await this.posts.delete({ id });
+  }
+
+  /** 用户端：删除自己的作品（校验归属后物理删除） */
+  async deleteOwn(userId: number, postId: number): Promise<void> {
+    const post = await this.posts.findOneBy({ id: postId });
+    if (!post) throw new NotFoundException('作品不存在');
+    if (post.userId !== userId) {
+      throw new ForbiddenException('只能删除自己的作品');
+    }
+    await this.hardDelete(postId);
   }
 
   // ──── Like operations ────

@@ -134,6 +134,11 @@ class VideoApi {
     return ShortVideo.fromServerJson(resp.data as Map<String, dynamic>);
   }
 
+  /// 删除自己的视频/照片作品
+  static Future<void> deleteVideo(int videoId) async {
+    await ApiClient.instance.delete('/videos/$videoId');
+  }
+
   // ──── 点赞 ────
 
   /// 切换点赞状态，返回最新是否已点赞

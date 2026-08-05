@@ -17,6 +17,7 @@ class ShortVideo {
     required this.likeCount,
     required this.commentCount,
     required this.shareCount,
+    this.viewCount = 0,
     required this.followCount,
     required this.tags,
     required this.music,
@@ -56,6 +57,9 @@ class ShortVideo {
   final int likeCount;
   final int commentCount;
   final int shareCount;
+
+  /// 浏览数（服务端 videos 模块返回；个人主页网格封面浮标展示）
+  final int viewCount;
 
   /// 作者粉丝数
   final int followCount;
@@ -117,6 +121,7 @@ class ShortVideo {
       likeCount: ((json['likeCount'] ?? 0) as num).toInt(),
       commentCount: ((json['commentCount'] ?? 0) as num).toInt(),
       shareCount: ((json['shareCount'] ?? 0) as num).toInt(),
+      viewCount: ((json['viewCount'] ?? 0) as num).toInt(),
       followCount: ((author['followCount'] ?? 0) as num).toInt(),
       tags: ((json['tags'] ?? []) as List).map((e) => e.toString()).toList(),
       music: (json['music'] ?? '') as String,
@@ -138,6 +143,7 @@ class ShortVideo {
     int? likeCount,
     int? commentCount,
     int? shareCount,
+    int? viewCount,
     List<CommunityComment>? comments,
     bool? liked,
   }) => ShortVideo(
@@ -151,6 +157,7 @@ class ShortVideo {
     likeCount: likeCount ?? this.likeCount,
     commentCount: commentCount ?? this.commentCount,
     shareCount: shareCount ?? this.shareCount,
+    viewCount: viewCount ?? this.viewCount,
     followCount: followCount,
     tags: tags,
     music: music,

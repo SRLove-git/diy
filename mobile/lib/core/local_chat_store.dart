@@ -17,6 +17,7 @@ class LocalMessage {
     this.type = 'text',
     required this.sendTime,
     required this.status,
+    this.recalledAt,
   });
 
   /// 本地唯一键：发送中为客户端流水号，服务端消息为 `srv-<id>`
@@ -32,6 +33,9 @@ class LocalMessage {
   final DateTime sendTime;
   final LocalMsgStatus status;
 
+  /// 撤回时间（毫秒）；非空 = 服务端已确认撤回
+  final DateTime? recalledAt;
+
   /// 转成聊天页使用的消息模型
   ChatMessage toChatMessage() => ChatMessage(
         id: serverId,
@@ -41,6 +45,7 @@ class LocalMessage {
         content: content,
         createdAt: sendTime,
         clientMsgId: clientMsgId,
+        recalledAt: recalledAt,
       );
 
   factory LocalMessage.fromRow(Map<String, Object?> row) => LocalMessage(
@@ -55,6 +60,9 @@ class LocalMessage {
           (s) => s.name == row['status'],
           orElse: () => LocalMsgStatus.sent,
         ),
+        recalledAt: row['recalled_at'] == null
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch(row['recalled_at'] as int),
       );
 }
 
@@ -85,7 +93,8 @@ class LocalChatStore {
       content TEXT NOT NULL,
       type TEXT NOT NULL DEFAULT 'text',
       send_time INTEGER NOT NULL,
-      status TEXT NOT NULL DEFAULT 'sending'
+      status TEXT NOT NULL DEFAULT 'sending',
+      recalled_at INTEGER
     )
   ''';
 
@@ -99,7 +108,7 @@ class LocalChatStore {
     final dir = await getDatabasesPath();
     return openDatabase(
       p.join(dir, _dbName),
-      version: 2,
+      version: 3,
       onCreate: (db, _) async {
         await db.execute(_createSql);
         await db.execute(_createIndexSql);
@@ -110,6 +119,11 @@ class LocalChatStore {
           await db.execute('DROP TABLE IF EXISTS $_table');
           await db.execute(_createSql);
           await db.execute(_createIndexSql);
+        }
+        // v3：新增撤回时间列（本地撤回状态，重进页面秒开时显示一致）
+        // v1→v3 时表已在上方重建（含新列），无需再 ALTER
+        if (oldVersion >= 2 && oldVersion < 3) {
+          await db.execute('ALTER TABLE $_table ADD COLUMN recalled_at INTEGER');
         }
       },
     );
@@ -201,6 +215,27 @@ class LocalChatStore {
         'status': LocalMsgStatus.read.name,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// 服务端撤回确认：按 server_id 标记本地撤回时间
+  Future<void> markRecalled(int serverId) async {
+    final db = await _database;
+    await db.update(
+      _table,
+      {'recalled_at': DateTime.now().millisecondsSinceEpoch},
+      where: 'server_id = ?',
+      whereArgs: [serverId],
+    );
+  }
+
+  /// 删除本地消息（用户删除该条消息时清理，避免重进页面又出现）
+  Future<void> removeByServerId(int serverId) async {
+    final db = await _database;
+    await db.delete(
+      _table,
+      where: 'server_id = ?',
+      whereArgs: [serverId],
     );
   }
 

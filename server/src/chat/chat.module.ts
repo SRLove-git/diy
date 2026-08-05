@@ -9,6 +9,7 @@ import { Conversation } from './conversation.entity';
 import { Group } from './group.entity';
 import { GroupMember } from './group-member.entity';
 import { GroupMessage } from './group-message.entity';
+import { GroupMessageDeletion } from './group-message-deletion.entity';
 import { GroupRead } from './group-read.entity';
 import { GroupsController } from './groups.controller';
 import { GroupsService } from './groups.service';
@@ -24,6 +25,7 @@ import { MessageStatus } from './message_status.entity';
       Group,
       GroupMember,
       GroupMessage,
+      GroupMessageDeletion,
       GroupRead,
       User,
     ]),

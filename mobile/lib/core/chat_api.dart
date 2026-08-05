@@ -35,6 +35,8 @@ class Conversation {
   String get lastMessageText {
     final p = lastMessagePreview;
     if (p == null) return '';
+    if (p.startsWith('recalled:')) return '[撤回了一条消息]';
+    if (p.startsWith('video:')) return '[视频]';
     if (p.startsWith('image:')) return '[图片]';
     if (p.startsWith('voice:')) return '[语音]';
     if (p.startsWith('text:')) return p.substring(5);
@@ -87,6 +89,10 @@ class ChatMessage {
     required this.senderId,
     required this.content,
     this.contentType = 'text',
+    this.replyToId,
+    this.replyPreview,
+    this.forwarded = false,
+    this.recalledAt,
     this.readAt,
     this.createdAt,
     this.clientMsgId,
@@ -97,6 +103,19 @@ class ChatMessage {
   final int senderId;
   final String contentType;
   final String content;
+
+  /// 引用消息 ID（同一会话内的消息）
+  final int? replyToId;
+
+  /// 被引用消息快照预览（text:xxx / image: / voice: / video:）
+  final String? replyPreview;
+
+  /// 是否为转发消息
+  final bool forwarded;
+
+  /// 撤回时间；非空 = 已撤回
+  final DateTime? recalledAt;
+
   final DateTime? readAt;
   final DateTime? createdAt;
 
@@ -109,6 +128,10 @@ class ChatMessage {
     String? contentType,
     String? clientMsgId,
     int? senderId,
+    int? replyToId,
+    String? replyPreview,
+    bool? forwarded,
+    DateTime? recalledAt,
   }) =>
       ChatMessage(
         id: id,
@@ -116,6 +139,10 @@ class ChatMessage {
         senderId: senderId ?? this.senderId,
         contentType: contentType ?? this.contentType,
         content: content ?? this.content,
+        replyToId: replyToId ?? this.replyToId,
+        replyPreview: replyPreview ?? this.replyPreview,
+        forwarded: forwarded ?? this.forwarded,
+        recalledAt: recalledAt ?? this.recalledAt,
         readAt: readAt ?? this.readAt,
         createdAt: createdAt,
         clientMsgId: clientMsgId ?? this.clientMsgId,
@@ -140,6 +167,10 @@ class ChatMessage {
       senderId: safeIntOr(json['senderId'], 0),
       contentType: (json['contentType'] ?? 'text').toString(),
       content: (json['content'] ?? '').toString(),
+      replyToId: safeInt(json['replyToId']),
+      replyPreview: json['replyPreview'] as String?,
+      forwarded: json['forwarded'] == true,
+      recalledAt: _coerceDateTime(json['recalledAt']),
       readAt: _coerceDateTime(json['readAt']),
       createdAt: _coerceDateTime(json['createdAt']),
     );
@@ -199,12 +230,38 @@ class ChatApi {
     int conversationId,
     String content, {
     String contentType = 'text',
+    int? replyToId,
+    bool forwarded = false,
   }) async {
     final resp = await ApiClient.instance.post(
       '/conversations/$conversationId/messages',
-      data: {'content': content, 'contentType': contentType},
+      data: {
+        'content': content,
+        'contentType': contentType,
+        'replyToId': ?replyToId,
+        'forwarded': forwarded,
+      },
     );
     return ChatMessage.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  /// 撤回消息（仅发送者、发送后 2 分钟内，对双方生效）
+  static Future<ChatMessage> recallMessage(
+    int conversationId,
+    int messageId,
+  ) async {
+    final resp = await ApiClient.instance
+        .post('/conversations/$conversationId/messages/$messageId/recall');
+    return ChatMessage.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  /// 删除消息（仅对自己隐藏，对端不受影响）
+  static Future<void> deleteMessage(
+    int conversationId,
+    int messageId,
+  ) async {
+    await ApiClient.instance
+        .delete('/conversations/$conversationId/messages/$messageId');
   }
 
   /// 上传图片，返回可访问的相对路径（如 /uploads/chat/2026/08/xxx.jpg）
@@ -229,6 +286,19 @@ class ChatApi {
     });
     final resp = await ApiClient.instance.post(
       '/uploads/audio',
+      data: form,
+      options: Options(contentType: Headers.multipartFormDataContentType),
+    );
+    return (resp.data as Map<String, dynamic>)['url'] as String;
+  }
+
+  /// 上传聊天视频，返回可访问的相对路径（如 /uploads/video/2026/08/xxx.mp4）
+  static Future<String> uploadVideo(String filePath) async {
+    final form = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath),
+    });
+    final resp = await ApiClient.instance.post(
+      '/uploads/videos',
       data: form,
       options: Options(contentType: Headers.multipartFormDataContentType),
     );
@@ -370,6 +440,10 @@ class GroupMessage {
     required this.createdAt,
     this.authorNickname = '',
     this.authorAvatar = '',
+    this.replyToId,
+    this.replyPreview,
+    this.forwarded = false,
+    this.recalledAt,
   });
 
   final int id;
@@ -380,6 +454,18 @@ class GroupMessage {
   final DateTime createdAt;
   final String authorNickname;
   final String authorAvatar;
+
+  /// 引用消息 ID（同一群内的消息）
+  final int? replyToId;
+
+  /// 被引用消息快照预览（text:xxx / image: / voice: / video:）
+  final String? replyPreview;
+
+  /// 是否为转发消息
+  final bool forwarded;
+
+  /// 撤回时间；非空 = 已撤回
+  final DateTime? recalledAt;
 
   factory GroupMessage.fromJson(Map<String, dynamic> json) {
     // msgpack 解出的嵌套 map 是 Map<dynamic, dynamic>，需深转一层
@@ -394,6 +480,12 @@ class GroupMessage {
           DateTime.now(),
       authorNickname: (author['nickname'] ?? '') as String,
       authorAvatar: (author['avatar'] ?? '') as String,
+      replyToId: (json['replyToId'] as num?)?.toInt(),
+      replyPreview: json['replyPreview'] as String?,
+      forwarded: json['forwarded'] == true,
+      recalledAt: json['recalledAt'] == null
+          ? null
+          : DateTime.tryParse(json['recalledAt'].toString()),
     );
   }
 }
@@ -432,6 +524,38 @@ class GroupApi {
         .toList();
   }
 
+  /// 群创建后拉人（任意成员可邀请）
+  static Future<void> addMembers(
+    int groupId,
+    List<int> memberIds,
+  ) async {
+    await ApiClient.instance.post(
+      '/groups/$groupId/members',
+      data: {'memberIds': memberIds},
+    );
+  }
+
+  /// 退出群聊（群主不可退出，需解散）
+  static Future<void> leaveGroup(int groupId) async {
+    await ApiClient.instance.delete('/groups/$groupId/members/me');
+  }
+
+  /// 群主踢人
+  static Future<void> kickMember(int groupId, int targetUserId) async {
+    await ApiClient.instance
+        .delete('/groups/$groupId/members/$targetUserId');
+  }
+
+  /// 群主解散群聊
+  static Future<void> dissolveGroup(int groupId) async {
+    await ApiClient.instance.delete('/groups/$groupId');
+  }
+
+  /// 群主修改群名称
+  static Future<void> renameGroup(int groupId, String name) async {
+    await ApiClient.instance.patch('/groups/$groupId', data: {'name': name});
+  }
+
   /// 群历史消息（游标分页）
   static Future<({List<GroupMessage> items, int? nextCursor})> fetchMessages(
     int groupId, {
@@ -456,12 +580,35 @@ class GroupApi {
     int groupId,
     String content, {
     String contentType = 'text',
+    int? replyToId,
+    bool forwarded = false,
   }) async {
     final resp = await ApiClient.instance.post(
       '/groups/$groupId/messages',
-      data: {'content': content, 'contentType': contentType},
+      data: {
+        'content': content,
+        'contentType': contentType,
+        'replyToId': ?replyToId,
+        'forwarded': forwarded,
+      },
     );
     return GroupMessage.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  /// 撤回群消息（仅发送者、发送后 2 分钟内，对群内成员生效）
+  static Future<GroupMessage> recallMessage(
+    int groupId,
+    int messageId,
+  ) async {
+    final resp = await ApiClient.instance
+        .post('/groups/$groupId/messages/$messageId/recall');
+    return GroupMessage.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  /// 删除群消息（仅对自己隐藏，其他成员不受影响）
+  static Future<void> deleteMessage(int groupId, int messageId) async {
+    await ApiClient.instance
+        .delete('/groups/$groupId/messages/$messageId');
   }
 
   /// 标记群已读

@@ -21,10 +21,21 @@ export class SendMessageDto {
   @MaxLength(2000)
   content: string;
 
-  /** 消息类型：text（文本/表情，默认）| image（content 为上传后的相对路径）| voice（content 为 {url,duration} JSON） */
+  /** 消息类型：text（文本/表情，默认）| image | voice（content 为 {url,duration} JSON）| video */
   @IsOptional()
-  @IsIn(['text', 'image', 'voice'])
-  contentType?: 'text' | 'image' | 'voice';
+  @IsIn(['text', 'image', 'voice', 'video'])
+  contentType?: 'text' | 'image' | 'voice' | 'video';
+
+  /** 引用消息 ID（长按引用；须为同一会话的消息） */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  replyToId?: number;
+
+  /** 是否为转发消息（转发后消息体标记 forwarded） */
+  @IsOptional()
+  @IsBoolean()
+  forwarded?: boolean;
 }
 
 export class PinConversationDto {

@@ -8,18 +8,20 @@ import '../core/chat_api.dart';
 import '../core/follow_api.dart';
 import '../core/post_api.dart';
 import '../core/video_api.dart';
+import '../features/tiktok_profile/page/video_profile_page.dart';
 import '../features/member/presentation/member_plan_page.dart';
 import 'short_video_models.dart';
 import 'profile/my_favorites_page.dart';
 import 'profile/my_history_page.dart';
 import 'profile/my_wallet_page.dart';
-import 'profile/my_works_page.dart';
 import 'profile/order_list_page.dart';
 import 'profile/reels_player_page.dart';
+import 'profile/edit_profile_page.dart';
 import '../widgets/image_viewer.dart';
 import '../widgets/state_widgets.dart';
 import 'admin/admin_home_page.dart';
 import 'community/post_detail_page.dart';
+import 'community/follow_list_page.dart';
 
 /// 个人主页：对齐《个人页面设计初稿》
 /// 顶部导航 + 头像/数据区 + 横幅 + 操作按钮 + 推荐卡片 + 内容 Tab + 三列作品宫格
@@ -126,10 +128,12 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  void _openReels(ShortVideo video) {
-    Navigator.of(context).push(
+  Future<void> _openReels(ShortVideo video) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ReelsPlayerPage(video: video)),
     );
+    // 返回后刷新笔记/视频列表，保持点赞/评论数同步
+    if (mounted && _reelsLoaded) _loadReels();
   }
 
   void _openDetail(Post post) {
@@ -137,6 +141,57 @@ class _ProfilePageState extends State<ProfilePage> {
       context,
       MaterialPageRoute(builder: (_) => PostDetailPage(postId: post.id)),
     );
+  }
+
+  /// 删除作品二次确认
+  Future<bool> _confirmDelete(String title) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: const Text('删除后不可恢复，确定删除吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
+  /// 删除帖子作品（长按宫格触发）
+  Future<void> _deletePost(Post post) async {
+    if (!await _confirmDelete('删除作品')) return;
+    try {
+      await PostApi.deletePost(post.id);
+      if (!mounted) return;
+      setState(() => _posts.removeWhere((p) => p.id == post.id));
+      _toast('已删除');
+    } catch (_) {
+      if (mounted) _toast('删除失败，请稍后再试');
+    }
+  }
+
+  /// 删除笔记/视频作品（长按宫格触发）
+  Future<void> _deleteVideo(ShortVideo video) async {
+    if (!await _confirmDelete('删除作品')) return;
+    try {
+      await VideoApi.deleteVideo(video.id);
+      if (!mounted) return;
+      setState(() {
+        _reels.removeWhere((v) => v.id == video.id);
+        _notes.removeWhere((v) => v.id == video.id);
+      });
+      _toast('已删除');
+    } catch (_) {
+      if (mounted) _toast('删除失败，请稍后再试');
+    }
   }
 
   void _toast(String msg) {
@@ -232,43 +287,11 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  /// 编辑主页 → 修改昵称
+  /// 编辑主页 → 进入完整资料编辑页（头像 / 名字 / 用户名 / 简介 / 性别 / 生日 / 所在地）
   Future<void> _editProfile() async {
-    final controller = TextEditingController(
-      text: AuthService.instance.user?.nickname ?? '',
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const EditProfilePage()),
     );
-    final nickname = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('编辑昵称'),
-        content: TextField(
-          controller: controller,
-          maxLength: 30,
-          decoration: const InputDecoration(hintText: '请输入昵称'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('保存'),
-          ),
-        ],
-      ),
-    );
-    if (nickname != null && nickname.isNotEmpty && mounted) {
-      try {
-        await AuthService.instance.updateNickname(nickname);
-      } on DioException catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(PostApi.messageOf(e))));
-        }
-      }
-    }
   }
 
   void _openFunctionPanel() {
@@ -321,7 +344,11 @@ class _ProfilePageState extends State<ProfilePage> {
   // ─── 1. 顶部导航栏（60px） ───
   Widget _buildHeader(User? user) {
     final colors = AppColors.of(context);
-    final name = user?.nickname.isNotEmpty == true ? user!.nickname : '手作新人';
+    final name = user?.username?.isNotEmpty == true
+        ? user!.username!
+        : user?.nickname.isNotEmpty == true
+        ? user!.nickname
+        : '手作新人';
     return SizedBox(
       height: 56,
       child: Stack(
@@ -362,6 +389,7 @@ class _ProfilePageState extends State<ProfilePage> {
   // ─── 3. 用户信息区（头像 + 昵称 + 数据） ───
   Widget _buildProfileInfo(User? user) {
     final name = user?.nickname.isNotEmpty == true ? user!.nickname : '手作新人';
+    final bio = (user?.bio ?? '').trim();
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Row(
@@ -426,12 +454,33 @@ class _ProfilePageState extends State<ProfilePage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (bio.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    bio,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: AppColors.of(context).textSecondary,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     _buildStat(_posts.length, '帖子'),
-                    _buildStat(_followerCount, '粉丝'),
-                    _buildStat(_followingCount, '关注'),
+                    _buildStat(
+                      _followerCount,
+                      '粉丝',
+                      onTap: () => _openFollowList(FollowListMode.followers),
+                    ),
+                    _buildStat(
+                      _followingCount,
+                      '关注',
+                      onTap: () => _openFollowList(FollowListMode.following),
+                    ),
                   ],
                 ),
               ],
@@ -442,23 +491,42 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildStat(int value, String label) {
+  Widget _buildStat(int value, String label, {VoidCallback? onTap}) {
     final colors = AppColors.of(context);
+    final content = Column(
+      children: [
+        Text(
+          '$value',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: colors.textSecondary),
+        ),
+      ],
+    );
     return Expanded(
-      child: Column(
-        children: [
-          Text(
-            '$value',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(fontSize: 12, color: colors.textSecondary),
-          ),
-        ],
+      child: onTap == null
+          ? content
+          : InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(8),
+              child: content,
+            ),
+    );
+  }
+
+  /// 打开粉丝/关注列表，返回后刷新数字
+  Future<void> _openFollowList(FollowListMode mode) async {
+    final me = AuthService.instance.user;
+    if (me == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FollowListPage(userId: me.id, mode: mode),
       ),
     );
+    if (mounted) _loadStats();
   }
 
   // ─── 4. 操作按钮（编辑/分享） ───
@@ -503,7 +571,12 @@ class _ProfilePageState extends State<ProfilePage> {
       (icon: Icons.workspace_premium_outlined, label: '会员套餐', page: MemberPlanPage()),
       (icon: Icons.wallet_giftcard_outlined, label: '卡包', page: MyWalletPage()),
       (icon: Icons.favorite_border, label: '点赞与收藏', page: MyFavoritesPage()),
-      (icon: Icons.palette_outlined, label: '个人作品', page: MyWorksPage()),
+      // 个人作品：抖音风格作品墙（2 列封面流 → 全屏上下滑动播放页）
+      (
+        icon: Icons.palette_outlined,
+        label: '个人作品',
+        page: VideoProfilePage(),
+      ),
       (icon: Icons.history, label: '观看历史', page: MyHistoryPage()),
       (icon: Icons.receipt_long_outlined, label: '我的订单', page: OrderListPage()),
     ];
@@ -709,8 +782,11 @@ class _ProfilePageState extends State<ProfilePage> {
         mainAxisSpacing: 2,
         crossAxisSpacing: 2,
       ),
-      itemBuilder: (_, i) =>
-          _GridCell(post: _posts[i], onTap: () => _openDetail(_posts[i])),
+      itemBuilder: (_, i) => _GridCell(
+        post: _posts[i],
+        onTap: () => _openDetail(_posts[i]),
+        onLongPress: () => _deletePost(_posts[i]),
+      ),
     );
   }
 
@@ -746,6 +822,7 @@ class _ProfilePageState extends State<ProfilePage> {
       itemBuilder: (_, i) => _NoteCell(
         video: _notes[i],
         onTap: () => _openReels(_notes[i]),
+        onLongPress: () => _deleteVideo(_notes[i]),
       ),
     );
   }
@@ -782,6 +859,7 @@ class _ProfilePageState extends State<ProfilePage> {
       itemBuilder: (_, i) => _ReelsCell(
         video: _reels[i],
         onTap: () => _openReels(_reels[i]),
+        onLongPress: () => _deleteVideo(_reels[i]),
       ),
     );
   }
@@ -851,15 +929,21 @@ class _FunctionTile extends StatelessWidget {
 
 /// 宫格单元：作品封面图
 class _GridCell extends StatelessWidget {
-  const _GridCell({required this.post, required this.onTap});
+  const _GridCell({
+    required this.post,
+    required this.onTap,
+    this.onLongPress,
+  });
 
   final Post post;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -968,10 +1052,15 @@ class _GridCell extends StatelessWidget {
 
 /// Reels 宫格单元：视频封面
 class _ReelsCell extends StatelessWidget {
-  const _ReelsCell({required this.video, required this.onTap});
+  const _ReelsCell({
+    required this.video,
+    required this.onTap,
+    this.onLongPress,
+  });
 
   final ShortVideo video;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   String get _cover {
     if (video.cover.isNotEmpty) return video.cover;
@@ -985,6 +1074,7 @@ class _ReelsCell extends StatelessWidget {
     final isPhoto = video.isPhoto || video.videoUrl.isEmpty;
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -1059,10 +1149,15 @@ class _ReelsCell extends StatelessWidget {
 
 /// 笔记宫格单元：纯图片组合作品封面 + 张数角标
 class _NoteCell extends StatelessWidget {
-  const _NoteCell({required this.video, required this.onTap});
+  const _NoteCell({
+    required this.video,
+    required this.onTap,
+    this.onLongPress,
+  });
 
   final ShortVideo video;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   /// 封面：优先照片列表首张，回退视频封面
   String get _cover {
@@ -1076,6 +1171,7 @@ class _NoteCell extends StatelessWidget {
     final colors = AppColors.of(context);
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Stack(
         fit: StackFit.expand,
         children: [

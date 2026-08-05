@@ -1,10 +1,13 @@
 import {
+  IsDateString,
+  IsIn,
   IsOptional,
   IsString,
   Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 /** 中国大陆手机号 */
 export class SendCodeDto {
@@ -61,8 +64,43 @@ export class UpdateProfileDto {
   @MaxLength(30, { message: '昵称最长 30 个字符' })
   nickname?: string;
 
+  /** 用户名：2-30 位字母/数字/下划线，用于用户名+密码登录 */
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString()
+  @MaxLength(30, { message: '用户名最多 30 位' })
+  @Matches(/^[a-zA-Z0-9_]*$/, { message: '用户名仅支持字母、数字和下划线' })
+  username?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(255)
   avatar?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200, { message: '简介最长 200 个字符' })
+  bio?: string;
+
+  @IsOptional()
+  @IsIn(['male', 'female', 'secret'], { message: '性别取值不合法' })
+  gender?: 'male' | 'female' | 'secret';
+
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string'
+      ? value.trim() === ''
+        ? null
+        : value.trim()
+      : value,
+  )
+  @IsDateString({}, { message: '生日格式应为 YYYY-MM-DD' })
+  birthday?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60, { message: '所在地最长 60 个字符' })
+  location?: string;
 }

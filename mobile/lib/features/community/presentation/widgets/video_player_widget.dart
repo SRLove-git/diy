@@ -13,12 +13,16 @@ class VideoPlayerWidget extends StatefulWidget {
     super.key,
     required this.item,
     this.borderRadius = 16,
+    this.onDoubleTap,
   });
 
   final MediaItem item;
 
   /// 圆角，默认 16（网格内小方块可传更小值）
   final double borderRadius;
+
+  /// 双击回调（个人主页详情页用于双击点赞）
+  final VoidCallback? onDoubleTap;
 
   @override
   State<VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
@@ -113,6 +117,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     final video = _videoCtrl;
     return GestureDetector(
       onTap: _toggle,
+      onDoubleTap: widget.onDoubleTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(widget.borderRadius),
         child: Stack(

@@ -62,12 +62,17 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    // 拍摄页整套布局（预览画幅、右侧按钮栏、底部操作区）按竖屏设计：
+    // 无论系统是否开启竖屏锁定，进入页面都强制竖屏，避免横屏时画幅与控件错乱。
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     WidgetsBinding.instance.addObserver(this);
     _initCamera();
   }
 
   @override
   void dispose() {
+    // 离开拍摄页后恢复系统默认支持的其它方向
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     WidgetsBinding.instance.removeObserver(this);
     _recTicker?.cancel();
     _camera?.dispose();
@@ -448,18 +453,16 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
     return LayoutBuilder(
       builder: (context, constraints) {
         final ratio = _modeIndex == 1 ? _aspectPreset.ratio : 3 / 4;
-        final orientation =
-            camera.value.lockedCaptureOrientation ??
-            camera.value.deviceOrientation;
-        final isLandscape =
-            orientation == DeviceOrientation.landscapeLeft ||
-            orientation == DeviceOrientation.landscapeRight;
+        final previewBounds = Size(
+          constraints.maxWidth,
+          constraints.maxHeight,
+        );
         final previewRatio = orientedCameraAspectRatio(
           camera.value.aspectRatio,
-          isLandscape: isLandscape,
+          previewBounds: previewBounds,
         );
         final frame = containAspectSize(
-          Size(constraints.maxWidth, constraints.maxHeight),
+          previewBounds,
           ratio,
         );
         return ColoredBox(

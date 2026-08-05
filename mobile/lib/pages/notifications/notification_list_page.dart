@@ -106,22 +106,32 @@ class _NotificationListPageState extends State<NotificationListPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.title,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.title,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      _formatTime(item.createdAt),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  _formatTime(item.createdAt),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
+                Divider(height: 1, thickness: 1, color: colors.divider),
+                const SizedBox(height: 14),
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 320),
                   child: SingleChildScrollView(
@@ -274,6 +284,17 @@ class _NotificationCard extends StatelessWidget {
   final AppNotification item;
   final VoidCallback onTap;
 
+  /// 内容较短时与标题同行展示，避免出现孤立的单字内容行。
+  bool get _inlineContent {
+    final title = item.title.trim();
+    final content = item.content.trim();
+    return title.isNotEmpty &&
+        content.isNotEmpty &&
+        title.length <= 14 &&
+        content.length <= 12 &&
+        !content.contains('\n');
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
@@ -314,20 +335,7 @@ class _NotificationCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Expanded(
-                          child: Text(
-                            item.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: item.read
-                                  ? FontWeight.w600
-                                  : FontWeight.w800,
-                              color: colors.textPrimary,
-                            ),
-                          ),
-                        ),
+                        Expanded(child: _buildTitleRow(colors)),
                         const SizedBox(width: 8),
                         Text(
                           _formatTime(item.createdAt),
@@ -338,19 +346,21 @@ class _NotificationCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      item.content,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.45,
-                        color: item.read
-                            ? colors.textSecondary
-                            : colors.textPrimary,
+                    if (!_inlineContent) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        item.content,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.45,
+                          color: item.read
+                              ? colors.textSecondary
+                              : colors.textPrimary,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -358,6 +368,56 @@ class _NotificationCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTitleRow(AppColors colors) {
+    if (!_inlineContent) {
+      return Text(
+        item.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: item.read ? FontWeight.w600 : FontWeight.w800,
+          color: colors.textPrimary,
+        ),
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Flexible(
+          child: Text(
+            item.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: item.read ? FontWeight.w600 : FontWeight.w800,
+              color: colors.textPrimary,
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Flexible(
+          flex: 2,
+          child: Text(
+            '：${item.content.trim()}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.3,
+              fontWeight: FontWeight.w400,
+              color: item.read
+                  ? colors.textSecondary
+                  : colors.textPrimary.withValues(alpha: 0.7),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

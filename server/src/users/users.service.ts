@@ -1,11 +1,36 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import type Redis from 'ioredis';
 import { In, Like, Repository } from 'typeorm';
+import {
+  FORCE_OFFLINE_TTL,
+  kickKey,
+} from '../auth/session-keys';
+import { publishKickEvent } from '../chat/chat-events';
+import { REDIS_CLIENT } from '../redis/redis.module';
+import { Appointment } from '../appointments/appointment.entity';
+import { Conversation } from '../chat/conversation.entity';
+import { Group } from '../chat/group.entity';
+import { GroupMember } from '../chat/group-member.entity';
+import { GroupMessage } from '../chat/group-message.entity';
+import { GroupMessageDeletion } from '../chat/group-message-deletion.entity';
+import { GroupRead } from '../chat/group-read.entity';
+import { Message } from '../chat/message.entity';
+import { MessageStatus } from '../chat/message_status.entity';
 import { Collection } from '../community/collection.entity';
 import { Comment as PostComment } from '../community/comment.entity';
 import { Like as PostLike } from '../community/like.entity';
 import { Post } from '../community/post.entity';
 import { Report } from '../community/report.entity';
+import { Follow } from '../follows/follow.entity';
+import { Membership } from '../members/membership.entity';
+import { UserCoupon } from '../members/coupon.entity';
+import { NotificationRead } from '../notifications/notification-read.entity';
 import { Video } from '../videos/video.entity';
 import { VideoComment } from '../videos/video-comment.entity';
 import { VideoLike } from '../videos/video-like.entity';
@@ -15,9 +40,11 @@ import { User } from './user.entity';
 @Injectable()
 export class UsersService {
   constructor(
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(Post) private readonly posts: Repository<Post>,
-    @InjectRepository(PostLike) private readonly postLikes: Repository<PostLike>,
+    @InjectRepository(PostLike)
+    private readonly postLikes: Repository<PostLike>,
     @InjectRepository(PostComment)
     private readonly postComments: Repository<PostComment>,
     @InjectRepository(Collection)
@@ -29,6 +56,29 @@ export class UsersService {
     private readonly videoLikes: Repository<VideoLike>,
     @InjectRepository(VideoComment)
     private readonly videoComments: Repository<VideoComment>,
+    @InjectRepository(Follow) private readonly follows: Repository<Follow>,
+    @InjectRepository(NotificationRead)
+    private readonly notificationReads: Repository<NotificationRead>,
+    @InjectRepository(Membership)
+    private readonly memberships: Repository<Membership>,
+    @InjectRepository(UserCoupon)
+    private readonly userCoupons: Repository<UserCoupon>,
+    @InjectRepository(Appointment)
+    private readonly appointments: Repository<Appointment>,
+    @InjectRepository(Conversation)
+    private readonly conversations: Repository<Conversation>,
+    @InjectRepository(Message) private readonly messages: Repository<Message>,
+    @InjectRepository(MessageStatus)
+    private readonly messageStatuses: Repository<MessageStatus>,
+    @InjectRepository(Group) private readonly groups: Repository<Group>,
+    @InjectRepository(GroupMember)
+    private readonly groupMembers: Repository<GroupMember>,
+    @InjectRepository(GroupMessage)
+    private readonly groupMessages: Repository<GroupMessage>,
+    @InjectRepository(GroupRead)
+    private readonly groupReads: Repository<GroupRead>,
+    @InjectRepository(GroupMessageDeletion)
+    private readonly groupMessageDeletions: Repository<GroupMessageDeletion>,
   ) {}
 
   findByPhone(phone: string): Promise<User | null> {
@@ -36,7 +86,9 @@ export class UsersService {
   }
 
   /** 按手机号搜索用户（添加好友用）：精确匹配，排除自己与被封禁账号 */
-  async searchByPhone(phone: string): Promise<
+  async searchByPhone(
+    phone: string,
+  ): Promise<
     Array<{ id: number; nickname: string; avatar: string; phoneMasked: string }>
   > {
     const keyword = (phone ?? '').trim();
@@ -88,8 +140,41 @@ export class UsersService {
     return this.users.save(this.users.create(data));
   }
 
-  updateProfile(id: number, patch: { nickname?: string; avatar?: string }) {
-    return this.users.update({ id }, patch);
+  /** 更新个人资料：昵称 / 用户名 / 头像 / 简介 / 性别 / 生日 / 所在地。
+   *  用户名去空格并做唯一校验，空串视为未设置；其他文本字段统一 trim。 */
+  async updateProfile(
+    id: number,
+    patch: {
+      nickname?: string;
+      username?: string;
+      avatar?: string;
+      bio?: string;
+      gender?: 'male' | 'female' | 'secret';
+      birthday?: string;
+      location?: string;
+    },
+  ) {
+    const data: Record<string, unknown> = {};
+    if (patch.nickname !== undefined) data.nickname = patch.nickname.trim();
+    if (patch.avatar !== undefined) data.avatar = patch.avatar;
+    if (patch.bio !== undefined) data.bio = patch.bio.trim();
+    if (patch.gender !== undefined) data.gender = patch.gender;
+    if (patch.birthday !== undefined) data.birthday = patch.birthday || null;
+    if (patch.location !== undefined) data.location = patch.location.trim();
+    if (patch.username !== undefined) {
+      const username = patch.username.trim();
+      if (username && username.length < 2) {
+        throw new BadRequestException('用户名至少 2 位');
+      }
+      data.username = username || null;
+      if (username) {
+        const taken = await this.users.findOneBy({ username });
+        if (taken && taken.id !== id) {
+          throw new ConflictException('用户名已被占用');
+        }
+      }
+    }
+    return this.users.update({ id }, data);
   }
 
   setPasswordHash(id: number, hash: string) {
@@ -105,13 +190,14 @@ export class UsersService {
   }
 
   /** 管理端：用户列表（分页，可选手机号/昵称搜索） */
-  async findAll(page = 1, search?: string, pageSize = 20): Promise<[User[], number]> {
+  async findAll(
+    page = 1,
+    search?: string,
+    pageSize = 20,
+  ): Promise<[User[], number]> {
     const keyword = (search ?? '').trim();
     const where: any = keyword
-      ? [
-          { phone: Like(`%${keyword}%`) },
-          { nickname: Like(`%${keyword}%`) },
-        ]
+      ? [{ phone: Like(`%${keyword}%`) }, { nickname: Like(`%${keyword}%`) }]
       : {};
     return this.users.findAndCount({
       where,
@@ -121,14 +207,28 @@ export class UsersService {
     });
   }
 
-  /** 管理端：封禁/解封用户 */
+  /** 管理端：封禁/解封用户（封禁时同时强制下线，解封时清除下线标记） */
   async toggleBan(id: number, isBanned: boolean): Promise<User> {
     await this.users.update({ id }, { isBanned });
+    if (isBanned) {
+      await this.redis.set(kickKey(id), '1', 'EX', FORCE_OFFLINE_TTL);
+      publishKickEvent(this.redis, id, 'banned');
+    } else {
+      await this.redis.del(kickKey(id));
+    }
     return this.users.findOneBy({ id }) as Promise<User>;
   }
 
+  /** 管理端：强制下线（立即使该用户全部现有会话失效，用户可重新登录） */
+  async forceOffline(userId: number): Promise<void> {
+    await this.redis.set(kickKey(userId), '1', 'EX', FORCE_OFFLINE_TTL);
+    publishKickEvent(this.redis, userId, 'forced_offline');
+  }
+
   /** 管理端：物理删除某用户的全部作品（社区帖子 + 短视频/照片，含关联互动数据） */
-  async deleteWorks(userId: number): Promise<{ posts: number; videos: number }> {
+  async deleteWorks(
+    userId: number,
+  ): Promise<{ posts: number; videos: number }> {
     const postIds = (
       await this.posts.find({ where: { userId }, select: { id: true } })
     ).map((p) => p.id);
@@ -154,5 +254,90 @@ export class UsersService {
       await this.videos.delete(videoIds);
     }
     return { posts: postIds.length, videos: videoIds.length };
+  }
+
+  /** 管理端：物理删除用户（含作品、互动、关注、会员、预约、聊天等全部关联数据） */
+  async remove(
+    userId: number,
+  ): Promise<{ posts: number; videos: number }> {
+    // 删除账号前先令其现有会话失效并踢线，避免旧 token 继续访问
+    await this.redis.set(kickKey(userId), '1', 'EX', FORCE_OFFLINE_TTL);
+    publishKickEvent(this.redis, userId, 'forced_offline');
+
+    // 1. 先删除该用户发布的全部作品及互动数据
+    const { posts, videos } = await this.deleteWorks(userId);
+
+    // 2. 用户产生的互动/浏览/预约/会员/关注等记录
+    await Promise.all([
+      this.postLikes.delete({ userId }),
+      this.postComments.delete({ userId }),
+      this.collections.delete({ userId }),
+      this.reports.delete({ reporterId: userId }),
+      this.history.delete({ userId }),
+      this.videoLikes.delete({ userId }),
+      this.videoComments.delete({ userId }),
+      this.follows.delete([{ followerId: userId }, { followeeId: userId }]),
+      this.memberships.delete({ userId }),
+      this.userCoupons.delete({ userId }),
+      this.notificationReads.delete({ userId }),
+      this.appointments.delete({ userId }),
+    ]);
+
+    // 3. 聊天数据：用户参与的私聊、发送的消息，以及其创建的群聊
+    const conversationIds = (
+      await this.conversations.find({
+        where: [{ userAId: userId }, { userBId: userId }],
+        select: { id: true },
+      })
+    ).map((c) => c.id);
+    const groupIds = (
+      await this.groups.find({
+        where: { ownerId: userId },
+        select: { id: true },
+      })
+    ).map((g) => g.id);
+
+    if (conversationIds.length) {
+      const messageIds = (
+        await this.messages.find({
+          where: { conversationId: In(conversationIds) },
+          select: { id: true },
+        })
+      ).map((m) => m.id);
+      await Promise.all([
+        this.messageStatuses.delete([
+          { userId },
+          ...(messageIds.length ? [{ messageId: In(messageIds) }] : []),
+        ]),
+        this.messages.delete({ senderId: userId }),
+        this.messages.delete({ conversationId: In(conversationIds) }),
+        this.conversations.delete(conversationIds),
+      ]);
+    } else {
+      await Promise.all([
+        this.messageStatuses.delete({ userId }),
+        this.messages.delete({ senderId: userId }),
+      ]);
+    }
+
+    if (groupIds.length) {
+      await Promise.all([
+        this.groupMessageDeletions.delete({ groupId: In(groupIds) }),
+        this.groupReads.delete({ groupId: In(groupIds) }),
+        this.groupMessages.delete({ groupId: In(groupIds) }),
+        this.groupMembers.delete({ groupId: In(groupIds) }),
+        this.groups.delete(groupIds),
+      ]);
+    }
+    await Promise.all([
+      this.groupMembers.delete({ userId }),
+      this.groupReads.delete({ userId }),
+      this.groupMessageDeletions.delete({ userId }),
+      this.groupMessages.delete({ senderId: userId }),
+    ]);
+
+    // 4. 删除用户账号
+    await this.users.delete({ id: userId });
+    return { posts, videos };
   }
 }

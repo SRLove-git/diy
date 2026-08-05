@@ -21,6 +21,19 @@ export interface FollowStatus {
   followingCount: number;
 }
 
+/** 关注列表条目：用户信息 + 与我的关系 */
+export interface FollowListItem {
+  id: number;
+  nickname: string;
+  avatar: string;
+  /** 我是否关注了对方 */
+  following: boolean;
+  /** 对方是否关注了我 */
+  followedMe: boolean;
+  /** 是否互相关注 */
+  mutual: boolean;
+}
+
 @Injectable()
 export class FollowsService {
   constructor(
@@ -81,6 +94,82 @@ export class FollowsService {
       nickname: u.nickname || `用户 #${u.id}`,
       avatar: u.avatar,
     }));
+  }
+
+  /** 某用户的粉丝列表（谁关注了 targetId），分页 + 我与对方的关系 */
+  async followers(
+    targetId: number,
+    meId: number,
+    page = 1,
+    pageSize = 20,
+  ): Promise<[FollowListItem[], number]> {
+    const [rows, total] = await this.follows.findAndCount({
+      where: { followeeId: targetId },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    const ids = rows.map((r) => r.followerId);
+    const items = await this.buildItems(ids, meId);
+    return [items, total];
+  }
+
+  /** 某用户的关注列表（targetId 关注了谁），分页 + 我与对方的关系 */
+  async followingFor(
+    targetId: number,
+    meId: number,
+    page = 1,
+    pageSize = 20,
+  ): Promise<[FollowListItem[], number]> {
+    const [rows, total] = await this.follows.findAndCount({
+      where: { followerId: targetId },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    const ids = rows.map((r) => r.followeeId);
+    const items = await this.buildItems(ids, meId);
+    return [items, total];
+  }
+
+  /** 组装列表条目：批量查用户 + 批量查我与各用户的关系 */
+  private async buildItems(
+    userIds: number[],
+    meId: number,
+  ): Promise<FollowListItem[]> {
+    if (!userIds.length) return [];
+    const users = await this.users.findByIds(userIds);
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    const [iFollow, followMe] = await Promise.all([
+      this.follows.find({
+        where: { followerId: meId, followeeId: In(userIds) },
+        select: { followeeId: true },
+      }),
+      this.follows.find({
+        where: { followerId: In(userIds), followeeId: meId },
+        select: { followerId: true },
+      }),
+    ]);
+    const iFollowSet = new Set(iFollow.map((r) => r.followeeId));
+    const followMeSet = new Set(followMe.map((r) => r.followerId));
+
+    return userIds
+      .map((id) => {
+        const user = userMap.get(id);
+        if (!user) return null;
+        const following = iFollowSet.has(id);
+        const followedMe = followMeSet.has(id);
+        return {
+          id: user.id,
+          nickname: user.nickname || `用户 #${user.id}`,
+          avatar: user.avatar,
+          following,
+          followedMe,
+          mutual: following && followedMe,
+        };
+      })
+      .filter((x): x is FollowListItem => x !== null);
   }
 
   /** 设置关注/取消关注（幂等），返回最新状态 */

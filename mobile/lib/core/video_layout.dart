@@ -26,12 +26,16 @@ double normalizeVideoAspectRatio(double? value, {double fallback = 9 / 16}) {
 bool isLandscapeVideo(double? aspectRatio) =>
     normalizeVideoAspectRatio(aspectRatio) > 1.05;
 
-/// 相机插件返回的是传感器横向宽高比；竖持手机时需要取倒数。
+/// 相机插件返回的是传感器横向宽高比；竖向预览时需要取倒数。
+///
+/// 方向以当前预览区域为准，而不是相机插件异步上报的设备方向。系统旋转时，
+/// 预览区域尺寸会先更新，使用插件方向会短暂把比例翻转两次，造成画面拉伸。
 double orientedCameraAspectRatio(
   double sensorAspectRatio, {
-  required bool isLandscape,
+  required Size previewBounds,
 }) {
   final sensor = normalizeVideoAspectRatio(sensorAspectRatio, fallback: 1);
+  final isLandscape = previewBounds.width > previewBounds.height;
   return isLandscape ? sensor : 1 / sensor;
 }
 

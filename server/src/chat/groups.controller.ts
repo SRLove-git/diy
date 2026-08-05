@@ -2,9 +2,11 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -13,9 +15,14 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ChatGateway } from './chat.gateway';
-import { CreateGroupDto, MarkGroupReadDto, SendGroupMessageDto } from './group.dto';
+import {
+  AddGroupMembersDto,
+  CreateGroupDto,
+  MarkGroupReadDto,
+  RenameGroupDto,
+  SendGroupMessageDto,
+} from './group.dto';
 import { GroupsService } from './groups.service';
-import type { MessageContentType } from './chat.service';
 
 /** 客户端：群聊（建群 / 群列表 / 群消息 / 已读 / 成员） */
 @Controller('groups')
@@ -50,6 +57,73 @@ export class GroupsController {
     return this.groups.listMembers(id, user.id);
   }
 
+  /** 群创建后拉人（任意成员可邀请） */
+  @Post(':id/members')
+  async addMembers(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AddGroupMembersDto,
+  ) {
+    const { memberIds } = await this.groups.addMembers(
+      user.id,
+      id,
+      dto.memberIds,
+    );
+    await this.gateway.broadcastGroupEvent(id, memberIds);
+    return { ok: true };
+  }
+
+  /** 退出群聊（群主不可退出，需解散） */
+  @Delete(':id/members/me')
+  async leave(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    const { memberIds } = await this.groups.leave(user.id, id);
+    await this.gateway.broadcastGroupEvent(id, memberIds);
+    return { ok: true };
+  }
+
+  /** 群主踢人 */
+  @Delete(':id/members/:userId')
+  async kick(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('userId', ParseIntPipe) userId: number,
+  ) {
+    const { memberIds, removedUserId } = await this.groups.kickMember(
+      user.id,
+      id,
+      userId,
+    );
+    await this.gateway.broadcastGroupEvent(id, memberIds);
+    await this.gateway.broadcastGroupRemoved(id, [removedUserId], 'kicked');
+    return { ok: true };
+  }
+
+  /** 群主解散群聊 */
+  @Delete(':id')
+  async dissolve(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    const { memberIds } = await this.groups.dissolve(user.id, id);
+    await this.gateway.broadcastGroupRemoved(id, memberIds);
+    return { ok: true };
+  }
+
+  /** 群主修改群名称 */
+  @Patch(':id')
+  async rename(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RenameGroupDto,
+  ) {
+    const { memberIds } = await this.groups.rename(user.id, id, dto.name);
+    await this.gateway.broadcastGroupEvent(id, memberIds);
+    return { ok: true };
+  }
+
   /** 群历史消息（游标分页） */
   @Get(':id/messages')
   messages(
@@ -68,17 +142,12 @@ export class GroupsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SendGroupMessageDto,
   ) {
-    const type: MessageContentType =
-      dto.contentType === 'image'
-        ? 'image'
-        : dto.contentType === 'voice'
-          ? 'voice'
-          : 'text';
     const { message, memberIds } = await this.groups.sendMessage(
       user.id,
       id,
-      type,
+      dto.contentType ?? 'text',
       dto.content,
+      { replyToId: dto.replyToId, forwarded: dto.forwarded },
     );
     await this.gateway.broadcastGroupMessage(
       message as unknown as Record<string, unknown>,
@@ -86,6 +155,33 @@ export class GroupsController {
       id,
     );
     return message;
+  }
+
+  /** 撤回群消息：仅发送者、2 分钟内；对群内成员生效并实时广播 */
+  @Post(':id/messages/:messageId/recall')
+  async recall(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('messageId', ParseIntPipe) messageId: number,
+  ) {
+    const { message, memberIds } = await this.groups.recallGroupMessage(
+      user.id,
+      id,
+      messageId,
+    );
+    this.gateway.broadcastGroupMessageRecalled(id, message, memberIds);
+    return message;
+  }
+
+  /** 删除群消息（仅对自己隐藏，其他成员不受影响） */
+  @Delete(':id/messages/:messageId')
+  async removeMessage(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('messageId', ParseIntPipe) messageId: number,
+  ) {
+    await this.groups.deleteGroupMessage(user.id, id, messageId);
+    return { ok: true };
   }
 
   /** 标记已读 */

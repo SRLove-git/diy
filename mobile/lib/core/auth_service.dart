@@ -15,6 +15,11 @@ class User {
     required this.nickname,
     required this.avatar,
     required this.role,
+    this.username,
+    this.bio = '',
+    this.gender = 'secret',
+    this.birthday,
+    this.location = '',
   });
 
   final int id;
@@ -22,6 +27,21 @@ class User {
   final String nickname;
   final String avatar;
   final String role;
+
+  /// 用户名（2-30 位字母/数字/下划线），null 表示未设置
+  final String? username;
+
+  /// 个人简介，空串表示未设置
+  final String bio;
+
+  /// 性别：male 男 / female 女 / secret 保密
+  final String gender;
+
+  /// 生日（YYYY-MM-DD），null 表示未设置
+  final String? birthday;
+
+  /// 所在地，空串表示未设置
+  final String location;
 
   bool get isAdmin => role == 'admin';
 
@@ -31,6 +51,11 @@ class User {
         nickname: (json['nickname'] ?? '') as String,
         avatar: (json['avatar'] ?? '') as String,
         role: (json['role'] ?? 'user') as String,
+        username: json['username'] as String?,
+        bio: (json['bio'] ?? '') as String,
+        gender: (json['gender'] ?? 'secret') as String,
+        birthday: json['birthday'] as String?,
+        location: (json['location'] ?? '') as String,
       );
 }
 
@@ -226,9 +251,27 @@ class AuthService extends ChangeNotifier {
     return ApiClient.instance.fetch(options);
   }
 
-  Future<void> updateNickname(String nickname) async {
-    final resp = await ApiClient.instance
-        .patch('/users/me', data: {'nickname': nickname});
+  Future<void> updateNickname(String nickname) =>
+      updateProfile(nickname: nickname);
+
+  /// 更新个人资料（昵称 / 用户名 / 简介 / 性别 / 生日 / 所在地）。
+  /// 传 null 的字段保持不变；生日清空时传空串。
+  Future<void> updateProfile({
+    String? nickname,
+    String? username,
+    String? bio,
+    String? gender,
+    String? birthday,
+    String? location,
+  }) async {
+    final data = <String, dynamic>{};
+    if (nickname != null) data['nickname'] = nickname;
+    if (username != null) data['username'] = username;
+    if (bio != null) data['bio'] = bio;
+    if (gender != null) data['gender'] = gender;
+    if (birthday != null) data['birthday'] = birthday;
+    if (location != null) data['location'] = location;
+    final resp = await ApiClient.instance.patch('/users/me', data: data);
     _user = User.fromJson(resp.data as Map<String, dynamic>);
     notifyListeners();
   }

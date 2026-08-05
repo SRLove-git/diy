@@ -51,12 +51,23 @@ dependencies:
   liquid_glass_widgets: ^0.29.1
   camera: ^0.11.1
   video_player: ^2.13.0
+  # 抖音风格播放器控制层（Chewie 封装 video_player，提供原生控制条/全屏切换）
+  chewie: ^1.12.0
+  # 状态管理（个人主页视频列表 / 播放页交互状态）
+  provider: ^6.1.2
   flutter_staggered_grid_view: ^0.7.0
   photo_manager: ^3.11.0
   ffmpeg_kit_flutter_new_video: ^2.5.2
+  # 到店预约：门店地图与最近门店匹配
+  # Android 使用 Google Maps，iOS 使用 Apple Maps（平台原生，不依赖第三方瓦片）
+  google_maps_flutter: ^2.12.2
+  apple_maps_flutter: ^1.4.0
+  geolocator: ^14.0.3
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
 
   # The "flutter_lints" package below contains a set of recommended lints to

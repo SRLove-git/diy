@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -27,6 +28,16 @@ export class PostsController {
   @UseGuards(JwtAuthGuard)
   create(@CurrentUser() user: AuthUser, @Body() dto: CreatePostDto) {
     return this.community.create(user.id, dto);
+  }
+
+  /** 删除自己的作品 */
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  deleteOwn(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.community.deleteOwn(user.id, id).then(() => ({ deleted: true }));
   }
 
   /** 最新信息流（仅展示已通过审核的作品） */

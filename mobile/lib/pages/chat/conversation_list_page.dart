@@ -11,6 +11,7 @@ import 'add_friend_page.dart';
 import 'chat_page.dart';
 import 'create_group_page.dart';
 import 'group_chat_page.dart';
+import '../community/user_profile_page.dart';
 
 /// 列表筛选
 enum _Filter { all, unread }
@@ -107,6 +108,19 @@ class _ConversationListPageState extends State<ConversationListPage> {
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => ChatPage(conversation: conv)))
         .then((_) => ChatService.instance.refreshConversations());
+  }
+
+  /// 点击会话头像：跳转对方个人主页
+  void _openUserProfile(Conversation conv) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => UserProfilePage(
+          userId: conv.peerId,
+          nickname: conv.peerNickname,
+          avatar: conv.peerAvatar,
+        ),
+      ),
+    );
   }
 
   void _openGroupChat(GroupChat group) {
@@ -469,6 +483,7 @@ class _ConversationListPageState extends State<ConversationListPage> {
                 conversation: convs[i],
                 timeText: _formatTime(convs[i].lastMessageAt),
                 onTap: () => _openChat(convs[i]),
+                onTapAvatar: () => _openUserProfile(convs[i]),
                 onLongPress: () => _showActions(convs[i]),
               ),
             ],
@@ -644,12 +659,14 @@ class _ConversationTile extends StatelessWidget {
     required this.conversation,
     required this.timeText,
     required this.onTap,
+    required this.onTapAvatar,
     required this.onLongPress,
   });
 
   final Conversation conversation;
   final String timeText;
   final VoidCallback onTap;
+  final VoidCallback onTapAvatar;
   final VoidCallback onLongPress;
 
   @override
@@ -666,7 +683,11 @@ class _ConversationTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            _avatar(context, nickname, conversation.peerAvatar),
+            GestureDetector(
+              onTap: onTapAvatar,
+              behavior: HitTestBehavior.opaque,
+              child: _avatar(context, nickname, conversation.peerAvatar),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

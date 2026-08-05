@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 
 import '../core/music_api.dart';
+import '../core/media_composer.dart';
 import '../core/photo_filters.dart';
 import '../core/video_api.dart';
 import '../core/video_layout.dart';
@@ -251,9 +252,10 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
       var photos = <String>[];
       if (video != null) {
         videoUrl = await VideoApi.uploadVideo(video.path);
-        if (_cover != null) {
-          cover = await VideoApi.uploadCover(_cover!.path);
-        }
+        // 封面：手动选择优先；未选择时自动从视频抽一帧，保证主页/信息流有封面
+        cover = _cover != null
+            ? await VideoApi.uploadCover(_cover!.path)
+            : await _autoCover(video.path);
       } else {
         // 照片作品：逐张上传，第一张为封面，无视频流
         for (final p in _photos) {
@@ -294,6 +296,24 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
       if (mounted) _toast('发布失败：$e');
     } finally {
       if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  /// 未手动选封面时，从视频文件中抽取一帧上传为封面；失败不阻塞发布。
+  Future<String> _autoCover(String videoPath) async {
+    try {
+      final durationSec = (widget.durationSeconds ??
+              _videoCtrl?.value.duration.inSeconds ??
+              0)
+          .toDouble();
+      // 取视频前 20% 处（0.1s ~ 2s），避开片头黑场
+      final at = durationSec > 0
+          ? (durationSec * 0.2).clamp(0.1, 2.0).toDouble()
+          : 0.5;
+      final frame = await MediaComposer.extractCoverFrame(videoPath, seconds: at);
+      return await VideoApi.uploadCover(frame.path);
+    } catch (_) {
+      return '';
     }
   }
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../core/api_client.dart';
 import '../../core/app_colors.dart';
 import '../../core/appointment_api.dart';
+import '../../widgets/checkin_qr_dialog.dart';
 
 /// 我的订单列表：全部 / 待核销 / 进行中 / 已完成 / 已取消
 class OrderListPage extends StatefulWidget {
@@ -99,6 +100,10 @@ class _OrderListPageState extends State<OrderListPage>
         SnackBar(content: Text(AppointmentApi.messageOf(e))),
       );
     }
+  }
+
+  void _showQrDetail(Appointment appt) {
+    showCheckInQrDialog(context, appt);
   }
 
   List<Appointment> get _filtered {
@@ -223,6 +228,9 @@ class _OrderListPageState extends State<OrderListPage>
                             order: o,
                             statusLabel: _statusLabel(o.status),
                             statusColor: _statusColor(o.status),
+                            onShowQr: o.status == 'booked'
+                                ? () => _showQrDetail(o)
+                                : null,
                             onCancel: o.status == 'booked'
                                 ? () => _cancel(o.id)
                                 : null,
@@ -239,12 +247,14 @@ class _OrderCard extends StatelessWidget {
     required this.order,
     required this.statusLabel,
     required this.statusColor,
+    this.onShowQr,
     this.onCancel,
   });
 
   final Appointment order;
   final String statusLabel;
   final Color statusColor;
+  final VoidCallback? onShowQr;
   final VoidCallback? onCancel;
 
   @override
@@ -322,20 +332,42 @@ class _OrderCard extends StatelessWidget {
               ],
             ),
           ],
-          if (onCancel != null) ...[
+          if (onShowQr != null || onCancel != null) ...[
             const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: OutlinedButton(
-                onPressed: onCancel,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.danger,
-                  side: BorderSide(color: colors.danger),
-                  minimumSize: const Size(0, 32),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                ),
-                child: const Text('取消预约', style: TextStyle(fontSize: 13)),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (onShowQr != null)
+                  FilledButton(
+                    onPressed: onShowQr,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: colors.textPrimary,
+                      foregroundColor: colors.surface,
+                      minimumSize: const Size(0, 32),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    child: const Text(
+                      '出示核销码',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+                if (onShowQr != null && onCancel != null)
+                  const SizedBox(width: 8),
+                if (onCancel != null)
+                  OutlinedButton(
+                    onPressed: onCancel,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.danger,
+                      side: BorderSide(color: colors.danger),
+                      minimumSize: const Size(0, 32),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    child: const Text(
+                      '取消预约',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+              ],
             ),
           ],
         ],
