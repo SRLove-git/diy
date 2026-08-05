@@ -274,7 +274,9 @@ class ChatApi {
       '/uploads/images',
       data: form,
       queryParameters: {'folder': folder},
-      options: Options(contentType: Headers.multipartFormDataContentType),
+      options: ApiClient.uploadOptions(
+        headers: {'Content-Type': Headers.multipartFormDataContentType},
+      ),
     );
     return (resp.data as Map<String, dynamic>)['url'] as String;
   }
@@ -287,7 +289,9 @@ class ChatApi {
     final resp = await ApiClient.instance.post(
       '/uploads/audio',
       data: form,
-      options: Options(contentType: Headers.multipartFormDataContentType),
+      options: ApiClient.uploadOptions(
+        headers: {'Content-Type': Headers.multipartFormDataContentType},
+      ),
     );
     return (resp.data as Map<String, dynamic>)['url'] as String;
   }
@@ -300,7 +304,9 @@ class ChatApi {
     final resp = await ApiClient.instance.post(
       '/uploads/videos',
       data: form,
-      options: Options(contentType: Headers.multipartFormDataContentType),
+      options: ApiClient.uploadOptions(
+        headers: {'Content-Type': Headers.multipartFormDataContentType},
+      ),
     );
     return (resp.data as Map<String, dynamic>)['url'] as String;
   }
@@ -330,6 +336,11 @@ class ChatApi {
 
   /// 提取后端错误信息
   static String messageOf(DioException e) {
+    if (e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
+        e.type == DioExceptionType.connectionTimeout) {
+      return '请求超时，请检查网络后重试';
+    }
     final data = e.response?.data;
     if (data is Map && data['message'] != null) {
       final m = data['message'];

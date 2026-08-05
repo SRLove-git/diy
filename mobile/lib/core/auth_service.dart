@@ -292,7 +292,9 @@ class AuthService extends ChangeNotifier {
       '/uploads/images',
       queryParameters: {'folder': 'avatar'},
       data: form,
-      options: Options(contentType: Headers.multipartFormDataContentType),
+      options: ApiClient.uploadOptions(
+        headers: {'Content-Type': Headers.multipartFormDataContentType},
+      ),
     );
     final url = (upload.data as Map<String, dynamic>)['url'] as String;
     final resp = await ApiClient.instance

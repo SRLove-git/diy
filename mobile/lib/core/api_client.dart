@@ -6,6 +6,9 @@ import 'config.dart';
 class ApiClient {
   ApiClient._();
 
+  /// 大文件上传专用超时（短视频可达数百 MB，远超普通 JSON 请求的 10s）
+  static const Duration uploadTimeout = Duration(minutes: 10);
+
   static final Dio instance = Dio(
     BaseOptions(
       baseUrl: AppConfig.apiBaseUrl,
@@ -14,4 +17,13 @@ class ApiClient {
       headers: {'Content-Type': 'application/json'},
     ),
   );
+
+  /// 文件上传请求的 Options：放宽发送/接收超时，避免大视频上传途中超时失败
+  static Options uploadOptions({Map<String, dynamic>? headers}) {
+    return Options(
+      sendTimeout: uploadTimeout,
+      receiveTimeout: uploadTimeout,
+      headers: headers,
+    );
+  }
 }

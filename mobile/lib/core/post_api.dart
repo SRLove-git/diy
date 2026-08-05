@@ -393,6 +393,11 @@ class PostApi {
 
   /// 提取后端错误信息
   static String messageOf(DioException e) {
+    if (e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
+        e.type == DioExceptionType.connectionTimeout) {
+      return '请求超时，请检查网络后重试';
+    }
     final data = e.response?.data;
     if (data is Map && data['message'] != null) {
       final m = data['message'];
