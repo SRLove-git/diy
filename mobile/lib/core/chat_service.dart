@@ -269,6 +269,9 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
       );
       _sortConversations(list);
       conversations = list;
+    } else {
+      // 会话不在本地缓存（启动时列表拉取失败等）：回源刷新，保证列表/角标更新
+      refreshConversations();
     }
     notifyListeners();
     _events.add(NewMessageEvent(message));
@@ -292,6 +295,9 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
       );
       _sortGroups(list);
       groups = list;
+    } else {
+      // 群不在本地缓存（列表拉取失败/新加入的群）：回源刷新，保证列表/角标更新
+      refreshGroups();
     }
     notifyListeners();
     _events.add(GroupNewMessageEvent(message));

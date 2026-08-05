@@ -61,7 +61,8 @@ class Conversation {
       );
 
   factory Conversation.fromJson(Map<String, dynamic> json) {
-    final peer = (json['peer'] ?? const {}) as Map<String, dynamic>;
+    // msgpack 解出的嵌套 map 是 Map<dynamic, dynamic>，需深转一层
+    final peer = Map<String, dynamic>.from(json['peer'] as Map? ?? const {});
     return Conversation(
       id: json['id'] as int,
       peerId: peer['id'] as int,
@@ -381,7 +382,8 @@ class GroupMessage {
   final String authorAvatar;
 
   factory GroupMessage.fromJson(Map<String, dynamic> json) {
-    final author = (json['author'] ?? const {}) as Map<String, dynamic>;
+    // msgpack 解出的嵌套 map 是 Map<dynamic, dynamic>，需深转一层
+    final author = Map<String, dynamic>.from(json['author'] as Map? ?? const {});
     return GroupMessage(
       id: (json['id'] as num).toInt(),
       groupId: (json['groupId'] as num?)?.toInt() ?? 0,
