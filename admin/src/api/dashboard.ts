@@ -15,6 +15,8 @@ export interface DashboardOverview {
     todayLikes: number
     todayComments: number
   }
+  videos: { total: number; today: number }
+  pending: { posts: number; videos: number; reports: number }
 }
 
 export interface TrendItem {
@@ -24,6 +26,7 @@ export interface TrendItem {
   posts: number
   likes: number
   comments: number
+  videos: number
 }
 
 export const dashboardApi = {

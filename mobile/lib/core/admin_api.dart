@@ -9,6 +9,8 @@ class DashboardOverview {
     required this.users,
     required this.appointments,
     required this.community,
+    required this.videos,
+    required this.pending,
   });
 
   final ({int total, int today}) users;
@@ -25,11 +27,15 @@ class DashboardOverview {
     int todayLikes,
     int todayComments,
   }) community;
+  final ({int total, int today}) videos;
+  final ({int posts, int videos, int reports}) pending;
 
   factory DashboardOverview.fromJson(Map<String, dynamic> json) {
     final u = json['users'] as Map<String, dynamic>? ?? const {};
     final a = json['appointments'] as Map<String, dynamic>? ?? const {};
     final c = json['community'] as Map<String, dynamic>? ?? const {};
+    final v = json['videos'] as Map<String, dynamic>? ?? const {};
+    final p = json['pending'] as Map<String, dynamic>? ?? const {};
     return DashboardOverview(
       users: (
         total: (u['total'] as num?)?.toInt() ?? 0,
@@ -48,6 +54,15 @@ class DashboardOverview {
         todayLikes: (c['todayLikes'] as num?)?.toInt() ?? 0,
         todayComments: (c['todayComments'] as num?)?.toInt() ?? 0,
       ),
+      videos: (
+        total: (v['total'] as num?)?.toInt() ?? 0,
+        today: (v['today'] as num?)?.toInt() ?? 0,
+      ),
+      pending: (
+        posts: (p['posts'] as num?)?.toInt() ?? 0,
+        videos: (p['videos'] as num?)?.toInt() ?? 0,
+        reports: (p['reports'] as num?)?.toInt() ?? 0,
+      ),
     );
   }
 }
@@ -60,6 +75,7 @@ class TrendItem {
     required this.posts,
     required this.likes,
     required this.comments,
+    required this.videos,
   });
 
   final String date;
@@ -68,6 +84,7 @@ class TrendItem {
   final int posts;
   final int likes;
   final int comments;
+  final int videos;
 
   factory TrendItem.fromJson(Map<String, dynamic> json) => TrendItem(
         date: (json['date'] ?? '') as String,
@@ -76,6 +93,7 @@ class TrendItem {
         posts: (json['posts'] as num?)?.toInt() ?? 0,
         likes: (json['likes'] as num?)?.toInt() ?? 0,
         comments: (json['comments'] as num?)?.toInt() ?? 0,
+        videos: (json['videos'] as num?)?.toInt() ?? 0,
       );
 }
 
@@ -175,6 +193,8 @@ class AdminStore {
 class AdminOrder {
   const AdminOrder({
     required this.id,
+    required this.userNickname,
+    required this.userPhone,
     required this.storeName,
     required this.tableName,
     required this.date,
@@ -189,6 +209,8 @@ class AdminOrder {
   });
 
   final int id;
+  final String userNickname;
+  final String? userPhone;
   final String storeName;
   final String tableName;
   final String date;
@@ -203,6 +225,8 @@ class AdminOrder {
 
   factory AdminOrder.fromJson(Map<String, dynamic> json) => AdminOrder(
         id: json['id'] as int,
+        userNickname: (json['userNickname'] ?? '') as String,
+        userPhone: json['userPhone'] as String?,
         storeName: (json['storeName'] ?? '') as String,
         tableName: (json['tableName'] ?? '') as String,
         date: (json['date'] ?? '') as String,
@@ -585,7 +609,10 @@ class AdminApi {
       '/admin/appointments',
       queryParameters: status == null || status.isEmpty ? null : {'status': status},
     );
-    return (resp.data as List)
+    final data = resp.data as List;
+    // 后端返回 [items, total] 元组；兼容旧版纯数组
+    final items = data.isNotEmpty && data.first is List ? data.first as List : data;
+    return items
         .map((e) => AdminOrder.fromJson(e as Map<String, dynamic>))
         .toList();
   }
@@ -608,7 +635,7 @@ class AdminApi {
     await ApiClient.instance.post('/admin/appointments/$id/cancel');
   }
 
-  // ─── 作品审核 ───
+  // ─── 社区管理 ───
 
   static Future<Paged<AdminPost>> fetchPosts({String? status, int page = 1}) async {
     final resp = await ApiClient.instance.get(
@@ -642,6 +669,11 @@ class AdminApi {
     await ApiClient.instance.patch('/admin/posts/$id/remove');
   }
 
+  /// 物理删除作品（连同点赞/评论/收藏/举报记录）
+  static Future<void> deletePost(int id) async {
+    await ApiClient.instance.delete('/admin/posts/$id');
+  }
+
   // ─── 用户管理 ───
 
   static Future<Paged<AdminUser>> fetchUsers({int page = 1, String? phone}) async {
@@ -663,6 +695,16 @@ class AdminApi {
 
   static Future<void> setBan(int id, bool isBanned) async {
     await ApiClient.instance.patch('/admin/users/$id/ban', data: {'isBanned': isBanned});
+  }
+
+  /// 删除某用户的全部作品（社区帖子 + 短视频/照片）
+  static Future<({int posts, int videos})> deleteUserWorks(int id) async {
+    final resp = await ApiClient.instance.delete('/admin/users/$id/works');
+    final data = resp.data as Map<String, dynamic>;
+    return (
+      posts: (data['posts'] as num?)?.toInt() ?? 0,
+      videos: (data['videos'] as num?)?.toInt() ?? 0,
+    );
   }
 
   // ─── 举报处理 ───
@@ -815,4 +857,71 @@ class AdminApi {
       data: {'enabled': enabled},
     );
   }
+
+  // ─── 活动管理 ───
+
+  static Future<List<AdminActivity>> fetchActivities() async {
+    final resp = await ApiClient.instance.get('/admin/activities');
+    return (resp.data as List)
+        .map((e) => AdminActivity.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<AdminActivity> createActivity(Map<String, dynamic> data) async {
+    final resp = await ApiClient.instance.post('/admin/activities', data: data);
+    return AdminActivity.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  static Future<AdminActivity> updateActivity(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    final resp = await ApiClient.instance.patch(
+      '/admin/activities/$id',
+      data: data,
+    );
+    return AdminActivity.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  static Future<void> toggleActivity(int id, bool enabled) async {
+    await ApiClient.instance.patch(
+      '/admin/activities/$id/enabled',
+      data: {'enabled': enabled},
+    );
+  }
+}
+
+// ─── 活动管理 ───
+
+class AdminActivity {
+  const AdminActivity({
+    required this.id,
+    required this.title,
+    required this.date,
+    required this.desc,
+    required this.tag,
+    required this.membersOnly,
+    required this.enabled,
+    required this.sort,
+  });
+
+  final int id;
+  final String title;
+  final String date;
+  final String desc;
+  final String tag;
+  final bool membersOnly;
+  final bool enabled;
+  final int sort;
+
+  factory AdminActivity.fromJson(Map<String, dynamic> json) => AdminActivity(
+        id: json['id'] as int,
+        title: (json['title'] ?? '') as String,
+        date: (json['date'] ?? '') as String,
+        desc: (json['desc'] ?? '') as String,
+        tag: (json['tag'] ?? '') as String,
+        membersOnly: json['membersOnly'] == true,
+        enabled: json['enabled'] != false,
+        sort: (json['sort'] as num?)?.toInt() ?? 0,
+      );
 }

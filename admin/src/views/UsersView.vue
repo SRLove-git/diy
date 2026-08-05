@@ -10,6 +10,8 @@ const search = ref('')
 const page = ref(1)
 const pageSize = 20
 const banTarget = ref<User | null>(null)
+const worksTarget = ref<User | null>(null)
+const deletingWorks = ref(false)
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize) || 1)
 
@@ -59,6 +61,31 @@ async function confirmBan() {
   }
 }
 
+function openDeleteWorks(user: User) {
+  worksTarget.value = user
+}
+
+function cancelDeleteWorks() {
+  worksTarget.value = null
+}
+
+async function confirmDeleteWorks() {
+  if (!worksTarget.value) return
+  deletingWorks.value = true
+  try {
+    const result = await userApi.deleteWorks(worksTarget.value.id)
+    worksTarget.value = null
+    alert(
+      `已删除该用户的全部作品：社区作品 ${result.posts} 个、短视频/照片 ${result.videos} 个`,
+    )
+    await load()
+  } catch (e: any) {
+    alert(e?.response?.data?.message ?? '操作失败')
+  } finally {
+    deletingWorks.value = false
+  }
+}
+
 function formatTime(t: string): string {
   try {
     const d = new Date(t)
@@ -79,7 +106,7 @@ onMounted(load)
         <input
           v-model="search"
           type="text"
-          placeholder="搜索手机号"
+          placeholder="搜索手机号 / 昵称"
           @keyup.enter="doSearch"
         />
         <button class="btn" @click="doSearch">搜索</button>
@@ -95,6 +122,7 @@ onMounted(load)
       <thead>
         <tr>
           <th style="width:60px">ID</th>
+          <th style="width:50px">头像</th>
           <th>手机号</th>
           <th>昵称</th>
           <th style="width:80px">角色</th>
@@ -106,6 +134,16 @@ onMounted(load)
       <tbody>
         <tr v-for="u in users" :key="u.id">
           <td>{{ u.id }}</td>
+          <td>
+            <img
+              v-if="u.avatar"
+              class="avatar"
+              :src="u.avatar"
+              alt="头像"
+              @error="($event.target as HTMLImageElement).style.display = 'none'"
+            />
+            <span v-else class="muted">-</span>
+          </td>
           <td>{{ u.phone }}</td>
           <td>{{ u.nickname || '-' }}</td>
           <td>
@@ -126,6 +164,12 @@ onMounted(load)
               @click="openBan(u)"
             >
               {{ u.isBanned ? '解封' : '封禁' }}
+            </button>
+            <button
+              class="btn btn-sm btn-works"
+              @click="openDeleteWorks(u)"
+            >
+              删除作品
             </button>
           </td>
         </tr>
@@ -153,6 +197,29 @@ onMounted(load)
           <button class="btn btn-sm" @click="cancelBan">取消</button>
           <button class="btn btn-sm btn-danger" @click="confirmBan">
             {{ banTarget.isBanned ? '确认解封' : '确认封禁' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 删除作品确认弹窗 -->
+    <div v-if="worksTarget !== null" class="modal-overlay" @click.self="cancelDeleteWorks">
+      <div class="modal">
+        <h3>删除用户作品</h3>
+        <p class="modal-desc">
+          确认删除该用户发布的全部作品（社区帖子 + 短视频/照片）？删除后不可恢复，其点赞、评论、收藏与举报记录将一并清除。
+        </p>
+        <p class="modal-user">
+          {{ worksTarget.nickname || worksTarget.phone }}
+        </p>
+        <div class="modal-actions">
+          <button class="btn btn-sm" @click="cancelDeleteWorks">取消</button>
+          <button
+            class="btn btn-sm btn-danger"
+            :disabled="deletingWorks"
+            @click="confirmDeleteWorks"
+          >
+            {{ deletingWorks ? '删除中…' : '确认删除' }}
           </button>
         </div>
       </div>
@@ -202,6 +269,14 @@ onMounted(load)
 .tag-role-user { background: #f4f4f5; color: #909399; border: 1px solid #d4d4d8; }
 .tag-banned { background: #fef0f0; color: #D9453E; border: 1px solid #fbc4c4; }
 .tag-normal { background: #f0f9eb; color: #2E9E5B; border: 1px solid #c2e7b0; }
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #eceae6;
+  display: block;
+}
 .btn {
   background: #e8633a;
   color: #fff;
@@ -214,6 +289,7 @@ onMounted(load)
 .btn-sm { padding: 4px 10px; font-size: 12px; margin-right: 4px; }
 .btn-success { background: #2e9e5b; }
 .btn-danger { background: #d9453e; }
+.btn-works { background: #fff; color: #d9453e; border: 1px solid #f3d0cd; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .muted { color: #8a8a8a; }
 .actions { white-space: nowrap; }

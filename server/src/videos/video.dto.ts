@@ -1,11 +1,23 @@
 import {
   IsArray,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
   MaxLength,
   Min,
 } from 'class-validator';
+
+/** 管理端：审核短视频（通过/驳回） */
+export class UpdateVideoStatusDto {
+  @IsIn(['approved', 'rejected'], { message: '状态仅可为 approved 或 rejected' })
+  status: 'approved' | 'rejected';
+
+  @IsString()
+  @MaxLength(500)
+  @IsOptional()
+  rejectReason?: string;
+}
 
 /** 发布短视频 */
 export class CreateVideoDto {

@@ -50,6 +50,9 @@ export class CreateStoreDto {
   @IsString()
   @MaxLength(20)
   phone?: string;
+
+  @IsOptional()
+  enabled?: boolean;
 }
 
 export class UpdateStoreDto extends PartialType(CreateStoreDto) {}

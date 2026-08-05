@@ -16,6 +16,7 @@ import { REDIS_CLIENT } from '../redis/redis.module';
 import { Store } from '../stores/store.entity';
 import { StoreTable } from '../stores/store-table.entity';
 import { TimeSlot } from '../stores/time-slot.entity';
+import { UsersService } from '../users/users.service';
 import { Appointment } from './appointment.entity';
 import { CreateAppointmentDto } from './appointment.dto';
 
@@ -34,6 +35,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     private readonly tables: Repository<StoreTable>,
     @InjectRepository(TimeSlot)
     private readonly slots: Repository<TimeSlot>,
+    private readonly users: UsersService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
@@ -292,20 +294,40 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     return appt;
   }
 
-  /** 管理端：全量预约列表（可按状态/门店/日期筛选） */
-  async findAll(filters?: {
-    status?: string;
-    storeId?: string;
-    date?: string;
-  }): Promise<Appointment[]> {
+  /** 管理端：预约列表（分页，可按状态/门店/日期筛选），附带用户手机号/昵称 */
+  async adminFindAll(
+    filters?: {
+      status?: string;
+      storeId?: string;
+      date?: string;
+    },
+    page = 1,
+    pageSize = 20,
+  ): Promise<[Array<Appointment & { userPhone?: string; userNickname?: string }>, number]> {
     const where: any = {};
     if (filters?.status) where.status = filters.status;
     if (filters?.storeId) where.storeId = parseInt(filters.storeId, 10);
     if (filters?.date) where.date = filters.date;
-    return this.appointments.find({
+    const [items, total] = await this.appointments.findAndCount({
       where,
       order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     });
+    const userIds = Array.from(new Set(items.map((i) => i.userId)));
+    const users = await this.users.findByIds(userIds);
+    const userMap = new Map(users.map((u) => [u.id, u]));
+    return [
+      items.map((i) => {
+        const user = userMap.get(i.userId);
+        return {
+          ...i,
+          userPhone: user?.phone,
+          userNickname: user?.nickname || `用户 #${i.userId}`,
+        };
+      }),
+      total,
+    ];
   }
 
   /** 管理端取消预约（仅待核销/已核销状态，服务开始前） */

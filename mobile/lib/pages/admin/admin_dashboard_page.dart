@@ -75,7 +75,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: 6,
+            itemCount: 7,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               mainAxisSpacing: 12,
@@ -88,6 +88,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               sub: _subs(ov)[i],
             ),
           ),
+          const SizedBox(height: 24),
+          Text('待办审核', style: _sectionTitle(context)),
+          const SizedBox(height: 8),
+          _PendingRow(pending: ov.pending),
           const SizedBox(height: 24),
           Text('近 7 天趋势', style: _sectionTitle(context)),
           const SizedBox(height: 8),
@@ -103,7 +107,15 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
-  static const _labels = ['累计用户', '累计预约', '核销中', '已完成订单', '累计作品', '今日互动'];
+  static const _labels = [
+    '累计用户',
+    '累计预约',
+    '核销中',
+    '已完成订单',
+    '累计作品',
+    '今日互动',
+    '短视频 / 照片',
+  ];
 
   List<String> _values(DashboardOverview ov) => [
         '${ov.users.total}',
@@ -112,6 +124,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         '${ov.appointments.completed}',
         '${ov.community.totalPosts}',
         '${ov.community.todayLikes + ov.community.todayComments}',
+        '${ov.videos.total}',
       ];
 
   List<String> _subs(DashboardOverview ov) => [
@@ -121,11 +134,59 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         '预约完成数',
         '今日 ${ov.community.todayPosts} 篇',
         '点赞 ${ov.community.todayLikes} · 评论 ${ov.community.todayComments}',
+        '今日新增 ${ov.videos.today}',
       ];
 
   TextStyle _sectionTitle(BuildContext context) {
     final colors = AppColors.of(context);
     return TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.textPrimary);
+  }
+}
+
+class _PendingRow extends StatelessWidget {
+  const _PendingRow({required this.pending});
+
+  final ({int posts, int videos, int reports}) pending;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    Widget item(String label, int count) => Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  '$count',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFFF3040),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 11, color: colors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        );
+
+    return Row(
+      children: [
+        item('作品待审', pending.posts),
+        const SizedBox(width: 10),
+        item('视频待审', pending.videos),
+        const SizedBox(width: 10),
+        item('举报待处', pending.reports),
+      ],
+    );
   }
 }
 
@@ -196,6 +257,7 @@ class _TrendTable extends StatelessWidget {
                 _Cell('作品', flex: 1),
                 _Cell('赞', flex: 1),
                 _Cell('评', flex: 1),
+                _Cell('视频', flex: 1),
               ],
             ),
           ),
@@ -211,6 +273,7 @@ class _TrendTable extends StatelessWidget {
                   _Cell('${t.posts}', flex: 1),
                   _Cell('${t.likes}', flex: 1),
                   _Cell('${t.comments}', flex: 1),
+                  _Cell('${t.videos}', flex: 1),
                 ],
               ),
             ),
@@ -255,6 +318,7 @@ class _TrendChart extends StatelessWidget {
       maxVal = maxVal > t.users ? maxVal : t.users;
       maxVal = maxVal > t.appointments ? maxVal : t.appointments;
       maxVal = maxVal > t.posts ? maxVal : t.posts;
+      maxVal = maxVal > t.videos ? maxVal : t.videos;
     }
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
@@ -279,6 +343,7 @@ class _TrendChart extends StatelessWidget {
                         _bar(t.users / maxVal, const Color(0xFF42A5F5)),
                         _bar(t.appointments / maxVal, const Color(0xFFE8633A)),
                         _bar(t.posts / maxVal, const Color(0xFF66BB6A)),
+                        _bar(t.videos / maxVal, const Color(0xFFAB47BC)),
                       ],
                     ),
                   ),
@@ -337,6 +402,8 @@ class _Legend extends StatelessWidget {
         item(const Color(0xFFE8633A), '新预约'),
         const SizedBox(width: 20),
         item(const Color(0xFF66BB6A), '新作品'),
+        const SizedBox(width: 20),
+        item(const Color(0xFFAB47BC), '短视频'),
       ],
     );
   }

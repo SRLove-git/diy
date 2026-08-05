@@ -36,8 +36,12 @@ export const storeApi = {
   remove: (id: number) => http.delete(`/admin/stores/${id}`),
   addTable: (storeId: number, d: Partial<StoreTable>) =>
     http.post<StoreTable>(`/admin/stores/${storeId}/tables`, d),
+  updateTable: (id: number, d: Partial<StoreTable>) =>
+    http.patch<StoreTable>(`/admin/stores/tables/${id}`, d),
   removeTable: (id: number) => http.delete(`/admin/stores/tables/${id}`),
   addSlot: (storeId: number, d: Partial<TimeSlot>) =>
     http.post<TimeSlot>(`/admin/stores/${storeId}/slots`, d),
+  updateSlot: (id: number, d: Partial<TimeSlot>) =>
+    http.patch<TimeSlot>(`/admin/stores/slots/${id}`, d),
   removeSlot: (id: number) => http.delete(`/admin/stores/slots/${id}`),
 }

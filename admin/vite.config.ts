@@ -11,6 +11,11 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      // 开发期封面/媒体预览：uploads 静态资源由后端同源托管
+      '/uploads': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
     },
   },
 })

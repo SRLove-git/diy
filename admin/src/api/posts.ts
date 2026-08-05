@@ -24,4 +24,7 @@ export const postApi = {
   remove(id: number) {
     return http.patch(`/admin/posts/${id}/remove`)
   },
+  hardDelete(id: number) {
+    return http.delete(`/admin/posts/${id}`)
+  },
 }

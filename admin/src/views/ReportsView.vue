@@ -92,6 +92,15 @@ function truncate(text: string, max: number): string {
   return text.length > max ? text.slice(0, max) + '…' : text
 }
 
+function postStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    pending: '待审核',
+    approved: '已通过',
+    rejected: '已驳回',
+  }
+  return map[status] || status
+}
+
 onMounted(load)
 </script>
 
@@ -124,6 +133,7 @@ onMounted(load)
           <th style="width:60px">ID</th>
           <th style="width:90px">举报人ID</th>
           <th style="width:90px">作品ID</th>
+          <th>被举报作品</th>
           <th>举报原因</th>
           <th style="width:80px">状态</th>
           <th style="width:150px">提交时间</th>
@@ -136,6 +146,22 @@ onMounted(load)
           <td>{{ r.id }}</td>
           <td>{{ r.reporterId }}</td>
           <td>{{ r.postId }}</td>
+          <td class="post-cell">
+            <template v-if="r.post">
+              <div class="post-content">
+                <span class="text-ellipsis" :title="r.post.content || '-'">
+                  {{ r.post.content || '-' }}
+                </span>
+              </div>
+              <div class="post-meta">
+                <span v-if="r.post.images.length">{{ r.post.images.length }} 张图</span>
+                <span class="post-status" :class="`ps-${r.post.status}`">
+                  {{ postStatusLabel(r.post.status) }}
+                </span>
+              </div>
+            </template>
+            <span v-else class="muted">作品不存在</span>
+          </td>
           <td class="reason-cell">
             <span :title="r.reason">{{ truncate(r.reason, 40) }}</span>
           </td>
@@ -212,6 +238,33 @@ onMounted(load)
   color: #2b2b2b;
 }
 .reason-cell { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.post-cell { max-width: 240px; }
+.post-content { max-width: 240px; }
+.text-ellipsis {
+  display: inline-block;
+  max-width: 240px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+.post-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+  color: #8a8a8a;
+  margin-top: 2px;
+}
+.post-status {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.ps-pending { background: #fdf6ec; color: #E6A23C; }
+.ps-approved { background: #f0f9eb; color: #2E9E5B; }
+.ps-rejected { background: #fef0f0; color: #D9453E; }
 .tag {
   display: inline-block;
   padding: 2px 8px;

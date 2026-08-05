@@ -110,6 +110,36 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     }
   }
 
+  Future<void> _deleteWorks(AdminUser u) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除用户作品'),
+        content: const Text(
+          '确认删除该用户发布的全部作品（社区帖子 + 短视频/照片）？删除后不可恢复，其点赞、评论、收藏与举报记录将一并清除。',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.of(ctx).danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确认删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      final result = await AdminApi.deleteUserWorks(u.id);
+      if (mounted) {
+        _toast('已删除：社区作品 ${result.posts} 个、视频/照片 ${result.videos} 个');
+        _load();
+      }
+    } on DioException catch (e) {
+      if (mounted) _toast(AdminApi.messageOf(e));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
@@ -236,6 +266,19 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                 minimumSize: const Size(0, 38),
               ),
               child: Text(u.isBanned ? '解封' : '封禁'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => _deleteWorks(u),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: colors.danger,
+                side: BorderSide(color: colors.danger),
+                minimumSize: const Size(0, 38),
+              ),
+              child: const Text('删除作品'),
             ),
           ),
         ],

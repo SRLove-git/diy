@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
 
 import { Post } from './post.entity';
 import { Like } from './like.entity';
@@ -207,10 +207,10 @@ export class CommunityService {
     await this.posts.increment({ id }, 'shareCount', 1);
   }
 
-  /** 我的作品列表 */
+  /** 我的作品列表（含待审核状态，排除已下架/驳回） */
   async myPosts(userId: number, page = 1, pageSize = 20) {
     const [posts, total] = await this.posts.findAndCount({
-      where: { userId },
+      where: { userId, status: Not('rejected') },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -252,6 +252,20 @@ export class CommunityService {
     post.status = 'rejected';
     post.rejectReason = '管理员下架';
     await this.posts.save(post);
+  }
+
+  /** 管理端：物理删除作品（连同点赞/评论/收藏/举报/浏览记录） */
+  async hardDelete(id: number): Promise<void> {
+    const post = await this.posts.findOneBy({ id });
+    if (!post) throw new NotFoundException('作品不存在');
+    await Promise.all([
+      this.likes.delete({ postId: id }),
+      this.comments.delete({ postId: id }),
+      this.collections.delete({ postId: id }),
+      this.reports.delete({ postId: id }),
+      this.histories.delete({ postId: id }),
+    ]);
+    await this.posts.delete({ id });
   }
 
   // ──── Like operations ────
@@ -459,12 +473,35 @@ export class CommunityService {
   ): Promise<[Report[], number]> {
     const where: any = {};
     if (status) where.status = status;
-    return this.reports.findAndCount({
+    const [reports, total] = await this.reports.findAndCount({
       where,
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
+    // 附带被举报作品信息，便于管理端直接查看上下文
+    const postIds = Array.from(new Set(reports.map((r) => r.postId)));
+    const posts = postIds.length
+      ? await this.posts.findBy({ id: In(postIds) })
+      : [];
+    const postMap = new Map(posts.map((p) => [p.id, p]));
+    return [
+      reports.map((r) => {
+        const post = postMap.get(r.postId);
+        return {
+          ...r,
+          post: post
+            ? {
+                content: post.content,
+                images: post.images ?? [],
+                status: post.status,
+                userId: post.userId,
+              }
+            : null,
+        };
+      }),
+      total,
+    ];
   }
 
   async resolveReport(id: number): Promise<Report> {

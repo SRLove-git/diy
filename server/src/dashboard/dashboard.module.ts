@@ -4,14 +4,24 @@ import { Appointment } from '../appointments/appointment.entity';
 import { Comment } from '../community/comment.entity';
 import { Like } from '../community/like.entity';
 import { Post } from '../community/post.entity';
+import { Report } from '../community/report.entity';
 import { User } from '../users/user.entity';
+import { Video } from '../videos/video.entity';
 import { UsersModule } from '../users/users.module';
 import { AdminDashboardController } from './admin-dashboard.controller';
 import { DashboardService } from './dashboard.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Appointment, Post, Like, Comment]),
+    TypeOrmModule.forFeature([
+      User,
+      Appointment,
+      Post,
+      Like,
+      Comment,
+      Report,
+      Video,
+    ]),
     UsersModule,
   ],
   controllers: [AdminDashboardController],

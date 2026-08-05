@@ -5,7 +5,9 @@ import { Appointment } from '../appointments/appointment.entity';
 import { Comment } from '../community/comment.entity';
 import { Like } from '../community/like.entity';
 import { Post } from '../community/post.entity';
+import { Report } from '../community/report.entity';
 import { User } from '../users/user.entity';
+import { Video } from '../videos/video.entity';
 
 @Injectable()
 export class DashboardService {
@@ -20,6 +22,10 @@ export class DashboardService {
     private readonly likeRepo: Repository<Like>,
     @InjectRepository(Comment)
     private readonly commentRepo: Repository<Comment>,
+    @InjectRepository(Report)
+    private readonly reportRepo: Repository<Report>,
+    @InjectRepository(Video)
+    private readonly videoRepo: Repository<Video>,
   ) {}
 
   async getOverview() {
@@ -38,6 +44,11 @@ export class DashboardService {
       todayPosts,
       todayLikes,
       todayComments,
+      totalVideos,
+      todayVideos,
+      pendingPosts,
+      pendingVideos,
+      pendingReports,
     ] = await Promise.all([
       this.userRepo.count(),
       this.userRepo
@@ -65,6 +76,14 @@ export class DashboardService {
         .createQueryBuilder('c')
         .where('c.createdAt >= :today', { today })
         .getCount(),
+      this.videoRepo.count(),
+      this.videoRepo
+        .createQueryBuilder('v')
+        .where('v.createdAt >= :today', { today })
+        .getCount(),
+      this.postRepo.count({ where: { status: 'pending' } }),
+      this.videoRepo.count({ where: { status: 'pending' } }),
+      this.reportRepo.count({ where: { status: 'pending' } }),
     ]);
 
     return {
@@ -81,6 +100,15 @@ export class DashboardService {
         todayPosts,
         todayLikes,
         todayComments,
+      },
+      videos: {
+        total: totalVideos,
+        today: todayVideos,
+      },
+      pending: {
+        posts: pendingPosts,
+        videos: pendingVideos,
+        reports: pendingReports,
       },
     };
   }
@@ -99,7 +127,7 @@ export class DashboardService {
         const start = new Date(`${date}T00:00:00`);
         const end = new Date(`${date}T23:59:59`);
 
-        const [users, appointments, posts, likes, comments] = await Promise.all(
+        const [users, appointments, posts, likes, comments, videos] = await Promise.all(
           [
             this.userRepo
               .createQueryBuilder('u')
@@ -121,9 +149,13 @@ export class DashboardService {
               .createQueryBuilder('c')
               .where('c.createdAt BETWEEN :start AND :end', { start, end })
               .getCount(),
+            this.videoRepo
+              .createQueryBuilder('v')
+              .where('v.createdAt BETWEEN :start AND :end', { start, end })
+              .getCount(),
           ],
         );
-        return { date, users, appointments, posts, likes, comments };
+        return { date, users, appointments, posts, likes, comments, videos };
       }),
     );
 

@@ -3,6 +3,8 @@ import http from './http'
 export interface Appointment {
   id: number
   userId: number
+  userPhone?: string
+  userNickname?: string
   storeId: number
   storeName: string
   tableId: number
@@ -32,9 +34,9 @@ export interface AppointmentListParams {
 }
 
 export const appointmentApi = {
-  /** 管理端：所有预约列表 */
-  list: (params?: AppointmentListParams) =>
-    http.get<Appointment[]>('/admin/appointments', { params }),
+  /** 管理端：所有预约列表（分页） */
+  list: (params?: AppointmentListParams): Promise<[Appointment[], number]> =>
+    http.get('/admin/appointments', { params }).then((r) => r.data),
 
   /** 按预约码查询 */
   findByCode: (code: string) =>
@@ -47,6 +49,10 @@ export const appointmentApi = {
   /** 管理端按订单核销 */
   adminCheckIn: (id: number) =>
     http.post<Appointment>(`/admin/appointments/${id}/checkin`),
+
+  /** 管理端取消预约（店员代操作） */
+  adminCancel: (id: number) =>
+    http.post<Appointment>(`/admin/appointments/${id}/cancel`),
 
   /** 管理端上钟 */
   clockIn: (id: number) =>

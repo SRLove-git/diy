@@ -17,4 +17,7 @@ export const userApi = {
   setBan(id: number, isBanned: boolean): Promise<User> {
     return http.patch(`/admin/users/${id}/ban`, { isBanned }).then(r => r.data)
   },
+  deleteWorks(id: number): Promise<{ posts: number; videos: number }> {
+    return http.delete(`/admin/users/${id}/works`).then(r => r.data)
+  },
 }

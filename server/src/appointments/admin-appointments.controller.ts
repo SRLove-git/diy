@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  DefaultValuePipe,
   Param,
   ParseIntPipe,
   Post,
@@ -17,16 +18,16 @@ import { AppointmentsService } from './appointments.service';
 export class AdminAppointmentsController {
   constructor(private readonly appointments: AppointmentsService) {}
 
-  /** 所有预约列表（可按状态/门店/日期筛选） */
+  /** 所有预约列表（分页，可按状态/门店/日期筛选） */
   @Get()
   list(
     @Query('status') status?: string,
     @Query('storeId') storeId?: string,
     @Query('date') date?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
   ) {
-    // 复用现有 service 能力，直接返回全量列表
-    // 管理端不需要 userId 过滤
-    return this.appointments.findAll({ status, storeId, date });
+    return this.appointments.adminFindAll({ status, storeId, date }, page, limit);
   }
 
   /** 核销（店员代操作） */

@@ -236,6 +236,15 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 6),
+          _row(
+            '用户',
+            o.userNickname.isNotEmpty
+                ? (o.userPhone != null && o.userPhone!.isNotEmpty
+                    ? '${o.userNickname}（${o.userPhone}）'
+                    : o.userNickname)
+                : '-',
+            colors,
+          ),
           _row('日期', '${o.date} ${o.startTime} - ${o.endTime}', colors),
           _row('桌位', '${o.tableName} · ${o.peopleCount} 人', colors),
           _row('核销时间', _fmtTime(o.checkInTime), colors),

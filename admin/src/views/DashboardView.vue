@@ -27,7 +27,7 @@ onMounted(load)
 const maxVal = computed(() => {
   let max = 1
   for (const t of trends.value) {
-    max = Math.max(max, t.users, t.appointments, t.posts)
+    max = Math.max(max, t.users, t.appointments, t.posts, t.videos)
   }
   return max
 })
@@ -75,6 +75,30 @@ const maxVal = computed(() => {
           <div class="card-value">{{ (overview.community.todayLikes + overview.community.todayComments).toLocaleString() }}</div>
           <div class="card-sub">点赞 {{ overview.community.todayLikes }} · 评论 {{ overview.community.todayComments }}</div>
         </div>
+        <div class="card">
+          <div class="card-label">短视频 / 照片作品</div>
+          <div class="card-value">{{ overview.videos.total.toLocaleString() }}</div>
+          <div class="card-sub">今日新增 {{ overview.videos.today }}</div>
+        </div>
+      </section>
+
+      <!-- 待办审核 -->
+      <section class="todo-section">
+        <h3>待办审核</h3>
+        <div class="todo-cards">
+          <RouterLink to="/posts" class="todo-card">
+            <div class="todo-num">{{ overview.pending.posts }}</div>
+            <div class="todo-label">社区作品待审核</div>
+          </RouterLink>
+          <RouterLink to="/videos" class="todo-card">
+            <div class="todo-num">{{ overview.pending.videos }}</div>
+            <div class="todo-label">短视频待审核</div>
+          </RouterLink>
+          <RouterLink to="/reports" class="todo-card">
+            <div class="todo-num">{{ overview.pending.reports }}</div>
+            <div class="todo-label">举报待处理</div>
+          </RouterLink>
+        </div>
       </section>
 
       <!-- 近7天趋势图表 -->
@@ -90,6 +114,7 @@ const maxVal = computed(() => {
                 <th>新作品</th>
                 <th>点赞</th>
                 <th>评论</th>
+                <th>短视频</th>
               </tr>
             </thead>
             <tbody>
@@ -100,6 +125,7 @@ const maxVal = computed(() => {
                 <td>{{ t.posts }}</td>
                 <td>{{ t.likes }}</td>
                 <td>{{ t.comments }}</td>
+                <td>{{ t.videos }}</td>
               </tr>
             </tbody>
           </table>
@@ -114,7 +140,7 @@ const maxVal = computed(() => {
             v-for="t in trends"
             :key="t.date"
             class="bar-col"
-            :title="`${t.date}: 注册${t.users} | 预约${t.appointments} | 作品${t.posts}`"
+            :title="`${t.date}: 注册${t.users} | 预约${t.appointments} | 作品${t.posts} | 短视频${t.videos}`"
           >
             <div class="bar-group">
               <div
@@ -129,6 +155,10 @@ const maxVal = computed(() => {
                 class="bar bar-p"
                 :style="{ height: Math.max(t.posts / maxVal * 100, 8) + '%' }"
               ></div>
+              <div
+                class="bar bar-v"
+                :style="{ height: Math.max(t.videos / maxVal * 100, 8) + '%' }"
+              ></div>
             </div>
             <div class="bar-label">{{ t.date.slice(5) }}</div>
           </div>
@@ -137,6 +167,7 @@ const maxVal = computed(() => {
           <span class="legend-item"><i class="dot dot-u"></i> 新注册</span>
           <span class="legend-item"><i class="dot dot-a"></i> 新预约</span>
           <span class="legend-item"><i class="dot dot-p"></i> 新作品</span>
+          <span class="legend-item"><i class="dot dot-v"></i> 短视频</span>
         </div>
       </section>
     </template>
@@ -267,4 +298,38 @@ const maxVal = computed(() => {
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
+
+/* 待办 */
+.todo-section h3 {
+  font-size: 15px;
+  margin: 0 0 12px;
+  color: #2b2b2b;
+}
+.todo-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.todo-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #fff;
+  border: 1px solid #f0eeea;
+  border-radius: 12px;
+  padding: 16px 20px;
+  text-decoration: none;
+  transition: box-shadow 0.2s;
+}
+.todo-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
+.todo-num {
+  font-size: 26px;
+  font-weight: 700;
+  color: #e8633a;
+  min-width: 40px;
+}
+.todo-label { font-size: 13px; color: #8a8a8a; }
+
+.bar-v { background: #ab47bc; }
+.dot-v { background: #ab47bc; }
 </style>

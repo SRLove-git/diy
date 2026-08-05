@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
 import '../../core/auth_service.dart';
 import '../checkin/scan_checkin_page.dart';
+import 'admin_activities_page.dart';
 import 'admin_dashboard_page.dart';
 import 'admin_members_page.dart';
 import 'admin_notifications_page.dart';
@@ -35,11 +36,16 @@ class AdminHomePage extends StatelessWidget {
       ),
       (icon: Icons.store_outlined, label: '门店管理', page: AdminStoresPage()),
       (
+        icon: Icons.event_outlined,
+        label: '活动管理',
+        page: AdminActivitiesPage(),
+      ),
+      (
         icon: Icons.receipt_long_outlined,
         label: '订单管理',
         page: AdminOrdersPage(),
       ),
-      (icon: Icons.article_outlined, label: '作品审核', page: AdminPostsPage()),
+      (icon: Icons.article_outlined, label: '社区管理', page: AdminPostsPage()),
       (icon: Icons.people_outline, label: '用户管理', page: AdminUsersPage()),
       (icon: Icons.report_outlined, label: '举报处理', page: AdminReportsPage()),
       (

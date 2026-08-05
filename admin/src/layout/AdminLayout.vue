@@ -17,8 +17,10 @@ function logout() {
       <nav>
         <RouterLink to="/dashboard">数据看板</RouterLink>
         <RouterLink to="/stores">门店管理</RouterLink>
+        <RouterLink to="/activities">活动管理</RouterLink>
         <RouterLink to="/orders">订单管理</RouterLink>
-        <RouterLink to="/posts">作品审核</RouterLink>
+        <RouterLink to="/posts">社区管理</RouterLink>
+        <RouterLink to="/videos">视频管理</RouterLink>
         <RouterLink to="/users">用户管理</RouterLink>
         <RouterLink to="/members">会员运营</RouterLink>
         <RouterLink to="/reports">举报处理</RouterLink>

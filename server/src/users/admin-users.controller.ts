@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -19,13 +20,14 @@ import { UsersService } from './users.service';
 export class AdminUsersController {
   constructor(private readonly users: UsersService) {}
 
-  /** 用户列表（分页，可选手机号搜索） */
+  /** 用户列表（分页，可选手机号/昵称搜索） */
   @Get()
   findAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('search') search?: string,
     @Query('phone') phone?: string,
   ) {
-    return this.users.findAll(page, phone);
+    return this.users.findAll(page, search ?? phone);
   }
 
   /** 封禁/解封用户 */
@@ -35,5 +37,11 @@ export class AdminUsersController {
     @Body('isBanned') isBanned: boolean,
   ) {
     return this.users.toggleBan(id, isBanned);
+  }
+
+  /** 删除用户全部作品（社区帖子 + 短视频/照片，含关联互动数据） */
+  @Delete(':id/works')
+  deleteWorks(@Param('id', ParseIntPipe) id: number) {
+    return this.users.deleteWorks(id);
   }
 }

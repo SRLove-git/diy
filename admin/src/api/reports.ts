@@ -8,6 +8,12 @@ export interface Report {
   postId: number
   reason: string
   status: ReportStatus
+  post: {
+    content: string
+    images: string[]
+    status: string
+    userId: number
+  } | null
   createdAt: string
   updatedAt: string
 }

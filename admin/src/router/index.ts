@@ -21,6 +21,11 @@ const router = createRouter({
           meta: { title: '门店管理' },
         },
         {
+          path: 'activities',
+          component: () => import('../views/ActivitiesView.vue'),
+          meta: { title: '活动管理' },
+        },
+        {
           path: 'orders',
           component: () => import('../views/OrdersView.vue'),
           meta: { title: '订单管理' },
@@ -28,7 +33,12 @@ const router = createRouter({
         {
           path: 'posts',
           component: () => import('../views/PostsView.vue'),
-          meta: { title: '作品审核' },
+          meta: { title: '社区管理' },
+        },
+        {
+          path: 'videos',
+          component: () => import('../views/VideosView.vue'),
+          meta: { title: '视频管理' },
         },
         {
           path: 'users',

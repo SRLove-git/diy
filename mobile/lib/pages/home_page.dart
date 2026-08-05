@@ -713,7 +713,7 @@ const _adminShortcutData = [
   ),
   _AdminShortcutData(
     icon: Icons.article_rounded,
-    label: '作品审核',
+    label: '社区管理',
     colors: [Color(0xFFFF9BB0), Color(0xFFFF6687)],
     page: AdminPostsPage(),
   ),

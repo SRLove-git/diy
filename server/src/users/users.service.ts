@@ -1,12 +1,34 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Like, Repository } from 'typeorm';
+import { Collection } from '../community/collection.entity';
+import { Comment as PostComment } from '../community/comment.entity';
+import { Like as PostLike } from '../community/like.entity';
+import { Post } from '../community/post.entity';
+import { Report } from '../community/report.entity';
+import { Video } from '../videos/video.entity';
+import { VideoComment } from '../videos/video-comment.entity';
+import { VideoLike } from '../videos/video-like.entity';
+import { History } from './history.entity';
 import { User } from './user.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
+    @InjectRepository(Post) private readonly posts: Repository<Post>,
+    @InjectRepository(PostLike) private readonly postLikes: Repository<PostLike>,
+    @InjectRepository(PostComment)
+    private readonly postComments: Repository<PostComment>,
+    @InjectRepository(Collection)
+    private readonly collections: Repository<Collection>,
+    @InjectRepository(Report) private readonly reports: Repository<Report>,
+    @InjectRepository(History) private readonly history: Repository<History>,
+    @InjectRepository(Video) private readonly videos: Repository<Video>,
+    @InjectRepository(VideoLike)
+    private readonly videoLikes: Repository<VideoLike>,
+    @InjectRepository(VideoComment)
+    private readonly videoComments: Repository<VideoComment>,
   ) {}
 
   findByPhone(phone: string): Promise<User | null> {
@@ -82,10 +104,15 @@ export class UsersService {
     return this.users.update({ id }, { role });
   }
 
-  /** 管理端：用户列表（分页，可选手机号搜索） */
-  async findAll(page = 1, phone?: string, pageSize = 20): Promise<[User[], number]> {
-    const where: any = {};
-    if (phone) where.phone = Like(`%${phone}%`);
+  /** 管理端：用户列表（分页，可选手机号/昵称搜索） */
+  async findAll(page = 1, search?: string, pageSize = 20): Promise<[User[], number]> {
+    const keyword = (search ?? '').trim();
+    const where: any = keyword
+      ? [
+          { phone: Like(`%${keyword}%`) },
+          { nickname: Like(`%${keyword}%`) },
+        ]
+      : {};
     return this.users.findAndCount({
       where,
       order: { createdAt: 'DESC' },
@@ -98,5 +125,34 @@ export class UsersService {
   async toggleBan(id: number, isBanned: boolean): Promise<User> {
     await this.users.update({ id }, { isBanned });
     return this.users.findOneBy({ id }) as Promise<User>;
+  }
+
+  /** 管理端：物理删除某用户的全部作品（社区帖子 + 短视频/照片，含关联互动数据） */
+  async deleteWorks(userId: number): Promise<{ posts: number; videos: number }> {
+    const postIds = (
+      await this.posts.find({ where: { userId }, select: { id: true } })
+    ).map((p) => p.id);
+    const videoIds = (
+      await this.videos.find({ where: { userId }, select: { id: true } })
+    ).map((v) => v.id);
+
+    if (postIds.length) {
+      await Promise.all([
+        this.postLikes.delete({ postId: In(postIds) }),
+        this.postComments.delete({ postId: In(postIds) }),
+        this.collections.delete({ postId: In(postIds) }),
+        this.reports.delete({ postId: In(postIds) }),
+        this.history.delete({ postId: In(postIds) }),
+      ]);
+      await this.posts.delete(postIds);
+    }
+    if (videoIds.length) {
+      await Promise.all([
+        this.videoLikes.delete({ videoId: In(videoIds) }),
+        this.videoComments.delete({ videoId: In(videoIds) }),
+      ]);
+      await this.videos.delete(videoIds);
+    }
+    return { posts: postIds.length, videos: videoIds.length };
   }
 }

@@ -5,7 +5,7 @@ import '../../core/admin_api.dart';
 import '../../core/app_colors.dart';
 import '../../widgets/state_widgets.dart';
 
-/// 作品审核：作品列表 + 状态筛选 + 通过/驳回/下架（对齐网页管理端）
+/// 社区管理：作品列表 + 状态筛选 + 通过/驳回/下架（对齐网页管理端）
 class AdminPostsPage extends StatefulWidget {
   const AdminPostsPage({super.key});
 
@@ -146,11 +146,39 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
     }
   }
 
+  Future<void> _deletePost(AdminPost p) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除作品'),
+        content: const Text('确认永久删除该作品？删除后不可恢复，其点赞、评论、收藏与举报记录将一并清除。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.of(ctx).danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确认删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await AdminApi.deletePost(p.id);
+      if (mounted) {
+        _toast('已删除');
+        _load();
+      }
+    } on DioException catch (e) {
+      if (mounted) _toast(AdminApi.messageOf(e));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('作品审核'),
+        title: const Text('社区管理'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
         ],
@@ -307,19 +335,59 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                     child: const Text('驳回'),
                   ),
                 ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _deletePost(p),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.danger,
+                      side: BorderSide(color: colors.danger),
+                      minimumSize: const Size(0, 38),
+                    ),
+                    child: const Text('删除'),
+                  ),
+                ),
               ],
             )
           else if (p.status == 'approved')
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _remove(p),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.danger,
+                      side: BorderSide(color: colors.danger),
+                      minimumSize: const Size(0, 38),
+                    ),
+                    child: const Text('下架'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _deletePost(p),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.danger,
+                      side: BorderSide(color: colors.danger),
+                      minimumSize: const Size(0, 38),
+                    ),
+                    child: const Text('删除'),
+                  ),
+                ),
+              ],
+            )
+          else
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: () => _remove(p),
+                onPressed: () => _deletePost(p),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: colors.danger,
                   side: BorderSide(color: colors.danger),
                   minimumSize: const Size(0, 38),
                 ),
-                child: const Text('下架'),
+                child: const Text('删除'),
               ),
             ),
         ],

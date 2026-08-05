@@ -1,13 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
 
 import { Follow } from '../follows/follow.entity';
 import { User } from '../users/user.entity';
 import { Video } from './video.entity';
 import { VideoComment } from './video-comment.entity';
 import { VideoLike } from './video-like.entity';
-import { CreateVideoDto } from './video.dto';
+import { CreateVideoDto, UpdateVideoStatusDto } from './video.dto';
 
 /** 作者简要信息 + 粉丝数（嵌入列表响应，避免 N+1） */
 export interface VideoAuthor {
@@ -180,10 +180,10 @@ export class VideosService {
     return [this.enrich(list, authors, liked), total];
   }
 
-  /** 我的发布列表（含未审核通过状态，供个人页展示） */
+  /** 我的发布列表（含待审核状态，排除已下架/驳回，供个人页展示） */
   async myVideos(userId: number, page = 1, pageSize = 20) {
     const [list, total] = await this.videos.findAndCount({
-      where: { userId },
+      where: { userId, status: Not('rejected') },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -208,6 +208,51 @@ export class VideosService {
     });
     const authors = await this.resolveAuthors([authorId]);
     return [this.enrich(list, authors, new Set<number>()), total];
+  }
+
+  /** 管理端：全量视频列表（可按状态筛选） */
+  async findAll(status?: string, page = 1, pageSize = 20) {
+    const where: any = {};
+    if (status) where.status = status;
+    return this.videos.findAndCount({
+      where,
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+  }
+
+  /** 管理端：审核视频（通过/驳回） */
+  async updateStatus(id: number, dto: UpdateVideoStatusDto): Promise<Video> {
+    const video = await this.videos.findOneBy({ id });
+    if (!video) throw new NotFoundException('视频不存在');
+    video.status = dto.status;
+    if (dto.status === 'rejected') {
+      video.rejectReason = dto.rejectReason ?? '';
+    } else {
+      video.rejectReason = '';
+    }
+    return this.videos.save(video);
+  }
+
+  /** 管理端：下架视频（软删除标记为 rejected） */
+  async remove(id: number): Promise<void> {
+    const video = await this.videos.findOneBy({ id });
+    if (!video) throw new NotFoundException('视频不存在');
+    video.status = 'rejected';
+    video.rejectReason = '管理员下架';
+    await this.videos.save(video);
+  }
+
+  /** 管理端：物理删除视频/照片作品（连同点赞/评论） */
+  async hardDelete(id: number): Promise<void> {
+    const video = await this.videos.findOneBy({ id });
+    if (!video) throw new NotFoundException('视频不存在');
+    await Promise.all([
+      this.likes.delete({ videoId: id }),
+      this.comments.delete({ videoId: id }),
+    ]);
+    await this.videos.delete({ id });
   }
 
   // ──── Detail ────
