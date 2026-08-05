@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { ActivitiesModule } from './activities/activities.module';
 import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
 import { CommunityModule } from './community/community.module';
@@ -44,6 +45,7 @@ import { VideosModule } from './videos/videos.module';
     AuthModule,
     StoresModule,
     AppointmentsModule,
+    ActivitiesModule,
     CommunityModule,
     ChatModule,
     FollowsModule,

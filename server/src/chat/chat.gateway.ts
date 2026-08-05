@@ -39,7 +39,7 @@ const CHAT_CHANNEL = 'chat:events';
 interface RemoteEvent {
   /** 发布实例 ID（接收端据此跳过自己，避免重复推送） */
   source: string;
-  kind: 'newMessage' | 'groupNewMessage' | 'read' | 'presence';
+  kind: 'newMessage' | 'groupNewMessage' | 'read' | 'presence' | 'notification';
   /** 目标用户（各实例按本地连接表判断是否推送） */
   toUserIds: number[];
   payload: Record<string, unknown>;
@@ -55,6 +55,7 @@ interface RemoteEvent {
  *   服务端 → { type:'pong' } / { type:'sent', clientMsgId, message } / { type:'newMessage', message }
  *            / { type:'read', conversationId, readerId, readAt }
  *            / { type:'presence', userId, online } / { type:'error', code, message }
+ *            / { type:'notification' }（平台通知已发送，客户端刷新未读角标）
  *
  * 在线状态：连接建立时 Redis 计数 +1 并向其会话对端广播上线；心跳刷新 TTL；
  * 断开时计数 -1（归零删键）并广播下线。推送前用 Redis 判断对端是否在线，
@@ -420,6 +421,17 @@ export class ChatGateway
     };
     this.sendToUser(peerId, payload);
     this.publish({ kind: 'read', toUserIds: [peerId], payload });
+  }
+
+  /**
+   * 平台通知已创建后广播给目标用户：通知在线客户端刷新未读角标。
+   * 离线用户无需实时推送，下次进入首页拉取未读数即可。
+   */
+  broadcastNotification(userIds: number[]): void {
+    if (!userIds?.length) return;
+    const payload = { type: 'notification' };
+    for (const uid of userIds) this.sendToUser(uid, payload);
+    this.publish({ kind: 'notification', toUserIds: userIds, payload });
   }
 
   /** 将 Message 实体转为可安全 msgpack 编码的纯对象（Date → ISO 字符串） */

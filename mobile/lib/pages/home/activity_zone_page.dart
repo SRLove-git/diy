@@ -1,0 +1,273 @@
+import 'package:flutter/material.dart';
+
+import '../../core/app_colors.dart';
+import '../../features/home/presentation/palette.dart';
+import '../../features/member/data/api_member_repository.dart';
+import '../../features/member/domain/member_models.dart';
+import '../../features/member/domain/member_repository.dart';
+import '../../widgets/state_widgets.dart';
+
+/// 活动专区
+///
+/// 展示平台近期活动：会员沙龙、作品大赛、节日 DIY 特别场等。
+/// 活动数据当前复用会员数据源（Mock），后续接入服务端后替换为真实接口。
+class ActivityZonePage extends StatefulWidget {
+  const ActivityZonePage({super.key});
+
+  @override
+  State<ActivityZonePage> createState() => _ActivityZonePageState();
+}
+
+class _ActivityZonePageState extends State<ActivityZonePage> {
+  final MemberRepository _repo = const ApiMemberRepository();
+
+  List<MemberActivity> _activities = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final activities = await _repo.fetchActivities();
+      if (!mounted) return;
+      setState(() {
+        _activities = activities;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = '加载失败，请重试';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Scaffold(
+      appBar: AppBar(title: const Text('活动专区')),
+      body: _buildBody(colors),
+    );
+  }
+
+  Widget _buildBody(AppColors colors) {
+    if (_loading) return const LoadingWidget(message: '加载中…');
+    if (_error != null) {
+      return AppErrorWidget(message: _error!, onRetry: _load);
+    }
+    if (_activities.isEmpty) {
+      return const EmptyWidget(
+        icon: Icons.celebration_outlined,
+        message: '暂无活动，敬请期待',
+      );
+    }
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      children: [
+        _buildHeroBanner(colors),
+        const SizedBox(height: 24),
+        _buildSectionHeader(colors),
+        const SizedBox(height: 12),
+        for (var index = 0; index < _activities.length; index++) ...[
+          _ActivityCard(activity: _activities[index]),
+          if (index != _activities.length - 1) const SizedBox(height: 12),
+        ],
+        const SizedBox(height: 20),
+        Center(
+          child: Text(
+            '更多活动持续更新，敬请关注',
+            style: TextStyle(fontSize: 12, color: colors.textSecondary),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeroBanner(AppColors colors) {
+    return Container(
+      height: 148,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFB8A7FF), Color(0xFFFF8199)],
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33B8A7FF),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -18,
+            top: -22,
+            child: Icon(
+              Icons.celebration_rounded,
+              size: 120,
+              color: Colors.white.withValues(alpha: 0.22),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Spacer(),
+              const Text(
+                '活动专区',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  height: 1.2,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '拼出乐趣 · 一起玩',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(AppColors colors) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          '近期活动',
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '${_activities.length} 场进行中',
+          style: TextStyle(fontSize: 12, color: colors.textSecondary),
+        ),
+        const Spacer(),
+        Container(
+          width: 28,
+          height: 4,
+          decoration: BoxDecoration(
+            color: HomePalette.primary,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ActivityCard extends StatelessWidget {
+  const _ActivityCard({required this.activity});
+
+  final MemberActivity activity;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colors.divider.withValues(alpha: 0.6)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D7A4754),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  activity.tag,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: colors.primary,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Row(
+                children: [
+                  Icon(
+                    Icons.schedule_rounded,
+                    size: 14,
+                    color: colors.textSecondary,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    activity.date,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            activity.title,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: colors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            activity.desc,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.5,
+              color: colors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

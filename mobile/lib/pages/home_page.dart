@@ -7,6 +7,7 @@ import '../core/api_client.dart';
 import '../core/appointment_api.dart';
 import '../core/auth_service.dart';
 import '../core/chat_api.dart';
+import '../core/chat_service.dart';
 import '../core/notification_api.dart';
 import '../core/post_api.dart';
 import '../features/home/presentation/palette.dart';
@@ -24,9 +25,11 @@ import 'checkin/my_checkin_qr_page.dart';
 import 'checkin/scan_checkin_page.dart';
 import 'checkin/service_timer_page.dart';
 import 'community/post_detail_page.dart';
+import 'home/activity_zone_page.dart';
 import 'home/coupon_center_page.dart';
 import 'home/works_list_page.dart';
 import 'notifications/notification_list_page.dart';
+import 'profile/order_list_page.dart';
 
 class MockProduct {
   const MockProduct({
@@ -53,16 +56,22 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   List<Appointment> _activeAppointments = [];
   int _unreadCount = 0;
   Timer? _tickTimer;
   Timer? _pollTimer;
   Timer? _unreadTimer;
+  StreamSubscription<ChatEvent>? _chatSub;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // 收到平台通知实时事件：立即刷新未读角标，不等 30s 轮询
+    _chatSub = ChatService.instance.events.listen((event) {
+      if (event is NotificationEvent) _loadUnreadCount();
+    });
     if (!widget.loadActiveAppointments) return;
     _loadActiveAppointments();
     _loadUnreadCount();
@@ -88,10 +97,18 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _chatSub?.cancel();
     _tickTimer?.cancel();
     _pollTimer?.cancel();
     _unreadTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 从后台回到前台：刷新未读角标（后台推送期间不触发轮询）
+    if (state == AppLifecycleState.resumed) _loadUnreadCount();
   }
 
   Future<void> _loadUnreadCount() async {
@@ -575,11 +592,10 @@ class ShortcutBar extends StatelessWidget {
 
     final items = [
       _ShortcutData(
-        icon: Icons.auto_awesome_rounded,
-        label: '新品推荐',
+        icon: Icons.receipt_long_rounded,
+        label: '我的订单',
         colors: const [Color(0xFFFF8199), Color(0xFFFF506F)],
-        onTap: () =>
-            _push(context, const WorksListPage(mode: WorksListMode.latest)),
+        onTap: () => _push(context, const OrderListPage()),
       ),
       _ShortcutData(
         icon: Icons.redeem_rounded,
@@ -588,10 +604,10 @@ class ShortcutBar extends StatelessWidget {
         onTap: () => _push(context, const CouponCenterPage()),
       ),
       _ShortcutData(
-        icon: Icons.workspace_premium_rounded,
-        label: '会员专享',
+        icon: Icons.celebration_rounded,
+        label: '活动专区',
         colors: const [Color(0xFFA37AFF), Color(0xFF774CE8)],
-        onTap: () => _push(context, const MemberPlanPage()),
+        onTap: () => _push(context, const ActivityZonePage()),
       ),
       _ShortcutData(
         icon: Icons.local_fire_department_rounded,

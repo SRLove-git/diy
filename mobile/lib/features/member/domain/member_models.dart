@@ -233,6 +233,15 @@ class MemberActivity {
     required this.tag,
   });
 
+  factory MemberActivity.fromJson(Map<String, dynamic> json) =>
+      MemberActivity(
+        id: '${json['id']}',
+        title: (json['title'] ?? '') as String,
+        date: (json['date'] ?? '') as String,
+        desc: (json['desc'] ?? '') as String,
+        tag: (json['tag'] ?? '') as String,
+      );
+
   final String id;
 
   /// 活动名

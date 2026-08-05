@@ -7,6 +7,7 @@ import 'package:video_player/video_player.dart';
 
 import '../core/follow_api.dart';
 import '../core/photo_filters.dart';
+import '../core/route_observer.dart';
 import '../core/video_api.dart';
 import '../core/video_layout.dart';
 import '../features/community/domain/community_models.dart';
@@ -553,7 +554,7 @@ class _VideoItemPage extends StatefulWidget {
 }
 
 class _VideoItemPageState extends State<_VideoItemPage>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, RouteAware {
   /// Mock 播放进度（模拟视频流；接入真实视频后替换为 video_player）。
   /// 时长按 裁剪区间/倍速 换算：如 15s 视频 2x 播放用 7.5s 播完。
   late final AnimationController _progress = AnimationController(
@@ -588,6 +589,15 @@ class _VideoItemPageState extends State<_VideoItemPage>
 
   /// 最近一次上报的角标文案（避免 build 时重复上报）
   String _lastReportedBadge = '';
+
+  /// 是否已订阅路由观察者（避免 didChangeDependencies 重复订阅）
+  bool _routeSubscribed = false;
+
+  /// 当前路由是否被其他路由覆盖（如发布页压栈）
+  bool _routeCovered = false;
+
+  /// 被覆盖前的播放状态（仅记录第一次被覆盖时，嵌套压栈不覆盖）
+  bool _playingBeforeCovered = false;
 
   /// 双击点赞爱心动画
   late final AnimationController _burst = AnimationController(
@@ -629,6 +639,37 @@ class _VideoItemPageState extends State<_VideoItemPage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _emitBadge();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 订阅路由观察者：页面被新路由（如发布页）覆盖时暂停，返回时按原状态恢复
+    if (!_routeSubscribed) {
+      final route = ModalRoute.of(context);
+      if (route != null) {
+        appRouteObserver.subscribe(this, route);
+        _routeSubscribed = true;
+      }
+    }
+  }
+
+  @override
+  void didPushNext() {
+    // 只记录第一次被覆盖前的播放态，连续压栈（拍摄页 → 发布页）不重复覆盖
+    if (!_routeCovered) {
+      _routeCovered = true;
+      _playingBeforeCovered = _playing;
+      _pausePlayback();
+    }
+  }
+
+  @override
+  void didPopNext() {
+    if (_routeCovered) {
+      _routeCovered = false;
+      if (_playingBeforeCovered) _resumePlayback();
+    }
   }
 
   /// 初始化真实视频播放器：循环、倍速、裁剪区间，就绪后自动播放
@@ -734,6 +775,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
 
   @override
   void dispose() {
+    if (_routeSubscribed) appRouteObserver.unsubscribe(this);
     _videoCtrl?.removeListener(_onVideoTick);
     _videoCtrl?.dispose();
     _photoCtrl.dispose();

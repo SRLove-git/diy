@@ -52,6 +52,11 @@ class ChatLimitEvent extends ChatEvent {
   final String reason;
 }
 
+/// 平台通知已发送：客户端据此刷新通知未读角标
+class NotificationEvent extends ChatEvent {
+  const NotificationEvent();
+}
+
 /// 连接状态
 enum ChatConnectionState { disconnected, connecting, connected }
 
@@ -210,6 +215,10 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
             (frame['userId'] as num).toInt(),
             frame['online'] == true,
           );
+          break;
+        case 'notification':
+          notifyListeners();
+          _events.add(const NotificationEvent());
           break;
         case 'error':
           final code = (frame['code'] ?? '') as String;

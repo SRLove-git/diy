@@ -49,7 +49,10 @@ class ApiMemberRepository implements MemberRepository {
 
   @override
   Future<List<MemberActivity>> fetchActivities() async {
-    return MockMemberRepository.activities;
+    final resp = await ApiClient.instance.get('/activities');
+    return ((resp.data ?? []) as List)
+        .map((item) => MemberActivity.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   @override

@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/app_colors.dart';
 import 'core/auth_service.dart';
 import 'core/chat_service.dart';
+import 'core/route_observer.dart';
 import 'features/community/presentation/discover/discover_page.dart';
 import 'pages/chat/conversation_list_page.dart';
 import 'pages/home_page.dart';
@@ -49,6 +50,7 @@ class DiyApp extends StatelessWidget {
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: ThemeMode.light,
+      navigatorObservers: [appRouteObserver],
       home: const AuthGate(),
     );
   }

@@ -31,6 +31,6 @@ import { MessageStatus } from './message_status.entity';
   ],
   controllers: [ChatController, GroupsController],
   providers: [ChatService, GroupsService, ChatGateway],
-  exports: [ChatService, GroupsService],
+  exports: [ChatService, GroupsService, ChatGateway],
 })
 export class ChatModule {}

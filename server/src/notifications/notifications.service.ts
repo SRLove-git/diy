@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { ChatGateway } from '../chat/chat.gateway';
 import { User } from '../users/user.entity';
 import { Notification, NotificationTarget } from './notification.entity';
 import { NotificationRead } from './notification-read.entity';
@@ -17,6 +18,7 @@ export class NotificationsService {
     private readonly readRepo: Repository<NotificationRead>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly gateway: ChatGateway,
   ) {}
 
   // ─── 通知记录 CRUD ───
@@ -36,7 +38,38 @@ export class NotificationsService {
       sent: true,
       sentAt: new Date(),
     });
-    return this.notificationRepo.save(notification);
+    const saved = await this.notificationRepo.save(notification);
+    // 实时通知在线目标用户刷新未读角标；广播失败不影响通知创建
+    void this.notifyTargets(saved).catch(() => {});
+    return saved;
+  }
+
+  /** 解析通知目标用户并广播实时事件（离线用户下次进入拉取未读数即可） */
+  private async notifyTargets(notification: Notification): Promise<void> {
+    let ids: number[] = [];
+    switch (notification.targetType) {
+      case 'all': {
+        const rows = await this.userRepo.find({ select: { id: true } });
+        ids = rows.map((u) => u.id);
+        break;
+      }
+      case 'role': {
+        if (!notification.targetRole) return;
+        const rows = await this.userRepo.find({
+          where: { role: notification.targetRole },
+          select: { id: true },
+        });
+        ids = rows.map((u) => u.id);
+        break;
+      }
+      case 'user':
+        ids = (notification.targetUserIds ?? '')
+          .split(',')
+          .map(Number)
+          .filter(Boolean);
+        break;
+    }
+    if (ids.length) this.gateway.broadcastNotification(ids);
   }
 
   /** 分页查询通知列表 */

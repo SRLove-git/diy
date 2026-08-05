@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../users/user.entity';
 import { UsersModule } from '../users/users.module';
+import { ChatModule } from '../chat/chat.module';
 import { AdminNotificationsController } from './admin-notifications.controller';
 import { NotificationsController } from './notifications.controller';
 import { NotificationRead } from './notification-read.entity';
@@ -18,6 +19,7 @@ import { NotificationsService } from './notifications.service';
       User,
     ]),
     UsersModule,
+    ChatModule,
   ],
   controllers: [AdminNotificationsController, NotificationsController],
   providers: [NotificationsService],
