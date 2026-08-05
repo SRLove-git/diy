@@ -137,31 +137,14 @@ export class VideosService {
 
   // ──── Feed ────
 
-  /**
-   * 推荐信息流：全部已通过视频，按创建时间倒序。
-   * q：按标题/文案/配乐/地点/标签模糊搜索。
-   */
-  async recommendFeed(
-    userId: number | undefined,
-    page = 1,
-    pageSize = 20,
-    q = '',
-  ) {
-    const qb = this.videos
-      .createQueryBuilder('video')
-      .where('video.status = :status', { status: 'approved' })
-      .orderBy('video.createdAt', 'DESC')
-      .skip((page - 1) * pageSize)
-      .take(pageSize);
-
-    const keyword = (q ?? '').trim();
-    if (keyword) {
-      qb.andWhere(
-        '(video.title LIKE :kw OR video.content LIKE :kw OR video.music LIKE :kw OR video.location LIKE :kw OR video.tags LIKE :kw)',
-        { kw: `%${keyword}%` },
-      );
-    }
-    const [list, total] = await qb.getManyAndCount();
+  /** 推荐信息流：全部已通过视频，按创建时间倒序 */
+  async recommendFeed(userId: number | undefined, page = 1, pageSize = 20) {
+    const [list, total] = await this.videos.findAndCount({
+      where: { status: 'approved' },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
     const [authors, liked] = await Promise.all([
       this.resolveAuthors(list.map((v) => v.userId)),
       this.likedSet(

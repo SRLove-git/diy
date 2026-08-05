@@ -271,7 +271,6 @@ class _MainShellState extends State<MainShell> {
     return GlassBottomNav(
       currentIndex: _index,
       chatUnread: unread,
-      darkOverlay: _index == 2,
       onSelect: (index) => setState(() => _index = index),
       items: const [
         (

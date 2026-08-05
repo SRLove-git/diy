@@ -13,7 +13,6 @@ import '../core/video_layout.dart';
 import '../features/community/domain/community_models.dart';
 import 'shoot_page.dart';
 import 'short_video_models.dart';
-import 'short_video_search_page.dart';
 
 /// 短视频信息流页面（TikTok 风格）
 ///
@@ -314,13 +313,13 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
   Widget build(BuildContext context) {
     final feed = _feed;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.black,
       body: Stack(
         children: [
           // ── 视频 Feed（竖屏滑动，文字/右侧栏随视频一起滑动） ──
           if (_initialLoading)
             const Center(
-              child: CircularProgressIndicator(color: Color(0xFFB0B0B8)),
+              child: CircularProgressIndicator(color: Colors.white54),
             )
           else if (feed.isEmpty)
             _buildEmptyFollow()
@@ -384,13 +383,13 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.85),
+                        color: Colors.black.withValues(alpha: 0.4),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         _photoBadge,
                         style: const TextStyle(
-                          color: Color(0xFF22222A),
+                          color: Colors.white,
                           fontSize: 11,
                         ),
                       ),
@@ -415,12 +414,8 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
           _tabBtn('推荐', active: _tabIndex == 1, onTap: () => _switchTab(1)),
           const Spacer(),
           GestureDetector(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ShortVideoSearchPage()),
-              );
-            },
-            child: const Icon(Icons.search, color: Color(0xFF22222A), size: 24),
+            onTap: () => _toast('搜索（演示）'),
+            child: const Icon(Icons.search, color: Colors.white, size: 24),
           ),
           const SizedBox(width: 18),
           GestureDetector(
@@ -459,7 +454,7 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
       child: Text(
         label,
         style: TextStyle(
-          color: active ? const Color(0xFF111118) : const Color(0xFF9A9AA6),
+          color: active ? Colors.white : const Color(0xFF777788),
           fontSize: active ? 18 : 15,
           fontWeight: active ? FontWeight.w600 : FontWeight.normal,
         ),
@@ -475,18 +470,18 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
         children: [
           const Icon(
             Icons.movie_filter_outlined,
-            color: Color(0xFFC0C0C8),
+            color: Color(0xFF555566),
             size: 56,
           ),
           const SizedBox(height: 12),
           Text(
             _error != null ? '视频加载失败' : '暂无视频内容',
-            style: const TextStyle(color: Color(0xFF66667A), fontSize: 15),
+            style: const TextStyle(color: Colors.white70, fontSize: 15),
           ),
           const SizedBox(height: 4),
           Text(
             _error ?? '视频数据接入中，敬请期待',
-            style: const TextStyle(color: Color(0xFF9A9AA6), fontSize: 12.5),
+            style: const TextStyle(color: Color(0xFF777788), fontSize: 12.5),
           ),
           if (_error != null) ...[
             const SizedBox(height: 14),
@@ -498,12 +493,12 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0F0F4),
+                  color: Colors.white12,
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: const Text(
                   '重新加载',
-                  style: TextStyle(color: Color(0xFF22222A), fontSize: 13),
+                  style: TextStyle(color: Colors.white, fontSize: 13),
                 ),
               ),
             ),
@@ -851,22 +846,22 @@ class _VideoItemPageState extends State<_VideoItemPage>
       frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
         if (wasSynchronouslyLoaded || frame != null) return child;
         return Container(
-          color: const Color(0xFFF2F2F6),
+          color: const Color(0xFF14141C),
           child: const Center(
             child: Icon(
               Icons.movie_outlined,
-              color: Color(0xFFC0C0C8),
+              color: Color(0xFF3A3A48),
               size: 48,
             ),
           ),
         );
       },
       errorBuilder: (_, _, _) => Container(
-        color: const Color(0xFFF2F2F6),
+        color: const Color(0xFF14141C),
         child: const Center(
           child: Icon(
             Icons.broken_image_outlined,
-            color: Color(0xFFC0C0C8),
+            color: Color(0xFF3A3A48),
             size: 48,
           ),
         ),
@@ -913,7 +908,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
                       ),
                     ),
                   ),
-                  const ColoredBox(color: Color(0x55FFFFFF)),
+                  const ColoredBox(color: Color(0x55000000)),
                   foreground,
                 ],
               )
@@ -951,11 +946,11 @@ class _VideoItemPageState extends State<_VideoItemPage>
               _videoLayer()
             else if (video.cover.isEmpty)
               Container(
-                color: const Color(0xFFF2F2F6),
+                color: const Color(0xFF14141C),
                 child: const Center(
                   child: Icon(
                     Icons.movie_outlined,
-                    color: Color(0xFFC0C0C8),
+                    color: Color(0xFF3A3A48),
                     size: 48,
                   ),
                 ),
@@ -978,7 +973,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: Colors.black45,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -987,10 +982,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
                           ? video.aspectRatio
                           : _videoCtrl!.value.aspectRatio,
                     ),
-                    style: const TextStyle(
-                      color: Color(0xFF44444E),
-                      fontSize: 11,
-                    ),
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
                   ),
                 ),
               ),
@@ -1005,13 +997,13 @@ class _VideoItemPageState extends State<_VideoItemPage>
                         width: 68,
                         height: 68,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: Colors.black.withValues(alpha: 0.35),
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.black12),
+                          border: Border.all(color: Colors.white70),
                         ),
                         child: const Icon(
                           Icons.play_arrow_rounded,
-                          color: Color(0xFF22222A),
+                          color: Colors.white,
                           size: 40,
                         ),
                       ),
@@ -1033,6 +1025,62 @@ class _VideoItemPageState extends State<_VideoItemPage>
                         Icons.favorite,
                         color: Color(0xFFFF718D),
                         size: 96,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // 底部渐变压暗（保证文字可读，随视频滑动）
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.0, 0.72, 1.0],
+                      colors: const [
+                        Colors.transparent,
+                        Colors.transparent,
+                        Colors.black54,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // 底部毛玻璃层（模糊 + 暗色渐变，模糊随高度淡入避免生硬边缘）
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 160,
+              child: ClipRect(
+                child: ShaderMask(
+                  // 顶部透明 → 底部不透明，让模糊效果渐变淡入
+                  shaderCallback: (rect) => const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.white],
+                    stops: [0.0, 0.6],
+                  ).createShader(rect),
+                  blendMode: BlendMode.dstIn,
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: const [0.0, 0.75],
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.55),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -1085,8 +1133,8 @@ class _VideoItemPageState extends State<_VideoItemPage>
                                   ),
                                   decoration: BoxDecoration(
                                     color: i == _photoIndex
-                                        ? const Color(0xFF33333E)
-                                        : Colors.black12,
+                                        ? Colors.white
+                                        : Colors.white30,
                                     borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),
@@ -1108,7 +1156,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
                               child: LinearProgressIndicator(
                                 value: display,
                                 minHeight: 3,
-                                backgroundColor: Colors.black12,
+                                backgroundColor: Colors.white24,
                                 color: const Color(0xFFFF718D),
                               ),
                             );
@@ -1134,7 +1182,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
                               child: LinearProgressIndicator(
                                 value: display,
                                 minHeight: 3,
-                                backgroundColor: Colors.black12,
+                                backgroundColor: Colors.white24,
                                 color: const Color(0xFFFF718D),
                               ),
                             );
@@ -1162,7 +1210,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
               Text(
                 '@${v.user}',
                 style: const TextStyle(
-                  color: Color(0xFF111118),
+                  color: Colors.white,
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1170,7 +1218,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
               const SizedBox(width: 8),
               Text(
                 '· ${formatCount(v.followCount)} 粉丝',
-                style: const TextStyle(color: Color(0xFF66667A), fontSize: 12),
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ],
           ),
@@ -1180,7 +1228,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: Color(0xFF22222A),
+              color: Colors.white,
               fontSize: 14.5,
               height: 1.35,
             ),
@@ -1194,7 +1242,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
                   Text(
                     '#$t',
                     style: const TextStyle(
-                      color: Color(0xFF3D7BF3),
+                      color: Color(0xFFAACCFF),
                       fontSize: 13,
                     ),
                   ),
@@ -1206,7 +1254,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
               children: [
                 const Icon(
                   Icons.music_note_rounded,
-                  color: Color(0xFF22222A),
+                  color: Colors.white,
                   size: 14,
                 ),
                 const SizedBox(width: 4),
@@ -1215,10 +1263,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
                     v.music,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF33333E),
-                      fontSize: 12.5,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5),
                   ),
                 ),
               ],
@@ -1304,7 +1349,7 @@ class _RightRailState extends State<_RightRail>
             scale: _likeScale,
             child: Icon(
               v.liked ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
-              color: v.liked ? const Color(0xFFFF718D) : const Color(0xFF22222A),
+              color: v.liked ? const Color(0xFFFF718D) : Colors.white,
               size: 34,
             ),
           ),
@@ -1316,7 +1361,7 @@ class _RightRailState extends State<_RightRail>
         _ActionItem(
           icon: const Icon(
             Icons.comment_rounded,
-            color: Color(0xFF22222A),
+            color: Colors.white,
             size: 32,
           ),
           label: formatCount(v.commentCount),
@@ -1325,7 +1370,7 @@ class _RightRailState extends State<_RightRail>
         const SizedBox(height: 20),
         // 分享
         _ActionItem(
-          icon: const Icon(Icons.send_rounded, color: Color(0xFF22222A), size: 32),
+          icon: const Icon(Icons.send_rounded, color: Colors.white, size: 32),
           label: '分享',
           onTap: widget.onShare,
         ),
@@ -1348,15 +1393,15 @@ class _RightRailState extends State<_RightRail>
             height: 46,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE6E6EC), width: 2),
+              border: Border.all(color: Colors.white, width: 2),
             ),
             clipBehavior: Clip.antiAlias,
             child: v.avatar.isEmpty
                 ? Container(
-                    color: const Color(0xFFE6E6EC),
+                    color: const Color(0xFF2C2C36),
                     child: const Icon(
                       Icons.person,
-                      color: Color(0xFF777788),
+                      color: Colors.white70,
                       size: 22,
                     ),
                   )
@@ -1364,10 +1409,10 @@ class _RightRailState extends State<_RightRail>
                     v.avatar,
                     fit: BoxFit.cover,
                     errorBuilder: (_, _, _) => Container(
-                      color: const Color(0xFFE6E6EC),
+                      color: const Color(0xFF2C2C36),
                       child: const Icon(
                         Icons.person,
-                        color: Color(0xFF777788),
+                        color: Colors.white70,
                         size: 22,
                       ),
                     ),
@@ -1415,7 +1460,7 @@ class _ActionItem extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(color: Color(0xFF44444E), fontSize: 11.5),
+            style: const TextStyle(color: Colors.white, fontSize: 11.5),
           ),
         ],
       ),
@@ -1457,15 +1502,15 @@ class _MusicDiscState extends State<_MusicDisc>
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: const Color(0xFFFF718D),
-          border: Border.all(color: Colors.white, width: 1.2),
+          border: Border.all(color: Colors.white70, width: 1.2),
         ),
         child: ClipOval(
           child: widget.cover.isEmpty
               ? Container(
-                  color: const Color(0xFFE6E6EC),
+                  color: const Color(0xFF2C2C36),
                   child: const Icon(
                     Icons.music_note,
-                    color: Color(0xFF777788),
+                    color: Colors.white,
                     size: 16,
                   ),
                 )
@@ -1473,10 +1518,10 @@ class _MusicDiscState extends State<_MusicDisc>
                   widget.cover,
                   fit: BoxFit.cover,
                   errorBuilder: (_, _, _) => Container(
-                    color: const Color(0xFFE6E6EC),
+                    color: const Color(0xFF2C2C36),
                     child: const Icon(
                       Icons.music_note,
-                      color: Color(0xFF777788),
+                      color: Colors.white,
                       size: 16,
                     ),
                   ),
@@ -1558,7 +1603,7 @@ class _CommentSheetState extends State<_CommentSheet> {
     return Container(
       height: MediaQuery.of(context).size.height * 0.62,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFF1A1A22),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
@@ -1568,7 +1613,7 @@ class _CommentSheetState extends State<_CommentSheet> {
             width: 36,
             height: 4,
             decoration: BoxDecoration(
-              color: const Color(0xFFE0E0E6),
+              color: const Color(0xFF3A3A44),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -1579,7 +1624,7 @@ class _CommentSheetState extends State<_CommentSheet> {
                 const Text(
                   '评论',
                   style: TextStyle(
-                    color: Color(0xFF111118),
+                    color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1588,24 +1633,24 @@ class _CommentSheetState extends State<_CommentSheet> {
                 Text(
                   '${_comments.length}',
                   style: const TextStyle(
-                    color: Color(0xFF9A9AA6),
+                    color: Color(0xFF8A8A96),
                     fontSize: 13,
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFF0F0F2)),
+          const Divider(height: 1, color: Colors.white12),
           Expanded(
             child: _loading
                 ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFB0B0B8)),
+                    child: CircularProgressIndicator(color: Colors.white30),
                   )
                 : _comments.isEmpty
                 ? const Center(
                     child: Text(
                       '还没有评论，来抢沙发～',
-                      style: TextStyle(color: Color(0xFF9A9AA6)),
+                      style: TextStyle(color: Color(0xFF8A8A96)),
                     ),
                   )
                 : ListView.separated(
@@ -1631,13 +1676,13 @@ class _CommentSheetState extends State<_CommentSheet> {
             Expanded(
               child: TextField(
                 controller: _inputCtrl,
-                style: const TextStyle(color: Color(0xFF111118), fontSize: 14),
+                style: const TextStyle(color: Colors.white, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: '友善评论，温暖手作圈…',
-                  hintStyle: const TextStyle(color: Color(0xFFA0A0AA)),
+                  hintStyle: const TextStyle(color: Color(0xFF777788)),
                   isDense: true,
                   filled: true,
-                  fillColor: const Color(0xFFF5F5F7),
+                  fillColor: const Color(0xFF25252E),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(22),
                     borderSide: BorderSide.none,
@@ -1695,7 +1740,7 @@ class _CommentRow extends StatelessWidget {
                   Text(
                     u.nickname,
                     style: const TextStyle(
-                      color: Color(0xFF888892),
+                      color: Color(0xFF9A9AA6),
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1704,7 +1749,7 @@ class _CommentRow extends StatelessWidget {
                   Text(
                     timeAgo(comment.createdAt),
                     style: const TextStyle(
-                      color: Color(0xFFA0A0AA),
+                      color: Color(0xFF6A6A76),
                       fontSize: 11,
                     ),
                   ),
@@ -1714,7 +1759,7 @@ class _CommentRow extends StatelessWidget {
               Text(
                 comment.content,
                 style: const TextStyle(
-                  color: Color(0xFF22222A),
+                  color: Color(0xFFE6E6EC),
                   fontSize: 14,
                   height: 1.4,
                 ),
@@ -1730,11 +1775,11 @@ class _CommentRow extends StatelessWidget {
     return Container(
       width: 34,
       height: 34,
-      color: const Color(0xFFE6E6EC),
+      color: const Color(0xFF2C2C36),
       child: Center(
         child: Text(
           u.initial,
-          style: const TextStyle(color: Color(0xFF66667A), fontSize: 13),
+          style: const TextStyle(color: Colors.white, fontSize: 13),
         ),
       ),
     );
@@ -1780,7 +1825,7 @@ class _ShareSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFF1A1A22),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SafeArea(
@@ -1792,7 +1837,7 @@ class _ShareSheet extends StatelessWidget {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFFE0E0E6),
+                color: const Color(0xFF3A3A44),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -1800,7 +1845,7 @@ class _ShareSheet extends StatelessWidget {
             const Text(
               '分享到',
               style: TextStyle(
-                color: Color(0xFF111118),
+                color: Colors.white,
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
@@ -1832,7 +1877,7 @@ class _ShareSheet extends StatelessWidget {
                         Text(
                           o.label,
                           style: const TextStyle(
-                            color: Color(0xFF66667A),
+                            color: Color(0xFFB8B8C4),
                             fontSize: 12,
                           ),
                         ),

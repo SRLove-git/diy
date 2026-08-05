@@ -15,7 +15,6 @@ class GlassBottomNav extends StatelessWidget {
     required this.currentIndex,
     required this.onSelect,
     this.chatUnread = 0,
-    this.darkOverlay = false,
     this.items = const [
       (icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: '首页'),
       (
@@ -39,18 +38,13 @@ class GlassBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onSelect;
   final int chatUnread;
-  final bool darkOverlay;
   final List<({IconData icon, IconData activeIcon, String label})> items;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final inactive = darkOverlay
-        ? Colors.white.withValues(alpha: 0.9)
-        : isDark
-        ? const Color(0xFFB3B3B3)
-        : const Color(0xFF686868);
+    final inactive = isDark ? const Color(0xFFB3B3B3) : const Color(0xFF686868);
     // 压紧与 Home Indicator 的间距：只保留部分底部安全区，
     // 让悬浮胶囊更贴近屏幕底部（接近 iOS 26 悬浮栏的观感）。
     final bottomInset = MediaQuery.paddingOf(context).bottom;
@@ -90,41 +84,35 @@ class GlassBottomNav extends StatelessWidget {
           iconSize: 23,
           iconLabelSpacing: 2,
           labelFontSize: 10,
-          selectedIconColor: darkOverlay ? Colors.white : colors.primary,
-          selectedLabelColor: darkOverlay ? Colors.white : colors.primary,
+          selectedIconColor: colors.primary,
+          selectedLabelColor: colors.primary,
           unselectedIconColor: inactive,
           unselectedLabelColor: inactive,
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
           unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
-          indicatorColor: darkOverlay
-              ? Colors.white.withValues(alpha: 0.16)
-              : isDark
+          indicatorColor: isDark
               ? Colors.white.withValues(alpha: 0.10)
               : Colors.white.withValues(alpha: 0.38),
           settings: LiquidGlassSettings(
-            thickness: darkOverlay ? 36 : 28,
-            blur: darkOverlay ? 16 : 7,
-            glassColor: darkOverlay
-                ? const Color(0xFF15171A).withValues(alpha: 0.58)
-                : isDark
+            thickness: 28,
+            blur: 7,
+            glassColor: isDark
                 ? const Color(0xFF171717).withValues(alpha: 0.24)
                 : Colors.white.withValues(alpha: 0.22),
-            refractiveIndex: darkOverlay ? 1.24 : 1.32,
-            saturation: darkOverlay ? 0.9 : 1.18,
-            lightIntensity: darkOverlay ? 0.22 : 0.42,
-            glowIntensity: darkOverlay ? 0.28 : 0.45,
-            shadowElevation: darkOverlay ? 3 : 1,
+            refractiveIndex: 1.32,
+            saturation: 1.18,
+            lightIntensity: 0.42,
+            glowIntensity: 0.45,
+            shadowElevation: 1,
           ),
           indicatorSettings: LiquidGlassSettings(
-            thickness: darkOverlay ? 26 : 34,
-            blur: darkOverlay ? 9 : 3,
-            glassColor: darkOverlay
-                ? Colors.white.withValues(alpha: 0.12)
-                : colors.primary.withValues(alpha: 0.08),
-            refractiveIndex: darkOverlay ? 1.3 : 1.42,
-            saturation: darkOverlay ? 0.95 : 1.25,
-            lightIntensity: darkOverlay ? 0.34 : 0.55,
-            glowIntensity: darkOverlay ? 0.34 : 0.65,
+            thickness: 34,
+            blur: 3,
+            glassColor: colors.primary.withValues(alpha: 0.08),
+            refractiveIndex: 1.42,
+            saturation: 1.25,
+            lightIntensity: 0.55,
+            glowIntensity: 0.65,
             shadowElevation: 1,
           ),
           indicatorPinchStrength: 0.52,
