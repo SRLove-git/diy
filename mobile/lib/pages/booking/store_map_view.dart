@@ -283,9 +283,24 @@ class _UnsupportedMapHint extends StatelessWidget {
     return ColoredBox(
       color: Palette.surfaceAlt,
       child: const Center(
-        child: Text(
-          '当前平台暂不支持地图',
-          style: TextStyle(color: Palette.textSecondary),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.map_outlined, size: 32, color: Palette.textSecondary),
+            SizedBox(height: 8),
+            Text(
+              'Web 端暂不支持地图',
+              style: TextStyle(
+                color: Palette.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              '请在下方列表中选择门店',
+              style: TextStyle(color: Palette.textSecondary, fontSize: 12),
+            ),
+          ],
         ),
       ),
     );

@@ -73,14 +73,20 @@ export class AppointmentsController {
   /** 上钟：开始体验 */
   @Post(':id/clockin')
   @UseGuards(JwtAuthGuard)
-  clockIn(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
+  clockIn(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     return this.appointments.clockIn(user.id, id);
   }
 
   /** 下钟：结束体验 */
   @Post(':id/clockout')
   @UseGuards(JwtAuthGuard)
-  clockOut(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
+  clockOut(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     return this.appointments.clockOut(user.id, id);
   }
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
+import '../core/app_colors.dart';
 import '../core/api_client.dart';
 import '../core/appointment_api.dart';
 import '../core/auth_service.dart';
@@ -30,22 +31,6 @@ import 'home/coupon_center_page.dart';
 import 'home/works_list_page.dart';
 import 'notifications/notification_list_page.dart';
 import 'profile/order_list_page.dart';
-
-class MockProduct {
-  const MockProduct({
-    required this.name,
-    required this.asset,
-    required this.price,
-    required this.likes,
-    required this.collections,
-  });
-
-  final String name;
-  final String asset;
-  final double price;
-  final int likes;
-  final int collections;
-}
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, this.loadActiveAppointments = true});
@@ -258,24 +243,35 @@ class HomeHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(22, 15, 18, 19),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'IDOL BEADS',
-                  style: TextStyle(
-                    color: HomePalette.primary,
-                    fontSize: 25,
-                    height: 1.2,
-                    fontWeight: FontWeight.w900,
-                    shadows: [
-                      Shadow(color: Color(0x33FF718D), offset: Offset(1, 1)),
+                // Instagram 风格渐变字标（橙 → 粉 → 紫 → 蓝）
+                ShaderMask(
+                  shaderCallback: (rect) => const LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Color(0xFFFEDA75),
+                      Color(0xFFFA7E1E),
+                      Color(0xFFD62976),
+                      Color(0xFF962FBF),
+                      Color(0xFF4F5BD5),
                     ],
+                  ).createShader(rect),
+                  child: const Text(
+                    'IDOL BEADS',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 25,
+                      height: 1.2,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
-                SizedBox(height: 6),
-                Text(
+                const SizedBox(height: 6),
+                const Text(
                   '拼出美好 · 豆住快乐',
                   style: TextStyle(
                     color: Color(0xFF777777),
@@ -296,7 +292,7 @@ class HomeHeader extends StatelessWidget {
             height: 44,
             padding: const EdgeInsets.all(2),
             decoration: const BoxDecoration(
-              color: Color(0xFFFFE9EF),
+              color: Palette.accentLight,
               shape: BoxShape.circle,
             ),
             child: ClipOval(
@@ -332,7 +328,7 @@ class _AvatarFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const ColoredBox(
-      color: Color(0xFFFFDCE5),
+      color: Palette.accentLight,
       child: Icon(Icons.person, color: HomePalette.primary),
     );
   }
@@ -419,7 +415,7 @@ class FeatureEntryRow extends StatelessWidget {
       if (isAdmin)
         _FeatureEntry(
           icon: Icons.storefront_rounded,
-          colors: const [Color(0xFF6FC3FF), Color(0xFF3A97E8)],
+          colors: const [Color(0xFF4F5BD5), Color(0xFF0095F6)],
           title: '门店管理',
           subtitle: '维护门店信息',
           onTap: onStores,
@@ -427,14 +423,14 @@ class FeatureEntryRow extends StatelessWidget {
       else
         _FeatureEntry(
           icon: Icons.event_available_rounded,
-          colors: const [Color(0xFFFF9BB0), Color(0xFFFF6687)],
+          colors: const [Color(0xFFFA7E1E), Color(0xFFD62976)],
           title: '到店预约',
           subtitle: '预约手作时间',
           onTap: onBooking,
         ),
       _FeatureEntry(
         icon: isAdmin ? Icons.qr_code_scanner_rounded : Icons.qr_code_2_rounded,
-        colors: const [Color(0xFFA895FF), Color(0xFF7563EC)],
+        colors: const [Color(0xFFD62976), Color(0xFF962FBF)],
         title: isAdmin ? '扫码核销' : '到店核销',
         subtitle: '快速开始制作',
         onTap: onCheckIn,
@@ -442,7 +438,7 @@ class FeatureEntryRow extends StatelessWidget {
       if (isAdmin)
         _FeatureEntry(
           icon: Icons.receipt_long_rounded,
-          colors: const [Color(0xFF5ED1B2), Color(0xFF2FA58A)],
+          colors: const [Color(0xFF0095F6), Color(0xFF4F5BD5)],
           title: '订单管理',
           subtitle: '处理门店订单',
           onTap: onOrders,
@@ -450,7 +446,7 @@ class FeatureEntryRow extends StatelessWidget {
       else
         _FeatureEntry(
           icon: Icons.card_membership_rounded,
-          colors: const [Color(0xFFFFCA68), Color(0xFFFFA62E)],
+          colors: const [Color(0xFF962FBF), Color(0xFF4F5BD5)],
           title: '会员套餐',
           subtitle: '查看会员权益',
           onTap: onMembership,
@@ -505,15 +501,9 @@ class _FeatureCard extends StatelessWidget {
         height: 152,
         padding: const EdgeInsets.fromLTRB(8, 22, 8, 15),
         decoration: BoxDecoration(
-          color: Colors.white.withAlpha(245),
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0D7A4754),
-              blurRadius: 18,
-              offset: Offset(0, 6),
-            ),
-          ],
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFEDEDED), width: 1),
         ),
         child: Column(
           children: [
@@ -594,25 +584,25 @@ class ShortcutBar extends StatelessWidget {
       _ShortcutData(
         icon: Icons.receipt_long_rounded,
         label: '我的订单',
-        colors: const [Color(0xFFFF8199), Color(0xFFFF506F)],
+        colors: const [Color(0xFFD62976), Color(0xFF962FBF)],
         onTap: () => _push(context, const OrderListPage()),
       ),
       _ShortcutData(
         icon: Icons.redeem_rounded,
         label: '领券中心',
-        colors: const [Color(0xFFFFC05B), Color(0xFFFF9D29)],
+        colors: const [Color(0xFFFEDA75), Color(0xFFFA7E1E)],
         onTap: () => _push(context, const CouponCenterPage()),
       ),
       _ShortcutData(
         icon: Icons.celebration_rounded,
         label: '活动专区',
-        colors: const [Color(0xFFA37AFF), Color(0xFF774CE8)],
+        colors: const [Color(0xFF962FBF), Color(0xFF4F5BD5)],
         onTap: () => _push(context, const ActivityZonePage()),
       ),
       _ShortcutData(
         icon: Icons.local_fire_department_rounded,
         label: '热门排行',
-        colors: const [Color(0xFF83CCFF), Color(0xFF5799EC)],
+        colors: const [Color(0xFF4F5BD5), Color(0xFF0095F6)],
         onTap: () => _push(context, const WorksListPage(mode: WorksListMode.hot)),
       ),
     ];
@@ -939,7 +929,7 @@ class _HotRecommendSectionState extends State<HotRecommendSection> {
             .toList();
       });
     } catch (_) {
-      // 接口不可用时回退到内置示例
+      // 接口不可用时保持空态，不再展示本地假数据
     }
   }
 
@@ -951,8 +941,6 @@ class _HotRecommendSectionState extends State<HotRecommendSection> {
 
   @override
   Widget build(BuildContext context) {
-    final useMock = _works.isEmpty;
-    final count = useMock ? _mockProducts.length : _works.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -997,19 +985,48 @@ class _HotRecommendSectionState extends State<HotRecommendSection> {
           ),
         ),
         const SizedBox(height: 13),
-        SizedBox(
-          height: 214,
-          child: ListView.separated(
-            physics: const BouncingScrollPhysics(),
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: count,
-            separatorBuilder: (_, _) => const SizedBox(width: 10),
-            itemBuilder: (context, index) => useMock
-                ? ProductCard(product: _mockProducts[index], index: index)
-                : WorkCard(work: _works[index]),
+        if (_works.isEmpty)
+          Container(
+            height: 120,
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7F3F4),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.workspaces_outline,
+                    size: 30,
+                    color: Color(0xFFC9C1C3),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '暂无热门作品，去社区逛逛吧',
+                    style: TextStyle(
+                      color: Color(0xFFA8A2A5),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          SizedBox(
+            height: 214,
+            child: ListView.separated(
+              physics: const BouncingScrollPhysics(),
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: _works.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (context, index) =>
+                  WorkCard(work: _works[index]),
+            ),
           ),
-        ),
       ],
     );
   }
@@ -1109,7 +1126,7 @@ class WorkCard extends StatelessWidget {
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFFFFF3EE), Color(0xFFFFE9EF)],
+                    colors: [Palette.iconBgOrange, Palette.accentLight],
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -1121,7 +1138,7 @@ class WorkCard extends StatelessWidget {
                         Icon(
                           Icons.edit_note_rounded,
                           size: 14,
-                          color: Color(0xFFFF718D),
+                          color: Palette.accent,
                         ),
                         SizedBox(width: 4),
                         Text(
@@ -1129,7 +1146,7 @@ class WorkCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFFFF718D),
+                            color: Palette.accent,
                           ),
                         ),
                       ],
@@ -1209,133 +1226,6 @@ class WorkCard extends StatelessWidget {
     );
   }
 }
-
-class ProductCard extends StatelessWidget {
-  const ProductCard({super.key, required this.product, required this.index});
-
-  final MockProduct product;
-  final int index;
-
-  @override
-  Widget build(BuildContext context) {
-    final cardWidth = (MediaQuery.sizeOf(context).width * 0.30).clamp(
-      112.0,
-      132.0,
-    );
-    return _TapScale(
-      onTap: () {},
-      child: SizedBox(
-        width: cardWidth,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.asset(
-                product.asset,
-                width: cardWidth,
-                height: 126,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  width: cardWidth,
-                  height: 126,
-                  color: const Color(0xFFF6F1F2),
-                  child: const Icon(
-                    Icons.image_outlined,
-                    color: Color(0xFFC9C1C3),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 9),
-            Text(
-              product.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF343034),
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '¥${product.price.toStringAsFixed(1)} 起',
-              style: const TextStyle(
-                color: Color(0xFF6F6A6D),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(
-                  Icons.workspace_premium_outlined,
-                  size: 14,
-                  color: Color(0xFFA8A2A5),
-                ),
-                const SizedBox(width: 2),
-                Text(
-                  _formatCount(product.collections),
-                  style: const TextStyle(
-                    color: Color(0xFFA8A2A5),
-                    fontSize: 10,
-                  ),
-                ),
-                const Spacer(),
-                const Icon(
-                  Icons.favorite_border_rounded,
-                  size: 14,
-                  color: Color(0xFFE49AA9),
-                ),
-                const SizedBox(width: 2),
-                Text(
-                  _formatCount(product.likes),
-                  style: const TextStyle(
-                    color: Color(0xFFA8A2A5),
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-const _mockProducts = [
-  MockProduct(
-    name: '库洛米系列',
-    asset: 'assets/images/home/product_kuromi.png',
-    price: 39.9,
-    likes: 128,
-    collections: 128,
-  ),
-  MockProduct(
-    name: '星之卡比系列',
-    asset: 'assets/images/home/product_kirby.png',
-    price: 39.9,
-    likes: 96,
-    collections: 96,
-  ),
-  MockProduct(
-    name: '花花系列',
-    asset: 'assets/images/home/product_flower.png',
-    price: 39.9,
-    likes: 76,
-    collections: 36,
-  ),
-  MockProduct(
-    name: '可爱萌宠系列',
-    asset: 'assets/images/home/product_pet.png',
-    price: 39.9,
-    likes: 86,
-    collections: 58,
-  ),
-];
 
 class ActiveServiceSection extends StatelessWidget {
   const ActiveServiceSection({

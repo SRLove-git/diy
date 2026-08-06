@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -63,6 +64,47 @@ class User {
         birthday: json['birthday'] as String?,
         location: (json['location'] ?? '') as String,
       );
+}
+
+/// 已保存的多账号会话（登录后自动记录，供「切换账号」快速切换）。
+class SavedSession {
+  const SavedSession({
+    required this.userId,
+    required this.nickname,
+    required this.avatar,
+    required this.accessToken,
+    required this.refreshToken,
+  });
+
+  final int userId;
+  final String nickname;
+  final String avatar;
+  final String accessToken;
+  final String refreshToken;
+
+  SavedSession copyWith({String? nickname, String? avatar}) => SavedSession(
+        userId: userId,
+        nickname: nickname ?? this.nickname,
+        avatar: avatar ?? this.avatar,
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      );
+
+  factory SavedSession.fromJson(Map<String, dynamic> json) => SavedSession(
+        userId: (json['userId'] as num).toInt(),
+        nickname: (json['nickname'] ?? '') as String,
+        avatar: (json['avatar'] ?? '') as String,
+        accessToken: (json['accessToken'] ?? '') as String,
+        refreshToken: (json['refreshToken'] ?? '') as String,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'userId': userId,
+        'nickname': nickname,
+        'avatar': avatar,
+        'accessToken': accessToken,
+        'refreshToken': refreshToken,
+      };
 }
 
 /// 登录态管理：token 安全存储（Keychain/Keystore）+ 登录/刷新/登出。
@@ -131,10 +173,12 @@ class AuthService extends ChangeNotifier {
   );
   static const _kAccess = 'access_token';
   static const _kRefresh = 'refresh_token';
+  static const _kSessions = 'saved_sessions';
 
   User? _user;
   String? _accessToken;
   String? _refreshToken;
+  Map<int, SavedSession> _sessions = {};
   bool _isRefreshing = false;
   /// refresh token 被服务端明确拒绝（会话确实失效）时置位，用于区分瞬时网络错误
   bool _sessionInvalid = false;
@@ -147,6 +191,9 @@ class AuthService extends ChangeNotifier {
   bool get isLoggedIn => _accessToken != null;
   bool get isAdmin => _user?.isAdmin ?? false;
 
+  /// 已保存的多账号会话（不含当前账号；切换/移除用）
+  List<SavedSession> get savedSessions => _sessions.values.toList();
+
   /// 启动时恢复登录态；token 失效则尝试用 refresh token 续期
   Future<void> init() async {
     try {
@@ -154,6 +201,18 @@ class AuthService extends ChangeNotifier {
       _refreshToken = await _storage.read(key: _kRefresh);
     } catch (_) {
       // Keychain 读取失败则当作未登录
+    }
+    try {
+      final raw = await _storage.read(key: _kSessions);
+      if (raw != null && raw.isNotEmpty) {
+        _sessions = {
+          for (final e in (jsonDecode(raw) as List))
+            ((e as Map<String, dynamic>)['userId'] as num).toInt():
+                SavedSession.fromJson(e),
+        };
+      }
+    } catch (_) {
+      _sessions = {};
     }
     if (_accessToken != null) {
       await _fetchMe();
@@ -175,6 +234,7 @@ class AuthService extends ChangeNotifier {
       resp.data['refreshToken'] as String,
     );
     await _fetchMe();
+    await _saveCurrentSession();
     notifyListeners();
   }
 
@@ -187,6 +247,7 @@ class AuthService extends ChangeNotifier {
       resp.data['refreshToken'] as String,
     );
     await _fetchMe();
+    await _saveCurrentSession();
     notifyListeners();
   }
 
@@ -199,6 +260,7 @@ class AuthService extends ChangeNotifier {
       resp.data['refreshToken'] as String,
     );
     await _fetchMe();
+    await _saveCurrentSession();
     notifyListeners();
   }
 
@@ -279,6 +341,7 @@ class AuthService extends ChangeNotifier {
     if (location != null) data['location'] = location;
     final resp = await ApiClient.instance.patch('/users/me', data: data);
     _user = User.fromJson(resp.data as Map<String, dynamic>);
+    await _refreshCurrentSessionMeta();
     notifyListeners();
   }
 
@@ -300,21 +363,111 @@ class AuthService extends ChangeNotifier {
     final resp = await ApiClient.instance
         .patch('/users/me', data: {'avatar': url});
     _user = User.fromJson(resp.data as Map<String, dynamic>);
+    await _refreshCurrentSessionMeta();
     notifyListeners();
   }
 
   Future<void> logout() async {
     ChatService.instance.disconnect();
     _sessionInvalid = false;
+    await _removeSession(_user?.id);
     _user = null;
     _accessToken = null;
     _refreshToken = null;
     try {
-      await _storage.deleteAll();
+      // 只清当前会话 token；已保存的多账号会话保留，供下次「切换账号」使用
+      await _storage.delete(key: _kAccess);
+      await _storage.delete(key: _kRefresh);
     } catch (_) {
-      // Keychain 写入失败忽略
+      // Keychain 删除失败忽略
     }
     notifyListeners();
+  }
+
+  /// 把当前登录会话加入多账号列表（登录成功后自动调用）。
+  Future<bool> saveCurrentSession() => _saveCurrentSession();
+
+  Future<bool> _saveCurrentSession() async {
+    final u = _user;
+    if (u == null || _accessToken == null || _refreshToken == null) {
+      return false;
+    }
+    _sessions[u.id] = SavedSession(
+      userId: u.id,
+      nickname: u.nickname,
+      avatar: u.avatar,
+      accessToken: _accessToken!,
+      refreshToken: _refreshToken!,
+    );
+    await _persistSessions();
+    return true;
+  }
+
+  /// 更新已保存会话的展示信息（昵称 / 头像变更后同步）。
+  Future<void> _refreshCurrentSessionMeta() async {
+    final u = _user;
+    if (u == null || _accessToken == null || _refreshToken == null) return;
+    final s = _sessions[u.id];
+    if (s == null) return;
+    _sessions[u.id] = s.copyWith(nickname: u.nickname, avatar: u.avatar);
+    await _persistSessions();
+  }
+
+  /// 切换到已保存的账号会话：先存档当前会话，再替换 token 并拉取目标用户资料。
+  Future<bool> switchToSession(SavedSession session) async {
+    if (_accessToken == null || _refreshToken == null) return false;
+    final previous = _user;
+    if (previous != null) {
+      _sessions[previous.id] = SavedSession(
+        userId: previous.id,
+        nickname: previous.nickname,
+        avatar: previous.avatar,
+        accessToken: _accessToken!,
+        refreshToken: _refreshToken!,
+      );
+    }
+    _accessToken = session.accessToken;
+    _refreshToken = session.refreshToken;
+    await _secureWrite(_kAccess, session.accessToken);
+    await _secureWrite(_kRefresh, session.refreshToken);
+    _sessions.remove(session.userId);
+    await _persistSessions();
+    await _fetchMe();
+    // 目标会话 token 可能已过期：尝试刷新一次；
+    // 若 refresh token 被服务端拒绝，tryRefresh 会清空登录态并回到登录页。
+    if (_user == null) {
+      await tryRefresh();
+    }
+    if (_user != null) {
+      await _saveCurrentSession();
+    }
+    ChatService.instance.disconnect();
+    notifyListeners();
+    return _user != null;
+  }
+
+  /// 移除一个已保存会话（不影响当前登录态）。
+  Future<void> removeSession(int userId) async {
+    _sessions.remove(userId);
+    await _persistSessions();
+  }
+
+  Future<void> _removeSession(int? userId) async {
+    if (userId != null) {
+      _sessions.remove(userId);
+    }
+    await _persistSessions();
+  }
+
+  Future<void> _persistSessions() async {
+    try {
+      await _secureWrite(
+        _kSessions,
+        jsonEncode(_sessions.values.map((s) => s.toJson()).toList()),
+      );
+    } catch (_) {
+      // 会话缓存写入失败不影响主登录态
+    }
   }
 
   /// 拉取当前用户；401 已由全局拦截器统一处理。

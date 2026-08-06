@@ -9,11 +9,7 @@ import {
 
 /** 预约单状态机：待核销 → 服务中 → 已完成；扫码核销即上钟。checked_in 为兼容状态（历史数据/管理端单独上钟） */
 export type AppointmentStatus =
-  | 'booked'
-  | 'checked_in'
-  | 'in_service'
-  | 'completed'
-  | 'cancelled';
+  'booked' | 'checked_in' | 'in_service' | 'completed' | 'cancelled';
 
 /** 预约单 */
 @Entity('appointments')

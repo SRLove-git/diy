@@ -25,6 +25,10 @@ export class HealthController {
     } catch {
       redis = 'down';
     }
-    return { status: db === 'up' && redis === 'up' ? 'ok' : 'degraded', db, redis };
+    return {
+      status: db === 'up' && redis === 'up' ? 'ok' : 'degraded',
+      db,
+      redis,
+    };
   }
 }

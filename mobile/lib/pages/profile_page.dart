@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../core/app_colors.dart';
@@ -8,6 +9,7 @@ import '../core/chat_api.dart';
 import '../core/follow_api.dart';
 import '../core/post_api.dart';
 import '../core/video_api.dart';
+import 'home_page.dart';
 import '../features/tiktok_profile/page/video_profile_page.dart';
 import '../features/tiktok_profile/model/tiktok_video_model.dart';
 import '../features/tiktok_profile/page/fullscreen_video_page.dart';
@@ -19,6 +21,7 @@ import 'profile/my_history_page.dart';
 import 'profile/my_wallet_page.dart';
 import 'profile/order_list_page.dart';
 import 'profile/edit_profile_page.dart';
+import 'profile/account_settings_page.dart';
 import '../widgets/image_viewer.dart';
 import '../widgets/state_widgets.dart';
 import 'admin/admin_home_page.dart';
@@ -415,7 +418,13 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           // 中间：用户名 + 下拉箭头（切换账号/账号设置）
           GestureDetector(
-            onTap: _editProfile,
+            onTap: () {
+              showModalBottomSheet<void>(
+                context: context,
+                backgroundColor: Colors.transparent,
+                builder: (_) => const SwitchAccountSheet(),
+              );
+            },
             behavior: HitTestBehavior.opaque,
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -597,7 +606,7 @@ class _ProfilePageState extends State<ProfilePage> {
           Expanded(child: _buildActionButton('编辑主页', _editProfile)),
           const SizedBox(width: 8),
           Expanded(
-            child: _buildActionButton('分享主页', () => _toast('分享主页功能开发中')),
+            child: _buildActionButton('分享主页', _shareProfile),
           ),
         ],
       ),
@@ -625,8 +634,24 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  /// 分享主页：生成主页链接写入剪贴板
+  Future<void> _shareProfile() async {
+    final user = AuthService.instance.user;
+    final userId = user?.id;
+    final link = userId == null
+        ? 'https://diy.example.com'
+        : 'https://diy.example.com/users/$userId';
+    await Clipboard.setData(ClipboardData(text: link));
+    _toast('主页链接已复制，快去分享吧');
+  }
+
   Widget _buildFunctionDrawer() {
     const entries = [
+      (
+        icon: Icons.storefront_outlined,
+        label: '门店服务',
+        page: HomePage(),
+      ),
       (icon: Icons.workspace_premium_outlined, label: '会员套餐', page: MemberPlanPage()),
       (icon: Icons.wallet_giftcard_outlined, label: '卡包', page: MyWalletPage()),
       (icon: Icons.favorite_border, label: '点赞与收藏', page: MyFavoritesPage()),
@@ -726,7 +751,11 @@ class _ProfilePageState extends State<ProfilePage> {
                           label: '账号设置',
                           onTap: () {
                             Navigator.of(context).pop();
-                            _toast('账号设置功能开发中');
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const AccountSettingsPage(),
+                              ),
+                            );
                           },
                         ),
                         _FunctionTile(
@@ -734,7 +763,11 @@ class _ProfilePageState extends State<ProfilePage> {
                           label: '切换账号',
                           onTap: () {
                             Navigator.of(context).pop();
-                            _toast('切换账号功能开发中');
+                            showModalBottomSheet<void>(
+                              context: context,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) => const SwitchAccountSheet(),
+                            );
                           },
                         ),
                         _FunctionTile(

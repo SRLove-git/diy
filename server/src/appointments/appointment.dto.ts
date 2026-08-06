@@ -1,4 +1,11 @@
-import { IsInt, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 /** 创建预约：门店 + 日期 + 时段 + 人数 + 桌位 */
 export class CreateAppointmentDto {

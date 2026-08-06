@@ -25,7 +25,7 @@ class HomePalette {
   static const textSecondary = Palette.textSecondary;
 
   // 功能色
-  static const badgeRed = Palette.primary;
+  static const badgeRed = Palette.accent;
   static const bannerBg = Palette.dangerLight;
 
   // 图标圆形背景色（低饱和度）

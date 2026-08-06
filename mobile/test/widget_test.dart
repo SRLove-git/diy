@@ -18,12 +18,12 @@ void main() {
     expect(find.text('获取验证码'), findsOneWidget);
   });
 
-  testWidgets('全局主题使用统一品牌色和纯白背景', (tester) async {
+  testWidgets('全局主题使用 Instagram 风近黑主色和纯白背景', (tester) async {
     await tester.pumpWidget(const DiyApp());
 
     final context = tester.element(find.text('IDOL BEADS'));
     final theme = Theme.of(context);
-    expect(theme.colorScheme.primary, const Color(0xFFFF3040));
+    expect(theme.colorScheme.primary, const Color(0xFF111111));
     expect(theme.scaffoldBackgroundColor, Colors.white);
     expect(theme.inputDecorationTheme.filled, isTrue);
   });

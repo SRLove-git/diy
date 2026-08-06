@@ -95,11 +95,7 @@ export class NotificationsService {
   // ─── 用户端：我的通知 ───
 
   /** 当前用户可见的通知（全体 / 本人角色 / 定向本人），仅已发送 */
-  async myNotifications(
-    userId: number,
-    page = 1,
-    pageSize = 20,
-  ) {
+  async myNotifications(userId: number, page = 1, pageSize = 20) {
     const role = await this.resolveRole(userId);
     const applicable = await this.applicableNotifications(userId, role);
     const ids = applicable.map((n) => n.id);
@@ -186,11 +182,7 @@ export class NotificationsService {
   }
 
   /** 通知是否对当前用户可见 */
-  private appliesTo(
-    n: Notification,
-    userId: number,
-    role: string,
-  ): boolean {
+  private appliesTo(n: Notification, userId: number, role: string): boolean {
     switch (n.targetType) {
       case 'all':
         return true;
@@ -209,14 +201,10 @@ export class NotificationsService {
 
   /** 幂等写入已读记录 */
   private async saveRead(userId: number, notificationId: number) {
-    if (
-      await this.readRepo.existsBy({ userId, notificationId })
-    ) {
+    if (await this.readRepo.existsBy({ userId, notificationId })) {
       return;
     }
-    await this.readRepo.save(
-      this.readRepo.create({ userId, notificationId }),
-    );
+    await this.readRepo.save(this.readRepo.create({ userId, notificationId }));
   }
 
   // ─── 模板 CRUD ───
@@ -266,7 +254,9 @@ export class NotificationsService {
       return this.userRepo.find({ where: { isBanned: false } });
     }
     if (targetType === 'role' && targetRole) {
-      return this.userRepo.find({ where: { role: targetRole as any, isBanned: false } });
+      return this.userRepo.find({
+        where: { role: targetRole as any, isBanned: false },
+      });
     }
     if (targetType === 'user' && targetUserIds) {
       const ids = targetUserIds.split(',').map(Number).filter(Boolean);

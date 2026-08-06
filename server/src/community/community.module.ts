@@ -13,6 +13,7 @@ import { Follow } from '../follows/follow.entity';
 import { History } from '../users/history.entity';
 import { User } from '../users/user.entity';
 import { UsersModule } from '../users/users.module';
+import { Video } from '../videos/video.entity';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { UsersModule } from '../users/users.module';
       Follow,
       History,
       User,
+      Video,
     ]),
     UsersModule,
   ],

@@ -24,7 +24,11 @@ export class NotificationTemplate {
   contentTemplate: string;
 
   /** 模板分类：system=系统通知 / booking=预约 / community=社区互动 / activity=活动 */
-  @Column({ type: 'enum', enum: ['system', 'booking', 'community', 'activity'], default: 'system' })
+  @Column({
+    type: 'enum',
+    enum: ['system', 'booking', 'community', 'activity'],
+    default: 'system',
+  })
   category: 'system' | 'booking' | 'community' | 'activity';
 
   /** 是否启用 */

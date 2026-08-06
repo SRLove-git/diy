@@ -91,6 +91,10 @@ export class AdminNotificationsController {
       targetUserIds?: string;
     },
   ) {
-    return this.svc.getTargetUsers(body.targetType, body.targetRole, body.targetUserIds);
+    return this.svc.getTargetUsers(
+      body.targetType,
+      body.targetRole,
+      body.targetUserIds,
+    );
   }
 }

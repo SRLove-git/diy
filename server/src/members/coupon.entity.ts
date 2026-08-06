@@ -1,4 +1,11 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity('coupons')
 export class Coupon {
@@ -45,7 +52,11 @@ export class UserCoupon {
   @Column()
   couponId: number;
 
-  @Column({ type: 'enum', enum: ['unused', 'used', 'expired'], default: 'unused' })
+  @Column({
+    type: 'enum',
+    enum: ['unused', 'used', 'expired'],
+    default: 'unused',
+  })
   status: 'unused' | 'used' | 'expired';
 
   @Column({ type: 'datetime', nullable: true })

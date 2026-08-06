@@ -765,7 +765,7 @@ class PostCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFFFF3EE), Color(0xFFFFE9EF)],
+          colors: [Palette.iconBgOrange, Palette.accentLight],
         ),
         borderRadius: BorderRadius.vertical(top: Radius.circular(6)),
       ),

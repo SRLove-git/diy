@@ -10,7 +10,9 @@ import {
 
 /** 管理端：审核短视频（通过/驳回） */
 export class UpdateVideoStatusDto {
-  @IsIn(['approved', 'rejected'], { message: '状态仅可为 approved 或 rejected' })
+  @IsIn(['approved', 'rejected'], {
+    message: '状态仅可为 approved 或 rejected',
+  })
   status: 'approved' | 'rejected';
 
   @IsString()

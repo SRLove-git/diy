@@ -13,20 +13,39 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CommunityService } from '../community/community.service';
 import { CreateVideoCommentDto, CreateVideoDto } from './video.dto';
 import { VideosService } from './videos.service';
 
 /** 客户端：短视频（信息流/发布/点赞/评论/分享/浏览） */
 @Controller('videos')
 export class VideosController {
-  constructor(private readonly videos: VideosService) {}
+  constructor(
+    private readonly videos: VideosService,
+    private readonly community: CommunityService,
+  ) {}
 
-  /** 推荐信息流（全部已通过视频，按创建时间倒序） */
+  /** 推荐信息流（全部已通过视频，按创建时间倒序；q 为关键词模糊搜索） */
   @Get()
   recommend(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('q') q?: string,
   ) {
-    return this.videos.recommendFeed(undefined, page);
+    return this.videos.recommendFeed(undefined, page, 20, q ?? '');
+  }
+
+  /** 举报短视频（需登录） */
+  @Post(':id/report')
+  @UseGuards(JwtAuthGuard)
+  reportVideo(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: { reason: string },
+  ) {
+    return this.community.createReport(user.id, dto.reason ?? '', {
+      targetType: 'video',
+      videoId: id,
+    });
   }
 
   /** 关注信息流（已关注作者的视频，需登录） */

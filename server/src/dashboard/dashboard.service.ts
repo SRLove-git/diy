@@ -127,8 +127,8 @@ export class DashboardService {
         const start = new Date(`${date}T00:00:00`);
         const end = new Date(`${date}T23:59:59`);
 
-        const [users, appointments, posts, likes, comments, videos] = await Promise.all(
-          [
+        const [users, appointments, posts, likes, comments, videos] =
+          await Promise.all([
             this.userRepo
               .createQueryBuilder('u')
               .where('u.createdAt BETWEEN :start AND :end', { start, end })
@@ -153,8 +153,7 @@ export class DashboardService {
               .createQueryBuilder('v')
               .where('v.createdAt BETWEEN :start AND :end', { start, end })
               .getCount(),
-          ],
-        );
+          ]);
         return { date, users, appointments, posts, likes, comments, videos };
       }),
     );

@@ -24,12 +24,13 @@ export class JwtAuthGuard implements CanActivate {
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const req = ctx.switchToHttp().getRequest();
     const header = req.headers.authorization;
-    if (!header?.startsWith('Bearer ')) throw new UnauthorizedException('未登录');
+    if (!header?.startsWith('Bearer '))
+      throw new UnauthorizedException('未登录');
 
     try {
-      const payload = (await this.jwt.verifyAsync(header.slice(7), {
+      const payload = await this.jwt.verifyAsync(header.slice(7), {
         secret: this.config.get<string>('JWT_SECRET'),
-      })) as JwtPayload;
+      });
       if (payload.type !== 'access') throw new Error('wrong token type');
 
       // 强制下线/封禁后立即拒绝所有旧 access token
@@ -39,7 +40,8 @@ export class JwtAuthGuard implements CanActivate {
       } catch {
         // Redis 异常时降级放行，避免全站接口不可用（封禁仍拦截登录与刷新）
       }
-      if (kicked) throw new UnauthorizedException('账号已被强制下线，请重新登录');
+      if (kicked)
+        throw new UnauthorizedException('账号已被强制下线，请重新登录');
 
       req.user = { id: payload.sub };
       return true;

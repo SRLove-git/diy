@@ -110,8 +110,14 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
    * 防超卖策略：同店同桌同时段仅允许 1 条未取消预约，先经 Redis 锁串行化，
    * 再由数据库唯一组合兜底（@Index 四列 + 事务内再查）。
    */
-  async create(userId: number, dto: CreateAppointmentDto): Promise<Appointment> {
-    const store = await this.stores.findOneBy({ id: dto.storeId, enabled: true });
+  async create(
+    userId: number,
+    dto: CreateAppointmentDto,
+  ): Promise<Appointment> {
+    const store = await this.stores.findOneBy({
+      id: dto.storeId,
+      enabled: true,
+    });
     if (!store) throw new NotFoundException('门店不存在');
 
     const slot = await this.slots.findOneBy({
@@ -145,7 +151,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     const lockKey = `booking:lock:${dto.storeId}:${dto.tableId}:${dto.date}:${dto.slotId}`;
     const acquired = await this.redis.set(lockKey, '1', 'EX', 10, 'NX');
     if (!acquired) {
-      throw new BadRequestException('该时段刚被其他用户预约，请选择其他时段或桌位');
+      throw new BadRequestException(
+        '该时段刚被其他用户预约，请选择其他时段或桌位',
+      );
     }
 
     try {
@@ -161,7 +169,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
           },
         });
         if (conflict) {
-          throw new BadRequestException('该桌位此时段已被预约，请选择其他时段或桌位');
+          throw new BadRequestException(
+            '该桌位此时段已被预约，请选择其他时段或桌位',
+          );
         }
 
         const appointment = em.create(Appointment, {
@@ -303,7 +313,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     },
     page = 1,
     pageSize = 20,
-  ): Promise<[Array<Appointment & { userPhone?: string; userNickname?: string }>, number]> {
+  ): Promise<
+    [Array<Appointment & { userPhone?: string; userNickname?: string }>, number]
+  > {
     const where: any = {};
     if (filters?.status) where.status = filters.status;
     if (filters?.storeId) where.storeId = parseInt(filters.storeId, 10);

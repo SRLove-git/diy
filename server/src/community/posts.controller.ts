@@ -37,7 +37,9 @@ export class PostsController {
     @CurrentUser() user: AuthUser,
     @Param('id', ParseIntPipe) id: number,
   ) {
-    return this.community.deleteOwn(user.id, id).then(() => ({ deleted: true }));
+    return this.community
+      .deleteOwn(user.id, id)
+      .then(() => ({ deleted: true }));
   }
 
   /** 最新信息流（仅展示已通过审核的作品） */
@@ -83,12 +85,12 @@ export class PostsController {
   /** 批量检查当前用户点赞状态（必须在 :id 路由前） */
   @Get('liked')
   @UseGuards(JwtAuthGuard)
-  async batchLiked(
-    @CurrentUser() user: AuthUser,
-    @Query('ids') ids: string,
-  ) {
+  async batchLiked(@CurrentUser() user: AuthUser, @Query('ids') ids: string) {
     const postIds = (ids || '').split(',').map(Number).filter(Boolean);
-    const likedSet = await this.community.hasUserLikedMultiple(user.id, postIds);
+    const likedSet = await this.community.hasUserLikedMultiple(
+      user.id,
+      postIds,
+    );
     const result: Record<number, boolean> = {};
     for (const id of postIds) {
       result[id] = likedSet.has(id);
@@ -173,7 +175,9 @@ export class PostsController {
     @CurrentUser() user: AuthUser,
     @Param('id', ParseIntPipe) id: number,
   ) {
-    return this.community.isCollected(user.id, id).then((collected) => ({ collected }));
+    return this.community
+      .isCollected(user.id, id)
+      .then((collected) => ({ collected }));
   }
 
   // ──── Comments ────
@@ -220,7 +224,7 @@ export class PostsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ReportReasonDto,
   ) {
-    return this.community.createReport(user.id, id, dto.reason);
+    return this.community.createReport(user.id, dto.reason, { postId: id });
   }
 
   // ──── View ────

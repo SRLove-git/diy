@@ -1,7 +1,6 @@
 import '../../../core/api_client.dart';
 import '../domain/member_models.dart';
 import '../domain/member_repository.dart';
-import 'mock_member_repository.dart';
 
 class ApiMemberRepository implements MemberRepository {
   const ApiMemberRepository();
@@ -22,7 +21,10 @@ class ApiMemberRepository implements MemberRepository {
 
   @override
   Future<List<MemberExperience>> fetchExperiences() async {
-    return MockMemberRepository.experiences;
+    final resp = await ApiClient.instance.get('/members/experiences');
+    return ((resp.data ?? []) as List)
+        .map((item) => MemberExperience.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   @override

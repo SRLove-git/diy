@@ -12,6 +12,7 @@ import { GroupMessageDeletion } from './group-message-deletion.entity';
 import { GroupMember } from './group-member.entity';
 import { GroupMessage } from './group-message.entity';
 import { GroupRead } from './group-read.entity';
+import { BlocksService } from './blocks.service';
 import { isValidChatContent, RECALL_WINDOW_MS } from './chat.service';
 import type { MessageContentType } from './chat.service';
 
@@ -42,6 +43,7 @@ export class GroupsService {
     private readonly reads: Repository<GroupRead>,
     @InjectRepository(User)
     private readonly users: Repository<User>,
+    private readonly blocks: BlocksService,
   ) {}
 
   // ──── 建群 ────
@@ -57,6 +59,9 @@ export class GroupsService {
     }
     if (users.some((u) => u.isBanned)) {
       throw new BadRequestException('存在已被禁用的用户');
+    }
+    if ((await this.blocks.filterBlockedPairs(ownerId, unique)).length) {
+      throw new BadRequestException('存在与你存在拉黑关系的用户，无法创建群聊');
     }
 
     const group = await this.groups.save(
@@ -273,7 +278,11 @@ export class GroupsService {
       }
     } else {
       await this.reads.save(
-        this.reads.create({ groupId, userId, lastReadMessageId: String(lastMessageId) }),
+        this.reads.create({
+          groupId,
+          userId,
+          lastReadMessageId: String(lastMessageId),
+        }),
       );
     }
     return { ok: true };
@@ -295,6 +304,9 @@ export class GroupsService {
     if (users.some((u) => u.isBanned)) {
       throw new BadRequestException('存在已被禁用的用户');
     }
+    if ((await this.blocks.filterBlockedPairs(userId, unique)).length) {
+      throw new BadRequestException('存在与你存在拉黑关系的用户，无法邀请进群');
+    }
 
     const existing = new Set(
       (await this.members.findBy({ groupId })).map((m) => m.userId),
@@ -304,9 +316,7 @@ export class GroupsService {
       throw new BadRequestException('所选成员均已在群内');
     }
     for (const uid of fresh) {
-      await this.members.save(
-        this.members.create({ groupId, userId: uid }),
-      );
+      await this.members.save(this.members.create({ groupId, userId: uid }));
     }
     const memberIdsAll = [...existing, ...fresh];
     return { addedCount: fresh.length, memberIds: memberIdsAll };
@@ -317,7 +327,9 @@ export class GroupsService {
     const group = await this.groups.findOneBy({ id: groupId });
     if (!group) throw new NotFoundException('群聊不存在');
     if (group.ownerId === userId) {
-      throw new BadRequestException('群主不能退出群聊，如需解散请使用「解散群聊」');
+      throw new BadRequestException(
+        '群主不能退出群聊，如需解散请使用「解散群聊」',
+      );
     }
     if (!(await this.isMember(groupId, userId))) {
       throw new ForbiddenException('你不是该群成员');

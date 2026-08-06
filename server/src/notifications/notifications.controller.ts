@@ -44,10 +44,7 @@ export class NotificationsController {
   }
 
   @Post(':id/read')
-  read(
-    @CurrentUser() user: AuthUser,
-    @Param('id', ParseIntPipe) id: number,
-  ) {
+  read(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
     return this.svc.markRead(user.id, id);
   }
 }

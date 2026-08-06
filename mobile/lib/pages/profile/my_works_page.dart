@@ -170,7 +170,7 @@ class _MyWorksPageState extends State<MyWorksPage> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Palette.primary, Palette.coral],
+              colors: [Palette.accent, Palette.coral],
             ),
           ),
           child: SafeArea(
@@ -304,7 +304,7 @@ class _MyWorksPageState extends State<MyWorksPage> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Palette.primaryLight, Palette.iconBgYellow],
+                    colors: [Palette.accentLight, Palette.iconBgYellow],
                   ),
                 ),
                 child: Icon(

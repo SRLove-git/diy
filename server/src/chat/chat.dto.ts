@@ -42,3 +42,9 @@ export class PinConversationDto {
   @IsBoolean()
   pinned: boolean;
 }
+
+/** 拉黑 / 取消拉黑（PUT /blocks/:targetId） */
+export class SetBlockDto {
+  @IsBoolean({ message: 'blocked 必须是布尔值' })
+  blocked: boolean;
+}

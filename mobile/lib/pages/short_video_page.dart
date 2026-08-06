@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 import '../core/app_colors.dart';
@@ -14,10 +15,12 @@ import '../features/community/domain/community_models.dart';
 import '../widgets/video_interaction_sheets.dart';
 import 'shoot_page.dart';
 import 'short_video_models.dart';
+import 'short_video_search_page.dart';
 
 /// 短视频信息流页面（TikTok 风格）
 ///
-/// 竖屏全屏视频滑动（Mock 播放：AnimationController 模拟进度并循环），
+/// 竖屏全屏视频滑动（视频作品走真实 video_player，照片作品展示封面，
+/// 仅播放器初始化失败时回退模拟进度），
 /// 双击点赞、右侧交互栏（关注/点赞/评论/分享/旋转唱片）、底部信息区，
 /// 顶部「关注 / 推荐」双 Feed 与「+发布」入口。
 ///
@@ -308,6 +311,94 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
       );
   }
 
+  /// Reels 右侧「更多」菜单：收藏 / 复制链接 / 举报 / 不感兴趣
+  Future<void> _openMore(ShortVideo v) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.bookmark_border_rounded),
+              title: const Text('收藏'),
+              onTap: () => Navigator.pop(ctx, 'save'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.link_rounded),
+              title: const Text('复制链接'),
+              onTap: () => Navigator.pop(ctx, 'copy'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.flag_outlined),
+              title: const Text('举报'),
+              onTap: () => Navigator.pop(ctx, 'report'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.visibility_off_outlined),
+              title: const Text('不感兴趣'),
+              onTap: () => Navigator.pop(ctx, 'not_interested'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (action == null || !mounted) return;
+    switch (action) {
+      case 'save':
+        _toast('已收藏');
+        break;
+      case 'copy':
+        await Clipboard.setData(
+          ClipboardData(text: 'https://diy.example.com/video/${v.id}'),
+        );
+        _toast('链接已复制');
+        break;
+      case 'report':
+        await _reportVideo(v);
+        break;
+      default:
+        _toast('已减少此类内容推荐');
+    }
+  }
+
+  /// 举报短视频：弹窗填写原因 → 上报服务端（与社区帖子同一套举报体系）
+  Future<void> _reportVideo(ShortVideo v) async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('举报作品'),
+        content: TextField(
+          controller: controller,
+          maxLength: 200,
+          maxLines: 3,
+          decoration: const InputDecoration(hintText: '请描述举报原因…'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text('提交举报'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (reason == null || reason.isEmpty || !mounted) return;
+    try {
+      await VideoApi.report(v.id, reason);
+      _toast('举报已提交，我们会尽快处理');
+    } catch (_) {
+      _toast('举报失败，请稍后再试');
+    }
+  }
+
   // ==================== 构建 ====================
 
   @override
@@ -359,6 +450,7 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
                   onLike: () => _toggleLike(feed[i]),
                   onComment: () => _openComments(feed[i]),
                   onShare: () => _openShare(feed[i]),
+                  onMore: () => _openMore(feed[i]),
                   onPhotoBadge: (text) {
                     if (_photoBadge != text) {
                       setState(() => _photoBadge = text);
@@ -371,27 +463,31 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
           // ── 顶部栏（固定）+ 照片页码角标（右上角「+发布」正下方） ──
           SafeArea(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 _buildTopBar(),
-                // 照片作品页码角标：固定显示在「+发布」按钮下方
+                const SizedBox(height: 8),
+                _buildFeedSwitch(),
+                // 照片作品页码角标
                 if (_photoBadge.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6, right: 16),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.4),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        _photoBadge,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 6, right: 16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          _photoBadge,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
                     ),
@@ -410,54 +506,72 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
       child: Row(
         children: [
-          _tabBtn('关注', active: _tabIndex == 0, onTap: () => _switchTab(0)),
-          const SizedBox(width: 18),
-          _tabBtn('推荐', active: _tabIndex == 1, onTap: () => _switchTab(1)),
-          const Spacer(),
           GestureDetector(
-            onTap: () => _toast('搜索（演示）'),
-            child: const Icon(Icons.search, color: Colors.white, size: 24),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ShortVideoSearchPage()),
+              );
+            },
+            child: const Icon(Icons.search_rounded,
+                color: Colors.white, size: 24),
           ),
-          const SizedBox(width: 18),
-          GestureDetector(
-            onTap: _onPublish,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Palette.accent,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.add, color: Colors.white, size: 16),
-                  SizedBox(width: 2),
-                  Text(
-                    '发布',
-                    style: TextStyle(color: Colors.white, fontSize: 13),
-                  ),
-                ],
+          const Expanded(
+            child: Text(
+              'Reels',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
               ),
             ),
+          ),
+          GestureDetector(
+            onTap: _onPublish,
+            child: const Icon(Icons.photo_camera_outlined,
+                color: Colors.white, size: 26),
           ),
         ],
       ),
     );
   }
 
-  Widget _tabBtn(
-    String label, {
-    required bool active,
-    required VoidCallback onTap,
-  }) {
+  /// 关注 / 推荐 胶囊切换（保留双 Feed 功能，视觉对齐 Reels 信息密度）
+  Widget _buildFeedSwitch() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.white12,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _pill('关注', _tabIndex == 0, () => _switchTab(0)),
+          _pill('推荐', _tabIndex == 1, () => _switchTab(1)),
+        ],
+      ),
+    );
+  }
+
+  Widget _pill(String label, bool active, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
-      child: Text(
-        label,
-        style: TextStyle(
-          color: active ? Colors.white : const Color(0xFF777788),
-          fontSize: active ? 18 : 15,
-          fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        decoration: BoxDecoration(
+          color: active ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? Colors.black : Colors.white70,
+            fontSize: 13,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+          ),
         ),
       ),
     );
@@ -526,6 +640,7 @@ class _VideoItemPage extends StatefulWidget {
     required this.onLike,
     required this.onComment,
     required this.onShare,
+    required this.onMore,
     this.onPhotoBadge,
   });
 
@@ -546,6 +661,7 @@ class _VideoItemPage extends StatefulWidget {
   final VoidCallback onLike;
   final VoidCallback onComment;
   final VoidCallback onShare;
+  final VoidCallback onMore;
 
   /// 照片作品页码角标上报（'' 表示非照片作品；由页面固定在「+发布」下方展示）
   final ValueChanged<String>? onPhotoBadge;
@@ -556,7 +672,7 @@ class _VideoItemPage extends StatefulWidget {
 
 class _VideoItemPageState extends State<_VideoItemPage>
     with TickerProviderStateMixin, RouteAware {
-  /// Mock 播放进度（模拟视频流；接入真实视频后替换为 video_player）。
+  /// Mock 播放进度（仅照片作品或真实播放器初始化失败时兜底）。
   /// 时长按 裁剪区间/倍速 换算：如 15s 视频 2x 播放用 7.5s 播完。
   late final AnimationController _progress = AnimationController(
     vsync: this,
@@ -1100,6 +1216,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
                 onLike: widget.onLike,
                 onComment: widget.onComment,
                 onShare: widget.onShare,
+                onMore: widget.onMore,
               ),
             ),
 
@@ -1208,19 +1325,42 @@ class _VideoItemPageState extends State<_VideoItemPage>
         children: [
           Row(
             children: [
-              Text(
-                '@${v.user}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  '@${v.user}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                '· ${formatCount(v.followCount)} 粉丝',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
+              if (!widget.followed) ...[
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: widget.onFollow,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Palette.accent,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Text(
+                      '关注',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 6),
@@ -1261,7 +1401,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    v.music,
+                    '原声 · ${v.music}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: Colors.white, fontSize: 12.5),
@@ -1288,6 +1428,7 @@ class _RightRail extends StatefulWidget {
     required this.onLike,
     required this.onComment,
     required this.onShare,
+    required this.onMore,
   });
 
   final ShortVideo video;
@@ -1296,6 +1437,7 @@ class _RightRail extends StatefulWidget {
   final VoidCallback onLike;
   final VoidCallback onComment;
   final VoidCallback onShare;
+  final VoidCallback onMore;
 
   @override
   State<_RightRail> createState() => _RightRailState();
@@ -1374,6 +1516,13 @@ class _RightRailState extends State<_RightRail>
           icon: const Icon(Icons.send_rounded, color: Colors.white, size: 32),
           label: '分享',
           onTap: widget.onShare,
+        ),
+        const SizedBox(height: 20),
+        // 更多
+        _ActionItem(
+          icon: const Icon(Icons.more_horiz_rounded, color: Colors.white, size: 32),
+          label: '更多',
+          onTap: widget.onMore,
         ),
         const SizedBox(height: 20),
         // 旋转唱片

@@ -11,9 +11,16 @@ import '../community/user_profile_page.dart';
 /// - 中部：置顶聊天 / 查看个人主页
 /// - 底部：删除聊天
 class ChatManagePage extends StatefulWidget {
-  const ChatManagePage({super.key, required this.conversation});
+  const ChatManagePage({
+    super.key,
+    required this.conversation,
+    this.onBlockChanged,
+  });
 
   final Conversation conversation;
+
+  /// 拉黑状态变化回调（聊天页据此刷新输入栏提示）
+  final ValueChanged<bool>? onBlockChanged;
 
   @override
   State<ChatManagePage> createState() => _ChatManagePageState();
@@ -21,6 +28,7 @@ class ChatManagePage extends StatefulWidget {
 
 class _ChatManagePageState extends State<ChatManagePage> {
   late bool _pinned;
+  late bool _blockedByMe;
   bool _busy = false;
 
   int get _peerId => widget.conversation.peerId;
@@ -33,6 +41,7 @@ class _ChatManagePageState extends State<ChatManagePage> {
   void initState() {
     super.initState();
     _pinned = widget.conversation.pinned;
+    _blockedByMe = widget.conversation.peerBlockedByMe;
   }
 
   /// 置顶 / 取消置顶：成功后 ChatService 同步更新会话列表排序
@@ -82,6 +91,37 @@ class _ChatManagePageState extends State<ChatManagePage> {
       Navigator.of(context).pop('deleted');
     } else {
       _toast('删除失败，请稍后再试');
+    }
+  }
+
+  /// 拉黑 / 移出黑名单：成功后同步聊天页状态并更新会话缓存
+  Future<void> _toggleBlock() async {
+    if (_busy) return;
+    final blocking = !_blockedByMe;
+    if (blocking) {
+      final ok = await _confirmDanger(
+        title: '加入黑名单',
+        message: '加入黑名单后，你们将无法互发消息，确定加入吗？',
+        action: '加入',
+      );
+      if (ok != true || !mounted) return;
+    }
+    setState(() => _busy = true);
+    try {
+      final rel = await ChatApi.setBlock(_peerId, blocked: blocking);
+      if (!mounted) return;
+      setState(() => _blockedByMe = rel.blockedByMe);
+      ChatService.instance.updateConversationBlocked(
+        widget.conversation.id,
+        blockedByMe: rel.blockedByMe,
+        blockedByPeer: rel.blockedByPeer,
+      );
+      widget.onBlockChanged?.call(rel.blockedByMe);
+      _toast(blocking ? '已加入黑名单' : '已移出黑名单');
+    } catch (_) {
+      if (mounted) _toast('操作失败，请稍后再试');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -136,6 +176,8 @@ class _ChatManagePageState extends State<ChatManagePage> {
             _buildPinRow(colors),
             const SizedBox(height: 8),
             _buildProfileRow(colors),
+            const SizedBox(height: 8),
+            _buildBlockRow(colors),
             const SizedBox(height: 8),
             _buildDangerRow(colors),
           ],
@@ -231,6 +273,48 @@ class _ChatManagePageState extends State<ChatManagePage> {
                 child: Text('查看个人主页', style: TextStyle(fontSize: 15)),
               ),
               Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 拉黑 / 移出黑名单（微信样式：行内红色文字操作）
+  Widget _buildBlockRow(AppColors colors) {
+    return Material(
+      color: colors.surface,
+      child: InkWell(
+        onTap: _busy ? null : _toggleBlock,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          child: Row(
+            children: [
+              Icon(
+                _blockedByMe
+                    ? Icons.person_off_outlined
+                    : Icons.block_outlined,
+                size: 20,
+                color: _blockedByMe ? colors.textSecondary : colors.danger,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _blockedByMe ? '移出黑名单' : '加入黑名单',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: _blockedByMe ? colors.textSecondary : colors.danger,
+                  ),
+                ),
+              ),
+              if (_blockedByMe)
+                Text(
+                  '已拉黑',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: colors.textSecondary,
+                  ),
+                ),
             ],
           ),
         ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/app_colors.dart';
+
 /// 社区页专属配色
 ///
 /// 页面底色 / 卡片 / 边框跟随系统深色模式切换，
@@ -27,11 +29,13 @@ class CommunityPalette {
     BoxShadow(color: Colors.transparent, blurRadius: 0, offset: Offset.zero),
   ];
 
-  /// 故事未读渐变环（暖橙 → 粉 → 紫，原创配色）
+  /// 故事未读渐变环（Instagram 官方五色渐变）
   static const List<Color> storyGradient = [
-    Color(0xFFFF3040),
-    Color(0xFFFFB65C),
-    Color(0xFFC13584),
+    Color(0xFFFEDA75),
+    Color(0xFFFA7E1E),
+    Color(0xFFD62976),
+    Color(0xFF962FBF),
+    Color(0xFF4F5BD5),
   ];
 
   /// 故事已读环
@@ -51,6 +55,6 @@ class CommunityPalette {
   static List<Color> avatarGradientFor(int id) =>
       avatarGradients[id % avatarGradients.length];
 
-  /// 点赞/收藏等交互高亮
-  static const Color love = Color(0xFFFF3040);
+  /// 点赞/收藏等交互高亮（IG 红）
+  static const Color love = Palette.accent;
 }

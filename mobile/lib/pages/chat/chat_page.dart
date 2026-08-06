@@ -17,6 +17,7 @@ import '../../core/chat_api.dart';
 import '../../core/chat_service.dart';
 import '../../core/follow_api.dart';
 import '../../core/local_chat_store.dart';
+import '../../features/home/presentation/instagram_style.dart';
 import '../community/user_profile_page.dart';
 import '../../widgets/follow_button.dart';
 import '../../widgets/image_viewer.dart';
@@ -79,8 +80,6 @@ class _ChatPageState extends State<ChatPage> {
   bool _showEmoji = false;
   /// 语音输入模式（隐藏输入框，显示"按住说话"）
   bool _voiceMode = false;
-  /// 加号面板（小功能）是否显示
-  bool _showMore = false;
 
   /// 当前引用中的消息（输入栏上方显示引用条，发送后清除）
   _ViewMsg? _replyTo;
@@ -108,6 +107,10 @@ class _ChatPageState extends State<ChatPage> {
   FollowStatus? _followStatus;
   bool _followBusy = false;
 
+  // 拉黑状态（初始化自会话数据；聊天信息页/横幅操作后更新）
+  late bool _blockedByMe;
+  late bool _blockedByPeer;
+
   /// 当前用户 id：实时读取（登录态恢复时 _fetchMe 异步，initState 阶段 user 可能为 null，
   /// 若固定成 0 会导致所有消息被判定为"对方"，出现全部在左侧的显示错误）
   int get _meId => AuthService.instance.user?.id ?? 0;
@@ -118,6 +121,8 @@ class _ChatPageState extends State<ChatPage> {
     AuthService.instance.addListener(_onAuthChanged);
     _inputFocus.addListener(_onInputFocusChanged);
     _fixLocalSenderIds();
+    _blockedByMe = widget.conversation.peerBlockedByMe;
+    _blockedByPeer = widget.conversation.peerBlockedByPeer;
     // 预热语音链路，缩短按住到真正开始录音的延迟
     unawaited(_warmUpVoice());
     ChatService.instance.ensureConnected();
@@ -150,10 +155,9 @@ class _ChatPageState extends State<ChatPage> {
 
   /// 键盘获得焦点时收起表情/加号/语音面板
   void _onInputFocusChanged() {
-    if (_inputFocus.hasFocus && (_showEmoji || _showMore || _voiceMode)) {
+    if (_inputFocus.hasFocus && (_showEmoji || _voiceMode)) {
       setState(() {
         _showEmoji = false;
-        _showMore = false;
         _voiceMode = false;
       });
     }
@@ -219,7 +223,12 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _openManage() async {
     final result = await Navigator.of(context).push<String>(
       MaterialPageRoute(
-        builder: (_) => ChatManagePage(conversation: widget.conversation),
+        builder: (_) => ChatManagePage(
+          conversation: widget.conversation,
+          onBlockChanged: (blocked) {
+            if (mounted) setState(() => _blockedByMe = blocked);
+          },
+        ),
       ),
     );
     if (!mounted) return;
@@ -515,7 +524,6 @@ class _ChatPageState extends State<ChatPage> {
       return;
     }
     if (picked == null || !mounted) return;
-    setState(() => _showMore = false);
     final clientMsgId = _genMsgId();
     final local = ChatMessage(
       id: null,
@@ -715,7 +723,6 @@ class _ChatPageState extends State<ChatPage> {
     setState(() {
       _replyTo = vm;
       _showEmoji = false;
-      _showMore = false;
       _voiceMode = false;
     });
     _inputFocus.requestFocus();
@@ -840,7 +847,6 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         _voiceMode = false;
         _showEmoji = false;
-        _showMore = false;
       });
       _inputFocus.requestFocus();
     } else {
@@ -848,7 +854,6 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         _voiceMode = true;
         _showEmoji = false;
-        _showMore = false;
       });
     }
   }
@@ -861,21 +866,6 @@ class _ChatPageState extends State<ChatPage> {
       FocusScope.of(context).unfocus();
       setState(() {
         _showEmoji = true;
-        _showMore = false;
-        _voiceMode = false;
-      });
-    }
-  }
-
-  void _toggleMore() {
-    if (_showMore) {
-      setState(() => _showMore = false);
-      _inputFocus.requestFocus();
-    } else {
-      FocusScope.of(context).unfocus();
-      setState(() {
-        _showMore = true;
-        _showEmoji = false;
         _voiceMode = false;
       });
     }
@@ -1084,6 +1074,7 @@ class _ChatPageState extends State<ChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: 0,
         title: _buildTitle(),
         actions: [
           IconButton(
@@ -1099,6 +1090,7 @@ class _ChatPageState extends State<ChatPage> {
           children: [
             Column(
               children: [
+                _buildBlockedBanner(),
                 _buildFollowBanner(),
                 Expanded(child: _buildMessages()),
                 _buildInputBar(),
@@ -1120,23 +1112,40 @@ class _ChatPageState extends State<ChatPage> {
         final online =
             ChatService.instance.isPeerOnline(widget.conversation.peerId);
         return Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Flexible(
-              child: Text(
-                _title(),
-                overflow: TextOverflow.ellipsis,
-              ),
+            StoryRing(
+              url: widget.conversation.peerAvatar,
+              name: _title(),
+              size: 36,
+              seen: true,
+              id: widget.conversation.peerId,
             ),
-            const SizedBox(width: 6),
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: online
-                    ? Palette.success
-                    : colors.textSecondary.withValues(alpha: 0.35),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _title(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    online ? '活跃中' : '离线',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: online
+                          ? Palette.success
+                          : colors.textSecondary.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1201,6 +1210,66 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  /// 拉黑横幅：对方拉黑我时禁用发消息；我拉黑对方时提供「移出黑名单」入口
+  Widget _buildBlockedBanner() {
+    if (!_blockedByMe && !_blockedByPeer) return const SizedBox.shrink();
+    final colors = AppColors.of(context);
+    final text = _blockedByPeer ? '对方已把你拉黑，无法发送消息' : '你已拉黑对方，暂不能发送消息';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Palette.warningLight,
+        border: Border(bottom: BorderSide(color: colors.divider)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.block_outlined,
+            size: 16,
+            color: Palette.warning,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 13, color: Color(0xFF996A00)),
+            ),
+          ),
+          if (_blockedByMe)
+            TextButton(
+              onPressed: _unblockPeer,
+              style: TextButton.styleFrom(
+                foregroundColor: colors.primary,
+                visualDensity: VisualDensity.compact,
+              ),
+              child: const Text('移出黑名单'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// 从聊天页横幅直接移出黑名单
+  Future<void> _unblockPeer() async {
+    try {
+      final rel = await ChatApi.setBlock(widget.conversation.peerId,
+          blocked: false);
+      if (!mounted) return;
+      setState(() {
+        _blockedByMe = rel.blockedByMe;
+        _blockedByPeer = rel.blockedByPeer;
+      });
+      ChatService.instance.updateConversationBlocked(
+        widget.conversation.id,
+        blockedByMe: rel.blockedByMe,
+        blockedByPeer: rel.blockedByPeer,
+      );
+      _toast('已移出黑名单');
+    } catch (_) {
+      if (mounted) _toast('操作失败，请稍后再试');
+    }
+  }
+
   Widget _buildMessages() {
     if (_loading) return const LoadingWidget();
     if (_error != null) {
@@ -1250,8 +1319,8 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  /// 输入栏：微信风格 —— [语音切换] [输入框 / 按住说话] [表情] [加号]
-  /// 输入有文字时"表情 + 加号"替换为"发送"按钮
+  /// 输入栏：Instagram DM 风格 —— [语音切换] [输入框(相机)/按住说话]
+  /// [相册] [视频] [表情] [爱心]；输入文字后替换为蓝色「发送」
   Widget _buildInputBar() {
     final colors = AppColors.of(context);
     final hasText = _input.text.trim().isNotEmpty;
@@ -1289,6 +1358,8 @@ class _ChatPageState extends State<ChatPage> {
                   FilledButton(
                     onPressed: _loading ? null : _send,
                     style: FilledButton.styleFrom(
+                      backgroundColor: IgColors.blue,
+                      foregroundColor: Colors.white,
                       minimumSize: const Size(0, 44),
                       padding: const EdgeInsets.symmetric(horizontal: 18),
                       shape: RoundedRectangleBorder(
@@ -1298,6 +1369,24 @@ class _ChatPageState extends State<ChatPage> {
                     child: const Text('发送'),
                   ),
                 ] else ...[
+                  // 右侧：相册
+                  IconButton(
+                    icon: Icon(
+                      Icons.photo_library_outlined,
+                      color: colors.textSecondary,
+                    ),
+                    tooltip: '相册',
+                    onPressed: _loading ? null : () => _sendImage(ImageSource.gallery),
+                  ),
+                  // 右侧：视频
+                  IconButton(
+                    icon: Icon(
+                      Icons.videocam_outlined,
+                      color: colors.textSecondary,
+                    ),
+                    tooltip: '视频',
+                    onPressed: _loading ? null : _sendVideo,
+                  ),
                   // 右侧：表情
                   IconButton(
                     icon: Icon(
@@ -1309,21 +1398,20 @@ class _ChatPageState extends State<ChatPage> {
                     tooltip: '表情',
                     onPressed: _toggleEmoji,
                   ),
-                  // 再往右：加号（小功能面板）
+                  // 右侧：爱心（一键发送 ❤️）
                   IconButton(
                     icon: Icon(
-                      _showMore ? Icons.close : Icons.add_circle_outline,
-                      color: colors.textSecondary,
+                      Icons.favorite_border_rounded,
+                      color: IgColors.blue,
                     ),
-                    tooltip: '更多功能',
-                    onPressed: _toggleMore,
+                    tooltip: '发送爱心',
+                    onPressed: _loading ? null : _sendLike,
                   ),
                 ],
               ],
             ),
           ),
           if (_showEmoji) _buildEmojiPanel(),
-          if (_showMore) _buildMorePanel(),
         ],
       ),
     );
@@ -1372,6 +1460,12 @@ class _ChatPageState extends State<ChatPage> {
       decoration: InputDecoration(
         hintText: '发消息…',
         isDense: true,
+        prefixIcon: IconButton(
+          icon: Icon(Icons.photo_camera_outlined, color: colors.textSecondary),
+          tooltip: '拍照',
+          onPressed: _loading ? null : () => _sendImage(ImageSource.camera),
+        ),
+        prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 10,
@@ -1384,6 +1478,13 @@ class _ChatPageState extends State<ChatPage> {
         ),
       ),
     );
+  }
+
+  /// IG 爱心按钮：给会话发一条 ❤️ 消息
+  Future<void> _sendLike() async {
+    if (_loading) return;
+    _input.text = '❤️';
+    await _send();
   }
 
   /// 语音输入模式：按住说话
@@ -1407,89 +1508,6 @@ class _ChatPageState extends State<ChatPage> {
           _recording ? '松开 发送' : '按住 说话',
           style: TextStyle(fontSize: 15, color: colors.textPrimary),
         ),
-      ),
-    );
-  }
-
-  /// 加号面板（微信风格：4 列小功能）
-  Widget _buildMorePanel() {
-    final colors = AppColors.of(context);
-    final items = <({IconData icon, Color color, String label, VoidCallback onTap})>[
-      (
-        icon: Icons.photo_library_outlined,
-        color: Palette.purple,
-        label: '图片',
-        onTap: _loading ? () {} : () => _sendImage(ImageSource.gallery),
-      ),
-      (
-        icon: Icons.photo_camera_outlined,
-        color: Palette.success,
-        label: '拍照',
-        onTap: _loading ? () {} : () => _sendImage(ImageSource.camera),
-      ),
-      (
-        icon: Icons.location_on_outlined,
-        color: Palette.orange,
-        label: '位置',
-        onTap: () => _toast('功能开发中'),
-      ),
-      (
-        icon: Icons.videocam_outlined,
-        color: Palette.accent,
-        label: '视频',
-        onTap: _loading ? () {} : () => _sendVideo(),
-      ),
-      (
-        icon: Icons.folder_outlined,
-        color: Palette.textTertiary,
-        label: '文件',
-        onTap: () => _toast('功能开发中'),
-      ),
-      (
-        icon: Icons.badge_outlined,
-        color: Palette.danger,
-        label: '名片',
-        onTap: () => _toast('功能开发中'),
-      ),
-    ];
-    return Container(
-      height: 200,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border(top: BorderSide(color: colors.divider)),
-      ),
-      child: GridView.count(
-        crossAxisCount: 4,
-        mainAxisSpacing: 4,
-        childAspectRatio: 0.95,
-        children: items
-            .map(
-              (it) => InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: it.onTap,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: it.color.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(it.icon, size: 28, color: it.color),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      it.label,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            )
-            .toList(),
       ),
     );
   }
@@ -1634,6 +1652,12 @@ class _MessageBubble extends StatelessWidget {
     final isVoice = m.contentType == 'voice';
     final isVideo = m.contentType == 'video';
     final colors = AppColors.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bubbleColor = mine
+        ? IgColors.blue
+        : isDark
+        ? IgColors.bubbleIncomingDark
+        : IgColors.bubbleIncoming;
     // 已撤回：整行替换为居中小字提示，不再显示气泡
     if (m.recalledAt != null) {
       return Padding(
@@ -1658,12 +1682,12 @@ class _MessageBubble extends StatelessWidget {
       decoration: (isImage || isVideo)
           ? null
           : BoxDecoration(
-              color: mine ? colors.primary : colors.surface,
+              color: bubbleColor,
               borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(16),
-                topRight: const Radius.circular(16),
-                bottomLeft: Radius.circular(mine ? 16 : 4),
-                bottomRight: Radius.circular(mine ? 4 : 16),
+                topLeft: const Radius.circular(18),
+                topRight: const Radius.circular(18),
+                bottomLeft: Radius.circular(mine ? 18 : 4),
+                bottomRight: Radius.circular(mine ? 4 : 18),
               ),
             ),
       child: Column(

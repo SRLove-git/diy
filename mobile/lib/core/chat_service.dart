@@ -305,6 +305,14 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
               clientMsgId,
               (frame['message'] ?? '聊天受限') as String,
             ));
+          } else if (code == 'blocked') {
+            // 拉黑拦截：完成等待（不重发），移除气泡并提示服务端返回的原因
+            final clientMsgId = (frame['clientMsgId'] ?? '') as String;
+            _pendingSends.remove(clientMsgId)?.complete(null);
+            _events.add(ChatLimitEvent(
+              clientMsgId,
+              (frame['message'] ?? '消息发送失败') as String,
+            ));
           } else if (code == 'send_failed') {
             final clientMsgId = (frame['clientMsgId'] ?? '') as String;
             _pendingSends.remove(clientMsgId)?.complete(null);
@@ -547,6 +555,24 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     LocalChatStore.instance.clearConversation(conversationId);
     notifyListeners();
     return true;
+  }
+
+  /// 拉黑/取消拉黑后同步会话缓存的拉黑状态（聊天信息页/聊天页共用）
+  void updateConversationBlocked(
+    int conversationId, {
+    required bool blockedByMe,
+    required bool blockedByPeer,
+  }) {
+    final list = [...conversations];
+    final idx = list.indexWhere((c) => c.id == conversationId);
+    if (idx >= 0) {
+      list[idx] = list[idx].copyWith(
+        peerBlockedByMe: blockedByMe,
+        peerBlockedByPeer: blockedByPeer,
+      );
+      conversations = list;
+      notifyListeners();
+    }
   }
 
   /// 发消息：WebSocket 优先（等 sent 回执），超时/失败走 REST 兜底。

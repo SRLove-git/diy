@@ -11,6 +11,7 @@ import type Redis from 'ioredis';
 import { FollowsService } from '../follows/follows.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { User } from '../users/user.entity';
+import { BlocksService } from './blocks.service';
 import { Conversation } from './conversation.entity';
 import { Message } from './message.entity';
 import { MessageStatus } from './message_status.entity';
@@ -65,6 +66,7 @@ export class ChatService {
     @InjectRepository(User)
     private readonly users: Repository<User>,
     private readonly follows: FollowsService,
+    private readonly blocks: BlocksService,
     @Inject(REDIS_CLIENT)
     private readonly redis: Redis,
   ) {}
@@ -93,6 +95,13 @@ export class ChatService {
     const peer = await this.users.findOneBy({ id: peerUserId });
     if (!peer) throw new BadRequestException('对方不存在');
     if (peer.isBanned) throw new BadRequestException('对方账号已被禁用');
+    const blockRel = await this.blocks.status(userId, peerUserId);
+    if (blockRel.blockedByMe) {
+      throw new BadRequestException('你已拉黑对方，无法发起会话');
+    }
+    if (blockRel.blockedByPeer) {
+      throw new BadRequestException('对方已把你拉黑，无法发起会话');
+    }
 
     const [a, b] = [Math.min(userId, peerUserId), Math.max(userId, peerUserId)];
     let conv = await this.conversations.findOneBy({ userAId: a, userBId: b });
@@ -126,9 +135,7 @@ export class ChatService {
       // Redis 不可用时按"离线"处理，不阻塞消息推送主流程
       const v = await Promise.race([
         this.redis.get(`chat:online:${userId}`),
-        new Promise<null>((resolve) =>
-          setTimeout(() => resolve(null), 1500),
-        ),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
       ]);
       return Number(v) > 0;
     } catch {
@@ -185,6 +192,12 @@ export class ChatService {
       unreadRows.map((r) => [Number(r.conversationId), Number(r.cnt)]),
     );
 
+    // 拉黑关系：会话列表标注「已拉黑对方 / 已被对方拉黑」
+    const [blockedByMeSet, blockedMeSet] = await Promise.all([
+      this.blocks.blockedByMeIds(userId),
+      this.blocks.blockedMeIds(userId),
+    ]);
+
     const items = convs.map((c) => {
       const peerId = this.peerIdOf(c, userId);
       const peer = userMap.get(peerId);
@@ -195,6 +208,8 @@ export class ChatService {
           nickname: peer?.nickname ?? '',
           avatar: peer?.avatar ?? '',
           online: online.has(peerId),
+          blockedByMe: blockedByMeSet.has(peerId),
+          blockedByPeer: blockedMeSet.has(peerId),
         },
         lastMessagePreview: c.lastMessagePreview,
         lastMessageAt: c.lastMessageAt,
@@ -291,6 +306,13 @@ export class ChatService {
     const peerId = this.peerIdOf(conv, userId);
     const peer = await this.users.findOneBy({ id: peerId });
     if (peer?.isBanned) throw new BadRequestException('对方账号已被禁用');
+    const blockRel = await this.blocks.status(userId, peerId);
+    if (blockRel.blockedByMe) {
+      throw new ForbiddenException('你已拉黑对方，无法发送消息');
+    }
+    if (blockRel.blockedByPeer) {
+      throw new ForbiddenException('对方已把你拉黑，无法发送消息');
+    }
 
     // 聊天限制：互相关注无限畅聊；未互关（无关注或单向关注）每会话最多发 CHAT_LIMIT 条
     if (!(await this.follows.isMutual(userId, peerId))) {
@@ -379,7 +401,11 @@ export class ChatService {
     await this.messages.manager.transaction(async (em) => {
       // 参与者的各自已读状态：发送方立即已读，接收方待读
       await em.insert(MessageStatus, [
-        { messageId: message.id, userId: message.senderId, readAt: message.createdAt },
+        {
+          messageId: message.id,
+          userId: message.senderId,
+          readAt: message.createdAt,
+        },
         { messageId: message.id, userId: peerId, readAt: null },
       ]);
       const preview =
@@ -505,6 +531,8 @@ export class ChatService {
         nickname: peerUser.nickname,
         avatar: peerUser.avatar,
         online: false,
+        blockedByMe: false,
+        blockedByPeer: false,
       },
       lastMessagePreview: conv.lastMessagePreview,
       lastMessageAt: conv.lastMessageAt,

@@ -15,7 +15,9 @@ import { Report } from './report.entity';
 import { Follow } from '../follows/follow.entity';
 import { History } from '../users/history.entity';
 import { User } from '../users/user.entity';
+import { Video } from '../videos/video.entity';
 import { CreatePostDto, UpdatePostStatusDto } from './post.dto';
+import { ReportTargetType } from './report.entity';
 
 /** 简易敏感词列表（一期机审用） */
 const BLOCKED_KEYWORDS = ['违禁', '色情', '赌博', '诈骗', '枪支', '毒品'];
@@ -39,6 +41,8 @@ export class CommunityService {
     private readonly collections: Repository<Collection>,
     @InjectRepository(Report)
     private readonly reports: Repository<Report>,
+    @InjectRepository(Video)
+    private readonly videos: Repository<Video>,
     @InjectRepository(Follow)
     private readonly follows: Repository<Follow>,
     @InjectRepository(History)
@@ -50,14 +54,18 @@ export class CommunityService {
   // ──── Helpers ────
 
   /** 批量查询作者信息，返回 userId → AuthorInfo 映射 */
-  private async resolveAuthors(userIds: number[]): Promise<Map<number, AuthorInfo>> {
+  private async resolveAuthors(
+    userIds: number[],
+  ): Promise<Map<number, AuthorInfo>> {
     const unique = [...new Set(userIds)];
     if (!unique.length) return new Map();
     const users = await this.users.find({
       where: { id: In(unique) },
       select: { id: true, nickname: true, avatar: true },
     });
-    return new Map(users.map((u) => [u.id, { nickname: u.nickname, avatar: u.avatar }]));
+    return new Map(
+      users.map((u) => [u.id, { nickname: u.nickname, avatar: u.avatar }]),
+    );
   }
 
   /** 将 Post 实体 + 作者信息合并为客户端友好的格式 */
@@ -222,7 +230,11 @@ export class CommunityService {
   }
 
   /** 管理端：全量作品列表（可按状态筛选） */
-  async findAll(status?: string, page = 1, pageSize = 20): Promise<[Post[], number]> {
+  async findAll(
+    status?: string,
+    page = 1,
+    pageSize = 20,
+  ): Promise<[Post[], number]> {
     const where: any = {};
     if (status) where.status = status;
     return this.posts.findAndCount({
@@ -281,7 +293,10 @@ export class CommunityService {
 
   // ──── Like operations ────
 
-  async toggleLike(userId: number, postId: number): Promise<{ liked: boolean }> {
+  async toggleLike(
+    userId: number,
+    postId: number,
+  ): Promise<{ liked: boolean }> {
     const post = await this.posts.findOneBy({ id: postId });
     if (!post) throw new NotFoundException('作品不存在');
 
@@ -301,17 +316,16 @@ export class CommunityService {
     return !!existing;
   }
 
-  async hasUserLikedMultiple(userId: number, postIds: number[]): Promise<Set<number>> {
+  async hasUserLikedMultiple(
+    userId: number,
+    postIds: number[],
+  ): Promise<Set<number>> {
     if (!postIds.length) return new Set();
     const likes = await this.likes.findBy({ userId, postId: In(postIds) });
     return new Set(likes.map((l) => l.postId));
   }
 
-  async getMyLikes(
-    userId: number,
-    page = 1,
-    pageSize = 20,
-  ) {
+  async getMyLikes(userId: number, page = 1, pageSize = 20) {
     const likes = await this.likes.find({
       where: { userId },
       order: { createdAt: 'DESC' },
@@ -361,11 +375,7 @@ export class CommunityService {
     };
   }
 
-  async getComments(
-    postId: number,
-    page = 1,
-    pageSize = 20,
-  ) {
+  async getComments(postId: number, page = 1, pageSize = 20) {
     const [comments, total] = await this.comments.findAndCount({
       where: { postId },
       order: { createdAt: 'DESC' },
@@ -376,7 +386,10 @@ export class CommunityService {
     const userIds = comments.map((c) => c.userId);
     const authors = await this.resolveAuthors(userIds);
 
-    return [comments.map((c) => this.enrichComment(c, authors.get(c.userId))), total];
+    return [
+      comments.map((c) => this.enrichComment(c, authors.get(c.userId))),
+      total,
+    ];
   }
 
   // ──── Collection operations ────
@@ -404,11 +417,7 @@ export class CommunityService {
     return !!existing;
   }
 
-  async getMyCollections(
-    userId: number,
-    page = 1,
-    pageSize = 20,
-  ) {
+  async getMyCollections(userId: number, page = 1, pageSize = 20) {
     const collections = await this.collections.find({
       where: { userId },
       order: { createdAt: 'DESC' },
@@ -443,7 +452,10 @@ export class CommunityService {
 
     const existing = await this.histories.findOneBy({ userId, postId });
     if (existing) {
-      await this.histories.update({ id: existing.id }, { createdAt: new Date() });
+      await this.histories.update(
+        { id: existing.id },
+        { createdAt: new Date() },
+      );
     } else {
       await this.histories.save(this.histories.create({ userId, postId }));
     }
@@ -479,15 +491,34 @@ export class CommunityService {
 
   // ──── Report operations ────
 
+  /**
+   * 创建举报：targetType = post 举报社区帖子，video 举报短视频。
+   */
   async createReport(
     reporterId: number,
-    postId: number,
     reason: string,
+    target: {
+      targetType?: ReportTargetType;
+      postId?: number;
+      videoId?: number;
+    },
   ): Promise<Report> {
-    const post = await this.posts.findOneBy({ id: postId });
-    if (!post) throw new NotFoundException('作品不存在');
+    const targetType = target.targetType ?? 'post';
+    if (targetType === 'video') {
+      const video = await this.videos.findOneBy({ id: target.videoId });
+      if (!video) throw new NotFoundException('视频不存在');
+    } else {
+      const post = await this.posts.findOneBy({ id: target.postId });
+      if (!post) throw new NotFoundException('作品不存在');
+    }
 
-    const report = this.reports.create({ reporterId, postId, reason });
+    const report = this.reports.create({
+      reporterId,
+      postId: targetType === 'post' ? target.postId : 0,
+      videoId: targetType === 'video' ? target.videoId : null,
+      targetType,
+      reason,
+    });
     return this.reports.save(report);
   }
 
@@ -504,14 +535,37 @@ export class CommunityService {
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
-    // 附带被举报作品信息，便于管理端直接查看上下文
+    // 附带被举报对象信息，便于管理端直接查看上下文
     const postIds = Array.from(new Set(reports.map((r) => r.postId)));
     const posts = postIds.length
       ? await this.posts.findBy({ id: In(postIds) })
       : [];
     const postMap = new Map(posts.map((p) => [p.id, p]));
+    const videoIds = Array.from(
+      new Set(
+        reports.filter((r) => r.targetType === 'video').map((r) => r.videoId),
+      ),
+    ).filter((id): id is number => id != null);
+    const videos = videoIds.length
+      ? await this.videos.findBy({ id: In(videoIds) })
+      : [];
+    const videoMap = new Map(videos.map((v) => [v.id, v]));
     return [
       reports.map((r) => {
+        if (r.targetType === 'video') {
+          const video = r.videoId != null ? videoMap.get(r.videoId) : undefined;
+          return {
+            ...r,
+            video: video
+              ? {
+                  title: video.title,
+                  cover: video.cover,
+                  status: video.status,
+                  userId: video.userId,
+                }
+              : null,
+          };
+        }
         const post = postMap.get(r.postId);
         return {
           ...r,
@@ -545,11 +599,7 @@ export class CommunityService {
 
   // ──── User posts ────
 
-  async userPosts(
-    userId: number,
-    page = 1,
-    pageSize = 20,
-  ) {
+  async userPosts(userId: number, page = 1, pageSize = 20) {
     const [posts, total] = await this.posts.findAndCount({
       where: { userId, status: 'approved' },
       order: { createdAt: 'DESC' },

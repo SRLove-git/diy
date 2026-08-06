@@ -27,7 +27,11 @@ export class AdminAppointmentsController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
   ) {
-    return this.appointments.adminFindAll({ status, storeId, date }, page, limit);
+    return this.appointments.adminFindAll(
+      { status, storeId, date },
+      page,
+      limit,
+    );
   }
 
   /** 核销（店员代操作） */

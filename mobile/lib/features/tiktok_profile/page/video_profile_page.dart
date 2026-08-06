@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/app_colors.dart';
@@ -75,7 +76,22 @@ class _VideoProfilePageState extends State<VideoProfilePage> {
               _SheetTile(
                 icon: Icons.ios_share_rounded,
                 label: '分享主页',
-                onTap: () => _toast('分享主页功能开发中'),
+                onTap: () async {
+                  Navigator.of(sheetCtx).pop();
+                  final userId = widget.userId ?? AuthService.instance.user?.id;
+                  final link = userId == null
+                      ? 'https://diy.example.com'
+                      : 'https://diy.example.com/users/$userId';
+                  await Clipboard.setData(ClipboardData(text: link));
+                  if (!ctx.mounted) return;
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(
+                      content: const Text('主页链接已复制，快去分享吧'),
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                },
               ),
               _SheetTile(
                 icon: Icons.refresh_rounded,
@@ -93,16 +109,6 @@ class _VideoProfilePageState extends State<VideoProfilePage> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  void _toast(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 1),
       ),
     );
   }

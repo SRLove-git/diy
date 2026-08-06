@@ -75,7 +75,8 @@ export class ChatGateway
     OnGatewayConnection,
     OnGatewayDisconnect,
     OnModuleInit,
-    OnModuleDestroy {
+    OnModuleDestroy
+{
   /** 在线连接表：userId -> 该用户的全部连接（支持多设备） */
   private readonly clients = new Map<number, Set<WebSocket>>();
 
@@ -316,13 +317,20 @@ export class ChatGateway
         this.publish({ kind: 'newMessage', toUserIds: [peerId], payload });
       }
     } catch (e) {
-      // 聊天受限（未互关超 3 条）用专用错误码，客户端据此提示用户去关注对方
-      const limited = e instanceof ForbiddenException;
+      const msg = e instanceof HttpException ? e.message : '发送失败';
+      // 拉黑用专用错误码（客户端据此移除气泡并提示原因）；
+      // 聊天受限（未互关超 3 条）同样专用，客户端据此提示用户去关注对方
+      const code =
+        e instanceof ForbiddenException && msg.includes('拉黑')
+          ? 'blocked'
+          : e instanceof ForbiddenException
+            ? 'chat_limited'
+            : 'send_failed';
       this.reply(client, {
         type: 'error',
-        code: limited ? 'chat_limited' : 'send_failed',
+        code,
         clientMsgId: clientMsgId ?? null,
-        message: e instanceof HttpException ? e.message : '发送失败',
+        message: msg,
       });
     }
   }
@@ -633,10 +641,7 @@ export class ChatGateway
   /** 发布跨实例事件：携带本实例 ID，接收端据此跳过自己避免重复推送 */
   private publish(ev: Omit<RemoteEvent, 'source'>): void {
     this.pubsub
-      .publish(
-        CHAT_CHANNEL,
-        JSON.stringify({ source: this.instanceId, ...ev }),
-      )
+      .publish(CHAT_CHANNEL, JSON.stringify({ source: this.instanceId, ...ev }))
       .catch(() => {
         // pub/sub 异常不影响本实例内的直推
       });
@@ -663,7 +668,7 @@ export class ChatGateway
       return;
     }
     for (const uid of ev.toUserIds) {
-      this.sendToUser(uid, ev.payload as Record<string, unknown>);
+      this.sendToUser(uid, ev.payload);
     }
   }
 }

@@ -64,7 +64,9 @@ export class CreatePostDto {
 
 /** 审核作品：通过或驳回 */
 export class UpdatePostStatusDto {
-  @IsIn(['approved', 'rejected'], { message: '状态仅可为 approved 或 rejected' })
+  @IsIn(['approved', 'rejected'], {
+    message: '状态仅可为 approved 或 rejected',
+  })
   status: 'approved' | 'rejected';
 
   @IsOptional()

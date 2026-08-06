@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../../core/video_api.dart';
 import '../model/tiktok_video_model.dart';
 
 /// 播放页「更多」操作弹层（widget 组件层）
 ///
 /// 深色圆角底部弹层，提供不感兴趣 / 举报 / 复制链接等常规操作。
-/// 交互暂为演示（SnackBar 提示），后续可接入举报与推荐屏蔽接口。
+/// 举报走真实服务端接口（与社区帖子同一套举报体系），复制链接写系统剪贴板。
 class VideoMoreSheet extends StatelessWidget {
   const VideoMoreSheet({super.key, required this.item});
 
@@ -62,12 +64,18 @@ class VideoMoreSheet extends StatelessWidget {
             _MoreTile(
               icon: Icons.flag_outlined,
               label: '举报作品',
-              onTap: () => _toast(context, '举报功能开发中'),
+              onTap: () => _report(context),
             ),
             _MoreTile(
               icon: Icons.link_rounded,
               label: '复制作品链接',
-              onTap: () => _toast(context, '链接已复制（演示）'),
+              onTap: () async {
+                await Clipboard.setData(
+                  ClipboardData(text: 'https://diy.example.com/video/${item.id}'),
+                );
+                if (!context.mounted) return;
+                _toast(context, '链接已复制');
+              },
             ),
             _MoreTile(
               icon: Icons.cancel_outlined,
@@ -78,6 +86,55 @@ class VideoMoreSheet extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _report(BuildContext context) async {
+    Navigator.of(context).pop();
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('举报作品'),
+        content: TextField(
+          controller: controller,
+          maxLength: 200,
+          maxLines: 3,
+          decoration: const InputDecoration(hintText: '请描述举报原因…'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text('提交举报'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (reason == null || reason.isEmpty) return;
+    try {
+      await VideoApi.report(item.id, reason);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('举报已提交，我们会尽快处理'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('举报失败，请稍后再试'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
   }
 }
 

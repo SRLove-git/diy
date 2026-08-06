@@ -17,13 +17,24 @@ class VideoApi {
   /// 推荐信息流（全部已通过视频，按创建时间倒序）
   static Future<({List<ShortVideo> items, int total})> fetchRecommend({
     int page = 1,
+    String? q,
   }) async {
     final resp = await ApiClient.instance.get(
       '/videos',
-      queryParameters: {'page': page},
+      queryParameters: {
+        'page': page,
+        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+      },
     );
     return _parseList(resp.data);
   }
+
+  /// 按关键词搜索视频（标题 / 文案 / 配乐 / 地点 / 标签）
+  static Future<({List<ShortVideo> items, int total})> search(
+    String keyword, {
+    int page = 1,
+  }) =>
+      fetchRecommend(page: page, q: keyword);
 
   /// 关注信息流（已关注作者的视频，需登录）
   static Future<({List<ShortVideo> items, int total})> fetchFollowing({
@@ -210,6 +221,16 @@ class VideoApi {
   /// 记录分享（分享数 +1）
   static Future<void> recordShare(int videoId) async {
     await ApiClient.instance.post('/videos/$videoId/share');
+  }
+
+  // ──── 举报 ────
+
+  /// 举报短视频（与社区帖子同一套举报体系，管理端统一处理）
+  static Future<void> report(int videoId, String reason) async {
+    await ApiClient.instance.post(
+      '/videos/$videoId/report',
+      data: {'reason': reason},
+    );
   }
 
   // ──── Helpers ────

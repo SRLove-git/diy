@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 /// 页面里不再直接写死颜色，统一通过 [AppColors.of] 取主题色，
 /// 保证切到深色模式时整站自动换色。
 ///
-/// 色板以「首页 / 社区页」为基准：粉红主色 [#FF3040]、辅助粉
-/// [#FF718D]、纯白背景、[#161616] / [#737373] 两级文字。
+/// 色板为现代 Instagram 风：近黑主色、中性灰阶、IG 红点缀
+/// [#ED4956]，故事渐变沿用 IG 官方五色 [#FEDA75 → #4F5BD5]。
 @immutable
 class AppColors extends ThemeExtension<AppColors> {
   const AppColors({
@@ -66,25 +66,25 @@ class AppColors extends ThemeExtension<AppColors> {
 
   /// 浅色模式：纯白、中性灰与克制粉色强调。
   static const light = AppColors(
-    primary: Color(0xFFFF3040),
-    primaryLight: Color(0xFFFFE9EF),
+    primary: Color(0xFF111111),
+    primaryLight: Color(0xFFF5F5F5),
     surface: Color(0xFFFFFFFF),
-    textPrimary: Color(0xFF161616),
+    textPrimary: Color(0xFF111111),
     textSecondary: Color(0xFF737373),
-    textTertiary: Color(0xFF8E8E8E),
+    textTertiary: Color(0xFFA8A8A8),
     divider: Color(0xFFDBDBDB),
     placeholder: Color(0xFFF5F5F5),
-    searchBg: Color(0xFFF5F6FC),
-    accent: Color(0xFFFF718D),
+    searchBg: Color(0xFFEFEFEF),
+    accent: Color(0xFFED4956),
     success: Color(0xFF2E9E5B),
     warning: Color(0xFFE6A23C),
-    danger: Color(0xFFD9453E),
+    danger: Color(0xFFED4956),
   );
 
   /// 黑色模式
   static const dark = AppColors(
-    primary: Color(0xFFFF5261),
-    primaryLight: Color(0xFF3A2530),
+    primary: Color(0xFFFFFFFF),
+    primaryLight: Color(0xFF262626),
     surface: Color(0xFF121212),
     textPrimary: Color(0xFFF5F5F5),
     textSecondary: Color(0xFFA8A8A8),
@@ -92,10 +92,10 @@ class AppColors extends ThemeExtension<AppColors> {
     divider: Color(0xFF363636),
     placeholder: Color(0xFF262626),
     searchBg: Color(0xFF1E1E24),
-    accent: Color(0xFFFF8199),
+    accent: Color(0xFFFF3040),
     success: Color(0xFF34C759),
     warning: Color(0xFFFFB300),
-    danger: Color(0xFFFF8A8A),
+    danger: Color(0xFFFF453A),
   );
 
   static AppColors of(BuildContext context) =>
@@ -165,32 +165,32 @@ class Palette {
   const Palette._();
 
   // ── 品牌色 ──
-  /// 主色（按钮 / 选中态 / 品牌标识）
-  static const primary = Color(0xFFFF3040);
+  /// 主色（按钮 / 选中态 / 品牌标识）—— 近黑，Instagram 式中性主操作
+  static const primary = Color(0xFF111111);
 
-  /// 主色浅底（选中背景 / 标签底色）
-  static const primaryLight = Color(0xFFFFE9EF);
+  /// 主色浅底（选中背景 / 标签底色）—— 中性浅灰
+  static const primaryLight = Color(0xFFF5F5F5);
 
   /// 主色 8% 透明度（轻选中背景）
-  static const primaryTint = Color(0x14FF3040);
+  static const primaryTint = Color(0x14111111);
 
   /// 主色按压态
-  static const primaryDark = Color(0xFFD92B3A);
+  static const primaryDark = Color(0xFF000000);
 
-  /// 辅助粉（点赞 / 心动 / 品牌渐变）
-  static const accent = Color(0xFFFF718D);
+  /// IG 红（点赞 / 心动 / 关键强调）
+  static const accent = Color(0xFFED4956);
 
-  /// 辅助粉深（渐变收尾 / 按压态）
-  static const accentDark = Color(0xFFD94F70);
+  /// IG 紫（渐变收尾 / 按压态）
+  static const accentDark = Color(0xFF962FBF);
 
-  /// 辅助粉浅底
+  /// 红调浅底
   static const accentLight = Color(0xFFFFF0F3);
 
-  /// 辅助粉 10% 透明度（轻点缀底）
-  static const accentSoft = Color(0x1AFF718D);
+  /// IG 红 10% 透明度（轻点缀底）
+  static const accentSoft = Color(0x1AED4956);
 
-  /// 辅助粉 20% 透明度（品牌阴影）
-  static const accentTint = Color(0x33FF718D);
+  /// IG 红 20% 透明度（品牌阴影）
+  static const accentTint = Color(0x33ED4956);
 
   // ── 语义状态色 ──
   /// 成功（核销成功 / 可约 / 在线）
@@ -205,8 +205,8 @@ class Palette {
   /// 警示浅底
   static const warningLight = Color(0xFFFFF8ED);
 
-  /// 危险（取消 / 封禁 / 不可约）
-  static const danger = Color(0xFFD9453E);
+  /// 危险（取消 / 封禁 / 不可约）—— 与 IG 红同族
+  static const danger = Color(0xFFED4956);
 
   /// 危险浅底
   static const dangerLight = Color(0xFFFFF0F1);
@@ -221,23 +221,23 @@ class Palette {
   /// 次级表面（占位 / 禁用底）
   static const surfaceAlt = Color(0xFFF5F5F5);
 
-  /// 搜索框底色
-  static const searchBg = Color(0xFFF5F6FC);
+  /// 搜索框底色（Instagram 中性输入底）
+  static const searchBg = Color(0xFFEFEFEF);
 
-  /// 主要文字
-  static const textPrimary = Color(0xFF161616);
+  /// 主要文字（近黑）
+  static const textPrimary = Color(0xFF111111);
 
   /// 次要文字
   static const textSecondary = Color(0xFF737373);
 
-  /// 三级文字（未选中 / 辅助标签）
-  static const textTertiary = Color(0xFF8E8E8E);
+  /// 三级文字（未选中 / 辅助标签，Instagram 灰）
+  static const textTertiary = Color(0xFFA8A8A8);
 
   /// 分割线 / 边框
   static const divider = Color(0xFFDBDBDB);
 
   /// 输入框描边
-  static const inputBorder = Color(0xFFD0D0D0);
+  static const inputBorder = Color(0xFFDBDBDB);
 
   // ── 首页低饱和图标底色 ──
   static const iconBgPink = Color(0xFFFFF0F3);
@@ -259,16 +259,24 @@ class Palette {
   static const coral = Color(0xFFFF8A5B);
 
   // ── 品牌渐变 ──
+  /// Instagram 官方故事渐变（黄 → 橙 → 粉 → 紫 → 蓝）
   static const LinearGradient gradientPink = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFFF9BB0), Color(0xFFFF6687)],
+    colors: [
+      Color(0xFFFEDA75),
+      Color(0xFFFA7E1E),
+      Color(0xFFD62976),
+      Color(0xFF962FBF),
+      Color(0xFF4F5BD5),
+    ],
   );
 
+  /// 红 → 紫强调渐变
   static const LinearGradient gradientAccent = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFFF718D), Color(0xFFD94F70)],
+    colors: [Color(0xFFED4956), Color(0xFF962FBF)],
   );
 
   static const LinearGradient gradientPurple = LinearGradient(

@@ -33,11 +33,10 @@ export class AdminReportsController {
 
   /** 举报作品 */
   @Post()
-  createReport(
-    @CurrentUser() user: AuthUser,
-    @Body() dto: CreateReportDto,
-  ) {
-    return this.community.createReport(user.id, dto.postId, dto.reason);
+  createReport(@CurrentUser() user: AuthUser, @Body() dto: CreateReportDto) {
+    return this.community.createReport(user.id, dto.reason, {
+      postId: dto.postId,
+    });
   }
 
   /** 受理举报 */

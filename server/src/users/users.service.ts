@@ -7,10 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import type Redis from 'ioredis';
 import { In, Like, Repository } from 'typeorm';
-import {
-  FORCE_OFFLINE_TTL,
-  kickKey,
-} from '../auth/session-keys';
+import { FORCE_OFFLINE_TTL, kickKey } from '../auth/session-keys';
 import { publishKickEvent } from '../chat/chat-events';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { Appointment } from '../appointments/appointment.entity';
@@ -292,6 +289,7 @@ export class UsersService {
       await Promise.all([
         this.videoLikes.delete({ videoId: In(videoIds) }),
         this.videoComments.delete({ videoId: In(videoIds) }),
+        this.reports.delete({ videoId: In(videoIds) }),
       ]);
       await this.videos.delete(videoIds);
     }
@@ -299,9 +297,7 @@ export class UsersService {
   }
 
   /** 管理端：物理删除用户（含作品、互动、关注、会员、预约、聊天等全部关联数据） */
-  async remove(
-    userId: number,
-  ): Promise<{ posts: number; videos: number }> {
+  async remove(userId: number): Promise<{ posts: number; videos: number }> {
     // 删除账号前先令其现有会话失效并踢线，避免旧 token 继续访问
     await this.redis.set(kickKey(userId), '1', 'EX', FORCE_OFFLINE_TTL);
     publishKickEvent(this.redis, userId, 'forced_offline');

@@ -6,8 +6,10 @@ import '../../core/app_colors.dart';
 import '../../core/auth_service.dart';
 import '../../core/chat_api.dart';
 import '../../core/chat_service.dart';
+import '../../features/home/presentation/instagram_style.dart';
 import '../../widgets/state_widgets.dart';
 import 'add_friend_page.dart';
+import 'blacklist_page.dart';
 import 'chat_page.dart';
 import 'create_group_page.dart';
 import 'group_chat_page.dart';
@@ -157,6 +159,15 @@ class _ConversationListPageState extends State<ConversationListPage> {
                 _openAddFriend();
               },
             ),
+            ListTile(
+              leading: Icon(Icons.block_outlined, color: colors.danger),
+              title: const Text('黑名单'),
+              subtitle: const Text('管理已拉黑的用户'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _openBlacklist();
+              },
+            ),
             const SizedBox(height: 8),
           ],
         ),
@@ -175,6 +186,14 @@ class _ConversationListPageState extends State<ConversationListPage> {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const AddFriendPage()),
     );
+  }
+
+  /// 黑名单管理页：返回后刷新会话列表（拉黑状态可能变化）
+  Future<void> _openBlacklist() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const BlacklistPage()),
+    );
+    ChatService.instance.refreshConversations();
   }
 
   /// 长按条目：底部操作菜单（置顶 / 标已读 / 删除）
@@ -285,7 +304,10 @@ class _ConversationListPageState extends State<ConversationListPage> {
                 listenable: AuthService.instance,
                 builder: (context, _) => _buildAvatar(),
               ),
-              title: const Text('聊天'),
+              title: const Text(
+                '你的消息',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              ),
               actions: [
                 _buildFilterButton(),
                 IconButton(
@@ -703,6 +725,27 @@ class _ConversationTile extends StatelessWidget {
                         ),
                         const SizedBox(width: 2),
                       ],
+                      if (conversation.peerBlockedByMe ||
+                          conversation.peerBlockedByPeer) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colors.placeholder,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '已拉黑',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
                       Expanded(
                         child: Text(
                           nickname,
@@ -710,7 +753,7 @@ class _ConversationTile extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
@@ -746,7 +789,7 @@ class _ConversationTile extends StatelessWidget {
                           margin: const EdgeInsets.only(left: 8),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: colors.primary,
+                            color: IgColors.blue,
                           ),
                         ),
                     ],
@@ -762,10 +805,6 @@ class _ConversationTile extends StatelessWidget {
 
   Widget _avatar(BuildContext context, String nickname, String avatar) {
     final colors = AppColors.of(context);
-    final valid =
-        avatar.startsWith('http://') ||
-        avatar.startsWith('https://') ||
-        avatar.startsWith('/uploads/');
     // 对端在线状态（presence 事件实时更新）
     final online =
         ChatService.instance.isPeerOnline(conversation.peerId) ||
@@ -773,32 +812,23 @@ class _ConversationTile extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: colors.placeholder,
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: valid
-              ? Image.network(
-                  ChatApi.resolveUrl(avatar),
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => _initial(nickname),
-                )
-              : _initial(nickname),
+        StoryRing(
+          url: avatar,
+          name: nickname,
+          size: 56,
+          seen: true,
+          id: conversation.peerId,
         ),
         // 右下角在线小圆点
         Positioned(
           right: 0,
           bottom: 0,
           child: Container(
-            width: 13,
-            height: 13,
+            width: 14,
+            height: 14,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: online ? Palette.success : colors.placeholder,
+              color: online ? Palette.success : colors.textTertiary,
               border: Border.all(color: colors.surface, width: 2),
             ),
           ),
@@ -807,12 +837,4 @@ class _ConversationTile extends StatelessWidget {
     );
   }
 
-  Widget _initial(String nickname) {
-    return Center(
-      child: Text(
-        nickname.characters.first,
-        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
 }

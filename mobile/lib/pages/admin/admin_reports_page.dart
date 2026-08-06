@@ -241,8 +241,29 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
               ),
               const SizedBox(width: 8),
               Text(
-                '举报人 ${r.reporterId} → 作品 ${r.postId}',
+                r.targetType == 'video'
+                    ? '举报人 ${r.reporterId} → 短视频 #${r.videoId ?? r.postId}'
+                    : '举报人 ${r.reporterId} → 作品 ${r.postId}',
                 style: TextStyle(fontSize: 12, color: colors.textSecondary),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: r.targetType == 'video'
+                      ? Palette.primary.withValues(alpha: 0.12)
+                      : colors.placeholder,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  r.targetType == 'video' ? '短视频' : '帖子',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: r.targetType == 'video'
+                        ? Palette.primary
+                        : colors.textSecondary,
+                  ),
+                ),
               ),
               const Spacer(),
               Container(

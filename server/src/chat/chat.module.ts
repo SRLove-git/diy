@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FollowsModule } from '../follows/follows.module';
 import { User } from '../users/user.entity';
+import { Block } from './block.entity';
+import { BlocksController } from './blocks.controller';
+import { BlocksService } from './blocks.service';
 import { ChatController } from './chat.controller';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
@@ -20,6 +23,7 @@ import { MessageStatus } from './message_status.entity';
   imports: [
     TypeOrmModule.forFeature([
       Conversation,
+      Block,
       Message,
       MessageStatus,
       Group,
@@ -31,8 +35,8 @@ import { MessageStatus } from './message_status.entity';
     ]),
     FollowsModule,
   ],
-  controllers: [ChatController, GroupsController],
-  providers: [ChatService, GroupsService, ChatGateway],
-  exports: [ChatService, GroupsService, ChatGateway],
+  controllers: [ChatController, GroupsController, BlocksController],
+  providers: [ChatService, GroupsService, BlocksService, ChatGateway],
+  exports: [ChatService, GroupsService, BlocksService, ChatGateway],
 })
 export class ChatModule {}

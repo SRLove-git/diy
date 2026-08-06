@@ -47,7 +47,12 @@ export class AuthController {
   /** 设置/重置密码（短信验证码校验） */
   @Post('set-password')
   setPassword(@Body() dto: SetPasswordDto) {
-    return this.auth.setPassword(dto.phone, dto.code, dto.password, dto.username);
+    return this.auth.setPassword(
+      dto.phone,
+      dto.code,
+      dto.password,
+      dto.username,
+    );
   }
 
   /** 刷新令牌（轮换制） */

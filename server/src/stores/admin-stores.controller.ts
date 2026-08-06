@@ -76,7 +76,10 @@ export class AdminStoresController {
   }
 
   @Patch('slots/:id')
-  updateSlot(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSlotDto) {
+  updateSlot(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateSlotDto,
+  ) {
     return this.stores.updateSlot(id, dto);
   }
 

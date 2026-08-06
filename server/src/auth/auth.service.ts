@@ -17,11 +17,7 @@ import { SmsService } from '../sms/sms.service';
 import { UsersService } from '../users/users.service';
 import { kickKey } from './session-keys';
 
-const scrypt = promisify(scryptCb) as (
-  password: string,
-  salt: Buffer,
-  keylen: number,
-) => Promise<Buffer>;
+const scrypt = promisify(scryptCb);
 
 /** scrypt 哈希密码，格式：scrypt$<salt hex>:<hash hex> */
 async function hashPassword(password: string): Promise<string> {
@@ -30,7 +26,10 @@ async function hashPassword(password: string): Promise<string> {
   return `scrypt$${salt.toString('hex')}:${hash.toString('hex')}`;
 }
 
-async function verifyPassword(password: string, stored: string): Promise<boolean> {
+async function verifyPassword(
+  password: string,
+  stored: string,
+): Promise<boolean> {
   const [scheme, rest] = stored.split('$');
   if (scheme !== 'scrypt' || !rest) return false;
   const [saltHex, hashHex] = rest.split(':');
@@ -75,7 +74,10 @@ export class AuthService {
 
     const code = String(Math.floor(100000 + Math.random() * 900000));
     await this.redis.set(`sms:code:${phone}`, code, 'EX', SMS_CODE_TTL);
-    await this.sms.send(phone, `【DIY手作工坊】您的验证码是 ${code}，5 分钟内有效。`);
+    await this.sms.send(
+      phone,
+      `【DIY手作工坊】您的验证码是 ${code}，5 分钟内有效。`,
+    );
 
     // 开发环境：返回验证码便于联调，生产环境不返回
     const isDev = this.config.get<string>('NODE_ENV') !== 'production';
@@ -127,7 +129,12 @@ export class AuthService {
   }
 
   /** 设置/重置密码：短信验证码校验通过后写入新密码 */
-  async setPassword(phone: string, code: string, password: string, username?: string) {
+  async setPassword(
+    phone: string,
+    code: string,
+    password: string,
+    username?: string,
+  ) {
     await this.verifySmsCode(phone, code);
     const user = await this.users.findByPhoneOrCreate(phone);
     if (user.isBanned) throw new ForbiddenException('账号已被禁用');
@@ -148,7 +155,8 @@ export class AuthService {
     const attemptKey = `sms:attempt:${phone}`;
     const attempts = await this.redis.incr(attemptKey);
     if (attempts === 1) await this.redis.expire(attemptKey, 600);
-    if (attempts > MAX_ATTEMPTS) throw new BadRequestException('尝试次数过多，请稍后再试');
+    if (attempts > MAX_ATTEMPTS)
+      throw new BadRequestException('尝试次数过多，请稍后再试');
 
     const saved = await this.redis.get(`sms:code:${phone}`);
     if (!saved || saved !== code) {

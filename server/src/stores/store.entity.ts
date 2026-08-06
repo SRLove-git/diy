@@ -35,7 +35,13 @@ export class Store {
   lng: number;
 
   /** 评分 0-5 */
-  @Column({ type: 'decimal', precision: 2, scale: 1, default: 5, transformer: decimal })
+  @Column({
+    type: 'decimal',
+    precision: 2,
+    scale: 1,
+    default: 5,
+    transformer: decimal,
+  })
   rating: number;
 
   /** 门店图片（OSS URL 列表） */

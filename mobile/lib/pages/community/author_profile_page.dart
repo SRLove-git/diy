@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:dio/dio.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/auth_service.dart';
@@ -113,10 +114,16 @@ class _AuthorProfilePageState extends State<AuthorProfilePage> {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => ChatPage(conversation: conv)),
       );
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('发起会话失败，请稍后再试')),
+          SnackBar(
+            content: Text(
+              e is DioException
+                  ? ChatApi.messageOf(e)
+                  : '发起会话失败，请稍后再试',
+            ),
+          ),
         );
       }
     }

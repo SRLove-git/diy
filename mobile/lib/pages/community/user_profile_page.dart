@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:dio/dio.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/chat_api.dart';
@@ -127,8 +128,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
       Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (_) => ChatPage(conversation: conv)));
-    } catch (_) {
-      if (mounted) _toast(context, '发起会话失败，请稍后再试');
+    } catch (e) {
+      if (mounted) {
+        _toast(
+          context,
+          e is DioException
+              ? ChatApi.messageOf(e)
+              : '发起会话失败，请稍后再试',
+        );
+      }
     }
   }
 
@@ -635,7 +643,7 @@ class _PostItem extends StatelessWidget {
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Palette.iconBgOrange, Palette.primaryLight],
+                colors: [Palette.iconBgOrange, Palette.accentLight],
               ),
               borderRadius: BorderRadius.circular(12),
             ),

@@ -48,7 +48,7 @@ class ShortVideo {
   /// 视频标题 / 文案
   final String title;
 
-  /// 视频封面 URL（Mock 播放：封面静态图 + AnimationController 模拟进度）
+  /// 视频封面 URL（视频作品展示封面；无视频流时回退封面 + 模拟进度）
   final String cover;
 
   /// 视频时长

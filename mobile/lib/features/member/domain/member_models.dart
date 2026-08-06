@@ -133,6 +133,15 @@ class MemberExperience {
 
   /// 每月专属次数
   final int quota;
+
+  factory MemberExperience.fromJson(Map<String, dynamic> json) =>
+      MemberExperience(
+        name: (json['name'] ?? '') as String,
+        desc: (json['desc'] ?? '') as String,
+        memberPrice: _toDouble(json['memberPrice']),
+        normalPrice: _toDouble(json['normalPrice']),
+        quota: (json['quota'] ?? 0) as int,
+      );
 }
 
 /// 会员优惠券

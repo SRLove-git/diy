@@ -226,7 +226,7 @@ class AuthGate extends StatelessWidget {
   }
 }
 
-/// 底部 5 Tab：首页 / 社区 / 视频 / 消息 / 我的（iOS 风格）
+/// 底部 5 Tab（Instagram 布局）：主页 / Reels / 社区 / 消息 / 我的。
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -245,8 +245,8 @@ class _MainShellState extends State<MainShell> {
 
   List<Widget> get _pages => [
     const HomePage(),
+    ShortVideoPage(active: _index == 1),
     DiscoverPage(onSwitchTab: (navIndex) => setState(() => _index = navIndex)),
-    ShortVideoPage(active: _index == 2),
     ConversationListPage(onTapAvatar: () => setState(() => _index = 4)),
     const ProfilePage(),
   ];
@@ -276,7 +276,12 @@ class _MainShellState extends State<MainShell> {
         (
           icon: Icons.home_outlined,
           activeIcon: Icons.home_rounded,
-          label: '首页',
+          label: '主页',
+        ),
+        (
+          icon: Icons.movie_creation_outlined,
+          activeIcon: Icons.movie_creation_rounded,
+          label: 'Reels',
         ),
         (
           icon: Icons.explore_outlined,
@@ -284,13 +289,8 @@ class _MainShellState extends State<MainShell> {
           label: '社区',
         ),
         (
-          icon: Icons.videocam_outlined,
-          activeIcon: Icons.videocam_rounded,
-          label: '视频',
-        ),
-        (
-          icon: Icons.chat_bubble_outline_rounded,
-          activeIcon: Icons.chat_bubble_rounded,
+          icon: Icons.send_outlined,
+          activeIcon: Icons.send_rounded,
           label: '消息',
         ),
         (

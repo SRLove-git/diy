@@ -324,6 +324,9 @@ class AdminReport {
     required this.id,
     required this.reporterId,
     required this.postId,
+    required this.targetType,
+    this.videoId,
+    this.video,
     required this.reason,
     required this.status,
     required this.createdAt,
@@ -333,6 +336,9 @@ class AdminReport {
   final int id;
   final int reporterId;
   final int postId;
+  final String targetType;
+  final int? videoId;
+  final ({String title, String cover, String status, int userId})? video;
   final String reason;
   final String status;
   final String createdAt;
@@ -342,6 +348,16 @@ class AdminReport {
         id: json['id'] as int,
         reporterId: (json['reporterId'] as num?)?.toInt() ?? 0,
         postId: (json['postId'] as num?)?.toInt() ?? 0,
+        targetType: (json['targetType'] ?? 'post') as String,
+        videoId: (json['videoId'] as num?)?.toInt(),
+        video: json['video'] is Map<String, dynamic>
+            ? (
+                title: (json['video']['title'] ?? '') as String,
+                cover: (json['video']['cover'] ?? '') as String,
+                status: (json['video']['status'] ?? '') as String,
+                userId: ((json['video']['userId'] ?? 0) as num).toInt(),
+              )
+            : null,
         reason: (json['reason'] ?? '') as String,
         status: (json['status'] ?? '') as String,
         createdAt: (json['createdAt'] ?? '') as String,

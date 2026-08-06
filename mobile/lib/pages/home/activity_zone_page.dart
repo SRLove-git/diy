@@ -10,7 +10,7 @@ import '../../widgets/state_widgets.dart';
 /// 活动专区
 ///
 /// 展示平台近期活动：会员沙龙、作品大赛、节日 DIY 特别场等。
-/// 活动数据当前复用会员数据源（Mock），后续接入服务端后替换为真实接口。
+/// 活动数据来自服务端 /activities 接口（ApiMemberRepository.fetchActivities）。
 class ActivityZonePage extends StatefulWidget {
   const ActivityZonePage({super.key});
 

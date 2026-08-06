@@ -9,11 +9,21 @@ import { VideosController } from './videos.controller';
 import { AdminVideosController } from './admin-videos.controller';
 import { VideosService } from './videos.service';
 import { UsersModule } from '../users/users.module';
+import { CommunityModule } from '../community/community.module';
+import { Report } from '../community/report.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Video, VideoLike, VideoComment, Follow, User]),
+    TypeOrmModule.forFeature([
+      Video,
+      VideoLike,
+      VideoComment,
+      Follow,
+      User,
+      Report,
+    ]),
     UsersModule,
+    CommunityModule,
   ],
   controllers: [VideosController, AdminVideosController],
   providers: [VideosService],

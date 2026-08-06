@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/chat_api.dart';
@@ -100,8 +101,14 @@ class _AddFriendPageState extends State<AddFriendPage> {
         MaterialPageRoute(builder: (_) => ChatPage(conversation: conv)),
       );
       if (mounted) Navigator.of(context).pop();
-    } catch (_) {
-      if (mounted) _toast('发起会话失败，请稍后再试');
+    } catch (e) {
+      if (mounted) {
+        _toast(
+          e is DioException
+              ? ChatApi.messageOf(e)
+              : '发起会话失败，请稍后再试',
+        );
+      }
     }
   }
 

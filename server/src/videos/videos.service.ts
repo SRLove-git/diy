@@ -4,10 +4,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Not, Repository } from 'typeorm';
+import { In, Like, Not, Repository } from 'typeorm';
 
 import { Follow } from '../follows/follow.entity';
 import { User } from '../users/user.entity';
+import { Report } from '../community/report.entity';
 import { Video } from './video.entity';
 import { VideoComment } from './video-comment.entity';
 import { VideoLike } from './video-like.entity';
@@ -60,6 +61,8 @@ export class VideosService {
     private readonly likes: Repository<VideoLike>,
     @InjectRepository(VideoComment)
     private readonly comments: Repository<VideoComment>,
+    @InjectRepository(Report)
+    private readonly reports: Repository<Report>,
     @InjectRepository(Follow)
     private readonly follows: Repository<Follow>,
     @InjectRepository(User)
@@ -141,14 +144,31 @@ export class VideosService {
 
   // ──── Feed ────
 
-  /** 推荐信息流：全部已通过视频，按创建时间倒序 */
-  async recommendFeed(userId: number | undefined, page = 1, pageSize = 20) {
-    const [list, total] = await this.videos.findAndCount({
-      where: { status: 'approved' },
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    });
+  /**
+   * 推荐信息流：全部已通过视频，按创建时间倒序。
+   * q：按标题 / 文案 / 配乐 / 地点 / 标签模糊搜索。
+   */
+  async recommendFeed(
+    userId: number | undefined,
+    page = 1,
+    pageSize = 20,
+    q = '',
+  ) {
+    const qb = this.videos
+      .createQueryBuilder('video')
+      .where('video.status = :status', { status: 'approved' })
+      .orderBy('video.createdAt', 'DESC')
+      .skip((page - 1) * pageSize)
+      .take(pageSize);
+
+    const keyword = (q ?? '').trim();
+    if (keyword) {
+      qb.andWhere(
+        '(video.title LIKE :kw OR video.content LIKE :kw OR video.music LIKE :kw OR video.location LIKE :kw OR video.tags LIKE :kw)',
+        { kw: `%${keyword}%` },
+      );
+    }
+    const [list, total] = await qb.getManyAndCount();
     const [authors, liked] = await Promise.all([
       this.resolveAuthors(list.map((v) => v.userId)),
       this.likedSet(
@@ -255,6 +275,7 @@ export class VideosService {
     await Promise.all([
       this.likes.delete({ videoId: id }),
       this.comments.delete({ videoId: id }),
+      this.reports.delete({ videoId: id }),
     ]);
     await this.videos.delete({ id });
   }
@@ -289,6 +310,36 @@ export class VideosService {
   /** 视频总数（开发环境种子数据判断用） */
   async countVideos(): Promise<number> {
     return this.videos.count();
+  }
+
+  /**
+   * 修复开发期种子数据：把「封面图片当视频流」的旧演示行
+   * 替换为真实演示视频。按 id 顺序轮换分配演示视频，
+   * 兼容历史库里封面重复的脏种子行；仅命中 videoUrl 仍是
+   * picsum 占位图、或已被本逻辑改到 /assets/demo/ 的种子行，
+   * 不影响用户上传的真实视频。
+   */
+  async repairImageVideos(
+    demoVideos: { videoUrl: string; duration: number }[],
+  ): Promise<number> {
+    const rows = await this.videos.find({
+      where: [
+        { videoUrl: Like('%picsum.photos%') },
+        { videoUrl: Like('/assets/demo/%') },
+      ],
+      order: { id: 'ASC' },
+    });
+    if (!rows.length || !demoVideos.length) return 0;
+    let repaired = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const demo = demoVideos[i % demoVideos.length];
+      if (rows[i].videoUrl === demo.videoUrl) continue;
+      rows[i].videoUrl = demo.videoUrl;
+      rows[i].duration = demo.duration;
+      repaired++;
+    }
+    if (repaired) await this.videos.save(rows);
+    return repaired;
   }
 
   async create(userId: number, dto: CreateVideoDto): Promise<VideoItem> {

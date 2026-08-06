@@ -15,6 +15,8 @@ class Conversation {
     this.unreadCount = 0,
     this.pinned = false,
     this.peerOnline = false,
+    this.peerBlockedByMe = false,
+    this.peerBlockedByPeer = false,
   });
 
   final int id;
@@ -30,6 +32,12 @@ class Conversation {
 
   /// 对端是否在线（服务端 Redis 在线状态）
   final bool peerOnline;
+
+  /// 我是否已拉黑对方
+  final bool peerBlockedByMe;
+
+  /// 对方是否已拉黑我
+  final bool peerBlockedByPeer;
 
   /// 去掉 "text:" 等类型前缀后的预览文本
   String get lastMessageText {
@@ -49,6 +57,8 @@ class Conversation {
     int? unreadCount,
     bool? pinned,
     bool? peerOnline,
+    bool? peerBlockedByMe,
+    bool? peerBlockedByPeer,
   }) =>
       Conversation(
         id: id,
@@ -60,6 +70,8 @@ class Conversation {
         unreadCount: unreadCount ?? this.unreadCount,
         pinned: pinned ?? this.pinned,
         peerOnline: peerOnline ?? this.peerOnline,
+        peerBlockedByMe: peerBlockedByMe ?? this.peerBlockedByMe,
+        peerBlockedByPeer: peerBlockedByPeer ?? this.peerBlockedByPeer,
       );
 
   factory Conversation.fromJson(Map<String, dynamic> json) {
@@ -77,6 +89,8 @@ class Conversation {
       unreadCount: (json['unreadCount'] ?? 0) as int,
       pinned: (json['pinned'] ?? false) as bool,
       peerOnline: (peer['online'] ?? false) as bool,
+      peerBlockedByMe: peer['blockedByMe'] == true,
+      peerBlockedByPeer: peer['blockedByPeer'] == true,
     );
   }
 }
@@ -334,6 +348,50 @@ class ChatApi {
     await ApiClient.instance.delete('/conversations/$conversationId');
   }
 
+  /// 拉黑 / 取消拉黑目标用户（幂等），返回 { blockedByMe, blockedByPeer }
+  static Future<({bool blockedByMe, bool blockedByPeer})> setBlock(
+    int targetUserId, {
+    required bool blocked,
+  }) async {
+    final resp = await ApiClient.instance
+        .put('/blocks/$targetUserId', data: {'blocked': blocked});
+    final data = Map<String, dynamic>.from(resp.data as Map);
+    return (
+      blockedByMe: data['blockedByMe'] == true,
+      blockedByPeer: data['blockedByPeer'] == true,
+    );
+  }
+
+  /// 与目标用户的拉黑关系状态
+  static Future<({bool blockedByMe, bool blockedByPeer})> blockStatus(
+    int targetUserId,
+  ) async {
+    final resp = await ApiClient.instance.get('/blocks/$targetUserId');
+    final data = Map<String, dynamic>.from(resp.data as Map);
+    return (
+      blockedByMe: data['blockedByMe'] == true,
+      blockedByPeer: data['blockedByPeer'] == true,
+    );
+  }
+
+  /// 我的黑名单（分页）
+  static Future<({List<BlockedUser> items, int total})> fetchBlockedUsers({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final resp = await ApiClient.instance.get(
+      '/blocks',
+      queryParameters: {'page': page, 'limit': limit},
+    );
+    final data = resp.data as Map<String, dynamic>;
+    return (
+      items: ((data['items'] ?? []) as List)
+          .map((e) => BlockedUser.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      total: (data['total'] as num?)?.toInt() ?? 0,
+    );
+  }
+
   /// 提取后端错误信息
   static String messageOf(DioException e) {
     if (e.type == DioExceptionType.receiveTimeout ||
@@ -348,6 +406,30 @@ class ChatApi {
     }
     return '网络异常，请稍后再试';
   }
+}
+
+/// 黑名单条目
+class BlockedUser {
+  const BlockedUser({
+    required this.id,
+    required this.nickname,
+    required this.avatar,
+    this.blockedAt,
+  });
+
+  final int id;
+  final String nickname;
+  final String avatar;
+  final DateTime? blockedAt;
+
+  factory BlockedUser.fromJson(Map<String, dynamic> json) => BlockedUser(
+        id: (json['id'] as num).toInt(),
+        nickname: (json['nickname'] ?? '') as String,
+        avatar: (json['avatar'] ?? '') as String,
+        blockedAt: json['blockedAt'] == null
+            ? null
+            : DateTime.tryParse(json['blockedAt'].toString()),
+      );
 }
 
 // ──── 群聊模型 ────
