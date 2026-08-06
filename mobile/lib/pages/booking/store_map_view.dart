@@ -90,6 +90,18 @@ List<({Store store, double lat, double lng})> _geocoded(List<Store> stores) =>
           (store: s, lat: s.lat!, lng: s.lng!),
     ];
 
+/// 已选中门店的坐标（未选中或无经纬度时返回 null）
+({Store store, double lat, double lng})? _selectedOf(
+  List<Store> stores,
+  int? selectedId,
+) {
+  if (selectedId == null) return null;
+  for (final s in _geocoded(stores)) {
+    if (s.store.id == selectedId) return s;
+  }
+  return null;
+}
+
 /// 门店区域中心（门店为空时回退杭州）
 GeoPoint _centerOf(List<Store> stores) {
   final geocoded = _geocoded(stores);
@@ -150,8 +162,14 @@ class _StoreOsmMapState extends State<_StoreOsmMap> {
   @override
   void didUpdateWidget(_StoreOsmMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.data.stores != widget.data.stores) _fitted = false;
-    if (!_fitted) WidgetsBinding.instance.addPostFrameCallback((_) => _fitOnce());
+    if (oldWidget.data.stores != widget.data.stores) {
+      // 门店列表变化（加载/定位重排/搜索过滤）：重新适配视野
+      _fitted = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _fitOnce());
+    } else if (oldWidget.data.selectedStoreId != widget.data.selectedStoreId) {
+      // 切换选中门店：地图跟随到该门店
+      WidgetsBinding.instance.addPostFrameCallback((_) => _centerOnSelected());
+    }
   }
 
   void _fitOnce() {
@@ -169,6 +187,14 @@ class _StoreOsmMapState extends State<_StoreOsmMap> {
     );
   }
 
+  /// 将视野中心移动到已选门店（地图外选择列表门店时跟随刷新）
+  void _centerOnSelected() {
+    if (!mounted) return;
+    final selected = _selectedOf(widget.data.stores, widget.data.selectedStoreId);
+    if (selected == null) return;
+    _controller.move(ll.LatLng(selected.lat, selected.lng), 14);
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = widget.data;
@@ -178,6 +204,7 @@ class _StoreOsmMapState extends State<_StoreOsmMap> {
       options: MapOptions(
         initialCenter: ll.LatLng(center.lat, center.lng),
         initialZoom: 13,
+        onMapReady: _fitOnce,
         // 与原生地图一致：禁用旋转，保留拖动/缩放
         interactionOptions: const InteractionOptions(
           flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
@@ -262,8 +289,14 @@ class _StoreAppleMapState extends State<_StoreAppleMap> {
   @override
   void didUpdateWidget(_StoreAppleMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.data.stores != widget.data.stores) _fitted = false;
-    if (!_fitted) WidgetsBinding.instance.addPostFrameCallback((_) => _fitOnce());
+    if (oldWidget.data.stores != widget.data.stores) {
+      // 门店列表变化（加载/定位重排/搜索过滤）：重新适配视野
+      _fitted = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _fitOnce());
+    } else if (oldWidget.data.selectedStoreId != widget.data.selectedStoreId) {
+      // 切换选中门店：地图跟随到该门店
+      WidgetsBinding.instance.addPostFrameCallback((_) => _centerOnSelected());
+    }
   }
 
   void _fitOnce() {
@@ -278,6 +311,22 @@ class _StoreAppleMapState extends State<_StoreAppleMap> {
           northeast: apple.LatLng(b.maxLat, b.maxLng),
         ),
         48,
+      ),
+    );
+  }
+
+  /// 将视野中心移动到已选门店（地图外选择列表门店时跟随刷新）
+  void _centerOnSelected() {
+    if (!mounted) return;
+    final c = _controller;
+    final selected = _selectedOf(widget.data.stores, widget.data.selectedStoreId);
+    if (c == null || selected == null) return;
+    c.moveCamera(
+      apple.CameraUpdate.newCameraPosition(
+        apple.CameraPosition(
+          target: apple.LatLng(selected.lat, selected.lng),
+          zoom: 14,
+        ),
       ),
     );
   }

@@ -214,6 +214,39 @@ void main() {
     );
   });
 
+  testWidgets('点击列表门店卡片可切换选中并同步高亮地图标记', (tester) async {
+    await _pumpBooking(tester, locate: () async => null);
+
+    // 默认选中西湖店：地图标记为绿色
+    Color markerColor(int storeId) => tester
+        .widget<Icon>(
+          find.descendant(
+            of: find.byKey(Key('store-marker-$storeId')),
+            matching: find.byIcon(Icons.location_on),
+          ),
+        )
+        .color!;
+    expect(markerColor(1), Colors.green);
+    expect(markerColor(2), Colors.red);
+
+    // 点击滨江店卡片：地图标记跟随切换为绿色
+    final card2 = find.byKey(const Key('store-card-2'));
+    await tester.ensureVisible(card2);
+    await tester.pumpAndSettle();
+    await tester.tap(card2);
+    await tester.pumpAndSettle();
+
+    expect(markerColor(2), Colors.green);
+    expect(markerColor(1), Colors.red);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('store-card-2')),
+        matching: find.byIcon(Icons.check_circle),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('顶部搜索框可按名称/地址过滤门店，并同步地图标记', (tester) async {
     await _pumpBooking(tester, locate: () async => null);
 

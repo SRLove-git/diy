@@ -53,9 +53,31 @@ export interface SaveCouponPayload {
   enabled?: boolean
 }
 
+export interface SaveMembershipPayload {
+  userId: number
+  levelName?: string
+  expireAt: string
+}
+
+export interface UpdateMembershipPayload {
+  levelName?: string
+  expireAt: string
+}
+
 export const memberApi = {
-  listMembers(page = 1) {
-    return http.get<[Membership[], number]>('/admin/members', { params: { page } })
+  listMembers(page = 1, keyword?: string) {
+    return http.get<[Membership[], number]>('/admin/members', {
+      params: { page, ...(keyword ? { keyword } : {}) },
+    })
+  },
+  createMembership(data: SaveMembershipPayload) {
+    return http.post('/admin/members', data)
+  },
+  updateMembership(id: number, data: UpdateMembershipPayload) {
+    return http.patch(`/admin/members/${id}`, data)
+  },
+  deleteMembership(id: number) {
+    return http.delete(`/admin/members/${id}`)
   },
   listPlans() {
     return http.get<MemberPlan[]>('/admin/members/plans')

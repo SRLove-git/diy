@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -12,7 +13,12 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AdminGuard } from '../stores/admin.guard';
-import { SaveCouponDto, SavePlanDto } from './member.dto';
+import {
+  SaveCouponDto,
+  SaveMembershipDto,
+  SavePlanDto,
+  UpdateMembershipDto,
+} from './member.dto';
 import { MembersService } from './members.service';
 
 @Controller('admin/members')
@@ -21,8 +27,21 @@ export class AdminMembersController {
   constructor(private readonly members: MembersService) {}
   @Get() memberships(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('keyword') keyword?: string,
   ) {
-    return this.members.listMemberships(page);
+    return this.members.listMemberships(page, keyword?.trim());
+  }
+  @Post() createMembership(@Body() dto: SaveMembershipDto) {
+    return this.members.saveMembership(dto);
+  }
+  @Patch(':id') updateMembership(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateMembershipDto,
+  ) {
+    return this.members.saveMembership(dto, id);
+  }
+  @Delete(':id') removeMembership(@Param('id', ParseIntPipe) id: number) {
+    return this.members.removeMembership(id);
   }
   @Get('plans') plans() {
     return this.members.listPlans(true);

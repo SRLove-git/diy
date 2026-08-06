@@ -23,6 +23,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
   int _page = 1;
   bool _membersLoading = true;
   String? _membersError;
+  final TextEditingController _keywordController = TextEditingController();
 
   // 套餐
   List<AdminMemberPlan> _plans = [];
@@ -50,7 +51,10 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
       _membersError = null;
     });
     try {
-      final paged = await AdminApi.fetchMemberships(page: _page);
+      final paged = await AdminApi.fetchMemberships(
+        page: _page,
+        keyword: _keywordController.text,
+      );
       if (mounted) {
         setState(() {
           _members = paged.items;
@@ -61,6 +65,60 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
       if (mounted) setState(() => _membersError = AdminApi.messageOf(e));
     } finally {
       if (mounted) setState(() => _membersLoading = false);
+    }
+  }
+
+  void _searchMembers() {
+    setState(() => _page = 1);
+    _loadMembers();
+  }
+
+  Future<void> _openMemberForm([AdminMembership? member]) async {
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _MemberSheet(member: member, plans: _plans),
+    );
+    if (saved == true && mounted) {
+      _toast('保存成功');
+      _loadMembers();
+    }
+  }
+
+  Future<void> _deleteMember(AdminMembership member) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除会员记录'),
+        content: Text(
+          '确认删除会员编号 ${member.memberNo}（用户 #${member.userId}）？'
+          '删除后该用户会员资格立即失效，操作不可恢复。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.of(ctx).danger,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确认删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await AdminApi.deleteMembership(member.id);
+      if (mounted) {
+        _toast('已删除');
+        _loadMembers();
+      }
+    } on DioException catch (e) {
+      if (mounted) _toast(AdminApi.messageOf(e));
     }
   }
 
@@ -158,7 +216,14 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
         title: const Text('会员运营'),
         actions: [
           if (_tab == 0)
-            IconButton(icon: const Icon(Icons.refresh), onPressed: _loadMembers)
+            ...[
+              TextButton.icon(
+                onPressed: () => _openMemberForm(),
+                icon: const Icon(Icons.person_add_alt, size: 18),
+                label: const Text('开通会员'),
+              ),
+              IconButton(icon: const Icon(Icons.refresh), onPressed: _loadMembers),
+            ]
           else if (_tab == 1)
             TextButton.icon(
               onPressed: () => _openPlanForm(),
@@ -235,6 +300,92 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
 
   // ─── 会员列表 ───
 
+  Widget _buildMemberCard(AdminMembership member, AppColors colors) {
+    final active = DateTime.tryParse(member.expireAt)?.isAfter(DateTime.now()) ?? false;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  member.memberNo,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: active
+                      ? Palette.success.withValues(alpha: 0.1)
+                      : colors.danger.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  active ? '有效' : '已过期',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: active ? Palette.success : colors.danger,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${member.levelName} · 用户 #${member.userId}',
+            style: TextStyle(fontSize: 12, color: colors.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '有效期至 ${_shortDate(member.expireAt)}',
+                      style: TextStyle(fontSize: 12, color: colors.textPrimary),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '更新于 ${_shortDate(member.updatedAt)}',
+                      style: TextStyle(fontSize: 11, color: colors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => _openMemberForm(member),
+                icon: const Icon(Icons.edit_outlined, size: 17),
+                label: const Text('编辑'),
+              ),
+              TextButton.icon(
+                onPressed: () => _deleteMember(member),
+                icon: const Icon(Icons.delete_outline, size: 17),
+                label: const Text('删除'),
+                style: TextButton.styleFrom(
+                  foregroundColor: colors.danger,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMembers() {
     if (_membersLoading) return const LoadingWidget();
     if (_membersError != null) {
@@ -246,6 +397,30 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
         children: [
+          // 搜索：用户ID / 会员编号
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: TextField(
+              controller: _keywordController,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => _searchMembers(),
+              decoration: InputDecoration(
+                hintText: '搜索用户ID / 会员编号',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.arrow_forward),
+                  onPressed: _searchMembers,
+                ),
+                isDense: true,
+                filled: true,
+                fillColor: colors.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
           if (_members.isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 120),
@@ -256,60 +431,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
             )
           else ...[
             for (final member in _members)
-              Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            member.memberNo,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${member.levelName} · 用户 #${member.userId}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '有效期至 ${_shortDate(member.expireAt)}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '更新于 ${_shortDate(member.updatedAt)}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+              _buildMemberCard(member, colors),
             const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -984,6 +1106,208 @@ class _CouponSheetState extends State<_CouponSheet> {
               onChanged: (v) => setState(() => _enabled = v),
             ),
             const SizedBox(height: 12),
+            FilledButton(
+              onPressed: _saving ? null : _save,
+              child: Text(_saving ? '保存中…' : '保存'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── 会员开通/编辑弹层 ───
+
+class _MemberSheet extends StatefulWidget {
+  const _MemberSheet({this.member, this.plans = const []});
+
+  final AdminMembership? member;
+  final List<AdminMemberPlan> plans;
+
+  @override
+  State<_MemberSheet> createState() => _MemberSheetState();
+}
+
+class _MemberSheetState extends State<_MemberSheet> {
+  late final TextEditingController _userId;
+  late final TextEditingController _levelName;
+  late DateTime _expireAt;
+  int? _planId;
+  bool _saving = false;
+
+  bool get _editing => widget.member != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final member = widget.member;
+    _userId = TextEditingController(text: '${member?.userId ?? ''}');
+    _levelName = TextEditingController(text: member?.levelName ?? '手作会员');
+    _expireAt =
+        DateTime.tryParse(member?.expireAt ?? '') ??
+        DateTime.now().add(const Duration(days: 30));
+    _planId = null;
+  }
+
+  @override
+  void dispose() {
+    _userId.dispose();
+    _levelName.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickExpireAt() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _expireAt,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 3650)),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_expireAt),
+    );
+    if (time == null || !mounted) return;
+    setState(() {
+      _expireAt = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+    });
+  }
+
+  void _fillFromPlan(int? planId) {
+    final plan = widget.plans.where((p) => p.id == planId).firstOrNull;
+    if (plan == null) return;
+    setState(() {
+      _expireAt = DateTime.now().add(Duration(days: plan.durationDays));
+    });
+  }
+
+  Future<void> _save() async {
+    final userId = int.tryParse(_userId.text.trim());
+    if (!_editing && (userId == null || userId <= 0)) {
+      _toast('请输入用户ID');
+      return;
+    }
+    final levelName = _levelName.text.trim();
+    if (levelName.isEmpty) {
+      _toast('请输入会员等级');
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      if (_editing) {
+        await AdminApi.updateMembership(widget.member!.id, {
+          'levelName': levelName,
+          'expireAt': _expireAt.toIso8601String(),
+        });
+      } else {
+        await AdminApi.createMembership({
+          'userId': userId,
+          'levelName': levelName,
+          'expireAt': _expireAt.toIso8601String(),
+        });
+      }
+      if (mounted) Navigator.of(context).pop(true);
+    } on DioException catch (e) {
+      if (mounted) _toast(AdminApi.messageOf(e));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _toast(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  String get _expireLabel {
+    final d = _expireAt;
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+        '${d.day.toString().padLeft(2, '0')} '
+        '${d.hour.toString().padLeft(2, '0')}:'
+        '${d.minute.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 20,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              _editing ? '编辑会员' : '开通会员',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: _userId,
+              enabled: !_editing,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(
+                labelText: '用户ID',
+                hintText: '输入要开通会员的用户ID',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _levelName,
+              decoration: const InputDecoration(
+                labelText: '会员等级',
+                hintText: '如：手作会员',
+              ),
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: _pickExpireAt,
+              borderRadius: BorderRadius.circular(12),
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: '有效期至',
+                  suffixIcon: Icon(Icons.calendar_month_outlined),
+                ),
+                child: Text(_expireLabel),
+              ),
+            ),
+            if (!_editing && widget.plans.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int?>(
+                initialValue: _planId,
+                decoration: const InputDecoration(
+                  labelText: '按套餐开通（快捷填充有效期）',
+                ),
+                items: [
+                  const DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('不按套餐，手动选择有效期'),
+                  ),
+                  for (final plan in widget.plans)
+                    DropdownMenuItem<int?>(
+                      value: plan.id,
+                      child: Text('${plan.name}（${plan.durationDays} 天）'),
+                    ),
+                ],
+                onChanged: (v) {
+                  setState(() => _planId = v);
+                  _fillFromPlan(v);
+                },
+              ),
+            ],
+            const SizedBox(height: 16),
             FilledButton(
               onPressed: _saving ? null : _save,
               child: Text(_saving ? '保存中…' : '保存'),

@@ -9,6 +9,7 @@ import 'admin_members_page.dart';
 import 'admin_notifications_page.dart';
 import 'admin_orders_page.dart';
 import 'admin_posts_page.dart';
+import 'admin_reels_page.dart';
 import 'admin_stores_page.dart';
 import 'admin_users_page.dart';
 
@@ -45,6 +46,11 @@ class AdminHomePage extends StatelessWidget {
         page: AdminOrdersPage(),
       ),
       (icon: Icons.article_outlined, label: '社区管理', page: AdminPostsPage()),
+      (
+        icon: Icons.play_circle_outline,
+        label: 'Reels 管理',
+        page: AdminReelsPage(),
+      ),
       (icon: Icons.people_outline, label: '用户管理', page: AdminUsersPage()),
       (
         icon: Icons.notifications_outlined,

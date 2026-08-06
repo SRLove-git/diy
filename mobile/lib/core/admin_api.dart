@@ -519,6 +519,67 @@ class AdminCoupon {
       );
 }
 
+/// 管理端短视频/照片作品（Reels）
+class AdminVideo {
+  const AdminVideo({
+    required this.id,
+    required this.userId,
+    required this.title,
+    required this.content,
+    required this.cover,
+    required this.videoUrl,
+    required this.photos,
+    required this.tags,
+    required this.status,
+    required this.rejectReason,
+    required this.likeCount,
+    required this.commentCount,
+    required this.shareCount,
+    required this.viewCount,
+    required this.createdAt,
+  });
+
+  final int id;
+  final int userId;
+  final String title;
+  final String content;
+  final String cover;
+  final String videoUrl;
+  final List<String> photos;
+  final List<String> tags;
+  final String status;
+  final String rejectReason;
+  final int likeCount;
+  final int commentCount;
+  final int shareCount;
+  final int viewCount;
+  final String createdAt;
+
+  bool get isPhotoWork => photos.isNotEmpty;
+
+  factory AdminVideo.fromJson(Map<String, dynamic> json) => AdminVideo(
+        id: json['id'] as int,
+        userId: (json['userId'] as num?)?.toInt() ?? 0,
+        title: (json['title'] ?? '') as String,
+        content: (json['content']?.toString() ?? ''),
+        cover: (json['cover'] ?? '') as String,
+        videoUrl: (json['videoUrl'] ?? '') as String,
+        photos: ((json['photos'] ?? const []) as List)
+            .map((e) => e.toString())
+            .toList(),
+        tags: ((json['tags'] ?? const []) as List)
+            .map((e) => e.toString())
+            .toList(),
+        status: (json['status'] ?? 'approved') as String,
+        rejectReason: (json['rejectReason'] ?? '') as String,
+        likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
+        commentCount: (json['commentCount'] as num?)?.toInt() ?? 0,
+        shareCount: (json['shareCount'] as num?)?.toInt() ?? 0,
+        viewCount: (json['viewCount'] as num?)?.toInt() ?? 0,
+        createdAt: (json['createdAt'] ?? '') as String,
+      );
+}
+
 /// 分页结果（后端统一返回 [items, total] 元组）
 class Paged<T> {
   const Paged({required this.items, required this.total});
@@ -759,10 +820,16 @@ class AdminApi {
 
   // ─── 会员运营 ───
 
-  static Future<Paged<AdminMembership>> fetchMemberships({int page = 1}) async {
+  static Future<Paged<AdminMembership>> fetchMemberships({
+    int page = 1,
+    String? keyword,
+  }) async {
     final resp = await ApiClient.instance.get(
       '/admin/members',
-      queryParameters: {'page': page},
+      queryParameters: {
+        'page': page,
+        if (keyword != null && keyword.trim().isNotEmpty) 'keyword': keyword.trim(),
+      },
     );
     final data = resp.data as List;
     return Paged(
@@ -771,6 +838,31 @@ class AdminApi {
           .toList(),
       total: data.length > 1 ? (data[1] as num?)?.toInt() ?? 0 : 0,
     );
+  }
+
+  /// 后台开通会员（用户ID + 等级 + 有效期）
+  static Future<AdminMembership> createMembership(
+    Map<String, dynamic> data,
+  ) async {
+    final resp = await ApiClient.instance.post('/admin/members', data: data);
+    return AdminMembership.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  /// 后台编辑会员（等级 + 有效期）
+  static Future<AdminMembership> updateMembership(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    final resp = await ApiClient.instance.patch(
+      '/admin/members/$id',
+      data: data,
+    );
+    return AdminMembership.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  /// 后台删除会员记录
+  static Future<void> deleteMembership(int id) async {
+    await ApiClient.instance.delete('/admin/members/$id');
   }
 
   static Future<List<AdminMemberPlan>> fetchMemberPlans() async {
@@ -833,6 +925,53 @@ class AdminApi {
       '/admin/members/coupons/$id/enabled',
       data: {'enabled': enabled},
     );
+  }
+
+  // ─── Reels 视频管理 ───
+
+  static Future<Paged<AdminVideo>> fetchVideos({
+    String? status,
+    int page = 1,
+  }) async {
+    final resp = await ApiClient.instance.get(
+      '/admin/videos',
+      queryParameters: {
+        'page': page,
+        if (status != null && status.isNotEmpty) 'status': status,
+      },
+    );
+    final data = resp.data as List;
+    return Paged(
+      items: ((data.isNotEmpty ? data[0] : const []) as List)
+          .map((e) => AdminVideo.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      total: data.length > 1 ? (data[1] as num?)?.toInt() ?? 0 : 0,
+    );
+  }
+
+  static Future<void> updateVideoStatus(
+    int id,
+    String status, {
+    String? rejectReason,
+  }) async {
+    await ApiClient.instance.patch(
+      '/admin/videos/$id/status',
+      data: {
+        'status': status,
+        if (rejectReason != null && rejectReason.isNotEmpty)
+          'rejectReason': rejectReason,
+      },
+    );
+  }
+
+  /// 下架（软删除：状态置为 rejected，理由为“管理员下架”）
+  static Future<void> removeVideo(int id) async {
+    await ApiClient.instance.patch('/admin/videos/$id/remove');
+  }
+
+  /// 物理删除（连同点赞/评论/浏览历史）
+  static Future<void> hardDeleteVideo(int id) async {
+    await ApiClient.instance.delete('/admin/videos/$id');
   }
 
   // ─── 活动管理 ───

@@ -5,9 +5,15 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, MoreThan, Repository } from 'typeorm';
+import { DataSource, In, Like, MoreThan, Repository } from 'typeorm';
+import { UsersService } from '../users/users.service';
 import { Coupon, UserCoupon } from './coupon.entity';
-import { SaveCouponDto, SavePlanDto } from './member.dto';
+import {
+  SaveCouponDto,
+  SaveMembershipDto,
+  SavePlanDto,
+  UpdateMembershipDto,
+} from './member.dto';
 import { MemberExperience } from './member-experience.entity';
 import { MemberPlan } from './member-plan.entity';
 import { Membership } from './membership.entity';
@@ -25,6 +31,7 @@ export class MembersService implements OnModuleInit {
     @InjectRepository(MemberExperience)
     private readonly experiences: Repository<MemberExperience>,
     private readonly dataSource: DataSource,
+    private readonly users: UsersService,
   ) {}
 
   async onModuleInit() {
@@ -214,12 +221,61 @@ export class MembersService implements OnModuleInit {
     });
   }
 
-  listMemberships(page = 1) {
+  listMemberships(page = 1, keyword?: string) {
+    const where = keyword
+      ? [
+          { userId: Number(keyword) || 0 },
+          { memberNo: Like(`%${keyword}%`) },
+        ]
+      : {};
     return this.memberships.findAndCount({
+      where,
       order: { updatedAt: 'DESC' },
       skip: (page - 1) * 20,
       take: 20,
     });
+  }
+
+  /** 后台开通/编辑会员 */
+  async saveMembership(
+    dto: SaveMembershipDto | UpdateMembershipDto,
+    id?: number,
+  ) {
+    if (id) {
+      const current = await this.memberships.findOneBy({ id });
+      if (!current) throw new NotFoundException('会员记录不存在');
+      const expireAt = new Date(dto.expireAt);
+      if (Number.isNaN(expireAt.getTime()))
+        throw new BadRequestException('有效期格式不正确');
+      current.levelName = dto.levelName || current.levelName;
+      current.expireAt = expireAt;
+      return this.memberships.save(current);
+    }
+    const create = dto as SaveMembershipDto;
+    if (!(await this.users.findById(create.userId)))
+      throw new NotFoundException('用户不存在');
+    if (await this.memberships.existsBy({ userId: create.userId }))
+      throw new BadRequestException('该用户已是会员，请直接编辑该记录');
+    const expireAt = new Date(create.expireAt);
+    if (Number.isNaN(expireAt.getTime()))
+      throw new BadRequestException('有效期格式不正确');
+    if (expireAt <= new Date())
+      throw new BadRequestException('有效期需晚于当前时间');
+    return this.memberships.save(
+      this.memberships.create({
+        userId: create.userId,
+        memberNo: `M${String(create.userId).padStart(8, '0')}`,
+        levelName: create.levelName || '手作会员',
+        expireAt,
+      }),
+    );
+  }
+
+  async removeMembership(id: number) {
+    const item = await this.memberships.findOneBy({ id });
+    if (!item) throw new NotFoundException('会员记录不存在');
+    await this.memberships.remove(item);
+    return { success: true };
   }
 
   listAllCoupons() {

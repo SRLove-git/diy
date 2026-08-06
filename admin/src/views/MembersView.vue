@@ -20,6 +20,18 @@ const plans = ref<MemberPlan[]>([])
 const coupons = ref<Coupon[]>([])
 const totalPages = computed(() => Math.ceil(total.value / 20) || 1)
 
+const keyword = ref('')
+const memberDialogOpen = ref(false)
+const editingMemberId = ref<number | null>(null)
+const memberPlanId = ref(0)
+const memberForm = reactive({
+  userId: 0,
+  levelName: '',
+  expireAt: '',
+})
+const deleteTarget = ref<Membership | null>(null)
+const deleting = ref(false)
+
 const planDialogOpen = ref(false)
 const editingPlanId = ref<number | null>(null)
 const planForm = reactive<SavePlanPayload>({
@@ -71,9 +83,120 @@ function resetCouponForm() {
 }
 
 async function loadMembers() {
-  const { data } = await memberApi.listMembers(page.value)
+  const { data } = await memberApi.listMembers(
+    page.value,
+    keyword.value.trim() || undefined,
+  )
   members.value = data[0]
   total.value = data[1]
+}
+
+function doMemberSearch() {
+  page.value = 1
+  loadMembers()
+}
+
+function toLocalInput(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours(),
+  )}:${pad(d.getMinutes())}`
+}
+
+function defaultExpireAt() {
+  const d = new Date()
+  d.setDate(d.getDate() + 30)
+  return toLocalInput(d)
+}
+
+function openCreateMember() {
+  editingMemberId.value = null
+  memberPlanId.value = 0
+  memberForm.userId = 0
+  memberForm.levelName = '手作会员'
+  memberForm.expireAt = defaultExpireAt()
+  memberDialogOpen.value = true
+}
+
+function openEditMember(item: Membership) {
+  editingMemberId.value = item.id
+  memberPlanId.value = 0
+  memberForm.userId = item.userId
+  memberForm.levelName = item.levelName
+  memberForm.expireAt = item.expireAt.slice(0, 16)
+  memberDialogOpen.value = true
+}
+
+function closeMemberDialog() {
+  memberDialogOpen.value = false
+  editingMemberId.value = null
+}
+
+function fillExpireFromPlan(planId: number) {
+  const plan = plans.value.find((p) => p.id === planId)
+  if (!plan) return
+  const d = new Date()
+  d.setDate(d.getDate() + plan.durationDays)
+  memberForm.expireAt = toLocalInput(d)
+}
+
+async function saveMember() {
+  if (!editingMemberId.value && !memberForm.userId) {
+    alert('请输入用户ID')
+    return
+  }
+  if (!memberForm.expireAt) {
+    alert('请选择有效期')
+    return
+  }
+  saving.value = true
+  try {
+    const expireAt = new Date(memberForm.expireAt).toISOString()
+    if (editingMemberId.value) {
+      await memberApi.updateMembership(editingMemberId.value, {
+        levelName: memberForm.levelName || undefined,
+        expireAt,
+      })
+    } else {
+      await memberApi.createMembership({
+        userId: memberForm.userId,
+        levelName: memberForm.levelName || undefined,
+        expireAt,
+      })
+    }
+    closeMemberDialog()
+    await loadMembers()
+  } catch (e: any) {
+    alert(e?.response?.data?.message ?? '保存失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+function openDeleteMember(item: Membership) {
+  deleteTarget.value = item
+}
+
+function cancelDeleteMember() {
+  deleteTarget.value = null
+}
+
+async function confirmDeleteMember() {
+  if (!deleteTarget.value) return
+  deleting.value = true
+  try {
+    await memberApi.deleteMembership(deleteTarget.value.id)
+    deleteTarget.value = null
+    await loadMembers()
+  } catch (e: any) {
+    alert(e?.response?.data?.message ?? '操作失败')
+  } finally {
+    deleting.value = false
+  }
+}
+
+function isMemberActive(item: Membership) {
+  return new Date(item.expireAt) > new Date()
 }
 
 async function loadPlans() {
@@ -241,7 +364,21 @@ onMounted(loadAll)
 
     <template v-else>
       <section v-if="activeTab === 'members'" class="panel">
-        <table class="table">
+        <div class="section-bar">
+          <div class="hint">开通、调整或删除会员记录；删除后该用户会员资格立即失效</div>
+          <div class="filters">
+            <input
+              v-model="keyword"
+              type="text"
+              placeholder="用户ID / 会员编号"
+              @keyup.enter="doMemberSearch"
+            />
+            <button class="btn" @click="doMemberSearch">搜索</button>
+            <button class="btn" @click="openCreateMember">开通会员</button>
+          </div>
+        </div>
+        <div v-if="!members.length" class="state">暂无会员记录</div>
+        <table v-else class="table">
           <thead>
             <tr>
               <th>ID</th>
@@ -249,7 +386,9 @@ onMounted(loadAll)
               <th>会员编号</th>
               <th>等级</th>
               <th>有效期至</th>
+              <th>状态</th>
               <th>最近更新</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -259,11 +398,20 @@ onMounted(loadAll)
               <td><code>{{ item.memberNo }}</code></td>
               <td>{{ item.levelName }}</td>
               <td>{{ formatTime(item.expireAt) }}</td>
+              <td>
+                <span class="tag" :class="isMemberActive(item) ? 'tag-on' : 'tag-off'">
+                  {{ isMemberActive(item) ? '有效' : '已过期' }}
+                </span>
+              </td>
               <td>{{ formatTime(item.updatedAt) }}</td>
+              <td class="cell-actions">
+                <button class="btn btn-sm" @click="openEditMember(item)">编辑</button>
+                <button class="btn btn-sm btn-danger" @click="openDeleteMember(item)">删除</button>
+              </td>
             </tr>
           </tbody>
         </table>
-        <div class="pagination">
+        <div v-if="members.length > 0" class="pagination">
           <button class="btn btn-sm" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
           <span class="page-info">{{ page }} / {{ totalPages }}（共 {{ total }} 条）</span>
           <button class="btn btn-sm" :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
@@ -361,6 +509,60 @@ onMounted(loadAll)
       </section>
     </template>
 
+    <div v-if="memberDialogOpen" class="modal-overlay" @click.self="closeMemberDialog">
+      <div class="modal">
+        <h3>{{ editingMemberId ? '编辑会员' : '开通会员' }}</h3>
+        <div class="form-grid">
+          <label>
+            <span>用户ID</span>
+            <input
+              v-model.number="memberForm.userId"
+              type="number"
+              min="1"
+              :disabled="!!editingMemberId"
+            />
+          </label>
+          <label>
+            <span>会员等级</span>
+            <input v-model="memberForm.levelName" type="text" placeholder="手作会员" />
+          </label>
+          <label class="full-row">
+            <span>有效期至</span>
+            <input v-model="memberForm.expireAt" type="datetime-local" />
+          </label>
+        </div>
+        <label v-if="!editingMemberId" class="full-row">
+          <span>按套餐开通（快捷填充有效期，仍可手动调整）</span>
+          <select v-model="memberPlanId" @change="fillExpireFromPlan(Number(memberPlanId))">
+            <option value="0">不按套餐，手动选择有效期</option>
+            <option v-for="plan in plans" :key="plan.id" :value="plan.id">
+              {{ plan.name }}（{{ plan.durationDays }} 天）
+            </option>
+          </select>
+        </label>
+        <div class="modal-actions">
+          <button class="btn btn-sm" @click="closeMemberDialog">取消</button>
+          <button class="btn btn-sm" :disabled="saving" @click="saveMember">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="deleteTarget" class="modal-overlay" @click.self="cancelDeleteMember">
+      <div class="modal">
+        <h3>删除会员记录</h3>
+        <p class="modal-desc">
+          确认删除会员编号 {{ deleteTarget.memberNo }}（用户ID
+          {{ deleteTarget.userId }}）？删除后该用户会员资格立即失效，操作不可恢复。
+        </p>
+        <div class="modal-actions">
+          <button class="btn btn-sm" @click="cancelDeleteMember">取消</button>
+          <button class="btn btn-sm btn-danger" :disabled="deleting" @click="confirmDeleteMember">
+            {{ deleting ? '删除中…' : '确认删除' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="planDialogOpen" class="modal-overlay" @click.self="closePlanDialog">
       <div class="modal">
         <h3>{{ editingPlanId ? '编辑套餐' : '新增套餐' }}</h3>
@@ -443,6 +645,14 @@ onMounted(loadAll)
 .members-view { display: flex; flex-direction: column; gap: 16px; }
 .toolbar, .section-bar { display: flex; justify-content: space-between; align-items: center; }
 .toolbar h2 { margin: 0; font-size: 18px; }
+.filters { display: flex; gap: 8px; align-items: center; }
+.filters input {
+  padding: 6px 12px;
+  border: 1px solid #eceae6;
+  border-radius: 8px;
+  font-size: 13px;
+  width: 170px;
+}
 .tabs { display: flex; gap: 8px; }
 .tab {
   padding: 8px 14px;
@@ -551,12 +761,16 @@ onMounted(loadAll)
   width: 100%;
   box-sizing: border-box;
 }
-.form-grid input, .full-row textarea {
+.form-grid input, .full-row textarea, .full-row select {
   border: 1px solid #eceae6;
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 13px;
+  box-sizing: border-box;
 }
+.full-row select { background: #fff; }
+.full-row input:disabled { background: #f7f5f2; color: #8a8a8a; }
+.modal-desc { font-size: 13px; color: #8a8a8a; margin: 0 0 16px; line-height: 1.6; }
 .check-row {
   display: flex;
   gap: 20px;
