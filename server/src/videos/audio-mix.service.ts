@@ -63,6 +63,8 @@ export class AudioMixService {
       // 混音成功：原上传视频已无保留价值，删除避免占用存储
       this.removeFile(videoPath);
       return this.toRelativeUrl(output);
+    } catch (err) {
+      throw this.toFriendlyError(err, '配乐混音失败');
     } finally {
       if (musicInput.temp) this.removeFile(musicInput.temp);
     }
@@ -109,6 +111,8 @@ export class AudioMixService {
         totalSec,
       );
       return { url: this.toRelativeUrl(output), duration: totalSec };
+    } catch (err) {
+      throw this.toFriendlyError(err, '照片配乐合成失败');
     } finally {
       if (musicInput.temp) this.removeFile(musicInput.temp);
     }
@@ -150,17 +154,38 @@ export class AudioMixService {
     }
   }
 
+  /** 把意外异常统一转成用户可读的 400 错误，避免暴露 500 */
+  private toFriendlyError(err: unknown, prefix: string): BadRequestException {
+    if (err instanceof BadRequestException) return err;
+    this.logger.error(`${prefix}：${String(err)}`);
+    return new BadRequestException(`${prefix}，请重试或更换配乐`);
+  }
+
   /** ffprobe 探测视频时长与是否含音轨 */
   private async probe(videoPath: string): Promise<ProbeResult> {
-    const { stdout } = await execFileAsync('ffprobe', [
-      '-v',
-      'quiet',
-      '-print_format',
-      'json',
-      '-show_streams',
-      '-show_format',
-      videoPath,
-    ]);
+    let stdout: string;
+    try {
+      const result = await execFileAsync('ffprobe', [
+        '-v',
+        'quiet',
+        '-print_format',
+        'json',
+        '-show_streams',
+        '-show_format',
+        videoPath,
+      ]);
+      stdout = result.stdout;
+    } catch (err) {
+      this.logger.error(`ffprobe 探测失败：${String(err)}`);
+      if (
+        err &&
+        typeof err === 'object' &&
+        (err as { code?: string }).code === 'ENOENT'
+      ) {
+        throw new BadRequestException('服务器缺少 ffmpeg 环境，无法合成配乐');
+      }
+      throw new BadRequestException('无法读取视频信息，请重新上传后重试');
+    }
     const data = JSON.parse(stdout) as {
       streams?: Array<{ codec_type?: string }>;
       format?: { duration?: string };
