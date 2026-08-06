@@ -751,11 +751,11 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
               contentPadding: const EdgeInsets.symmetric(vertical: 10),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: colors.divider),
+                borderSide: BorderSide(color: colors.textPrimary),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: colors.divider),
+                borderSide: BorderSide(color: colors.textPrimary),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -993,11 +993,11 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
               contentPadding: const EdgeInsets.symmetric(vertical: 10),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: colors.divider),
+                borderSide: BorderSide(color: colors.textPrimary),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: colors.divider),
+                borderSide: BorderSide(color: colors.textPrimary),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -1316,9 +1316,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                   decoration: BoxDecoration(
                     color: selected ? colors.textPrimary : colors.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: selected ? colors.textPrimary : colors.divider,
-                    ),
+                    border: Border.all(color: colors.textPrimary),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1803,7 +1801,7 @@ class _Card extends StatelessWidget {
           color: enabled ? colors.surface : Palette.surfaceAlt,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? colors.textPrimary : colors.divider,
+            color: colors.textPrimary,
             width: selected ? 1.5 : 1,
           ),
         ),

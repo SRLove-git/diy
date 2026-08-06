@@ -99,6 +99,16 @@ export class VideosController {
     return this.videos.userVideos(userId, page);
   }
 
+  /** 获取我的视频浏览历史（必须在 :id 路由前） */
+  @Get('history')
+  @UseGuards(JwtAuthGuard)
+  fetchHistory(
+    @CurrentUser() user: AuthUser,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+  ) {
+    return this.videos.fetchHistory(user.id, page);
+  }
+
   /** 视频详情 */
   @Get(':id')
   detail(@Param('id', ParseIntPipe) id: number) {
@@ -147,6 +157,18 @@ export class VideosController {
     @Body() dto: CreateVideoCommentDto,
   ) {
     return this.videos.addComment(user.id, id, dto.content);
+  }
+
+  // ──── History ────
+
+  /** 添加视频浏览历史（需登录） */
+  @Post(':id/history')
+  @UseGuards(JwtAuthGuard)
+  addHistory(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.videos.addHistory(user.id, id).then(() => ({ ok: true }));
   }
 
   // ──── View / Share ────

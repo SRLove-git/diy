@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_colors.dart';
+import '../../core/auth_service.dart';
 import '../../core/post_api.dart';
+import '../../core/video_api.dart';
 import '../../features/community/data/api_community_repository.dart';
 import '../../features/community/domain/community_models.dart';
 import '../../features/community/presentation/community_palette.dart';
 import '../../features/community/presentation/widgets/community_sheets.dart';
 import '../../features/community/presentation/widgets/feed_card.dart';
+import '../../features/tiktok_profile/model/tiktok_video_model.dart';
+import '../../features/tiktok_profile/page/fullscreen_video_page.dart';
+import '../../features/tiktok_profile/widget/video_grid_card.dart';
 import '../../widgets/state_widgets.dart';
 import '../community/post_detail_page.dart';
 import '../community/user_profile_page.dart';
@@ -16,7 +21,7 @@ import '../community/user_profile_page.dart';
 /// 结构与点赞与收藏页一致：
 /// - 顶部「帖子 / 视频」分类切换；
 /// - 帖子（默认）：社区 Feed 卡片布局，按浏览时间倒序展示；
-/// - 视频：后端暂未记录按用户的视频浏览历史，先展示空态提示。
+/// - 视频：作品墙两列封面网格，点击进入全屏播放页，按浏览时间倒序展示。
 class MyHistoryPage extends StatefulWidget {
   const MyHistoryPage({super.key});
 
@@ -33,6 +38,12 @@ class _MyHistoryPageState extends State<MyHistoryPage> {
   final List<FeedPost> _posts = [];
   bool _loading = true;
   String? _error;
+
+  /// 视频浏览记录（作品墙网格布局）
+  final List<TiktokVideoModel> _videos = [];
+  bool _videosLoading = false;
+  bool _videosError = false;
+  bool _videosLoaded = false;
 
   @override
   void initState() {
@@ -75,10 +86,44 @@ class _MyHistoryPageState extends State<MyHistoryPage> {
     }
   }
 
+  Future<void> _loadVideos() async {
+    setState(() {
+      _videosLoading = true;
+      _videosError = false;
+    });
+    try {
+      final result = await VideoApi.fetchHistory();
+      if (!mounted) return;
+      setState(() {
+        _videos
+          ..clear()
+          ..addAll(result.items.map((v) => TiktokVideoModel(video: v)));
+        _videosLoading = false;
+        _videosLoaded = true;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _videosLoading = false;
+          _videosError = true;
+        });
+      }
+    }
+  }
+
   void _onCategoryChanged(_HistoryCategory category) {
     if (category == _category) return;
     setState(() => _category = category);
+    // 视频历史懒加载：首次切换到视频标签时才请求
+    if (category == _HistoryCategory.video &&
+        !_videosLoaded &&
+        !_videosLoading) {
+      _loadVideos();
+    }
   }
+
+  Future<void> _refresh() =>
+      _category == _HistoryCategory.post ? _load() : _loadVideos();
 
   // ──── 帖子交互 ────
 
@@ -115,6 +160,21 @@ class _MyHistoryPageState extends State<MyHistoryPage> {
     );
   }
 
+  // ──── 视频交互 ────
+
+  void _openVideoPlayer(int index) {
+    final nickname = AuthService.instance.user?.nickname ?? '';
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FullscreenVideoPage(
+          videos: List.of(_videos),
+          initialIndex: index,
+          nickname: nickname,
+        ),
+      ),
+    );
+  }
+
   // ──── 视图 ────
 
   @override
@@ -127,7 +187,7 @@ class _MyHistoryPageState extends State<MyHistoryPage> {
         scrolledUnderElevation: 0,
       ),
       body: RefreshIndicator(
-        onRefresh: _load,
+        onRefresh: _refresh,
         child: _buildBody(),
       ),
     );
@@ -276,19 +336,51 @@ class _MyHistoryPageState extends State<MyHistoryPage> {
     );
   }
 
-  /// 视频：后端暂未记录按用户的视频浏览历史，展示空态提示
+  /// 视频：作品墙两列封面网格，点击进入全屏播放页
   Widget _buildVideoSection() {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        SizedBox(
-          height: MediaQuery.of(context).size.height * 0.6,
-          child: const EmptyWidget(
-            icon: Icons.history,
-            message: '暂无视频浏览记录',
+    if (_videosLoading) return const LoadingWidget();
+    if (_videosError) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.6,
+            child: AppErrorWidget(message: '加载失败，请下拉重试', onRetry: _loadVideos),
           ),
-        ),
-      ],
+        ],
+      );
+    }
+
+    if (_videos.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.6,
+            child: const EmptyWidget(
+              icon: Icons.history,
+              message: '暂无视频浏览记录',
+            ),
+          ),
+        ],
+      );
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(2),
+      physics: const AlwaysScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 2,
+        crossAxisSpacing: 2,
+        childAspectRatio: 0.8,
+      ),
+      itemCount: _videos.length,
+      itemBuilder: (_, i) => VideoGridCard(
+        item: _videos[i],
+        onTap: () => _openVideoPlayer(i),
+        onDoubleTap: () {},
+      ),
     );
   }
 }

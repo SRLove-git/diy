@@ -429,7 +429,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   decoration: BoxDecoration(
                     color: colors.surface,
                     shape: BoxShape.circle,
-                    border: Border.all(color: colors.divider),
+                    border: Border.all(color: colors.textPrimary),
                   ),
                   child: Icon(
                     Icons.photo_camera_outlined,

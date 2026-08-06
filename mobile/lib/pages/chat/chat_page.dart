@@ -1502,7 +1502,7 @@ class _ChatPageState extends State<ChatPage> {
               ? colors.primary.withValues(alpha: 0.12)
               : colors.placeholder.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: colors.divider),
+          border: Border.all(color: colors.textPrimary),
         ),
         child: Text(
           _recording ? '松开 发送' : '按住 说话',

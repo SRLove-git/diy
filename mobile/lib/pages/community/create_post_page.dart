@@ -186,7 +186,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                       height: 100,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: colors.divider, width: 1.5),
+                        border: Border.all(color: colors.textPrimary, width: 1.5),
                         color: colors.surface,
                       ),
                       child: Icon(

@@ -3,6 +3,7 @@ import type { Repository } from 'typeorm';
 import { Follow } from '../follows/follow.entity';
 import { User } from '../users/user.entity';
 import { VideoComment } from './video-comment.entity';
+import { VideoHistory } from './video-history.entity';
 import { VideoLike } from './video-like.entity';
 import { Video } from './video.entity';
 import { VideosService } from './videos.service';
@@ -62,6 +63,7 @@ describe('VideosService', () => {
       videos,
       {} as Repository<VideoLike>,
       {} as Repository<VideoComment>,
+      {} as Repository<VideoHistory>,
       follows,
       users,
     );

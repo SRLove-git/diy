@@ -177,7 +177,7 @@ class _ActivityCard extends StatelessWidget {
         color: colors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: colors.divider),
+          side: BorderSide(color: colors.textPrimary),
         ),
         child: Padding(
           padding: const EdgeInsets.all(14),

@@ -193,7 +193,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
           decoration: BoxDecoration(
             color: colors.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: colors.divider),
+            border: Border.all(color: colors.textPrimary),
           ),
           child: Row(
             children: [

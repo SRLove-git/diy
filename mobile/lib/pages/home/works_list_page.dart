@@ -211,7 +211,7 @@ class _WorkListCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: colors.divider),
+            border: Border.all(color: colors.textPrimary),
           ),
           padding: const EdgeInsets.all(10),
           child: Row(

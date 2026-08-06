@@ -622,9 +622,9 @@ class _ProfilePageState extends State<ProfilePage> {
         height: 40,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: colors.placeholder,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colors.divider),
+          border: Border.all(color: colors.textPrimary),
         ),
         child: Text(
           label,

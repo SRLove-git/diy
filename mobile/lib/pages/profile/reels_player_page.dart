@@ -91,6 +91,7 @@ class _ReelsPlayerPageState extends State<ReelsPlayerPage>
   void initState() {
     super.initState();
     VideoApi.recordView(widget.video.id).catchError((_) {});
+    VideoApi.addHistory(widget.video.id).catchError((_) {});
   }
 
   @override

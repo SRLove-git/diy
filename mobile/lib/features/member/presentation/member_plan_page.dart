@@ -349,10 +349,7 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
               ? colors.primary.withValues(alpha: 0.08)
               : colors.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? colors.primary : colors.divider,
-            width: selected ? 1.6 : 1,
-          ),
+          border: Border.all(color: colors.primary, width: selected ? 1.6 : 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -599,7 +596,7 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.divider),
+        border: Border.all(color: colors.textPrimary),
       ),
       clipBehavior: Clip.antiAlias,
       child: Row(

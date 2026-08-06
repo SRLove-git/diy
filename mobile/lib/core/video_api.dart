@@ -229,6 +229,22 @@ class VideoApi {
     await ApiClient.instance.post('/videos/$videoId/view');
   }
 
+  /// 记录视频浏览历史（需登录，未登录时服务端返回 401 由调用方静默忽略）
+  static Future<void> addHistory(int videoId) async {
+    await ApiClient.instance.post('/videos/$videoId/history');
+  }
+
+  /// 获取我的视频浏览历史（按浏览时间倒序）
+  static Future<({List<ShortVideo> items, int total})> fetchHistory({
+    int page = 1,
+  }) async {
+    final resp = await ApiClient.instance.get(
+      '/videos/history',
+      queryParameters: {'page': page},
+    );
+    return _parseList(resp.data);
+  }
+
   /// 记录分享（分享数 +1）
   static Future<void> recordShare(int videoId) async {
     await ApiClient.instance.post('/videos/$videoId/share');

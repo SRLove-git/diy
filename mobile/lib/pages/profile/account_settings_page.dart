@@ -38,18 +38,20 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                 _Avatar(user: user),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 6,
-                    runSpacing: 2,
+                  child: Row(
                     children: [
-                      Text(
-                        display,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                      Flexible(
+                        child: Text(
+                          display,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 6),
                       Text(
                         '已登录账号',
                         style: TextStyle(

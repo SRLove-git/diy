@@ -968,7 +968,7 @@ class _TopicPill extends StatelessWidget {
       height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 11),
       decoration: BoxDecoration(
-        border: Border.all(color: colors.divider.withValues(alpha: 0.65)),
+        border: Border.all(color: colors.textPrimary),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

@@ -714,7 +714,7 @@ class _GroupBubble extends StatelessWidget {
                         bottomRight: Radius.circular(isMine ? 4 : 14),
                       ),
                       border:
-                          isMine ? null : Border.all(color: colors.divider),
+                          isMine ? null : Border.all(color: colors.textPrimary),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,

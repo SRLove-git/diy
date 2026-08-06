@@ -109,12 +109,12 @@ class _LoginPageState extends State<LoginPage> {
         _phoneCtrl.text,
         _codeCtrl.text,
       );
-      // 登录成功后 AuthGate 自动切换到主界面
       if (isNewUser && mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('注册成功，欢迎加入 IDOL BEADS')));
       }
+      _finishLogin();
     } on DioException catch (e) {
       _showError(_message(e));
     } finally {
@@ -131,7 +131,7 @@ class _LoginPageState extends State<LoginPage> {
         _phoneCtrl.text,
         _passwordCtrl.text,
       );
-      // 登录成功后 AuthGate 自动切换到主界面
+      _finishLogin();
     } on DioException catch (e) {
       _showError(_message(e));
     } finally {
@@ -148,11 +148,22 @@ class _LoginPageState extends State<LoginPage> {
         _usernameCtrl.text,
         _namePasswordCtrl.text,
       );
-      // 登录成功后 AuthGate 自动切换到主界面
+      _finishLogin();
     } on DioException catch (e) {
       _showError(_message(e));
     } finally {
       if (mounted) setState(() => _usernameLoggingIn = false);
+    }
+  }
+
+  /// 登录成功后收尾跳转：
+  /// - 作为根路由（AuthGate 内）时无需 pop，AuthGate 会自动切换到主界面；
+  /// - 被 push 出来（如「切换账号 → 添加账号」）时 pop 掉本页，露出已切换的主界面。
+  void _finishLogin() {
+    if (!mounted) return;
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
     }
   }
 

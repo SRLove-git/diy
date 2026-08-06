@@ -698,7 +698,7 @@ class _FeatureCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFEDEDED), width: 1),
+          border: Border.all(color: Palette.primary, width: 1),
         ),
         child: Column(
           children: [

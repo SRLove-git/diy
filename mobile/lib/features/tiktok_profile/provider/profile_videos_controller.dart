@@ -167,6 +167,7 @@ class ProfileVideosController extends ChangeNotifier {
     final latest = byId(item.id) ?? item;
     _replace(latest.id, latest.copyWith(viewCount: latest.viewCount + 1));
     VideoApi.recordView(item.id).catchError((_) {});
+    VideoApi.addHistory(item.id).catchError((_) {});
   }
 
   /// 播放页回调：把播放页内更新的作品同步回作品墙（点赞/评论/收藏等）

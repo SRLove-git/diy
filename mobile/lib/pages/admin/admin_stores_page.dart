@@ -243,7 +243,7 @@ class _AdminStoresPageState extends State<AdminStoresPage> {
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
           foregroundColor: color,
-          side: BorderSide(color: colors.divider),
+          side: BorderSide(color: colors.textPrimary),
           padding: const EdgeInsets.symmetric(vertical: 8),
           minimumSize: const Size(0, 36),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -724,7 +724,7 @@ class _TimeField extends StatelessWidget {
         height: 48,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          border: Border.all(color: colors.divider),
+          border: Border.all(color: colors.textPrimary),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Row(

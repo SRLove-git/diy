@@ -107,10 +107,12 @@ class _FullscreenVideoPageState extends State<FullscreenVideoPage> {
   }
 
   /// 浏览上报：每次进入同一作品本地 +1 一次，服务端每次切页都上报
+  /// 同时写入该用户的浏览历史（未登录时静默忽略 401）
   void _recordView(TiktokVideoModel item) {
     if (!_viewedIds.add(item.id)) return;
     _updateItem(item.copyWith(viewCount: item.viewCount + 1));
     VideoApi.recordView(item.id).catchError((_) {});
+    VideoApi.addHistory(item.id).catchError((_) {});
   }
 
   void _onPageChanged(int i) {

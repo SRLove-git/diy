@@ -310,7 +310,7 @@ class _NotificationCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: colors.divider),
+            border: Border.all(color: colors.textPrimary),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,

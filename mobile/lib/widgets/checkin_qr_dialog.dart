@@ -74,7 +74,7 @@ class CheckInQrCode extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.divider),
+        border: Border.all(color: colors.textPrimary),
       ),
       child: QrImageView(
         data: code,

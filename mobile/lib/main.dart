@@ -108,7 +108,7 @@ class DiyApp extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           foregroundColor: palette.primary,
           minimumSize: const Size.fromHeight(44),
-          side: BorderSide(color: palette.primary.withValues(alpha: 0.45)),
+          side: BorderSide(color: palette.primary),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -135,11 +135,11 @@ class DiyApp extends StatelessWidget {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: palette.primary),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: palette.divider),
+          borderSide: BorderSide(color: palette.primary),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -161,7 +161,7 @@ class DiyApp extends StatelessWidget {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: palette.divider.withValues(alpha: 0.65)),
+          side: BorderSide(color: palette.primary),
         ),
       ),
       dividerTheme: DividerThemeData(color: palette.divider, thickness: 0.8),

@@ -52,6 +52,57 @@ class MediaComposer {
     return output;
   }
 
+  /// 按 [start]~[end]（秒）裁剪视频并重编码输出 MP4（帧级精确），返回临时文件。
+  ///
+  /// 用于把裁剪真正落到视频文件上，而不只是记录元数据。
+  /// 失败时抛出 [StateError]。
+  static Future<File> trimVideo(
+    String input, {
+    required double start,
+    required double end,
+  }) async {
+    if (end <= start) {
+      throw ArgumentError('裁剪区间无效: start=$start end=$end');
+    }
+    final tempRoot = await getTemporaryDirectory();
+    final output = File(
+      p.join(
+        tempRoot.path,
+        'diy_trim_${DateTime.now().microsecondsSinceEpoch}.mp4',
+      ),
+    );
+    final session = await FFmpegKit.executeWithArguments([
+      '-y',
+      '-ss',
+      start.toStringAsFixed(3),
+      '-i',
+      input,
+      '-t',
+      (end - start).toStringAsFixed(3),
+      '-c:v',
+      'libx264',
+      '-preset',
+      'veryfast',
+      '-crf',
+      '23',
+      '-pix_fmt',
+      'yuv420p',
+      '-c:a',
+      'aac',
+      '-b:a',
+      '128k',
+      '-movflags',
+      '+faststart',
+      output.path,
+    ]);
+    final code = await session.getReturnCode();
+    if (!ReturnCode.isSuccess(code)) {
+      final logs = await session.getAllLogsAsString();
+      throw StateError('视频裁剪失败 (${code?.getValue()}): ${logs ?? ''}');
+    }
+    return output;
+  }
+
   /// 抽帧命令参数（独立暴露便于单元测试）。
   static List<String> extractCoverArgs({
     required String input,

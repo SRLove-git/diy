@@ -459,9 +459,7 @@ class _WorkCard extends StatelessWidget {
           color: colors.surface,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isDark
-                ? colors.divider
-                : colors.divider.withValues(alpha: 0.35),
+            color: colors.textPrimary,
           ),
           boxShadow: [
             BoxShadow(
@@ -763,7 +761,7 @@ class _SkeletonGridState extends State<_SkeletonGrid>
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: colors.divider.withValues(alpha: 0.3)),
+                border: Border.all(color: colors.textPrimary),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

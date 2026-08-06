@@ -174,10 +174,11 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
     });
   }
 
-  /// 记录浏览（浏览量 +1，失败静默）
+  /// 记录浏览（浏览量 +1 + 浏览历史，失败静默）
   void _recordView(ShortVideo? v) {
     if (v == null) return;
     VideoApi.recordView(v.id).catchError((_) {});
+    VideoApi.addHistory(v.id).catchError((_) {});
   }
 
   // ==================== 交互 ====================

@@ -141,7 +141,7 @@ class _CouponCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.divider),
+        border: Border.all(color: colors.textPrimary),
       ),
       clipBehavior: Clip.antiAlias,
       child: Row(

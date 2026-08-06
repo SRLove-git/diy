@@ -726,7 +726,7 @@ class PostCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: DiscoverColors.cardBg,
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: const Color(0xFFDBDBDB), width: 0.6),
+          border: Border.all(color: DiscoverColors.primary, width: 0.6),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(

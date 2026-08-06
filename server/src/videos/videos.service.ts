@@ -10,6 +10,7 @@ import { Follow } from '../follows/follow.entity';
 import { User } from '../users/user.entity';
 import { Video } from './video.entity';
 import { VideoComment } from './video-comment.entity';
+import { VideoHistory } from './video-history.entity';
 import { VideoLike } from './video-like.entity';
 import { CreateVideoDto, UpdateVideoStatusDto } from './video.dto';
 
@@ -60,6 +61,8 @@ export class VideosService {
     private readonly likes: Repository<VideoLike>,
     @InjectRepository(VideoComment)
     private readonly comments: Repository<VideoComment>,
+    @InjectRepository(VideoHistory)
+    private readonly histories: Repository<VideoHistory>,
     @InjectRepository(Follow)
     private readonly follows: Repository<Follow>,
     @InjectRepository(User)
@@ -246,6 +249,54 @@ export class VideosService {
     ];
   }
 
+  // ──── History operations ────
+
+  /** 记录视频浏览历史（重复浏览刷新时间，保持最近浏览在前） */
+  async addHistory(userId: number, videoId: number): Promise<void> {
+    const video = await this.videos.findOneBy({ id: videoId });
+    if (!video || video.status === 'rejected') {
+      throw new NotFoundException('视频不存在');
+    }
+
+    const existing = await this.histories.findOneBy({ userId, videoId });
+    if (existing) {
+      await this.histories.update(
+        { id: existing.id },
+        { createdAt: new Date() },
+      );
+    } else {
+      await this.histories.save(
+        this.histories.create({ userId, videoId }),
+      );
+    }
+  }
+
+  /** 获取用户视频浏览历史，按浏览时间倒序（已下架/驳回不再展示） */
+  async fetchHistory(userId: number, page = 1, pageSize = 20) {
+    const [records, total] = await this.histories.findAndCount({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    if (records.length === 0) return [[], total];
+
+    const videoIds = records.map((r) => r.videoId);
+    const videos = await this.videos.find({
+      where: { id: In(videoIds), status: Not('rejected') },
+    });
+    const orderMap = new Map(videoIds.map((id, index) => [id, index]));
+    videos.sort(
+      (a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0),
+    );
+
+    const [authors, liked] = await Promise.all([
+      this.resolveAuthors(videos.map((v) => v.userId)),
+      this.likedSet(userId, videos.map((v) => v.id)),
+    ]);
+    return [this.enrich(videos, authors, liked), total];
+  }
+
   /** 指定作者的视频列表 */
   async userVideos(authorId: number, page = 1, pageSize = 20) {
     const [list, total] = await this.videos.findAndCount({
@@ -292,13 +343,14 @@ export class VideosService {
     await this.videos.save(video);
   }
 
-  /** 管理端：物理删除视频/照片作品（连同点赞/评论） */
+  /** 管理端：物理删除视频/照片作品（连同点赞/评论/浏览历史） */
   async hardDelete(id: number): Promise<void> {
     const video = await this.videos.findOneBy({ id });
     if (!video) throw new NotFoundException('视频不存在');
     await Promise.all([
       this.likes.delete({ videoId: id }),
       this.comments.delete({ videoId: id }),
+      this.histories.delete({ videoId: id }),
     ]);
     await this.videos.delete({ id });
   }

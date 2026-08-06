@@ -4,6 +4,7 @@ import { Follow } from '../follows/follow.entity';
 import { User } from '../users/user.entity';
 import { Video } from './video.entity';
 import { VideoComment } from './video-comment.entity';
+import { VideoHistory } from './video-history.entity';
 import { VideoLike } from './video-like.entity';
 import { VideosController } from './videos.controller';
 import { AdminVideosController } from './admin-videos.controller';
@@ -16,6 +17,7 @@ import { UsersModule } from '../users/users.module';
       Video,
       VideoLike,
       VideoComment,
+      VideoHistory,
       Follow,
       User,
     ]),

@@ -156,6 +156,14 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
   void _onVideoTick() {
     final c = _videoCtrl;
     if (c == null || !c.value.isInitialized) return;
+    // 超出裁剪终点时跳回起点（发布页预览同样体现裁剪效果）
+    final edit = _edit;
+    if (edit != null && edit.hasTrim) {
+      final end = Duration(milliseconds: (edit.trimEnd * 1000).round());
+      if (c.value.position >= end) {
+        c.seekTo(Duration(milliseconds: (edit.trimStart * 1000).round()));
+      }
+    }
     final playing = c.value.isPlaying;
     if (playing != _videoPlaying && mounted) {
       setState(() => _videoPlaying = playing);
@@ -251,8 +259,18 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
       var videoUrl = '';
       var cover = '';
       var photos = <String>[];
+      final edit = _edit;
       if (video != null) {
-        videoUrl = await VideoApi.uploadVideo(video.path);
+        // 有裁剪区间时先本地裁剪成新视频文件再上传，让裁剪真正生效
+        final trimmed = edit != null && edit.hasTrim
+            ? await MediaComposer.trimVideo(
+                video.path,
+                start: edit.trimStart,
+                end: edit.trimEnd,
+              )
+            : null;
+        final uploadPath = trimmed?.path ?? video.path;
+        videoUrl = await VideoApi.uploadVideo(uploadPath);
         // 封面：手动选择优先；未选择时自动从视频抽一帧，保证主页/信息流有封面
         cover = _cover != null
             ? await VideoApi.uploadCover(_cover!.path)
@@ -270,16 +288,17 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
         content: desc.isEmpty ? title : '$title\n$desc',
         cover: cover,
         videoUrl: videoUrl,
-        duration:
-            widget.durationSeconds ??
-            (_videoCtrl?.value.duration.inSeconds ?? 0),
+        duration: edit != null && edit.hasTrim
+            ? (edit.trimEnd - edit.trimStart).round()
+            : widget.durationSeconds ??
+                  (_videoCtrl?.value.duration.inSeconds ?? 0),
         music: _music?.title ?? '',
         photos: photos,
-        filter: _edit?.filterId ?? '',
-        trimStart: _edit?.trimStart ?? 0,
-        trimEnd: _edit?.trimEnd ?? 0,
-        speed: _edit?.speed ?? 1,
-        rotation: _edit?.rotation ?? 0,
+        filter: edit?.filterId ?? '',
+        trimStart: edit?.trimStart ?? 0,
+        trimEnd: edit?.trimEnd ?? 0,
+        speed: edit?.speed ?? 1,
+        rotation: edit?.rotation ?? 0,
         aspectRatio: video == null
             ? 0
             : normalizeVideoAspectRatio(
@@ -303,15 +322,26 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
   /// 未手动选封面时，从视频文件中抽取一帧上传为封面；失败不阻塞发布。
   Future<String> _autoCover(String videoPath) async {
     try {
-      final durationSec = (widget.durationSeconds ??
-              _videoCtrl?.value.duration.inSeconds ??
-              0)
-          .toDouble();
-      // 取视频前 20% 处（0.1s ~ 2s），避开片头黑场
-      final at = durationSec > 0
-          ? (durationSec * 0.2).clamp(0.1, 2.0).toDouble()
-          : 0.5;
-      final frame = await MediaComposer.extractCoverFrame(videoPath, seconds: at);
+      final edit = _edit;
+      double at;
+      if (edit != null && edit.hasTrim) {
+        // 有裁剪时取裁剪区间内前 20% 处，避开片头黑场
+        at = edit.trimStart + (edit.trimEnd - edit.trimStart) * 0.2;
+      } else {
+        final durationSec =
+            (widget.durationSeconds ??
+                    _videoCtrl?.value.duration.inSeconds ??
+                    0)
+                .toDouble();
+        // 取视频前 20% 处（0.1s ~ 2s），避开片头黑场
+        at = durationSec > 0
+            ? (durationSec * 0.2).clamp(0.1, 2.0).toDouble()
+            : 0.5;
+      }
+      final frame = await MediaComposer.extractCoverFrame(
+        videoPath,
+        seconds: at,
+      );
       return await VideoApi.uploadCover(frame.path);
     } catch (_) {
       return '';
@@ -355,7 +385,6 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
                     const SizedBox(height: 16),
                     _buildFunctionButtons(),
                     const SizedBox(height: 16),
-                    _buildOptionsList(),
                     const SizedBox(height: 100), // 底部留白给操作栏
                   ],
                 ),
@@ -908,17 +937,6 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
         const SizedBox(width: 10),
         // @朋友 按钮
         _funcBtn('@朋友'),
-        const Spacer(),
-        // 排版布局按钮
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: _btnBg,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(Icons.auto_fix_high, color: _white, size: 18),
-        ),
       ],
     );
   }
@@ -935,52 +953,6 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
           borderRadius: BorderRadius.circular(18),
         ),
         child: Text(label, style: const TextStyle(color: _white, fontSize: 13)),
-      ),
-    );
-  }
-
-  // ===================== 列表式功能选项组 =====================
-  Widget _buildOptionsList() {
-    return Column(
-      children: [
-        // 1. 添加标签
-        _optionRow(icon: Icons.label_outline, title: '添加标签', onTap: () {}),
-        const Divider(color: _border, height: 1),
-
-        // 2. 添加自主声明
-        _optionRow(
-          icon: Icons.campaign_outlined,
-          title: '添加自主声明',
-          onTap: () {},
-        ),
-        const Divider(color: _border, height: 1),
-      ],
-    );
-  }
-
-  Widget _optionRow({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        child: Row(
-          children: [
-            Icon(icon, color: _white, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(color: _white, fontSize: 15),
-              ),
-            ),
-            const Icon(Icons.chevron_right, color: _hint, size: 20),
-          ],
-        ),
       ),
     );
   }
@@ -1008,32 +980,22 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
             // 操作按钮行
             Row(
               children: [
-                // 分享图标按钮
-                const Icon(Icons.share_outlined, color: _white, size: 22),
-                const SizedBox(width: 16),
-
-                // 限时日常 按钮
+                // 取消发布 按钮
                 Expanded(
                   child: GestureDetector(
-                    onTap: () {
-                      // TODO: 限时日常
-                    },
+                    onTap: () => Navigator.pop(context),
                     child: Container(
                       height: 44,
                       decoration: BoxDecoration(
                         color: _btnBg,
                         borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: _border),
                       ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.more_time, color: _white, size: 18),
-                          SizedBox(width: 6),
-                          Text(
-                            '限时日常',
-                            style: TextStyle(color: _white, fontSize: 14),
-                          ),
-                        ],
+                      child: const Center(
+                        child: Text(
+                          '取消发布',
+                          style: TextStyle(color: _white, fontSize: 14),
+                        ),
                       ),
                     ),
                   ),

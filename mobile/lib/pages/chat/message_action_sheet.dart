@@ -73,7 +73,7 @@ class _ActionSheet extends StatelessWidget {
                 onPressed: () => Navigator.of(context).pop(),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size.fromHeight(42),
-                  side: BorderSide(color: colors.divider),
+                  side: BorderSide(color: colors.textPrimary),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
