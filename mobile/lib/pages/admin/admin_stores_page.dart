@@ -282,8 +282,8 @@ class _StoreFormDialogState extends State<_StoreFormDialog> {
     final s = widget.store;
     _name = TextEditingController(text: s?.name ?? '');
     _address = TextEditingController(text: s?.address ?? '');
-    _lat = TextEditingController(text: (s?.lat ?? 30.3).toString());
-    _lng = TextEditingController(text: (s?.lng ?? 120.1).toString());
+    _lat = TextEditingController(text: s?.lat?.toString() ?? '');
+    _lng = TextEditingController(text: s?.lng?.toString() ?? '');
     _hours = TextEditingController(text: s?.businessHours ?? '10:00-22:00');
     _phone = TextEditingController(text: s?.phone ?? '');
     _price = TextEditingController(text: (s?.price ?? 39.9).toString());
@@ -314,8 +314,8 @@ class _StoreFormDialogState extends State<_StoreFormDialog> {
     Navigator.of(context).pop({
       'name': _name.text.trim(),
       'address': _address.text.trim(),
-      'lat': double.tryParse(_lat.text.trim()) ?? 0,
-      'lng': double.tryParse(_lng.text.trim()) ?? 0,
+      'lat': double.tryParse(_lat.text.trim()),
+      'lng': double.tryParse(_lng.text.trim()),
       'businessHours': _hours.text.trim(),
       'phone': _phone.text.trim(),
       'price': double.tryParse(_price.text.trim()) ?? 0,
@@ -334,13 +334,13 @@ class _StoreFormDialogState extends State<_StoreFormDialog> {
           children: [
             _field(_name, '门店名称', hint: '如 手作工坊·滨江店'),
             _field(_address, '地址'),
-            Row(
-              children: [
-                Expanded(child: _field(_lat, '纬度', number: true)),
-                const SizedBox(width: 8),
-                Expanded(child: _field(_lng, '经度', number: true)),
-              ],
-            ),
+              Row(
+                children: [
+                  Expanded(child: _field(_lat, '纬度（可留空）', number: true)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _field(_lng, '经度（可留空）', number: true)),
+                ],
+              ),
             _field(_hours, '营业时间', hint: '如 10:00-22:00'),
             _field(_phone, '联系电话'),
             Row(

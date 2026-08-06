@@ -66,7 +66,7 @@ class StoreMapView extends StatelessWidget {
 /// 定位点是否在门店区域附近（避免用户与门店跨城市时地图被拉到全国视野）
 bool _nearStores(List<Store> stores, GeoPoint user) {
   var minLat = 90.0, maxLat = -90.0, minLng = 180.0, maxLng = -180.0;
-  for (final s in stores) {
+  for (final s in _geocoded(stores)) {
     minLat = s.lat < minLat ? s.lat : minLat;
     maxLat = s.lat > maxLat ? s.lat : maxLat;
     minLng = s.lng < minLng ? s.lng : minLng;
@@ -79,15 +79,22 @@ bool _nearStores(List<Store> stores, GeoPoint user) {
       user.lng <= maxLng + pad;
 }
 
+/// 仅保留已配置经纬度的门店（地图只展示可定位门店），
+/// 以非空坐标记录返回，避免 nullable 字段无法提升
+List<({Store store, double lat, double lng})> _geocoded(List<Store> stores) =>
+    [
+      for (final s in stores)
+        if (s.lat != null && s.lng != null)
+          (store: s, lat: s.lat!, lng: s.lng!),
+    ];
+
 /// 门店区域中心（门店为空时回退杭州）
 GeoPoint _centerOf(List<Store> stores) {
-  if (stores.isEmpty) return const GeoPoint(lat: 30.3, lng: 120.1);
+  final geocoded = _geocoded(stores);
+  if (geocoded.isEmpty) return const GeoPoint(lat: 30.3, lng: 120.1);
   var lat = 0.0, lng = 0.0;
-  for (final s in stores) {
-    lat += s.lat;
-    lng += s.lng;
-  }
-  return GeoPoint(lat: lat / stores.length, lng: lng / stores.length);
+  for (final s in geocoded) { lat += s.lat; lng += s.lng; }
+  return GeoPoint(lat: lat / geocoded.length, lng: lng / geocoded.length);
 }
 
 /// 计算门店（+定位点）包围盒；单点/零面积时外扩约 1km，
@@ -97,7 +104,7 @@ GeoPoint _centerOf(List<Store> stores) {
   GeoPoint? user,
 ) {
   var minLat = 90.0, maxLat = -90.0, minLng = 180.0, maxLng = -180.0;
-  for (final s in stores) {
+  for (final s in _geocoded(stores)) {
     minLat = s.lat < minLat ? s.lat : minLat;
     maxLat = s.lat > maxLat ? s.lat : maxLat;
     minLng = s.lng < minLng ? s.lng : minLng;
@@ -186,17 +193,17 @@ class _StoreGoogleMapState extends State<_StoreGoogleMap> {
   Set<gmaps.Marker> _markers() {
     final data = widget.data;
     return {
-      for (final s in data.stores)
+      for (final s in _geocoded(data.stores))
         gmaps.Marker(
-          markerId: gmaps.MarkerId('store-${s.id}'),
+          markerId: gmaps.MarkerId('store-${s.store.id}'),
           position: gmaps.LatLng(s.lat, s.lng),
-          infoWindow: gmaps.InfoWindow(title: s.name, snippet: s.address),
+          infoWindow: gmaps.InfoWindow(title: s.store.name, snippet: s.store.address),
           icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
-            s.id == data.selectedStoreId
+            s.store.id == data.selectedStoreId
                 ? gmaps.BitmapDescriptor.hueGreen
                 : gmaps.BitmapDescriptor.hueRed,
           ),
-          onTap: () => data.onSelectStore(s),
+          onTap: () => data.onSelectStore(s.store),
         ),
     };
   }
@@ -264,17 +271,17 @@ class _StoreAppleMapState extends State<_StoreAppleMap> {
   Set<apple.Annotation> _annotations() {
     final data = widget.data;
     return {
-      for (final s in data.stores)
+      for (final s in _geocoded(data.stores))
         apple.Annotation(
-          annotationId: apple.AnnotationId('store-${s.id}'),
+          annotationId: apple.AnnotationId('store-${s.store.id}'),
           position: apple.LatLng(s.lat, s.lng),
-          infoWindow: apple.InfoWindow(title: s.name, snippet: s.address),
+          infoWindow: apple.InfoWindow(title: s.store.name, snippet: s.store.address),
           icon: apple.BitmapDescriptor.markerAnnotationWithHue(
-            s.id == data.selectedStoreId
+            s.store.id == data.selectedStoreId
                 ? apple.BitmapDescriptor.hueGreen
                 : apple.BitmapDescriptor.hueRed,
           ),
-          onTap: () => data.onSelectStore(s),
+          onTap: () => data.onSelectStore(s.store),
         ),
     };
   }

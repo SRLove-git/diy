@@ -277,8 +277,10 @@ class _ActivityCard extends StatelessWidget {
                 FilledButton(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) =>
-                          const BookingFlowPage(initialType: 'activity'),
+                      builder: (_) => BookingFlowPage(
+                        initialType: 'activity',
+                        initialActivityId: activity.id,
+                      ),
                     ),
                   ),
                   style: FilledButton.styleFrom(

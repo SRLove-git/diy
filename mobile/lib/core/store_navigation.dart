@@ -47,7 +47,10 @@ List<MapAppOption> storeNavigationOptions(
 }) {
   final target = platform ?? defaultTargetPlatform;
   final name = store.name;
-  final gcj = GeoPoint(lat: store.lat, lng: store.lng);
+  final lat = store.lat;
+  final lng = store.lng;
+  if (lat == null || lng == null) return const [];
+  final gcj = GeoPoint(lat: lat, lng: lng);
   // 百度使用 BD-09，Apple/Google 使用 WGS-84
   final bd = kStoreCoordsAreGcj02 ? gcj02ToBd09(gcj) : gcj;
   final wgs = kStoreCoordsAreGcj02 ? gcj02ToWgs84(gcj) : gcj;
@@ -144,6 +147,14 @@ Future<void> showStoreNavigationSheet(
   StoreNavigationLauncher? launcher,
 }) async {
   final options = storeNavigationOptions(store);
+  if (options.isEmpty) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('该门店暂未配置位置，无法导航')),
+      );
+    }
+    return;
+  }
   final colors = Theme.of(context).colorScheme;
   final launch = launcher ?? _defaultLauncher;
 

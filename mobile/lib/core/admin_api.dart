@@ -146,8 +146,6 @@ class AdminStore {
     required this.id,
     required this.name,
     required this.address,
-    required this.lat,
-    required this.lng,
     required this.rating,
     required this.businessHours,
     required this.phone,
@@ -156,13 +154,15 @@ class AdminStore {
     required this.enabled,
     required this.tables,
     required this.slots,
+    this.lat,
+    this.lng,
   });
 
   final int id;
   final String name;
   final String address;
-  final double lat;
-  final double lng;
+  final double? lat;
+  final double? lng;
   final double rating;
   final String businessHours;
   final String phone;
@@ -176,8 +176,8 @@ class AdminStore {
         id: json['id'] as int,
         name: (json['name'] ?? '') as String,
         address: (json['address'] ?? '') as String,
-        lat: (json['lat'] as num?)?.toDouble() ?? 0,
-        lng: (json['lng'] as num?)?.toDouble() ?? 0,
+        lat: (json['lat'] as num?)?.toDouble(),
+        lng: (json['lng'] as num?)?.toDouble(),
         rating: (json['rating'] as num?)?.toDouble() ?? 5,
         businessHours: (json['businessHours'] ?? '') as String,
         phone: (json['phone'] ?? '') as String,

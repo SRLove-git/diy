@@ -16,6 +16,7 @@ class BookingFlowPage extends StatefulWidget {
   const BookingFlowPage({
     super.key,
     this.initialType = 'store',
+    this.initialActivityId,
     this.storesLoader,
     this.locate,
     this.detailLoader,
@@ -29,6 +30,9 @@ class BookingFlowPage extends StatefulWidget {
 
   /// 初始预约类型：store / activity（活动专区进入时直接停在活动 Tab）
   final String initialType;
+
+  /// 活动专区进入时指定的活动：加载后自动选中并直接进入「选场次」步骤
+  final int? initialActivityId;
 
   /// 测试注入：门店列表加载
   final Future<List<Store>> Function()? storesLoader;
@@ -94,6 +98,10 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
   List<Activity> _activities = [];
   bool _activitiesLoading = false;
   String? _activitiesError;
+  bool _sessionsLoading = false;
+
+  /// 是否从活动专区直接进入（锁定该活动，加载后自动跳到场次选择）
+  bool _jumpFromZone = false;
 
   // 已选（门店）
   Store? _store;
@@ -122,6 +130,8 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
   void initState() {
     super.initState();
     _type = widget.initialType == 'activity' ? 'activity' : 'store';
+    _jumpFromZone = widget.initialActivityId != null;
+    if (_jumpFromZone) _step = 1;
     _loadStores();
     _loadMemberStatus();
     _loadCoupons();
@@ -204,6 +214,9 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
           AppointmentApi.fetchActivities)();
       if (!mounted) return;
       final bookable = activities.where((a) => a.bookable).toList();
+      final jumpActivity = _jumpFromZone
+          ? bookable.where((a) => a.id == widget.initialActivityId).firstOrNull
+          : null;
       setState(() {
         _activities = bookable;
         _activitiesLoading = false;
@@ -213,8 +226,15 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
             bookable.isNotEmpty) {
           _activity = bookable.first;
           _prefetchSessions(bookable.first);
+        } else if (jumpActivity != null &&
+            _type == 'activity' &&
+            _activity == null) {
+          _activity = jumpActivity;
+          _prefetchSessions(jumpActivity);
         }
       });
+      // 从活动专区进入：活动确认后自动进入场次选择页（2/4）
+      if (jumpActivity != null) _goToSessions();
     } on DioException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -249,8 +269,15 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
   List<Store> _sortedByDistance(List<Store> stores, GeoPoint location) {
     final sorted = List.of(stores);
     sorted.sort((a, b) {
-      final da = haversineKm(location, GeoPoint(lat: a.lat, lng: a.lng));
-      final db = haversineKm(location, GeoPoint(lat: b.lat, lng: b.lng));
+      // 未配置经纬度的门店排到最后，仍可列表选择
+      final aLat = a.lat;
+      final aLng = a.lng;
+      final bLat = b.lat;
+      final bLng = b.lng;
+      if (aLat == null || aLng == null) return 1;
+      if (bLat == null || bLng == null) return -1;
+      final da = haversineKm(location, GeoPoint(lat: aLat, lng: aLng));
+      final db = haversineKm(location, GeoPoint(lat: bLat, lng: bLng));
       return da.compareTo(db);
     });
     return sorted;
@@ -392,13 +419,18 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
   }
 
   Future<void> _prefetchSessions(Activity activity) async {
+    setState(() => _sessionsLoading = true);
     try {
       final sessions = await (widget.sessionsLoader ??
           AppointmentApi.fetchActivitySessions)(activity.id);
       if (!mounted || _activity?.id != activity.id) return;
-      setState(() => _sessions = sessions);
+      setState(() {
+        _sessions = sessions;
+        _sessionsLoading = false;
+      });
     } on DioException catch (e) {
       if (!mounted) return;
+      setState(() => _sessionsLoading = false);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(AppointmentApi.messageOf(e))));
@@ -897,9 +929,10 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
     final selected = _store?.id == s.id;
     final isNearest = _userLocation != null && index == 0;
     final location = _userLocation;
-    final distance = location == null
+    final hasCoords = s.lat != null && s.lng != null;
+    final distance = location == null || !hasCoords
         ? null
-        : haversineKm(location, GeoPoint(lat: s.lat, lng: s.lng));
+        : haversineKm(location, GeoPoint(lat: s.lat!, lng: s.lng!));
     return KeyedSubtree(
       key: _keyFor(s),
       child: _Card(
@@ -943,17 +976,18 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                 ],
                 if (selected)
                   Icon(Icons.check_circle, color: colors.textPrimary),
-                IconButton(
-                  key: Key('store-nav-${s.id}'),
-                  tooltip: '导航到这家门店',
-                  icon: const Icon(Icons.navigation_outlined, size: 22),
-                  color: colors.textPrimary,
-                  onPressed: () => showStoreNavigationSheet(
-                    context,
-                    s,
-                    launcher: widget.navigationLauncher,
+                if (hasCoords)
+                  IconButton(
+                    key: Key('store-nav-${s.id}'),
+                    tooltip: '导航到这家门店',
+                    icon: const Icon(Icons.navigation_outlined, size: 22),
+                    color: colors.textPrimary,
+                    onPressed: () => showStoreNavigationSheet(
+                      context,
+                      s,
+                      launcher: widget.navigationLauncher,
+                    ),
                   ),
-                ),
               ],
             ),
             const SizedBox(height: 6),
@@ -1261,7 +1295,15 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
 
   Widget _buildSessionStep(BuildContext context) {
     final colors = AppColors.of(context);
-    final activity = _activity!;
+    final activity = _activity;
+    if (activity == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -1272,7 +1314,12 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
           style: TextStyle(color: colors.textSecondary, fontSize: 13),
         ),
         const SizedBox(height: 16),
-        if (_sessions.isEmpty)
+        if (_sessionsLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 40),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (_sessions.isEmpty)
           Text(
             '该活动暂无可预约场次',
             style: TextStyle(color: colors.textSecondary),

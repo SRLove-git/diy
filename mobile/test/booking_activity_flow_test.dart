@@ -88,6 +88,34 @@ void main() {
     dotenv.testLoad(fileInput: 'API_BASE_URL=http://127.0.0.1:1/api');
   });
 
+  testWidgets('活动专区进入：直接打开「选场次」页（预约 2/4）', (tester) async {
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BookingFlowPage(
+          initialType: 'activity',
+          initialActivityId: 1,
+          storesLoader: () async => const <Store>[],
+          locate: () async => null,
+          activitiesLoader: () async => _activities,
+          sessionsLoader: (id) async => _sessions,
+          memberLoader: () async => true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 不经过「选门店/活动」步骤，直接落在场次选择页
+    expect(find.text('预约（2/4）'), findsOneWidget);
+    expect(find.text('选择活动场次'), findsOneWidget);
+    expect(find.text('中秋月饼 DIY 特别场'), findsOneWidget);
+    expect(find.textContaining('14:00-16:00'), findsOneWidget);
+    expect(find.textContaining('剩余 12 个名额'), findsOneWidget);
+  });
+
   testWidgets('活动预约：选活动→场次→人数→会员价与支付→成功', (tester) async {
     tester.view.physicalSize = const Size(390 * 3, 844 * 3);
     tester.view.devicePixelRatio = 3.0;

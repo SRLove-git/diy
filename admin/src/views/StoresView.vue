@@ -44,8 +44,6 @@ function openCreate() {
   form.value = {
     name: '',
     address: '',
-    lat: 30.3,
-    lng: 120.1,
     businessHours: '10:00-22:00',
     phone: '',
     price: 39.9,
@@ -67,11 +65,14 @@ async function saveStore() {
   err.value = ''
   try {
     const payload = {
-      ...form.value,
+      name: form.value.name,
+      address: form.value.address,
+      businessHours: form.value.businessHours,
+      phone: form.value.phone,
+      price: form.value.price,
       memberPrice:
-        form.value.memberPrice == null
-          ? undefined
-          : form.value.memberPrice,
+        form.value.memberPrice == null ? undefined : form.value.memberPrice,
+      enabled: form.value.enabled,
     }
     if (isEdit.value) await storeApi.update(form.value.id!, payload)
     else await storeApi.create(payload)
@@ -268,10 +269,6 @@ onMounted(load)
         <h3>{{ isEdit ? '编辑门店' : '新增门店' }}</h3>
         <label>门店名称<input v-model="form.name" /></label>
         <label>地址<input v-model="form.address" /></label>
-        <div class="row">
-          <label>纬度<input v-model.number="form.lat" /></label>
-          <label>经度<input v-model.number="form.lng" /></label>
-        </div>
         <div class="row">
           <label>门市价（元/人）<input v-model.number="form.price" type="number" min="0" step="0.1" /></label>
           <label>会员价（元/人，0 = 会员免费）<input v-model.number="form.memberPrice" type="number" min="0" step="0.1" /></label>

@@ -28,11 +28,25 @@ export class Store {
   @Column({ length: 255 })
   address: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 7, transformer: decimal })
-  lat: number;
+  /** 纬度；管理端可不填，null 表示未配置（地图不展示该店） */
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+    transformer: decimal,
+  })
+  lat: number | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 7, transformer: decimal })
-  lng: number;
+  /** 经度；管理端可不填，null 表示未配置（地图不展示该店） */
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+    transformer: decimal,
+  })
+  lng: number | null;
 
   /** 评分 0-5 */
   @Column({

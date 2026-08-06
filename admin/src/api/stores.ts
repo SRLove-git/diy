@@ -4,8 +4,6 @@ export interface Store {
   id: number
   name: string
   address: string
-  lat: number
-  lng: number
   rating: number
   businessHours: string
   phone: string
