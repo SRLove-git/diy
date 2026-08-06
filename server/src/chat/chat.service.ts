@@ -51,9 +51,6 @@ export function isValidChatContent(
   return body.length > 0;
 }
 
-/** 撤回时限（毫秒），群聊与单聊共用 */
-export const RECALL_WINDOW_MS = 2 * 60 * 1000;
-
 @Injectable()
 export class ChatService {
   constructor(
@@ -426,44 +423,6 @@ export class ChatService {
         },
       );
     });
-  }
-
-  /**
-   * 撤回消息：仅发送者本人、发送后 2 分钟内可撤回，撤回对双方生效。
-   * 若该消息为会话最后一条，同步把会话预览更新为撤回提示。
-   */
-  async recallMessage(
-    userId: number,
-    conversationId: number,
-    messageId: number,
-  ) {
-    const conv = await this.findConversationForUser(conversationId, userId);
-    const message = await this.messages.findOneBy({
-      id: messageId,
-      conversationId,
-    });
-    if (!message) throw new NotFoundException('消息不存在');
-    if (message.senderId !== userId) {
-      throw new ForbiddenException('只能撤回自己发送的消息');
-    }
-    if (message.recalledAt) throw new BadRequestException('消息已撤回');
-    const age = Date.now() - (message.createdAt?.getTime() ?? 0);
-    if (age > RECALL_WINDOW_MS) {
-      throw new BadRequestException('发送超过 2 分钟的消息不能撤回');
-    }
-    const recalledAt = new Date();
-    await this.messages.update(message.id, { recalledAt });
-    message.recalledAt = recalledAt;
-    // 会话最后一条消息被撤回时，列表预览同步为撤回提示
-    if (
-      conv.lastMessageId != null &&
-      String(conv.lastMessageId) === String(message.id)
-    ) {
-      await this.conversations.update(conv.id, {
-        lastMessagePreview: 'recalled:',
-      });
-    }
-    return { message, peerId: this.peerIdOf(conv, userId) };
   }
 
   /**

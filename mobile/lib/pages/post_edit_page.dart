@@ -113,6 +113,13 @@ class _PostEditPageState extends State<PostEditPage> {
     return 0;
   }
 
+  /// 是否已设置裁剪区间（起点 > 0，或结尾已短于视频总长）
+  bool get _hasTrim {
+    if (_trimEnd <= _trimStart) return false;
+    if (_trimStart > 0) return true;
+    return _videoLength > 0 && _trimEnd < _videoLength;
+  }
+
   static const _white = Colors.white;
   static const _hint = Color(0xFF999999);
   static const _primary = Palette.accent;
@@ -166,7 +173,7 @@ class _PostEditPageState extends State<PostEditPage> {
     final ctrl = _videoCtrl;
     if (ctrl == null || !ctrl.value.isInitialized) return;
     // 超出裁剪终点时跳回起点（预览裁剪效果）
-    if (_trimStart > 0 && _trimEnd > _trimStart) {
+    if (_hasTrim) {
       final end = Duration(milliseconds: (_trimEnd * 1000).round());
       if (ctrl.value.position >= end) {
         ctrl.seekTo(Duration(milliseconds: (_trimStart * 1000).round()));
@@ -344,7 +351,7 @@ class _PostEditPageState extends State<PostEditPage> {
                             ),
                           ),
                           // 裁剪区间角标（视频）
-                          if (_isVideo && _trimStart > 0)
+                          if (_isVideo && _hasTrim)
                             Positioned(
                               top: 8,
                               right: 8,
@@ -638,7 +645,7 @@ class _PostEditPageState extends State<PostEditPage> {
             ),
             Text(
               '裁剪区间 ${_fmt(_trimStart)} - ${_fmt(_trimEnd)}'
-              '${_trimStart > 0 ? '（已裁剪）' : ''}',
+              '${_hasTrim ? '（已裁剪）' : ''}',
               style: const TextStyle(color: _hint, fontSize: 12),
             ),
           ],

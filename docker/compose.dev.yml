@@ -10,6 +10,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: diy
+      TZ: Asia/Shanghai
     ports:
       - "3306:3306"
     volumes:
@@ -22,6 +23,8 @@ services:
   redis:
     image: redis:7
     container_name: diy-redis-dev
+    environment:
+      TZ: Asia/Shanghai
     ports:
       - "6379:6379"
     # 开启 AOF 持久化：重启/重建容器不丢失会话数据（refresh token、验证码等）

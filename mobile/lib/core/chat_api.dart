@@ -259,16 +259,6 @@ class ChatApi {
     return ChatMessage.fromJson(resp.data as Map<String, dynamic>);
   }
 
-  /// 撤回消息（仅发送者、发送后 2 分钟内，对双方生效）
-  static Future<ChatMessage> recallMessage(
-    int conversationId,
-    int messageId,
-  ) async {
-    final resp = await ApiClient.instance
-        .post('/conversations/$conversationId/messages/$messageId/recall');
-    return ChatMessage.fromJson(resp.data as Map<String, dynamic>);
-  }
-
   /// 删除消息（仅对自己隐藏，对端不受影响）
   static Future<void> deleteMessage(
     int conversationId,
@@ -685,16 +675,6 @@ class GroupApi {
         'forwarded': forwarded,
       },
     );
-    return GroupMessage.fromJson(resp.data as Map<String, dynamic>);
-  }
-
-  /// 撤回群消息（仅发送者、发送后 2 分钟内，对群内成员生效）
-  static Future<GroupMessage> recallMessage(
-    int groupId,
-    int messageId,
-  ) async {
-    final resp = await ApiClient.instance
-        .post('/groups/$groupId/messages/$messageId/recall');
     return GroupMessage.fromJson(resp.data as Map<String, dynamic>);
   }
 

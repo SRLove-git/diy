@@ -100,23 +100,6 @@ export class ChatController {
     return message;
   }
 
-  /** 撤回消息：仅发送者、2 分钟内；对双方生效并实时广播 */
-  @Post(':id/messages/:messageId/recall')
-  @UseGuards(JwtAuthGuard)
-  async recall(
-    @CurrentUser() user: AuthUser,
-    @Param('id', ParseIntPipe) id: number,
-    @Param('messageId', ParseIntPipe) messageId: number,
-  ) {
-    const { message, peerId } = await this.chat.recallMessage(
-      user.id,
-      id,
-      messageId,
-    );
-    this.gateway.broadcastMessageRecalled(id, message, [user.id, peerId]);
-    return message;
-  }
-
   /** 删除消息（仅对自己隐藏，对端不受影响） */
   @Delete(':id/messages/:messageId')
   @UseGuards(JwtAuthGuard)

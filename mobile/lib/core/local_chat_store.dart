@@ -218,17 +218,6 @@ class LocalChatStore {
     );
   }
 
-  /// 服务端撤回确认：按 server_id 标记本地撤回时间
-  Future<void> markRecalled(int serverId) async {
-    final db = await _database;
-    await db.update(
-      _table,
-      {'recalled_at': DateTime.now().millisecondsSinceEpoch},
-      where: 'server_id = ?',
-      whereArgs: [serverId],
-    );
-  }
-
   /// 删除本地消息（用户删除该条消息时清理，避免重进页面又出现）
   Future<void> removeByServerId(int serverId) async {
     final db = await _database;

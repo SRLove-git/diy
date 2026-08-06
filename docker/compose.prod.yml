@@ -9,6 +9,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-change-me}
       MYSQL_DATABASE: diy
+      TZ: Asia/Shanghai
     volumes:
       - mysql-prod-data:/var/lib/mysql
     healthcheck:
@@ -20,6 +21,8 @@ services:
     image: redis:7
     container_name: diy-redis-prod
     restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
     # 开启 AOF 持久化：避免容器重启/故障切换导致所有用户 refresh token 失效而掉线重登
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
@@ -39,6 +42,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      TZ: Asia/Shanghai
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USER: root
@@ -67,6 +71,8 @@ services:
       context: ../admin
     container_name: diy-admin-prod
     restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
     depends_on:
       - server
     ports:

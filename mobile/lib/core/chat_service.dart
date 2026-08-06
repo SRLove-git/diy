@@ -30,22 +30,6 @@ class GroupNewMessageEvent extends ChatEvent {
   final GroupMessage message;
 }
 
-/// 单聊消息被撤回（自己或对方发起，实时同步双方）
-class MessageRecalledEvent extends ChatEvent {
-  const MessageRecalledEvent(this.conversationId, this.messageId, this.recalledAt);
-  final int conversationId;
-  final int messageId;
-  final DateTime? recalledAt;
-}
-
-/// 群消息被撤回
-class GroupMessageRecalledEvent extends ChatEvent {
-  const GroupMessageRecalledEvent(this.groupId, this.messageId, this.recalledAt);
-  final int groupId;
-  final int messageId;
-  final DateTime? recalledAt;
-}
-
 /// 群成员变化（拉人/退出/踢人）：客户端刷新群列表与成员缓存
 class GroupMemberChangedEvent extends ChatEvent {
   const GroupMemberChangedEvent(this.groupId);
@@ -222,35 +206,6 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
             Map<String, dynamic>.from(rawGroupMsg),
           );
           _onGroupNewMessage(groupMessage);
-          break;
-        case 'messageRecalled':
-          final recalledConvId = (frame['conversationId'] as num?)?.toInt() ?? 0;
-          final rawRecalled = frame['message'];
-          if (recalledConvId <= 0 || rawRecalled is! Map) break;
-          final recalledMsg =
-              ChatMessage.fromJson(Map<String, dynamic>.from(rawRecalled));
-          final recalledId = recalledMsg.id;
-          if (recalledId == null) break;
-          // 本地缓存同步撤回状态，重进页面秒开时也能正确显示
-          LocalChatStore.instance.markRecalled(recalledId);
-          _events.add(MessageRecalledEvent(
-            recalledConvId,
-            recalledId,
-            recalledMsg.recalledAt,
-          ));
-          break;
-        case 'groupMessageRecalled':
-          final recalledGroupId = (frame['groupId'] as num?)?.toInt() ?? 0;
-          final rawGroupRecalled = frame['message'];
-          if (recalledGroupId <= 0 || rawGroupRecalled is! Map) break;
-          final recalledGroupMsg = GroupMessage.fromJson(
-            Map<String, dynamic>.from(rawGroupRecalled),
-          );
-          _events.add(GroupMessageRecalledEvent(
-            recalledGroupId,
-            recalledGroupMsg.id,
-            recalledGroupMsg.recalledAt,
-          ));
           break;
         case 'groupEvent':
           final eventGroupId = (frame['groupId'] as num?)?.toInt() ?? 0;
@@ -695,18 +650,6 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  /// 撤回单聊消息（仅发送者、2 分钟内；成功后服务端会广播给双方）
-  Future<ChatMessage?> recallMessage(
-    int conversationId,
-    int messageId,
-  ) async {
-    try {
-      return await ChatApi.recallMessage(conversationId, messageId);
-    } catch (_) {
-      return null;
-    }
-  }
-
   /// 删除单聊消息（仅对自己生效；成功后同步清理本地缓存）
   Future<bool> deleteMessage(int conversationId, int messageId) async {
     try {
@@ -715,15 +658,6 @@ class ChatService extends ChangeNotifier with WidgetsBindingObserver {
       return true;
     } catch (_) {
       return false;
-    }
-  }
-
-  /// 撤回群消息（仅发送者、2 分钟内；成功后服务端广播给群成员）
-  Future<GroupMessage?> recallGroupMessage(int groupId, int messageId) async {
-    try {
-      return await GroupApi.recallMessage(groupId, messageId);
-    } catch (_) {
-      return null;
     }
   }
 

@@ -7,6 +7,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: diy_test
+      TZ: Asia/Shanghai
     ports:
       - "13306:3306"
     healthcheck:
@@ -17,5 +18,7 @@ services:
   redis:
     image: redis:7
     container_name: diy-redis-test
+    environment:
+      TZ: Asia/Shanghai
     ports:
       - "16379:6379"

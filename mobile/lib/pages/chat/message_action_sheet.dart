@@ -5,7 +5,7 @@ import '../../core/chat_api.dart';
 import '../../core/chat_service.dart';
 
 /// 消息长按操作
-enum MessageAction { copy, quote, forward, delete, recall }
+enum MessageAction { copy, quote, forward, delete }
 
 /// 引用快照预览 → 展示文本（text:xxx → xxx；媒体 → [图片]/[语音]/[视频]；已撤回 → 提示）
 String chatPreviewText(String? preview) {
@@ -18,18 +18,16 @@ String chatPreviewText(String? preview) {
   return preview;
 }
 
-/// 微信风格长按操作面板（复制/引用/转发/撤回/删除）
+/// 微信风格长按操作面板（复制/引用/转发/删除）
 Future<MessageAction?> showMessageActionSheet(
   BuildContext context, {
   required String contentType,
-  required bool canRecall,
   required bool canQuote,
 }) async {
   final actions = <MessageAction>[
     if (canQuote) MessageAction.quote,
     if (contentType == 'text') MessageAction.copy,
     MessageAction.forward,
-    if (canRecall) MessageAction.recall,
     MessageAction.delete,
   ];
   if (actions.isEmpty) return null;
@@ -93,14 +91,11 @@ class _ActionSheet extends StatelessWidget {
       MessageAction.copy => (Icons.copy_rounded, '复制'),
       MessageAction.quote => (Icons.format_quote_rounded, '引用'),
       MessageAction.forward => (Icons.shortcut_rounded, '转发'),
-      MessageAction.recall => (Icons.undo_rounded, '撤回'),
       MessageAction.delete => (Icons.delete_outline_rounded, '删除'),
     };
     final color = action == MessageAction.delete
         ? colors.danger
-        : action == MessageAction.recall
-            ? Palette.warning
-            : colors.textPrimary;
+        : colors.textPrimary;
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () => Navigator.of(context).pop(action),

@@ -164,8 +164,8 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
     final c = _videoCtrl;
     if (c == null || !c.value.isInitialized) return;
     // 超出裁剪终点时跳回起点（发布页预览同样体现裁剪效果）
-    final edit = _edit;
-    if (edit != null && edit.hasTrim) {
+    if (_hasTrimApplied) {
+      final edit = _edit!;
       final end = Duration(milliseconds: (edit.trimEnd * 1000).round());
       if (c.value.position >= end) {
         c.seekTo(Duration(milliseconds: (edit.trimStart * 1000).round()));
@@ -309,12 +309,13 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
       var cover = '';
       var photos = <String>[];
       final edit = _edit;
+      File? trimmed;
       if (video != null) {
         // 有裁剪区间时先本地裁剪成新视频文件再上传，让裁剪真正生效
-        final trimmed = edit != null && edit.hasTrim
+        trimmed = _hasTrimApplied
             ? await MediaComposer.trimVideo(
                 video.path,
-                start: edit.trimStart,
+                start: edit!.trimStart,
                 end: edit.trimEnd,
               )
             : null;
@@ -337,7 +338,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
         content: desc.isEmpty ? title : '$title\n$desc',
         cover: cover,
         videoUrl: videoUrl,
-        duration: edit != null && edit.hasTrim
+        duration: trimmed != null && edit != null
             ? (edit.trimEnd - edit.trimStart).round()
             : widget.durationSeconds ??
                   (_videoCtrl?.value.duration.inSeconds ?? 0),
@@ -345,8 +346,10 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
         tags: tags,
         photos: photos,
         filter: edit?.filterId ?? '',
-        trimStart: edit?.trimStart ?? 0,
-        trimEnd: edit?.trimEnd ?? 0,
+        // 已物理裁剪的文件本身就是裁剪后的片段，不再携带原区间元数据，
+        // 避免信息流播放器按原始时间轴再次截取
+        trimStart: trimmed != null ? 0 : (edit?.trimStart ?? 0),
+        trimEnd: trimmed != null ? 0 : (edit?.trimEnd ?? 0),
         speed: edit?.speed ?? 1,
         rotation: edit?.rotation ?? 0,
         aspectRatio: video == null
@@ -374,9 +377,9 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
     try {
       final edit = _edit;
       double at;
-      if (edit != null && edit.hasTrim) {
+      if (_hasTrimApplied) {
         // 有裁剪时取裁剪区间内前 20% 处，避开片头黑场
-        at = edit.trimStart + (edit.trimEnd - edit.trimStart) * 0.2;
+        at = edit!.trimStart + (edit.trimEnd - edit.trimStart) * 0.2;
       } else {
         final durationSec =
             (widget.durationSeconds ??
@@ -712,11 +715,21 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
     final parts = <String>[
       if (edit.filterId.isNotEmpty) '滤镜 ${filterOf(edit.filterId).name}',
       if (edit.speed != 1) '${edit.speed}x',
-      if (edit.trimStart > 0)
+      if (_hasTrimApplied)
         '已裁剪 ${_fmtSec(edit.trimStart)}-${_fmtSec(edit.trimEnd)}',
       if (edit.rotation != 0) '已旋转',
     ];
     return parts.join(' · ');
+  }
+
+  /// 是否真正需要按裁剪区间出片（拖动过起点，或把结尾缩短了都算）
+  bool get _hasTrimApplied {
+    final edit = _edit;
+    if (edit == null || edit.trimEnd <= edit.trimStart) return false;
+    if (edit.trimStart > 0) return true;
+    final sourceSec =
+        _videoCtrl?.value.duration.inSeconds ?? widget.durationSeconds ?? 0;
+    return sourceSec > 0 && edit.trimEnd < sourceSec;
   }
 
   static String _fmtSec(double sec) {

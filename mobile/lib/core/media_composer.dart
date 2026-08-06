@@ -55,6 +55,8 @@ class MediaComposer {
   /// 按 [start]~[end]（秒）裁剪视频并重编码输出 MP4（帧级精确），返回临时文件。
   ///
   /// 用于把裁剪真正落到视频文件上，而不只是记录元数据。
+  /// 使用 mpeg4/aac 编码（与 [compose] 一致）：当前 ffmpeg-kit 为 _video
+  /// 构建，不含 GPL 编码器 libx264。
   /// 失败时抛出 [StateError]。
   static Future<File> trimVideo(
     String input, {
@@ -80,17 +82,17 @@ class MediaComposer {
       '-t',
       (end - start).toStringAsFixed(3),
       '-c:v',
-      'libx264',
-      '-preset',
-      'veryfast',
-      '-crf',
-      '23',
+      'mpeg4',
+      '-q:v',
+      '3',
       '-pix_fmt',
       'yuv420p',
       '-c:a',
       'aac',
-      '-b:a',
-      '128k',
+      '-ar',
+      '44100',
+      '-ac',
+      '2',
       '-movflags',
       '+faststart',
       output.path,

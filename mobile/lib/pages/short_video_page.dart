@@ -95,6 +95,7 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
   void initState() {
     super.initState();
     _loadRecommend();
+    _loadFollowedIds();
   }
 
   @override
@@ -134,12 +135,51 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
     }
   }
 
+  /// 拉取当前用户已关注作者 ID 集合（初始化右侧关注按钮状态）
+  Future<void> _loadFollowedIds() async {
+    try {
+      final ids = (await FollowApi.fetchFollowing())
+          .map((u) => u.id)
+          .toSet();
+      if (!mounted) return;
+      setState(() {
+        _followedIds
+          ..clear()
+          ..addAll(ids);
+      });
+    } catch (_) {
+      // 关注列表失败保持现状，关注按钮默认未关注态
+    }
+  }
+
   Future<void> _loadFollowing() async {
     try {
       final r = await VideoApi.fetchFollowing(page: 1);
       if (!mounted) return;
+      // null 表示关注列表拉取失败，退化为服务端过滤结果；
+      // 空集合表示当前用户没有关注任何人，仍严格过滤。
+      Set<int>? followedIds;
+      try {
+        followedIds = (await FollowApi.fetchFollowing())
+            .map((u) => u.id)
+            .toSet();
+      } catch (_) {
+        // 关注列表失败时退化为服务端过滤结果
+      }
+      if (!mounted) return;
       setState(() {
-        _following = r.items;
+        // 服务端关注流再按“已关注作者集合”过滤一次：即使后端返回了
+        // 全量视频（旧版本/异常），关注 Tab 也只会出现已关注作者的视频。
+        _following = followedIds == null
+            ? r.items
+            : r.items
+                .where((v) => followedIds!.contains(v.authorId))
+                .toList();
+        if (followedIds != null) {
+          _followedIds
+            ..clear()
+            ..addAll(followedIds);
+        }
         _error = null;
       });
     } catch (_) {
@@ -192,7 +232,6 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
     if (created == null || !mounted) return;
     setState(() {
       _recommend = [created, ..._recommend];
-      _following = [created, ..._following];
       _tabIndex = 1;
       _currentIndex = 0;
     });
@@ -506,15 +545,31 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _pill('关注', _tabIndex == 0, () => _switchTab(0)),
-          _pill('推荐', _tabIndex == 1, () => _switchTab(1)),
+          _pill(
+            '关注',
+            _tabIndex == 0,
+            () => _switchTab(0),
+            key: const Key('feedTabFollowing'),
+          ),
+          _pill(
+            '推荐',
+            _tabIndex == 1,
+            () => _switchTab(1),
+            key: const Key('feedTabRecommend'),
+          ),
         ],
       ),
     );
   }
 
-  Widget _pill(String label, bool active, VoidCallback onTap) {
+  Widget _pill(
+    String label,
+    bool active,
+    VoidCallback onTap, {
+    Key? key,
+  }) {
     return GestureDetector(
+      key: key,
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),

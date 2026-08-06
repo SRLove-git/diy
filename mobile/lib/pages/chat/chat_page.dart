@@ -265,22 +265,6 @@ class _ChatPageState extends State<ChatPage> {
           }
         }
       });
-    } else if (event is MessageRecalledEvent) {
-      if (event.conversationId != widget.conversation.id) return;
-      setState(() {
-        for (final vm in _msgs) {
-          if (vm.message.id == event.messageId &&
-              vm.message.recalledAt == null) {
-            vm.message = vm.message.copyWith(
-              recalledAt: event.recalledAt ?? DateTime.now(),
-            );
-          }
-        }
-      });
-      // 正在引用该消息时自动取消引用
-      if (_replyTo?.message.id == event.messageId) {
-        setState(() => _replyTo = null);
-      }
     } else if (event is ChatLimitEvent) {
       // 聊天受限：移除占位气泡并清理本地留底，提示互相关注后可畅聊。
       // 仅当气泡确实被移除时才提示（WS 与 REST 兜底会各触发一次，去重）。
@@ -675,20 +659,9 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _showMessageActions(_ViewMsg vm) async {
     final m = vm.message;
     if (m.recalledAt != null) return; // 已撤回的消息不再显示操作
-    final mine = m.senderId == _meId;
-    final age = m.createdAt == null
-        ? Duration.zero
-        : DateTime.now().difference(m.createdAt!);
-    final canRecall = mine &&
-        m.id != null &&
-        vm.state != _SendState.pending &&
-        vm.state != _SendState.failed &&
-        age < const Duration(minutes: 2) &&
-        m.recalledAt == null;
     final action = await showMessageActionSheet(
       context,
       contentType: m.contentType,
-      canRecall: canRecall,
       // 未上服务端的本地消息（发送中/失败）无引用目标，不可引用
       canQuote: m.id != null,
     );
@@ -702,9 +675,6 @@ class _ChatPageState extends State<ChatPage> {
         break;
       case MessageAction.forward:
         await _forwardMessage(vm);
-        break;
-      case MessageAction.recall:
-        await _recallMessage(vm);
         break;
       case MessageAction.delete:
         await _deleteMessage(vm);
@@ -798,49 +768,6 @@ class _ChatPageState extends State<ChatPage> {
     }
     setState(() => _msgs.removeWhere((v) => identical(v, vm)));
     if (_replyTo == vm) setState(() => _replyTo = null);
-  }
-
-  /// 撤回消息（仅自己、2 分钟内；撤回后提示「重新编辑」）
-  Future<void> _recallMessage(_ViewMsg vm) async {
-    final id = vm.message.id;
-    if (id == null) return;
-    final recalled = await ChatService.instance
-        .recallMessage(widget.conversation.id, id);
-    if (!mounted) return;
-    if (recalled == null) {
-      _toast('撤回失败：发送超过 2 分钟的消息不能撤回');
-      return;
-    }
-    setState(() {
-      vm.message = vm.message.copyWith(
-        recalledAt: recalled.recalledAt ?? DateTime.now(),
-      );
-    });
-    if (_replyTo == vm) setState(() => _replyTo = null);
-    // 二次编辑：把原内容放回输入框，用户修改后重新发送
-    final text = vm.message.content;
-    if (vm.message.contentType == 'text' && text.trim().isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('已撤回'),
-          duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: '重新编辑',
-            onPressed: () {
-              if (!mounted) return;
-              setState(() {
-                _input.text = text;
-                _input.selection =
-                    TextSelection.collapsed(offset: text.length);
-              });
-              _inputFocus.requestFocus();
-            },
-          ),
-        ),
-      );
-    } else {
-      _toast('已撤回');
-    }
   }
 
   // ---------- 输入区面板切换 ----------

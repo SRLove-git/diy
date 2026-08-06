@@ -557,42 +557,6 @@ export class ChatGateway
     };
   }
 
-  /**
-   * 撤回消息实时广播：发给发送者本人与对端，双方聊天页同步显示撤回提示。
-   */
-  broadcastMessageRecalled(
-    conversationId: number,
-    message: Message,
-    userIds: number[],
-  ): void {
-    const payload = {
-      type: 'messageRecalled',
-      conversationId,
-      message: this.serializeMessage(message),
-    };
-    for (const uid of userIds) {
-      this.sendToUser(uid, payload);
-      this.publish({ kind: 'messageRecalled', toUserIds: [uid], payload });
-    }
-  }
-
-  /** 群消息撤回实时广播：发给发送者与在线群成员 */
-  broadcastGroupMessageRecalled(
-    groupId: number,
-    message: Record<string, unknown> | GroupMessage,
-    memberIds: number[],
-  ): void {
-    const payload = {
-      type: 'groupMessageRecalled',
-      groupId,
-      message: this.serializeGroupMessage(message),
-    };
-    for (const uid of memberIds) {
-      this.sendToUser(uid, payload);
-      this.publish({ kind: 'groupMessageRecalled', toUserIds: [uid], payload });
-    }
-  }
-
   private reply(client: WebSocket, payload: unknown): void {
     if (client.readyState !== WebSocket.OPEN) return;
     client.send(Buffer.from(encode(payload)), (err) => {

@@ -127,20 +127,6 @@ class _GroupChatPageState extends State<GroupChatPage> {
       ChatService.instance.markGroupRead(widget.group.id, event.message.id);
       return;
     }
-    if (event is GroupMessageRecalledEvent) {
-      if (event.groupId != widget.group.id) return;
-      if (!mounted) return;
-      setState(() {
-        for (final m in _msgs) {
-          if (m.id == event.messageId && m.recalledAt == null) {
-            m.recalledAt = event.recalledAt ?? DateTime.now();
-          }
-        }
-      });
-      if (_replyTo?.id == event.messageId) {
-        setState(() => _replyTo = null);
-      }
-    }
   }
 
   void _onGroupEvent(ChatEvent event) {
@@ -326,17 +312,9 @@ class _GroupChatPageState extends State<GroupChatPage> {
 
   Future<void> _showMessageActions(_ViewGroupMsg vm) async {
     if (vm.recalledAt != null) return;
-    final mine = vm.senderId == _myId;
-    final age = DateTime.now().difference(vm.createdAt);
-    final canRecall = mine &&
-        vm.id != null &&
-        !vm.pending &&
-        age < const Duration(minutes: 2) &&
-        vm.recalledAt == null;
     final action = await showMessageActionSheet(
       context,
       contentType: vm.contentType,
-      canRecall: canRecall,
       // 发送中的本地消息无引用目标，不可引用
       canQuote: vm.id != null,
     );
@@ -352,9 +330,6 @@ class _GroupChatPageState extends State<GroupChatPage> {
         break;
       case MessageAction.forward:
         await _forwardGroupMessage(vm);
-        break;
-      case MessageAction.recall:
-        await _recallGroupMessage(vm);
         break;
       case MessageAction.delete:
         await _deleteGroupMessage(vm);
@@ -423,44 +398,6 @@ class _GroupChatPageState extends State<GroupChatPage> {
     }
     setState(() => _msgs.removeWhere((m) => identical(m, vm)));
     if (_replyTo == vm) setState(() => _replyTo = null);
-  }
-
-  /// 撤回群消息（仅自己、2 分钟内；撤回后提示「重新编辑」）
-  Future<void> _recallGroupMessage(_ViewGroupMsg vm) async {
-    final id = vm.id;
-    if (id == null) return;
-    final recalled = await ChatService.instance
-        .recallGroupMessage(widget.group.id, id);
-    if (!mounted) return;
-    if (recalled == null) {
-      _toast('撤回失败：发送超过 2 分钟的消息不能撤回');
-      return;
-    }
-    setState(() => vm.recalledAt = recalled.recalledAt ?? DateTime.now());
-    if (_replyTo == vm) setState(() => _replyTo = null);
-    // 二次编辑：原内容放回输入框
-    final text = vm.content;
-    if (vm.contentType == 'text' && text.trim().isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('已撤回'),
-          duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: '重新编辑',
-            onPressed: () {
-              if (!mounted) return;
-              setState(() {
-                _inputCtrl.text = text;
-                _inputCtrl.selection =
-                    TextSelection.collapsed(offset: text.length);
-              });
-            },
-          ),
-        ),
-      );
-    } else {
-      _toast('已撤回');
-    }
   }
 
   @override

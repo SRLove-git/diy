@@ -157,22 +157,6 @@ export class GroupsController {
     return message;
   }
 
-  /** 撤回群消息：仅发送者、2 分钟内；对群内成员生效并实时广播 */
-  @Post(':id/messages/:messageId/recall')
-  async recall(
-    @CurrentUser() user: AuthUser,
-    @Param('id', ParseIntPipe) id: number,
-    @Param('messageId', ParseIntPipe) messageId: number,
-  ) {
-    const { message, memberIds } = await this.groups.recallGroupMessage(
-      user.id,
-      id,
-      messageId,
-    );
-    this.gateway.broadcastGroupMessageRecalled(id, message, memberIds);
-    return message;
-  }
-
   /** 删除群消息（仅对自己隐藏，其他成员不受影响） */
   @Delete(':id/messages/:messageId')
   async removeMessage(

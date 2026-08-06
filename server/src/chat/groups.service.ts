@@ -13,7 +13,7 @@ import { GroupMember } from './group-member.entity';
 import { GroupMessage } from './group-message.entity';
 import { GroupRead } from './group-read.entity';
 import { BlocksService } from './blocks.service';
-import { isValidChatContent, RECALL_WINDOW_MS } from './chat.service';
+import { isValidChatContent } from './chat.service';
 import type { MessageContentType } from './chat.service';
 
 /** 群聊消息类型归一化 */
@@ -224,34 +224,6 @@ export class GroupsService {
       default:
         return `text:${message.content.slice(0, 50)}`;
     }
-  }
-
-  /**
-   * 撤回群消息：仅发送者、发送后 2 分钟内可撤回，对群内全部成员生效。
-   */
-  async recallGroupMessage(userId: number, groupId: number, messageId: number) {
-    await this.assertMember(groupId, userId);
-    const message = await this.messages.findOneBy({ id: messageId, groupId });
-    if (!message) throw new NotFoundException('消息不存在');
-    if (message.senderId !== userId) {
-      throw new ForbiddenException('只能撤回自己发送的消息');
-    }
-    if (message.recalledAt) throw new BadRequestException('消息已撤回');
-    const age = Date.now() - (message.createdAt?.getTime() ?? 0);
-    if (age > RECALL_WINDOW_MS) {
-      throw new BadRequestException('发送超过 2 分钟的消息不能撤回');
-    }
-    const recalledAt = new Date();
-    await this.messages.update(message.id, { recalledAt });
-    message.recalledAt = recalledAt;
-    const group = await this.groups.findOneBy({ id: groupId });
-    if (
-      group?.lastMessageId != null &&
-      String(group.lastMessageId) === String(message.id)
-    ) {
-      await this.groups.update(groupId, { lastMessagePreview: 'recalled:' });
-    }
-    return { message, memberIds: await this.groupMemberIds(groupId) };
   }
 
   /** 删除群消息（仅对自己隐藏，对端/群内其他成员不受影响） */
