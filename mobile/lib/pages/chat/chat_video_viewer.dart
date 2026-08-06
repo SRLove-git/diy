@@ -24,6 +24,9 @@ class _ChatVideoViewerState extends State<ChatVideoViewer> {
   bool _failed = false;
   bool _controlsVisible = true;
 
+  /// 拖动进度条时的临时进度（0~1）；null 表示未拖动，跟随播放器实际进度。
+  double? _dragProgress;
+
   @override
   void initState() {
     super.initState();
@@ -86,6 +89,33 @@ class _ChatVideoViewerState extends State<ChatVideoViewer> {
                 child: _buildVideo(),
               ),
             ),
+            // 暂停时居中显示播放图标（不拦截点击，点击仍走下方视频层）
+            if (_ctrl != null)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ValueListenableBuilder<VideoPlayerValue>(
+                    valueListenable: _ctrl!,
+                    builder: (context, value, _) {
+                      if (value.isPlaying) return const SizedBox.shrink();
+                      return Center(
+                        child: Container(
+                          width: 62,
+                          height: 62,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.4),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.play_arrow_rounded,
+                            color: Colors.white,
+                            size: 38,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
             // 顶栏：返回 + 标题（只避让顶部安全区）
             AnimatedOpacity(
               opacity: _controlsVisible ? 1 : 0,
@@ -158,22 +188,47 @@ class _ChatVideoViewerState extends State<ChatVideoViewer> {
         final total = value.duration.inMilliseconds;
         final pos = value.position.inMilliseconds;
         final progress = total > 0 ? pos / total : 0.0;
+        final shown = (_dragProgress ?? progress).clamp(0.0, 1.0);
+        final shownPos = total > 0
+            ? Duration(milliseconds: (total * shown).round())
+            : Duration.zero;
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 3,
-                backgroundColor: Colors.white24,
-                color: Colors.white,
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 3,
+                activeTrackColor: Colors.white,
+                inactiveTrackColor: Colors.white24,
+                thumbColor: Colors.white,
+                thumbShape:
+                    const RoundSliderThumbShape(enabledThumbRadius: 5),
+                overlayShape:
+                    const RoundSliderOverlayShape(overlayRadius: 14),
+                overlayColor: Colors.white24,
+              ),
+              child: Slider(
+                value: shown,
+                onChanged: total > 0
+                    ? (v) => setState(() => _dragProgress = v)
+                    : null,
+                onChangeEnd: total > 0
+                    ? (v) {
+                        setState(() => _dragProgress = null);
+                        c.seekTo(
+                          Duration(milliseconds: (total * v).round()),
+                        );
+                      }
+                    : null,
               ),
             ),
-            const SizedBox(height: 6),
             Text(
-              '${_fmt(value.position)} / ${_fmt(value.duration)}',
-              style: const TextStyle(color: Colors.white70, fontSize: 11),
+              '${_fmt(shownPos)} / ${_fmt(value.duration)}',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+                height: 1.2,
+              ),
             ),
           ],
         );

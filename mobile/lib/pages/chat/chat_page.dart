@@ -17,6 +17,7 @@ import '../../core/chat_api.dart';
 import '../../core/chat_service.dart';
 import '../../core/follow_api.dart';
 import '../../core/local_chat_store.dart';
+import '../../core/media_saver.dart';
 import '../../features/home/presentation/instagram_style.dart';
 import '../community/user_profile_page.dart';
 import '../../widgets/follow_button.dart';
@@ -93,6 +94,8 @@ class _ChatPageState extends State<ChatPage> {
   DateTime? _recordStart;
   int _recordSec = 0;
   Timer? _recordTimer;
+  /// 保存图片/视频到相册进行中（避免重复触发）
+  bool _savingMedia = false;
   /// 预取的临时目录（预热后按住即可直接开始）
   Directory? _voiceTempDir;
   /// 正在进行的录音启动任务（处理"未启动就松手"的竞态）
@@ -679,6 +682,29 @@ class _ChatPageState extends State<ChatPage> {
       case MessageAction.delete:
         await _deleteMessage(vm);
         break;
+      case MessageAction.save:
+        await _saveMessage(vm);
+        break;
+    }
+  }
+
+  /// 保存图片/视频消息到系统相册
+  Future<void> _saveMessage(_ViewMsg vm) async {
+    if (_savingMedia) return;
+    final m = vm.message;
+    _savingMedia = true;
+    try {
+      final err = await saveChatMediaToGallery(
+        contentType: m.contentType,
+        url: m.content,
+        localPath: m.content.isEmpty ? vm.localPath : null,
+        onStatus: (msg) {
+          if (mounted) _toast(msg);
+        },
+      );
+      if (mounted) _toast(err ?? '已保存到相册');
+    } finally {
+      _savingMedia = false;
     }
   }
 

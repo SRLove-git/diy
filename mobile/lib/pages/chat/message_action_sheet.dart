@@ -5,7 +5,7 @@ import '../../core/chat_api.dart';
 import '../../core/chat_service.dart';
 
 /// 消息长按操作
-enum MessageAction { copy, quote, forward, delete }
+enum MessageAction { copy, quote, forward, delete, save }
 
 /// 引用快照预览 → 展示文本（text:xxx → xxx；媒体 → [图片]/[语音]/[视频]；已撤回 → 提示）
 String chatPreviewText(String? preview) {
@@ -24,7 +24,10 @@ Future<MessageAction?> showMessageActionSheet(
   required String contentType,
   required bool canQuote,
 }) async {
+  final isMedia = contentType == 'image' || contentType == 'video';
   final actions = <MessageAction>[
+    // 图片/视频消息：保存到系统相册
+    if (isMedia) MessageAction.save,
     if (canQuote) MessageAction.quote,
     if (contentType == 'text') MessageAction.copy,
     MessageAction.forward,
@@ -92,6 +95,7 @@ class _ActionSheet extends StatelessWidget {
       MessageAction.quote => (Icons.format_quote_rounded, '引用'),
       MessageAction.forward => (Icons.shortcut_rounded, '转发'),
       MessageAction.delete => (Icons.delete_outline_rounded, '删除'),
+      MessageAction.save => (Icons.download_rounded, '保存'),
     };
     final color = action == MessageAction.delete
         ? colors.danger

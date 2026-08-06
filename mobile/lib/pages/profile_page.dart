@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +10,7 @@ import '../core/auth_service.dart';
 import '../core/chat_api.dart';
 import '../core/follow_api.dart';
 import '../core/post_api.dart';
+import '../core/profile_events.dart';
 import '../core/video_api.dart';
 import 'home_page.dart';
 import '../features/tiktok_profile/page/video_profile_page.dart';
@@ -57,11 +60,26 @@ class _ProfilePageState extends State<ProfilePage> {
   int _followerCount = 0;
   int _followingCount = 0;
 
+  StreamSubscription<void>? _worksSub;
+
   @override
   void initState() {
     super.initState();
     _loadPosts();
     _loadStats();
+    // 发布作品成功后自动刷新，无需手动下拉刷新
+    _worksSub = ProfileEvents.worksChanged.listen((_) {
+      if (!mounted) return;
+      _loadPosts();
+      _loadStats();
+      if (_reelsLoaded) _loadReels();
+    });
+  }
+
+  @override
+  void dispose() {
+    _worksSub?.cancel();
+    super.dispose();
   }
 
   /// 拉取自己的粉丝/关注数

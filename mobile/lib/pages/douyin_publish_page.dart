@@ -11,6 +11,7 @@ import '../core/follow_api.dart';
 import '../core/music_api.dart';
 import '../core/media_composer.dart';
 import '../core/photo_filters.dart';
+import '../core/profile_events.dart';
 import '../core/video_api.dart';
 import '../core/video_layout.dart';
 import 'music_picker_sheet.dart';
@@ -360,6 +361,8 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
               ),
       );
       if (mounted) {
+        // 通知个人主页刷新作品列表，无需手动下拉
+        ProfileEvents.notifyWorksChanged();
         _toast('发布成功');
         Navigator.pop(context, created);
       }

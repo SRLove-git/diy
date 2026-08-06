@@ -7,6 +7,7 @@ import '../../core/app_colors.dart';
 import '../../core/auth_service.dart';
 import '../../core/chat_api.dart';
 import '../../core/chat_service.dart';
+import '../../core/media_saver.dart';
 import 'group_manage_page.dart';
 import 'message_action_sheet.dart';
 
@@ -334,7 +335,22 @@ class _GroupChatPageState extends State<GroupChatPage> {
       case MessageAction.delete:
         await _deleteGroupMessage(vm);
         break;
+      case MessageAction.save:
+        await _saveGroupMessage(vm);
+        break;
     }
+  }
+
+  /// 保存群聊图片/视频消息到系统相册
+  Future<void> _saveGroupMessage(_ViewGroupMsg vm) async {
+    final err = await saveChatMediaToGallery(
+      contentType: vm.contentType,
+      url: vm.content,
+      onStatus: (msg) {
+        if (mounted) _toast(msg);
+      },
+    );
+    if (mounted) _toast(err ?? '已保存到相册');
   }
 
   /// 转发群消息到单聊会话（原样发送，标记 forwarded）

@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/app_colors.dart';
 import '../../../core/chat_api.dart';
 import '../../../core/post_api.dart';
+import '../../../core/profile_events.dart';
 import '../../../core/video_api.dart';
 
 /// 社区作品发布编辑页面
@@ -117,6 +118,8 @@ class _PublishPostPageState extends State<PublishPostPage> {
       );
 
       if (!mounted) return;
+      // 通知个人主页刷新作品列表，无需手动下拉
+      ProfileEvents.notifyWorksChanged();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('发表成功'),

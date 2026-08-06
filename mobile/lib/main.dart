@@ -107,7 +107,7 @@ class DiyApp extends StatelessWidget {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: palette.primary,
-          minimumSize: const Size.fromHeight(44),
+          minimumSize: const Size(0, 44),
           side: BorderSide(color: palette.primary),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),

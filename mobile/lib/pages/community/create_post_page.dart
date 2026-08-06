@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/app_colors.dart';
 import '../../core/chat_api.dart';
 import '../../core/post_api.dart';
+import '../../core/profile_events.dart';
 
 /// 作品发布页：图文 ≤9 图、文案、标签
 class CreatePostPage extends StatefulWidget {
@@ -81,6 +82,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
       }
       await PostApi.create(content: content, images: uploadedImages, tags: _tags);
       if (mounted) {
+        // 通知个人主页刷新作品列表，无需手动下拉
+        ProfileEvents.notifyWorksChanged();
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('发布成功，等待审核')));
