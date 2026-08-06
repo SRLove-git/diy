@@ -19,6 +19,7 @@ import 'admin/admin_members_page.dart';
 import 'admin/admin_notifications_page.dart';
 import 'admin/admin_orders_page.dart';
 import 'admin/admin_posts_page.dart';
+import 'admin/admin_reels_page.dart';
 import 'admin/admin_stores_page.dart';
 import 'admin/admin_users_page.dart';
 import 'booking/booking_flow_page.dart';
@@ -919,6 +920,12 @@ const _adminShortcutData = [
     label: '会员运营',
     colors: [Color(0xFFA37AFF), Color(0xFF774CE8)],
     page: AdminMembersPage(),
+  ),
+  _AdminShortcutData(
+    icon: Icons.play_circle_rounded,
+    label: 'Reels 管理',
+    colors: [Color(0xFFF7B733), Color(0xFFFC4A1A)],
+    page: AdminReelsPage(),
   ),
 ];
 
