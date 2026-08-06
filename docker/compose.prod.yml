@@ -51,6 +51,9 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-change-me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me}
+      # 首次部署置 true 由 TypeORM 自动建表，建表完成后改回 false 重启
+      DB_SYNC: ${DB_SYNC:-false}
       # 聊天图片上传目录（挂载持久卷）
       UPLOAD_DIR: /app/uploads
     depends_on:

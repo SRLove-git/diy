@@ -36,8 +36,10 @@ import { VideosModule } from './videos/videos.module';
         password: config.get<string>('DB_PASSWORD', 'root'),
         database: config.get<string>('DB_NAME', 'diy'),
         autoLoadEntities: true,
-        // 开发环境自动建表；生产由迁移脚本管理
-        synchronize: config.get<string>('NODE_ENV') !== 'production',
+        // 开发环境自动建表；生产默认关闭（首次部署可设 DB_SYNC=true 建表一次，建完改回 false 重启）
+        synchronize:
+          config.get<string>('NODE_ENV') !== 'production' ||
+          config.get<string>('DB_SYNC') === 'true',
       }),
     }),
     RedisModule,

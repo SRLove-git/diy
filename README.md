@@ -55,7 +55,8 @@ cd mobile && flutter run
 ```bash
 docker compose -f docker/compose.prod.yml up -d --build
 # 管理后台 http://<host>:8080 ｜ 后端 http://<host>:3000/api
-# 生产密码/密钥通过环境变量注入：DB_PASSWORD / JWT_SECRET
+# 生产密码/密钥通过环境变量注入：DB_PASSWORD / JWT_SECRET / JWT_REFRESH_SECRET
+# 首次部署需在 docker/.env 设 DB_SYNC=true 自动建表，建表完成后改回 false 并重启
 ```
 
 ## 环境要求
