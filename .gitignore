@@ -29,3 +29,4 @@ docker/data/
 # ===== 运行期数据 =====
 # 聊天图片等用户上传文件（生产以 Docker 卷挂载，不入库）
 server/uploads/
+
