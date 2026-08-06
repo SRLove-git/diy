@@ -75,56 +75,61 @@ class _ChatVideoViewerState extends State<ChatVideoViewer> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: _toggle,
-              child: _buildVideo(),
-            ),
-          ),
-          // 顶栏：返回 + 标题
-          AnimatedOpacity(
-            opacity: _controlsVisible ? 1 : 0,
-            duration: const Duration(milliseconds: 180),
-            child: SafeArea(
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  ),
-                  const Text(
-                    '视频消息',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
-                ],
+      // 用 SizedBox.expand 让 Stack 铺满整个窗口，避免 Stack 按非定位子组件
+      // （顶栏）收缩，导致视频播放区域被顶到窗口顶部。
+      body: SizedBox.expand(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: _toggle,
+                child: _buildVideo(),
               ),
             ),
-          ),
-          if (_failed)
-            const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.broken_image_outlined,
-                      color: Colors.white54, size: 56),
-                  SizedBox(height: 10),
-                  Text(
-                    '视频加载失败',
-                    style: TextStyle(color: Colors.white54),
-                  ),
-                ],
+            // 顶栏：返回 + 标题（只避让顶部安全区）
+            AnimatedOpacity(
+              opacity: _controlsVisible ? 1 : 0,
+              duration: const Duration(milliseconds: 180),
+              child: SafeArea(
+                bottom: false,
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    ),
+                    const Text(
+                      '视频消息',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ],
+                ),
               ),
             ),
-          if (_ctrl != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 28,
-              child: _buildProgress(),
-            ),
-        ],
+            if (_failed)
+              const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.broken_image_outlined,
+                        color: Colors.white54, size: 56),
+                    SizedBox(height: 10),
+                    Text(
+                      '视频加载失败',
+                      style: TextStyle(color: Colors.white54),
+                    ),
+                  ],
+                ),
+              ),
+            if (_ctrl != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 28,
+                child: _buildProgress(),
+              ),
+          ],
+        ),
       ),
     );
   }

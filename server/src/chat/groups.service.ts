@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, MoreThan, Repository } from 'typeorm';
+import { In, MoreThan, Not, Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { Group } from './group.entity';
 import { GroupMessageDeletion } from './group-message-deletion.entity';
@@ -120,8 +120,10 @@ export class GroupsService {
         const members = memberMap.get(g.id) ?? [];
         const lastRead = readMap.get(g.id);
         const last = Number(lastRead?.lastReadMessageId ?? 0);
+        // 未读只统计他人消息：自己发的消息等同已读（与单聊 message_status 语义一致）
         const unread = await this.messages.countBy({
           groupId: g.id,
+          senderId: Not(userId),
           ...(last > 0 ? { id: MoreThan(last) } : {}),
         });
         const avatars = members
