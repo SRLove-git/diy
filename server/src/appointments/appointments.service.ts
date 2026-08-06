@@ -15,6 +15,7 @@ import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { Activity } from '../activities/activity.entity';
 import { ActivitySession } from '../activities/activity-session.entity';
+import { Coupon, UserCoupon } from '../members/coupon.entity';
 import { Membership } from '../members/membership.entity';
 import { Store } from '../stores/store.entity';
 import { StoreTable } from '../stores/store-table.entity';
@@ -223,6 +224,22 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
           );
         }
 
+        // 使用优惠券：同一事务内校验并抵扣，失败则整单不落库
+        let finalAmount = amount;
+        let couponDiscount = 0;
+        let couponTitle = '';
+        if (dto.userCouponId != null) {
+          const applied = await this.applyCoupon(
+            em,
+            userId,
+            dto.userCouponId,
+            amount,
+          );
+          couponDiscount = applied.discount;
+          couponTitle = applied.title;
+          finalAmount = this.roundMoney(amount - couponDiscount);
+        }
+
         const appointment = em.create(Appointment, {
           userId,
           storeId: store.id,
@@ -236,8 +253,11 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
           peopleCount: dto.peopleCount,
           code: await this.generateCode(em),
           note: dto.note ?? '',
-          amount,
+          amount: finalAmount,
           originalAmount,
+          userCouponId: dto.userCouponId ?? null,
+          couponTitle,
+          couponDiscount,
           payStatus: dto.payMethod ? ('paid' as const) : ('unpaid' as const),
           payMethod: dto.payMethod ?? '',
           paidAt: dto.payMethod ? new Date() : null,
@@ -322,6 +342,22 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
           );
         }
 
+        // 使用优惠券：同一事务内校验并抵扣，失败则整单不落库
+        let finalAmount = amount;
+        let couponDiscount = 0;
+        let couponTitle = '';
+        if (dto.userCouponId != null) {
+          const applied = await this.applyCoupon(
+            em,
+            userId,
+            dto.userCouponId,
+            amount,
+          );
+          couponDiscount = applied.discount;
+          couponTitle = applied.title;
+          finalAmount = this.roundMoney(amount - couponDiscount);
+        }
+
         const appointment = em.create(Appointment, {
           userId,
           type: 'activity',
@@ -339,8 +375,11 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
           peopleCount: dto.peopleCount,
           code: await this.generateCode(em),
           note: dto.note ?? '',
-          amount,
+          amount: finalAmount,
           originalAmount,
+          userCouponId: dto.userCouponId ?? null,
+          couponTitle,
+          couponDiscount,
           payStatus: dto.payMethod ? ('paid' as const) : ('unpaid' as const),
           payMethod: dto.payMethod ?? '',
           paidAt: dto.payMethod ? new Date() : null,
@@ -360,6 +399,72 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
   ): number {
     if (isMember && memberPrice != null) return memberPrice;
     return normalPrice;
+  }
+
+  /**
+   * 在创建预约的事务内校验并使用优惠券：
+   * 校验归属/状态/有效期/门槛 → 计算抵扣 → 将券标记为已使用。
+   * 对用户券行加悲观锁，防止同一张券并发重复使用。
+   */
+  private async applyCoupon(
+    em: EntityManager,
+    userId: number,
+    userCouponId: number,
+    amount: number,
+  ): Promise<{ discount: number; title: string }> {
+    const ownedRepo = em.getRepository(UserCoupon);
+    const couponRepo = em.getRepository(Coupon);
+
+    const owned = await ownedRepo.findOne({
+      where: { id: userCouponId, userId },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (!owned || owned.status !== 'unused') {
+      throw new BadRequestException('优惠券不可用（未领取或已使用）');
+    }
+
+    const coupon = await couponRepo.findOneBy({ id: owned.couponId });
+    if (!coupon || !coupon.enabled || coupon.expireAt <= new Date()) {
+      throw new BadRequestException('优惠券不存在或已过期');
+    }
+
+    const threshold = this.parseCouponThreshold(coupon.threshold);
+    if (amount < threshold) {
+      throw new BadRequestException(
+        `订单金额未满足优惠券使用门槛（${coupon.threshold}）`,
+      );
+    }
+
+    const parsed = this.parseCouponAmount(coupon.amount);
+    let discount =
+      parsed.kind === 'percent'
+        ? amount * (1 - parsed.value / 10)
+        : Math.min(parsed.value, amount);
+    discount = this.roundMoney(Math.max(0, discount));
+
+    owned.status = 'used';
+    owned.usedAt = new Date();
+    await ownedRepo.save(owned);
+
+    return { discount, title: coupon.title };
+  }
+
+  /** 解析券额：`¥20` → 现金 20；`8.8 折` → 88% 支付 */
+  private parseCouponAmount(raw: string): {
+    kind: 'cash' | 'percent';
+    value: number;
+  } {
+    const percent = raw.match(/(\d+(?:\.\d+)?)\s*折/);
+    if (percent) return { kind: 'percent', value: parseFloat(percent[1]) };
+    const cash = raw.match(/(\d+(?:\.\d+)?)/);
+    return { kind: 'cash', value: cash ? parseFloat(cash[1]) : 0 };
+  }
+
+  /** 解析使用门槛：`无门槛` → 0；`满 ¥100 可用` → 100 */
+  private parseCouponThreshold(raw: string): number {
+    if (/无门槛/.test(raw)) return 0;
+    const m = raw.match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) : 0;
   }
 
   private roundMoney(value: number): number {

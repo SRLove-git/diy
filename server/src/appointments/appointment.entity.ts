@@ -123,6 +123,27 @@ export class Appointment {
   @Column({ type: 'datetime', nullable: true })
   paidAt: Date | null;
 
+  /** 使用的优惠券（用户卡包记录 ID） */
+  @Column({ type: 'int', nullable: true })
+  userCouponId: number | null;
+
+  /** 优惠券名称（冗余展示） */
+  @Column({ length: 60, default: '' })
+  couponTitle: string;
+
+  /** 优惠券抵扣金额 */
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: {
+      to: (v: number) => v,
+      from: (v: string) => Number(v),
+    },
+  })
+  couponDiscount: number;
+
   @Column({
     type: 'enum',
     enum: ['booked', 'checked_in', 'in_service', 'completed', 'cancelled'],

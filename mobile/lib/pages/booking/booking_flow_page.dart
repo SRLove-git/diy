@@ -6,6 +6,7 @@ import '../../core/app_colors.dart';
 import '../../core/appointment_api.dart';
 import '../../core/geo_utils.dart';
 import '../../core/store_navigation.dart';
+import '../../features/member/domain/member_models.dart';
 import '../profile/order_list_page.dart';
 import 'store_map_view.dart';
 
@@ -23,6 +24,7 @@ class BookingFlowPage extends StatefulWidget {
     this.activitiesLoader,
     this.sessionsLoader,
     this.memberLoader,
+    this.couponsLoader,
   });
 
   /// 初始预约类型：store / activity（活动专区进入时直接停在活动 Tab）
@@ -55,6 +57,9 @@ class BookingFlowPage extends StatefulWidget {
   /// 测试注入：是否有效会员（用于会员价）
   final Future<bool> Function()? memberLoader;
 
+  /// 测试注入：卡包中未使用的优惠券（确认支付页选券用）
+  final Future<List<MemberWalletCoupon>> Function()? couponsLoader;
+
   @override
   State<BookingFlowPage> createState() => _BookingFlowPageState();
 }
@@ -70,6 +75,10 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
 
   // 支付方式
   String _payMethod = 'wechat';
+
+  // 卡包优惠券（确认支付页选券用）
+  List<MemberWalletCoupon> _walletCoupons = [];
+  MemberWalletCoupon? _selectedCoupon;
 
   // 步骤 0 数据（门店）
   List<Store> _stores = [];
@@ -115,6 +124,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
     _type = widget.initialType == 'activity' ? 'activity' : 'store';
     _loadStores();
     _loadMemberStatus();
+    _loadCoupons();
     if (_type == 'activity') _loadActivities();
   }
 
@@ -132,6 +142,18 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
       setState(() => _isMember = member);
     } catch (_) {
       // 会员状态获取失败时按非会员计价，不阻塞预约
+    }
+  }
+
+  /// 加载卡包中未使用的优惠券（失败不阻塞预约，按无券处理）
+  Future<void> _loadCoupons() async {
+    try {
+      final coupons = await (widget.couponsLoader ??
+          AppointmentApi.fetchWalletCoupons)();
+      if (!mounted) return;
+      setState(() => _walletCoupons = coupons);
+    } catch (_) {
+      // 无优惠券或加载失败时保持空列表
     }
   }
 
@@ -482,6 +504,61 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
   double get _totalAmount => _unitPrice * _people;
   double get _originalTotal => _originalUnitPrice * _people;
 
+  /// 当前金额下可用的卡包券（满足门槛且抵扣大于 0）
+  List<MemberWalletCoupon> get _usableCoupons {
+    final total = _totalAmount;
+    return _walletCoupons.where((c) {
+      return total >= _couponThresholdOf(c) &&
+          _couponDiscountOf(c, total) > 0;
+    }).toList();
+  }
+
+  /// 当前所选优惠券的抵扣金额
+  double get _couponDiscount {
+    final c = _effectiveCoupon;
+    if (c == null) return 0;
+    final d = _couponDiscountOf(c, _totalAmount);
+    return d > 0 ? d : 0;
+  }
+
+  /// 已选且当前金额仍可用的券（改人数/桌位后可能失效，失效按未选处理）
+  MemberWalletCoupon? get _effectiveCoupon {
+    final c = _selectedCoupon;
+    if (c == null) return null;
+    return _usableCoupons.any((x) => x.userCouponId == c.userCouponId)
+        ? c
+        : null;
+  }
+
+  /// 优惠券抵扣后的实付金额
+  double get _payAmount => _totalAmount - _couponDiscount;
+
+  /// 解析券额：`¥20` → 现金 20；`8.8 折` → 88% 支付
+  static (double value, bool isPercent) _parseCouponAmount(String raw) {
+    final percent = RegExp(r'(\d+(?:\.\d+)?)\s*折').firstMatch(raw);
+    if (percent != null) {
+      return (double.parse(percent.group(1)!), true);
+    }
+    final cash = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(raw);
+    return (cash != null ? double.parse(cash.group(1)!) : 0, false);
+  }
+
+  /// 解析使用门槛：`无门槛` → 0；`满 ¥100 可用` → 100
+  static double _couponThresholdOf(MemberWalletCoupon coupon) {
+    if (coupon.threshold.contains('无门槛')) return 0;
+    final m = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(coupon.threshold);
+    return m != null ? double.parse(m.group(1)!) : 0;
+  }
+
+  static double _couponDiscountOf(
+    MemberWalletCoupon coupon,
+    double amount,
+  ) {
+    final (value, isPercent) = _parseCouponAmount(coupon.amount);
+    if (isPercent) return amount * (1 - value / 10);
+    return value < amount ? value : amount;
+  }
+
   static String _fmt(double value) {
     if (value == value.roundToDouble()) return '¥${value.toInt()}';
     return '¥${value.toStringAsFixed(2)}';
@@ -519,6 +596,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
             _type == 'activity' ? _session!.id : null,
         peopleCount: _people,
         payMethod: _payMethod,
+        userCouponId: int.tryParse(_effectiveCoupon?.userCouponId ?? ''),
       );
       if (!mounted) return;
       setState(() {
@@ -605,7 +683,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                             _step == 3
                                 ? (_submitting
                                     ? '支付中…'
-                                    : '确认支付 ${_fmt(_totalAmount)}')
+                                    : '确认支付 ${_fmt(_payAmount)}')
                                 : '下一步',
                           ),
                         ),
@@ -1551,6 +1629,64 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
             ],
           ),
           const SizedBox(height: 6),
+          // 优惠券选择
+          InkWell(
+            onTap: _usableCoupons.isEmpty ? null : _pickCoupon,
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.redeem_rounded,
+                    size: 18,
+                    color: Palette.accent,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _effectiveCoupon?.title ??
+                          (_usableCoupons.isEmpty ? '暂无可用优惠券' : '选择优惠券'),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  if (_effectiveCoupon != null)
+                    Text(
+                      '-${_fmt(_couponDiscount)}',
+                      style: const TextStyle(
+                        color: Palette.accent,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    )
+                  else
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 18,
+                      color: Colors.grey,
+                    ),
+                ],
+              ),
+            ),
+          ),
+          if (_couponDiscount > 0) ...[
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '优惠券已抵扣 ${_fmt(_couponDiscount)}',
+                style: const TextStyle(
+                  color: Palette.accent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 6),
           Row(
             children: [
               Text(
@@ -1562,9 +1698,11 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                 ),
               ),
               const Spacer(),
-              if (_memberPriceApplied) ...[
+              if (_memberPriceApplied || _couponDiscount > 0) ...[
                 Text(
-                  _fmt(_originalTotal),
+                  _fmt(
+                    _memberPriceApplied ? _originalTotal : _totalAmount,
+                  ),
                   style: TextStyle(
                     color: colors.textSecondary,
                     fontSize: 14,
@@ -1574,7 +1712,7 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
                 const SizedBox(width: 6),
               ],
               Text(
-                _fmt(_totalAmount),
+                _fmt(_payAmount),
                 style: TextStyle(
                   color: Palette.accent,
                   fontSize: 20,
@@ -1600,6 +1738,132 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
         ],
       ),
     );
+  }
+
+  /// 选择优惠券底部弹层；barrier 关闭不改变选择，点「不使用」清空
+  Future<void> _pickCoupon() async {
+    final result = await showModalBottomSheet<Object>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        final colors = AppColors.of(ctx);
+        final usable = _usableCoupons;
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            children: [
+              const Center(
+                child: Text(
+                  '选择优惠券',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (usable.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Text(
+                      '暂无可用优惠券',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                for (final (i, coupon) in usable.indexed) ...[
+                  _buildCouponOption(ctx, colors, coupon),
+                  if (i < usable.length - 1) const SizedBox(height: 8),
+                ],
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, 'NO_COUPON'),
+                  child: Text(
+                    '不使用优惠券',
+                    style: TextStyle(color: colors.textSecondary),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (result == null || !mounted) return;
+    if (result == 'NO_COUPON') {
+      setState(() => _selectedCoupon = null);
+      return;
+    }
+    setState(() => _selectedCoupon = result as MemberWalletCoupon);
+  }
+
+  Widget _buildCouponOption(
+    BuildContext ctx,
+    AppColors colors,
+    MemberWalletCoupon coupon,
+  ) {
+    final discount = _couponDiscountOf(coupon, _totalAmount);
+    final selected = _effectiveCoupon?.userCouponId == coupon.userCouponId;
+    return InkWell(
+      onTap: () => Navigator.pop(ctx, coupon),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? colors.primary : colors.divider,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    coupon.title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${coupon.threshold} · 有效期至 ${_shortDate(coupon.expireAt)}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              '-${_fmt(discount)}',
+              style: const TextStyle(
+                color: Palette.accent,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _shortDate(DateTime d) {
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${d.year}-${two(d.month)}-${two(d.day)}';
   }
 
   Widget _buildPayMethodSection(BuildContext context) {
@@ -1706,6 +1970,13 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
             const SizedBox(height: 4),
             Text(
               '已支付 ${_fmt(appt.amount)}（${_payMethodLabel(appt.payMethod)}）',
+              style: TextStyle(color: colors.textSecondary),
+            ),
+          ],
+          if (appt.couponDiscount > 0) ...[
+            const SizedBox(height: 4),
+            Text(
+              '优惠券已抵扣 ${_fmt(appt.couponDiscount)}',
               style: TextStyle(color: colors.textSecondary),
             ),
           ],

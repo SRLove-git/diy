@@ -69,10 +69,13 @@ abstract final class MockCommunityDataSource {
       reactions: ['❤️ 爱了 4.4万', '😂 笑死', '🔥 热门'],
       previewComments: [
         CommunityComment(
+          id: 9001,
           user: CommunityUser(
               id: 1002, nickname: '阿茶', avatarUrl: 'https://i.pravatar.cc/150?img=44'),
           content: '配色也太好看了吧！！求教程',
           createdAt: _minutesAgo(5),
+          likeCount: 12,
+          liked: true,
         ),
       ],
       liked: true,
@@ -95,10 +98,12 @@ abstract final class MockCommunityDataSource {
       reactions: ['❤️ 爱了 1.0千', '😂 翻车现场'],
       previewComments: [
         CommunityComment(
+          id: 9002,
           user: CommunityUser(
               id: 1003, nickname: '奶油酱', avatarUrl: 'https://i.pravatar.cc/150?img=59'),
           content: '这哪是翻车，这是凡尔赛吧',
           createdAt: _minutesAgo(20),
+          likeCount: 3,
         ),
       ],
     ),
@@ -137,10 +142,12 @@ abstract final class MockCommunityDataSource {
       reactions: ['❤️ 爱了 2.3千', '🔥 摆摊日记'],
       previewComments: [
         CommunityComment(
+          id: 9004,
           user: CommunityUser(
               id: 1005, nickname: '珠珠', avatarUrl: 'https://i.pravatar.cc/150?img=33'),
           content: '好厉害！求问摆摊需要办什么手续吗',
           createdAt: _minutesAgo(300),
+          likeCount: 8,
         ),
       ],
     ),
@@ -229,10 +236,12 @@ abstract final class MockCommunityDataSource {
       reactions: ['❤️ 爱了 6.7千', '🔥 热门'],
       previewComments: [
         CommunityComment(
+          id: 9005,
           user: CommunityUser(
               id: 1007, nickname: '布布', avatarUrl: 'https://i.pravatar.cc/150?img=48'),
           content: '收音怎么做的？求设备清单',
           createdAt: _minutesAgo(120),
+          likeCount: 5,
         ),
       ],
     ),

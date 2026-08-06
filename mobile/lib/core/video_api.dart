@@ -213,13 +213,26 @@ class VideoApi {
   /// 添加评论，返回最新评论
   static Future<CommunityComment> addComment(
     int videoId,
-    String content,
-  ) async {
+    String content, {
+    int? parentId,
+    int? replyToId,
+  }) async {
     final resp = await ApiClient.instance.post(
       '/videos/$videoId/comments',
-      data: {'content': content},
+      data: {
+        'content': content,
+        'parentId': ?parentId,
+        'replyToId': ?replyToId,
+      },
     );
     return _commentFromJson(resp.data as Map<String, dynamic>);
+  }
+
+  /// 切换评论点赞，返回最新是否已点赞
+  static Future<bool> toggleCommentLike(int videoId, int commentId) async {
+    final resp = await ApiClient.instance
+        .post('/videos/$videoId/comments/$commentId/like');
+    return resp.data['liked'] as bool;
   }
 
   // ──── 浏览 / 分享 ────
@@ -263,7 +276,9 @@ class VideoApi {
   static CommunityComment _commentFromJson(Map<String, dynamic> json) {
     final author = (json['author'] as Map<String, dynamic>?) ?? const {};
     final avatar = (author['avatar'] ?? '') as String;
+    final replyToJson = json['replyTo'] as Map<String, dynamic>?;
     return CommunityComment(
+      id: (json['id'] as num).toInt(),
       user: CommunityUser(
         id: ((author['id'] ?? json['userId'] ?? 0) as num).toInt(),
         nickname: (author['nickname'] ?? '') as String,
@@ -271,6 +286,20 @@ class VideoApi {
       ),
       content: (json['content'] ?? '') as String,
       createdAt: (json['createdAt'] ?? '') as String,
+      likeCount: (json['likeCount'] ?? 0) as int,
+      liked: (json['liked'] ?? false) as bool,
+      parentId: (json['parentId'] as num?)?.toInt(),
+      replyTo: replyToJson == null
+          ? null
+          : CommunityUser(
+              id: ((replyToJson['id'] ?? json['replyToId'] ?? 0) as num)
+                  .toInt(),
+              nickname: (replyToJson['nickname'] ?? '') as String,
+              avatarUrl: (replyToJson['avatar'] ?? '') as String,
+            ),
+      replies: ((json['replies'] ?? []) as List)
+          .map((e) => _commentFromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 

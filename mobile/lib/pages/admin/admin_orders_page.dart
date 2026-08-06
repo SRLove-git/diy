@@ -268,6 +268,20 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
               ),
             ],
           ),
+          if (o.couponDiscount > 0) ...[
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '优惠券「${o.couponTitle}」已抵扣 ¥${_fmtMoney(o.couponDiscount)}',
+                style: const TextStyle(
+                  color: Palette.accent,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 6),
           _row(
             '用户',

@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 
 import '../core/app_colors.dart';
+import '../core/follow_api.dart';
 import '../core/music_api.dart';
 import '../core/media_composer.dart';
 import '../core/photo_filters.dart';
@@ -62,7 +63,13 @@ class DouyinPublishPage extends StatefulWidget {
 class _DouyinPublishPageState extends State<DouyinPublishPage> {
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
+  final _titleFocus = FocusNode();
+  final _descFocus = FocusNode();
   final _picker = ImagePicker();
+
+  /// 当前正在编辑的输入框（焦点在标题则插入标题，否则插入描述）
+  TextEditingController get _activeCtrl =>
+      _titleFocus.hasFocus ? _titleCtrl : _descCtrl;
 
   /// 已选视频素材（视频与照片互斥）
   XFile? _video;
@@ -187,7 +194,45 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
     _releaseVideo();
     _titleCtrl.dispose();
     _descCtrl.dispose();
+    _titleFocus.dispose();
+    _descFocus.dispose();
     super.dispose();
+  }
+
+  /// 在 [ctrl] 的光标位置插入文本
+  void _insertText(TextEditingController ctrl, String text) {
+    final value = ctrl.text;
+    final selection = ctrl.selection;
+    final start = selection.isValid ? selection.start : value.length;
+    final end = selection.isValid ? selection.end : value.length;
+    ctrl.value = TextEditingValue(
+      text: value.replaceRange(start, end, text),
+      selection: TextSelection.collapsed(offset: start + text.length),
+    );
+  }
+
+  /// 打开话题选择面板，选中后插入「#话题 」到正在编辑的输入框
+  Future<void> _openTopicPicker() async {
+    final topic = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => const _TopicPickerSheet(),
+    );
+    if (topic == null || topic.isEmpty || !mounted) return;
+    _insertText(_activeCtrl, '#$topic ');
+  }
+
+  /// 打开 @朋友 面板，选中后插入「@昵称 」到正在编辑的输入框
+  Future<void> _openMentionPicker() async {
+    final user = await showModalBottomSheet<FollowUser>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => const _MentionPickerSheet(),
+    );
+    if (user == null || !mounted) return;
+    _insertText(_activeCtrl, '@${user.nickname} ');
   }
 
   /// 从相册选择视频素材（替换照片素材）
@@ -253,6 +298,10 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
       _toast('请填写标题或描述');
       return;
     }
+    // 从标题/描述中提取 #话题，随作品一起发布
+    final tags = RegExp(
+      r'#([^\s#]+)',
+    ).allMatches('$title\n$desc').map((m) => m.group(1)!).toSet().toList();
 
     setState(() => _submitting = true);
     try {
@@ -293,6 +342,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
             : widget.durationSeconds ??
                   (_videoCtrl?.value.duration.inSeconds ?? 0),
         music: _music?.title ?? '',
+        tags: tags,
         photos: photos,
         filter: edit?.filterId ?? '',
         trimStart: edit?.trimStart ?? 0,
@@ -895,6 +945,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
         // 单行标题输入
         TextField(
           controller: _titleCtrl,
+          focusNode: _titleFocus,
           style: const TextStyle(color: _white, fontSize: 16),
           cursorColor: _white,
           decoration: const InputDecoration(
@@ -911,6 +962,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
         // 多行描述输入
         TextField(
           controller: _descCtrl,
+          focusNode: _descFocus,
           style: const TextStyle(color: _white, fontSize: 14),
           cursorColor: _white,
           maxLines: 3,
@@ -933,19 +985,17 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
     return Row(
       children: [
         // #话题 按钮
-        _funcBtn('#话题'),
+        _funcBtn('#话题', onTap: _openTopicPicker),
         const SizedBox(width: 10),
         // @朋友 按钮
-        _funcBtn('@朋友'),
+        _funcBtn('@朋友', onTap: _openMentionPicker),
       ],
     );
   }
 
-  Widget _funcBtn(String label) {
+  Widget _funcBtn(String label, {VoidCallback? onTap}) {
     return GestureDetector(
-      onTap: () {
-        // TODO: 对应功能
-      },
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
@@ -1040,6 +1090,380 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ===================== 话题选择面板 =====================
+
+/// 「#话题」选择面板：可输入自定义话题，也可点选推荐话题，
+/// 选中后通过 [Navigator.pop] 返回话题名（不含 # 号）。
+class _TopicPickerSheet extends StatefulWidget {
+  const _TopicPickerSheet();
+
+  @override
+  State<_TopicPickerSheet> createState() => _TopicPickerSheetState();
+}
+
+class _TopicPickerSheetState extends State<_TopicPickerSheet> {
+  final _topicCtrl = TextEditingController();
+
+  /// 推荐话题（手作平台常用）
+  static const _suggestions = [
+    '手作',
+    'DIY',
+    '治愈',
+    '手工',
+    '编织',
+    '陶艺',
+    '木工',
+    '粘土',
+    '香薰',
+    '拼布',
+    '刺绣',
+    '旧物改造',
+  ];
+
+  @override
+  void dispose() {
+    _topicCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final topic = _topicCtrl.text.trim().replaceAll('#', '');
+    if (topic.isEmpty) return;
+    Navigator.pop(context, topic);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return Container(
+      decoration: const BoxDecoration(
+        color: _DouyinPublishPageState._bg,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: bottomInset + 16,
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  '添加话题',
+                  style: TextStyle(
+                    color: _DouyinPublishPageState._white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(
+                    Icons.close,
+                    color: _DouyinPublishPageState._hint,
+                    size: 22,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            // 自定义话题输入行
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _topicCtrl,
+                    style: const TextStyle(
+                      color: _DouyinPublishPageState._white,
+                      fontSize: 14,
+                    ),
+                    cursorColor: _DouyinPublishPageState._white,
+                    onSubmitted: (_) => _submit(),
+                    decoration: const InputDecoration(
+                      hintText: '输入话题，如：手作',
+                      hintStyle: TextStyle(
+                        color: _DouyinPublishPageState._hint,
+                        fontSize: 14,
+                      ),
+                      filled: true,
+                      fillColor: _DouyinPublishPageState._btnBg,
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: _submit,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 11,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _DouyinPublishPageState._primary,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Text(
+                      '添加',
+                      style: TextStyle(
+                        color: _DouyinPublishPageState._white,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '推荐话题',
+              style: TextStyle(
+                color: _DouyinPublishPageState._hint,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final topic in _suggestions)
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context, topic),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _DouyinPublishPageState._btnBg,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: _DouyinPublishPageState._border,
+                        ),
+                      ),
+                      child: Text(
+                        '#$topic',
+                        style: const TextStyle(
+                          color: _DouyinPublishPageState._white,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ===================== @朋友 选择面板 =====================
+
+/// 「@朋友」选择面板：加载我关注的人，点选后通过 [Navigator.pop]
+/// 返回 [FollowUser]。
+class _MentionPickerSheet extends StatefulWidget {
+  const _MentionPickerSheet();
+
+  @override
+  State<_MentionPickerSheet> createState() => _MentionPickerSheetState();
+}
+
+class _MentionPickerSheetState extends State<_MentionPickerSheet> {
+  List<FollowUser>? _users;
+  bool _loading = true;
+  bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = false;
+    });
+    try {
+      final users = await FollowApi.fetchFollowing();
+      if (!mounted) return;
+      setState(() {
+        _users = users;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: _DouyinPublishPageState._bg,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.65,
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  '@ 朋友',
+                  style: TextStyle(
+                    color: _DouyinPublishPageState._white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(
+                    Icons.close,
+                    color: _DouyinPublishPageState._hint,
+                    size: 22,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Expanded(child: _buildBody()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: _DouyinPublishPageState._white,
+        ),
+      );
+    }
+    if (_error) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              '加载失败，请稍后重试',
+              style: TextStyle(color: _DouyinPublishPageState._hint),
+            ),
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: _load,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: _DouyinPublishPageState._btnBg,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Text(
+                  '重试',
+                  style: TextStyle(color: _DouyinPublishPageState._white),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    final users = _users ?? const [];
+    if (users.isEmpty) {
+      return const Center(
+        child: Text(
+          '还没有可 @ 的朋友，先去关注一些人吧',
+          style: TextStyle(color: _DouyinPublishPageState._hint),
+        ),
+      );
+    }
+    return ListView.separated(
+      shrinkWrap: true,
+      itemCount: users.length,
+      separatorBuilder: (_, _) =>
+          const Divider(color: _DouyinPublishPageState._border, height: 1),
+      itemBuilder: (_, index) {
+        final user = users[index];
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => Navigator.pop(context, user),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: _DouyinPublishPageState._btnBg,
+                  backgroundImage: user.resolvedAvatar.isEmpty
+                      ? null
+                      : NetworkImage(user.resolvedAvatar),
+                  child: user.resolvedAvatar.isEmpty
+                      ? const Icon(
+                          Icons.person,
+                          color: _DouyinPublishPageState._hint,
+                          size: 22,
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    user.nickname,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _DouyinPublishPageState._white,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right,
+                  color: _DouyinPublishPageState._hint,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

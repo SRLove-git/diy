@@ -5,17 +5,19 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Not, Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
 
 import { Post } from './post.entity';
 import { Like } from './like.entity';
 import { Comment } from './comment.entity';
+import { CommentLike } from './comment-like.entity';
 import { Collection } from './collection.entity';
 import { Follow } from '../follows/follow.entity';
 import { History } from '../users/history.entity';
 import { User } from '../users/user.entity';
 import { Video } from '../videos/video.entity';
 import { CreatePostDto, UpdatePostStatusDto } from './post.dto';
+import { CreateCommentDto } from './comment.dto';
 
 /** 简易敏感词列表（一期机审用） */
 const BLOCKED_KEYWORDS = ['违禁', '色情', '赌博', '诈骗', '枪支', '毒品'];
@@ -35,6 +37,8 @@ export class CommunityService {
     private readonly likes: Repository<Like>,
     @InjectRepository(Comment)
     private readonly comments: Repository<Comment>,
+    @InjectRepository(CommentLike)
+    private readonly commentLikes: Repository<CommentLike>,
     @InjectRepository(Collection)
     private readonly collections: Repository<Collection>,
     @InjectRepository(Video)
@@ -69,14 +73,6 @@ export class CommunityService {
     return {
       ...post,
       author: author ?? { nickname: `用户 #${post.userId}`, avatar: '' },
-    };
-  }
-
-  /** 将 Comment 实体 + 作者信息合并 */
-  private enrichComment(comment: Comment, author?: AuthorInfo) {
-    return {
-      ...comment,
-      author: author ?? { nickname: `用户 #${comment.userId}`, avatar: '' },
     };
   }
 
@@ -346,45 +342,146 @@ export class CommunityService {
 
   // ──── Comment operations ────
 
-  async addComment(
-    userId: number,
-    postId: number,
-    content: string,
-  ): Promise<Comment & { author: AuthorInfo }> {
+  async addComment(userId: number, postId: number, dto: CreateCommentDto) {
     const post = await this.posts.findOneBy({ id: postId });
     if (!post) throw new NotFoundException('作品不存在');
 
-    const comment = this.comments.create({ userId, postId, content });
+    // 回复统一挂在顶级评论下；回复的回复也回到顶级，避免多级嵌套
+    let parentId: number | null = null;
+    let replyToId = dto.replyToId ?? null;
+    if (dto.parentId != null) {
+      const parent = await this.comments.findOneBy({ id: dto.parentId });
+      if (!parent || parent.postId !== postId) {
+        throw new BadRequestException('回复的评论不存在');
+      }
+      parentId = parent.parentId ?? parent.id;
+      if (replyToId == null) replyToId = parent.userId;
+    }
+
+    const comment = this.comments.create({
+      userId,
+      postId,
+      parentId,
+      replyToId,
+      content: dto.content,
+    });
     const saved = await this.comments.save(comment);
-    await this.posts.increment({ id: postId }, 'commentCount', 1);
+    // 帖子评论总数只统计顶级评论，回复不重复累计
+    if (parentId == null) {
+      await this.posts.increment({ id: postId }, 'commentCount', 1);
+    }
 
     // 与评论列表/短视频接口保持一致：发布后立即返回作者信息，
     // 客户端可直接在本地列表头部展示完整昵称与头像，无需刷新页面。
-    const authors = await this.resolveAuthors([userId]);
+    const authorIds = replyToId == null ? [userId] : [userId, replyToId];
+    const authors = await this.resolveAuthors(authorIds);
     return {
       ...saved,
       author: authors.get(userId) ?? {
         nickname: `用户 #${userId}`,
         avatar: '',
       },
+      replyTo:
+        replyToId != null
+          ? (authors.get(replyToId) ?? {
+              nickname: `用户 #${replyToId}`,
+              avatar: '',
+            })
+          : undefined,
+      replies: [],
     };
   }
 
-  async getComments(postId: number, page = 1, pageSize = 20) {
-    const [comments, total] = await this.comments.findAndCount({
-      where: { postId },
+  async getComments(postId: number, page = 1, pageSize = 20, userId?: number) {
+    // 顶级评论分页（倒序），回复跟随顶级评论一起返回
+    const [topLevel, total] = await this.comments.findAndCount({
+      where: { postId, parentId: IsNull() },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
+    if (!topLevel.length) return [[], total];
 
-    const userIds = comments.map((c) => c.userId);
+    const topIds = topLevel.map((c) => c.id);
+    const replies = await this.comments.find({
+      where: { parentId: In(topIds) },
+      order: { createdAt: 'ASC' },
+    });
+    const all = [...topLevel, ...replies];
+    const userIds = all.map((c) => c.userId);
+    const replyToIds = replies
+      .map((c) => c.replyToId)
+      .filter((id): id is number => id != null);
     const authors = await this.resolveAuthors(userIds);
+    const replyToAuthors = await this.resolveAuthors(replyToIds);
 
-    return [
-      comments.map((c) => this.enrichComment(c, authors.get(c.userId))),
-      total,
-    ];
+    // 当前用户对哪些评论点过赞
+    let likedIds = new Set<number>();
+    if (userId != null) {
+      const likedRows = await this.commentLikes.findBy({
+        userId,
+        commentId: In(all.map((c) => c.id)),
+      });
+      likedIds = new Set(likedRows.map((l) => l.commentId));
+    }
+
+    const replyMap = new Map<number, Array<Record<string, unknown>>>();
+    for (const r of replies) {
+      const item = {
+        ...r,
+        author: authors.get(r.userId) ?? this.fallbackAuthor(r.userId),
+        replyTo: r.replyToId
+          ? (replyToAuthors.get(r.replyToId) ??
+            this.fallbackAuthor(r.replyToId))
+          : undefined,
+        liked: likedIds.has(r.id),
+        replies: [],
+      };
+      const list = replyMap.get(r.parentId!) ?? [];
+      list.push(item);
+      replyMap.set(r.parentId!, list);
+    }
+
+    const result = topLevel.map((c) => ({
+      ...c,
+      author: authors.get(c.userId) ?? this.fallbackAuthor(c.userId),
+      liked: likedIds.has(c.id),
+      replies: replyMap.get(c.id) ?? [],
+    }));
+    return [result, total];
+  }
+
+  /** 切换评论点赞，返回最新点赞状态 */
+  async toggleCommentLike(
+    userId: number,
+    commentId: number,
+  ): Promise<{ liked: boolean }> {
+    const comment = await this.comments.findOneBy({ id: commentId });
+    if (!comment) throw new NotFoundException('评论不存在');
+
+    const existing = await this.commentLikes.findOneBy({
+      userId,
+      commentId,
+    });
+    if (existing) {
+      await this.commentLikes.delete({ userId, commentId });
+      await this.comments.decrement({ id: commentId }, 'likeCount', 1);
+      return { liked: false };
+    }
+    await this.commentLikes.save(
+      this.commentLikes.create({ userId, commentId }),
+    );
+    await this.comments.increment({ id: commentId }, 'likeCount', 1);
+    return { liked: true };
+  }
+
+  /** 当前用户是否已点赞某评论 */
+  async isCommentLiked(userId: number, commentId: number): Promise<boolean> {
+    return this.commentLikes.existsBy({ userId, commentId });
+  }
+
+  private fallbackAuthor(userId: number): AuthorInfo {
+    return { nickname: `用户 #${userId}`, avatar: '' };
   }
 
   // ──── Collection operations ────

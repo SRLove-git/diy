@@ -9,6 +9,7 @@ import {
 /** 短视频评论 */
 @Entity('video_comments')
 @Index(['videoId'])
+@Index(['parentId'])
 export class VideoComment {
   @PrimaryGeneratedColumn()
   id: number;
@@ -21,8 +22,19 @@ export class VideoComment {
   @Column()
   videoId: number;
 
+  /** 回复的顶级评论 ID；顶级评论为 null */
+  @Column({ type: 'int', nullable: true })
+  parentId: number | null;
+
+  /** 被回复用户 ID，用于展示「回复 @昵称」 */
+  @Column({ type: 'int', nullable: true })
+  replyToId: number | null;
+
   @Column({ type: 'text' })
   content: string;
+
+  @Column({ type: 'int', default: 0 })
+  likeCount: number;
 
   @CreateDateColumn()
   createdAt: Date;

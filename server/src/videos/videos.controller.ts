@@ -10,9 +10,13 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentUser } from '../auth/current-user.decorator';
+import {
+  CurrentUser,
+  CurrentUserOptional,
+} from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { CreateVideoCommentDto, CreateVideoDto } from './video.dto';
 import { VideosService } from './videos.service';
 
@@ -141,11 +145,13 @@ export class VideosController {
 
   /** 获取评论列表 */
   @Get(':id/comments')
+  @UseGuards(OptionalJwtAuthGuard)
   getComments(
+    @CurrentUserOptional() user: AuthUser | undefined,
     @Param('id', ParseIntPipe) id: number,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
   ) {
-    return this.videos.getComments(id, page);
+    return this.videos.getComments(id, page, 50, user?.id);
   }
 
   /** 添加评论（需登录） */
@@ -156,7 +162,29 @@ export class VideosController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CreateVideoCommentDto,
   ) {
-    return this.videos.addComment(user.id, id, dto.content);
+    return this.videos.addComment(user.id, id, dto);
+  }
+
+  /** 切换评论点赞 */
+  @Post(':id/comments/:commentId/like')
+  @UseGuards(JwtAuthGuard)
+  toggleCommentLike(
+    @CurrentUser() user: AuthUser,
+    @Param('commentId', ParseIntPipe) commentId: number,
+  ) {
+    return this.videos.toggleCommentLike(user.id, commentId);
+  }
+
+  /** 检查当前用户是否已点赞评论 */
+  @Get(':id/comments/:commentId/like')
+  @UseGuards(JwtAuthGuard)
+  isCommentLiked(
+    @CurrentUser() user: AuthUser,
+    @Param('commentId', ParseIntPipe) commentId: number,
+  ) {
+    return this.videos
+      .isCommentLiked(user.id, commentId)
+      .then((liked) => ({ liked }));
   }
 
   // ──── History ────

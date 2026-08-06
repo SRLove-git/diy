@@ -195,7 +195,13 @@ class AuthService extends ChangeNotifier {
   bool get isAdmin => _user?.isAdmin ?? false;
 
   /// 已保存的多账号会话（不含当前账号；切换/移除用）
-  List<SavedSession> get savedSessions => _sessions.values.toList();
+  List<SavedSession> get savedSessions {
+    final currentId = _user?.id;
+    return [
+      for (final s in _sessions.values)
+        if (s.userId != currentId) s,
+    ];
+  }
 
   /// 启动时恢复登录态；token 失效则尝试用 refresh token 续期
   Future<void> init() async {
@@ -463,6 +469,15 @@ class AuthService extends ChangeNotifier {
       await _saveCurrentSession();
     }
     ChatService.instance.disconnect();
+    if (_user != null) {
+      // 切换后立即以新账号重连并预拉会话/群聊缓存；
+      // 否则消息页（Tab 常驻）与未读角标停留在空列表，需手动刷新才出现。
+      ChatService.instance.ensureConnected();
+      await Future.wait([
+        ChatService.instance.refreshConversations(),
+        ChatService.instance.refreshGroups(),
+      ]);
+    }
     notifyListeners();
     return _user != null;
   }

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import 'api_client.dart';
+import '../features/member/domain/member_models.dart';
 
 /// 附近可约门店（预约单价/会员价用于确认页计价）
 class Store {
@@ -198,6 +199,7 @@ class Appointment {
     this.activityName = '',
     this.amount = 0,
     this.originalAmount = 0,
+    this.couponDiscount = 0,
     this.payStatus = 'paid',
     this.payMethod = '',
     this.serviceStartTime,
@@ -223,6 +225,9 @@ class Appointment {
   /// 原价金额（会员折扣前）
   final double originalAmount;
 
+  /// 优惠券抵扣金额
+  final double couponDiscount;
+
   /// paid / unpaid
   final String payStatus;
 
@@ -246,6 +251,7 @@ class Appointment {
         activityName: (json['activityName'] ?? '') as String,
         amount: (json['amount'] as num?)?.toDouble() ?? 0,
         originalAmount: (json['originalAmount'] as num?)?.toDouble() ?? 0,
+        couponDiscount: (json['couponDiscount'] as num?)?.toDouble() ?? 0,
         payStatus: (json['payStatus'] ?? 'unpaid') as String,
         payMethod: (json['payMethod'] ?? '') as String,
         serviceStartTime: json['serviceStartTime'] as String?,
@@ -306,6 +312,7 @@ class AppointmentApi {
     String? date,
     required int peopleCount,
     required String payMethod,
+    int? userCouponId,
   }) async {
     final resp = await ApiClient.instance.post(
       '/appointments',
@@ -319,9 +326,19 @@ class AppointmentApi {
         'date': ?date,
         'peopleCount': peopleCount,
         'payMethod': payMethod,
+        'userCouponId': ?userCouponId,
       },
     );
     return Appointment.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  /// 卡包中未使用的优惠券（确认支付页选券用）
+  static Future<List<MemberWalletCoupon>> fetchWalletCoupons() async {
+    final resp = await ApiClient.instance.get('/members/wallet');
+    return (resp.data as List)
+        .map((e) => MemberWalletCoupon.fromJson(e as Map<String, dynamic>))
+        .where((c) => c.status == 'unused')
+        .toList();
   }
 
   /// 附近可约活动列表（bookable 的活动）

@@ -27,6 +27,12 @@ class Comment {
     required this.content,
     required this.createdAt,
     this.author,
+    this.likeCount = 0,
+    this.liked = false,
+    this.parentId,
+    this.replyToId,
+    this.replyTo,
+    this.replies = const [],
   });
 
   final int id;
@@ -35,6 +41,40 @@ class Comment {
   final String content;
   final String createdAt;
   final AuthorInfo? author;
+  final int likeCount;
+  final bool liked;
+
+  /// 所属顶级评论 ID；顶级评论为 null
+  final int? parentId;
+
+  /// 被回复用户 ID
+  final int? replyToId;
+
+  /// 被回复用户信息（展示「回复 @昵称」用）
+  final AuthorInfo? replyTo;
+
+  /// 子回复列表
+  final List<Comment> replies;
+
+  Comment copyWith({
+    int? likeCount,
+    bool? liked,
+    List<Comment>? replies,
+  }) =>
+      Comment(
+        id: id,
+        userId: userId,
+        postId: postId,
+        content: content,
+        createdAt: createdAt,
+        author: author,
+        likeCount: likeCount ?? this.likeCount,
+        liked: liked ?? this.liked,
+        parentId: parentId,
+        replyToId: replyToId,
+        replyTo: replyTo,
+        replies: replies ?? this.replies,
+      );
 
   factory Comment.fromJson(Map<String, dynamic> json) => Comment(
         id: json['id'] as int,
@@ -45,6 +85,16 @@ class Comment {
         author: json['author'] != null
             ? AuthorInfo.fromJson(json['author'] as Map<String, dynamic>)
             : null,
+        likeCount: (json['likeCount'] ?? 0) as int,
+        liked: (json['liked'] ?? false) as bool,
+        parentId: (json['parentId'] as num?)?.toInt(),
+        replyToId: (json['replyToId'] as num?)?.toInt(),
+        replyTo: json['replyTo'] != null
+            ? AuthorInfo.fromJson(json['replyTo'] as Map<String, dynamic>)
+            : null,
+        replies: ((json['replies'] ?? []) as List)
+            .map((e) => Comment.fromJson(e as Map<String, dynamic>))
+            .toList(),
       );
 }
 
@@ -325,12 +375,28 @@ class PostApi {
   }
 
   /// 添加评论
-  static Future<Comment> addComment(int postId, String content) async {
+  static Future<Comment> addComment(
+    int postId,
+    String content, {
+    int? parentId,
+    int? replyToId,
+  }) async {
     final resp = await ApiClient.instance.post(
       '/posts/$postId/comments',
-      data: {'content': content},
+      data: {
+        'content': content,
+        'parentId': ?parentId,
+        'replyToId': ?replyToId,
+      },
     );
     return Comment.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  /// 切换评论点赞，返回最新是否已点赞
+  static Future<bool> toggleCommentLike(int postId, int commentId) async {
+    final resp = await ApiClient.instance
+        .post('/posts/$postId/comments/$commentId/like');
+    return resp.data['liked'] as bool;
   }
 
   // --- Author profile ---

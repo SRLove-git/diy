@@ -367,6 +367,20 @@ class _OrderCard extends StatelessWidget {
                 ),
             ],
           ),
+          if (order.couponDiscount > 0) ...[
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '优惠券已抵扣 ¥${_fmtAmount(order.couponDiscount)}',
+                style: TextStyle(
+                  color: Palette.accent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
           if (order.code.isNotEmpty) ...[
             const SizedBox(height: 4),
             Row(

@@ -1,18 +1,24 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Like, Not, Repository } from 'typeorm';
+import { In, IsNull, Like, Not, Repository } from 'typeorm';
 
 import { Follow } from '../follows/follow.entity';
 import { User } from '../users/user.entity';
 import { Video } from './video.entity';
 import { VideoComment } from './video-comment.entity';
+import { VideoCommentLike } from './video-comment-like.entity';
 import { VideoHistory } from './video-history.entity';
 import { VideoLike } from './video-like.entity';
-import { CreateVideoDto, UpdateVideoStatusDto } from './video.dto';
+import {
+  CreateVideoCommentDto,
+  CreateVideoDto,
+  UpdateVideoStatusDto,
+} from './video.dto';
 
 /** 作者简要信息 + 粉丝数（嵌入列表响应，避免 N+1） */
 export interface VideoAuthor {
@@ -61,6 +67,8 @@ export class VideosService {
     private readonly likes: Repository<VideoLike>,
     @InjectRepository(VideoComment)
     private readonly comments: Repository<VideoComment>,
+    @InjectRepository(VideoCommentLike)
+    private readonly commentLikes: Repository<VideoCommentLike>,
     @InjectRepository(VideoHistory)
     private readonly histories: Repository<VideoHistory>,
     @InjectRepository(Follow)
@@ -476,41 +484,135 @@ export class VideosService {
 
   // ──── Comment operations ────
 
-  async getComments(videoId: number, page = 1, pageSize = 50) {
-    const [list, total] = await this.comments.findAndCount({
-      where: { videoId },
+  async getComments(videoId: number, page = 1, pageSize = 50, userId?: number) {
+    const [topLevel, total] = await this.comments.findAndCount({
+      where: { videoId, parentId: IsNull() },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
-    const authors = await this.resolveAuthors(list.map((c) => c.userId));
-    return [
-      list.map((c) => ({
-        ...c,
-        author: authors.get(c.userId) ?? this.fallbackAuthor(c.userId),
-      })),
-      total,
-    ];
+    if (!topLevel.length) return [[], total];
+
+    const topIds = topLevel.map((c) => c.id);
+    const replies = await this.comments.find({
+      where: { parentId: In(topIds) },
+      order: { createdAt: 'ASC' },
+    });
+    const all = [...topLevel, ...replies];
+    const userIds = all.map((c) => c.userId);
+    const replyToIds = replies
+      .map((c) => c.replyToId)
+      .filter((id): id is number => id != null);
+    const authors = await this.resolveAuthors(userIds);
+    const replyToAuthors = await this.resolveAuthors(replyToIds);
+
+    let likedIds = new Set<number>();
+    if (userId != null) {
+      const likedRows = await this.commentLikes.findBy({
+        userId,
+        commentId: In(all.map((c) => c.id)),
+      });
+      likedIds = new Set(likedRows.map((l) => l.commentId));
+    }
+
+    const replyMap = new Map<number, Array<Record<string, unknown>>>();
+    for (const r of replies) {
+      const item = {
+        ...r,
+        author: authors.get(r.userId) ?? this.fallbackAuthor(r.userId),
+        replyTo: r.replyToId
+          ? (replyToAuthors.get(r.replyToId) ??
+            this.fallbackAuthor(r.replyToId))
+          : undefined,
+        liked: likedIds.has(r.id),
+        replies: [],
+      };
+      const list = replyMap.get(r.parentId!) ?? [];
+      list.push(item);
+      replyMap.set(r.parentId!, list);
+    }
+
+    const result = topLevel.map((c) => ({
+      ...c,
+      author: authors.get(c.userId) ?? this.fallbackAuthor(c.userId),
+      liked: likedIds.has(c.id),
+      replies: replyMap.get(c.id) ?? [],
+    }));
+    return [result, total];
   }
 
   async addComment(
     userId: number,
     videoId: number,
-    content: string,
-  ): Promise<VideoComment & { author: VideoAuthor }> {
+    dto: CreateVideoCommentDto,
+  ) {
     const video = await this.videos.findOneBy({ id: videoId });
     if (!video) throw new NotFoundException('视频不存在');
 
-    const saved = await this.comments.save(
-      this.comments.create({ userId, videoId, content }),
-    );
-    await this.videos.increment({ id: videoId }, 'commentCount', 1);
+    let parentId: number | null = null;
+    let replyToId = dto.replyToId ?? null;
+    if (dto.parentId != null) {
+      const parent = await this.comments.findOneBy({ id: dto.parentId });
+      if (!parent || parent.videoId !== videoId) {
+        throw new BadRequestException('回复的评论不存在');
+      }
+      parentId = parent.parentId ?? parent.id;
+      if (replyToId == null) replyToId = parent.userId;
+    }
 
-    const authors = await this.resolveAuthors([userId]);
+    const saved = await this.comments.save(
+      this.comments.create({
+        userId,
+        videoId,
+        parentId,
+        replyToId,
+        content: dto.content,
+      }),
+    );
+    if (parentId == null) {
+      await this.videos.increment({ id: videoId }, 'commentCount', 1);
+    }
+
+    const authorIds = replyToId == null ? [userId] : [userId, replyToId];
+    const authors = await this.resolveAuthors(authorIds);
     return {
       ...saved,
       author: authors.get(userId) ?? this.fallbackAuthor(userId),
+      replyTo:
+        replyToId != null
+          ? (authors.get(replyToId) ?? this.fallbackAuthor(replyToId))
+          : undefined,
+      replies: [],
     };
+  }
+
+  /** 切换评论点赞，返回最新点赞状态 */
+  async toggleCommentLike(
+    userId: number,
+    commentId: number,
+  ): Promise<{ liked: boolean }> {
+    const comment = await this.comments.findOneBy({ id: commentId });
+    if (!comment) throw new NotFoundException('评论不存在');
+
+    const existing = await this.commentLikes.findOneBy({
+      userId,
+      commentId,
+    });
+    if (existing) {
+      await this.commentLikes.delete({ userId, commentId });
+      await this.comments.decrement({ id: commentId }, 'likeCount', 1);
+      return { liked: false };
+    }
+    await this.commentLikes.save(
+      this.commentLikes.create({ userId, commentId }),
+    );
+    await this.comments.increment({ id: commentId }, 'likeCount', 1);
+    return { liked: true };
+  }
+
+  /** 当前用户是否已点赞某评论 */
+  async isCommentLiked(userId: number, commentId: number): Promise<boolean> {
+    return this.commentLikes.existsBy({ userId, commentId });
   }
 
   // ──── View / Share ────

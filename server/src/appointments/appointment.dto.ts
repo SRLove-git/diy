@@ -50,6 +50,11 @@ export class CreateAppointmentDto {
   @IsString()
   @MaxLength(200)
   note?: string;
+
+  /** 使用的优惠券（用户卡包记录 ID，可空表示不使用） */
+  @IsOptional()
+  @IsInt()
+  userCouponId?: number;
 }
 
 /** 输码核销 */

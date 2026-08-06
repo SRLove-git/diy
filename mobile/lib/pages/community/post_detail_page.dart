@@ -39,6 +39,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
   final _commentController = TextEditingController();
   final _commentFocus = FocusNode();
 
+  /// 当前回复目标；null 表示发表顶级评论
+  Comment? _replyTo;
+
   FollowStatus? _follow;
   bool _followBusy = false;
 
@@ -206,19 +209,98 @@ class _PostDetailPageState extends State<PostDetailPage> {
     if (text.isEmpty || _sendingComment) return;
     setState(() => _sendingComment = true);
     try {
-      final comment = await PostApi.addComment(widget.postId, text);
+      final target = _replyTo;
+      final parentId = target == null ? null : (target.parentId ?? target.id);
+      final comment = await PostApi.addComment(
+        widget.postId,
+        text,
+        parentId: parentId,
+        replyToId: target?.userId,
+      );
       if (!mounted || _post == null) return;
       _commentController.clear();
+      _replyTo = null;
       _commentFocus.unfocus();
       setState(() {
-        _comments = [comment, ..._comments];
-        _post = _post!.copyWith(commentCount: _post!.commentCount + 1);
+        if (parentId == null) {
+          _comments = [comment, ..._comments];
+          _post = _post!.copyWith(commentCount: _post!.commentCount + 1);
+        } else {
+          _appendReply(parentId, comment);
+        }
       });
     } catch (_) {
       if (mounted) _showMessage('评论发送失败，请稍后再试');
     } finally {
       if (mounted) setState(() => _sendingComment = false);
     }
+  }
+
+  /// 将回复挂到对应顶级评论下
+  void _appendReply(int parentId, Comment reply) {
+    final index = _comments.indexWhere((c) => c.id == parentId);
+    if (index < 0) {
+      _comments.insert(0, reply);
+      return;
+    }
+    _comments[index] = _comments[index].copyWith(
+      replies: [..._comments[index].replies, reply],
+    );
+  }
+
+  /// 切换评论点赞（乐观更新，失败回滚）
+  Future<void> _toggleCommentLike(Comment comment) async {
+    final liked = !comment.liked;
+    _updateComment(
+      comment.id,
+      (c) => c.copyWith(
+        liked: liked,
+        likeCount: (c.likeCount + (liked ? 1 : -1)).clamp(0, 1 << 31).toInt(),
+      ),
+    );
+    try {
+      await PostApi.toggleCommentLike(widget.postId, comment.id);
+    } catch (_) {
+      if (!mounted) return;
+      _updateComment(
+        comment.id,
+        (c) => c.copyWith(
+          liked: !liked,
+          likeCount: (c.likeCount + (liked ? -1 : 1)).clamp(0, 1 << 31).toInt(),
+        ),
+      );
+    }
+  }
+
+  /// 按 id 更新顶级评论或其任一回复
+  void _updateComment(int id, Comment Function(Comment) fn) {
+    if (!mounted) return;
+    setState(() {
+      final topIndex = _comments.indexWhere((c) => c.id == id);
+      if (topIndex >= 0) {
+        _comments[topIndex] = fn(_comments[topIndex]);
+        return;
+      }
+      for (var i = 0; i < _comments.length; i++) {
+        final replies = _comments[i].replies;
+        final rIndex = replies.indexWhere((r) => r.id == id);
+        if (rIndex >= 0) {
+          _comments[i] = _comments[i].copyWith(
+            replies: [
+              for (var j = 0; j < replies.length; j++)
+                if (j == rIndex) fn(replies[j]) else replies[j],
+            ],
+          );
+          return;
+        }
+      }
+    });
+  }
+
+  /// 点击回复：聚焦输入框并记录回复目标
+  void _startReply(Comment comment) {
+    setState(() => _replyTo = comment);
+    _commentFocus.requestFocus();
   }
 
   void _showMessage(String message) {
@@ -660,7 +742,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
         Expanded(
           child: InkWell(
             borderRadius: BorderRadius.circular(22),
-            onTap: _commentFocus.requestFocus,
+            onTap: () {
+              if (_replyTo != null) setState(() => _replyTo = null);
+              _commentFocus.requestFocus();
+            },
             child: Container(
               height: 44,
               alignment: Alignment.centerLeft,
@@ -682,97 +767,165 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
   Widget _buildCommentItem(Comment comment, Post post, AppColors colors) {
     final isAuthor = comment.userId == post.userId;
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildAvatar(
-          comment.author?.avatar ?? '',
-          size: 38,
-          fallbackColor: colors.placeholder,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildAvatar(
+              comment.author?.avatar ?? '',
+              size: 38,
+              fallbackColor: colors.placeholder,
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          comment.author?.nickname ?? '用户 #${comment.userId}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      if (isAuthor) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '作者',
+                            style: TextStyle(
+                              color: colors.primary,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 7),
+                  _buildCommentContent(comment, colors),
+                  const SizedBox(height: 7),
+                  Row(
+                    children: [
+                      Text(
+                        _formatCommentDate(comment.createdAt),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      InkWell(
+                        onTap: () => _startReply(comment),
+                        child: Text(
+                          '回复',
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () => _toggleCommentLike(comment),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                comment.liked
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                size: 20,
+                                color: comment.liked
+                                    ? colors.primary
+                                    : colors.textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                comment.likeCount > 0
+                                    ? formatCount(comment.likeCount)
+                                    : '赞',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: comment.liked
+                                      ? colors.primary
+                                      : colors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 11),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      comment.author?.nickname ?? '用户 #${comment.userId}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: colors.textSecondary,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                  if (isAuthor) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '作者',
-                        style: TextStyle(color: colors.primary, fontSize: 11),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 7),
-              Text(
-                comment.content,
-                style: TextStyle(
-                  color: colors.textPrimary,
-                  fontSize: 15,
-                  height: 1.45,
-                ),
-              ),
-              const SizedBox(height: 7),
-              Row(
-                children: [
-                  Text(
-                    _formatCommentDate(comment.createdAt),
-                    style: TextStyle(color: colors.textSecondary, fontSize: 12),
-                  ),
-                  const SizedBox(width: 12),
-                  InkWell(
-                    onTap: () {
-                      _commentController.text =
-                          '@${comment.author?.nickname ?? '用户'} ';
-                      _commentController.selection = TextSelection.collapsed(
-                        offset: _commentController.text.length,
-                      );
-                      _commentFocus.requestFocus();
-                    },
-                    child: Text(
-                      '回复',
-                      style: TextStyle(
-                        color: colors.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    Icons.favorite_border_rounded,
-                    size: 20,
-                    color: colors.textSecondary,
-                  ),
-                ],
-              ),
-            ],
+        // 子回复缩进展示
+        for (final reply in comment.replies)
+          Padding(
+            padding: const EdgeInsets.only(left: 49, top: 16),
+            child: _buildCommentItem(reply, post, colors),
           ),
-        ),
       ],
+    );
+  }
+
+  /// 评论正文：回复场景内联展示「回复 @昵称：」
+  Widget _buildCommentContent(Comment comment, AppColors colors) {
+    final replyTo = comment.replyTo;
+    if (replyTo == null) {
+      return Text(
+        comment.content,
+        style: TextStyle(
+          color: colors.textPrimary,
+          fontSize: 15,
+          height: 1.45,
+        ),
+      );
+    }
+    return RichText(
+      text: TextSpan(
+        style: TextStyle(
+          color: colors.textPrimary,
+          fontSize: 15,
+          height: 1.45,
+        ),
+        children: [
+          TextSpan(
+            text: '回复 @${replyTo.nickname}：',
+            style: TextStyle(
+              color: colors.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          TextSpan(text: comment.content),
+        ],
+      ),
     );
   }
 
@@ -802,7 +955,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     onSubmitted: (_) => _sendComment(),
                     style: TextStyle(color: colors.textPrimary, fontSize: 14),
                     decoration: InputDecoration(
-                      hintText: '说点什么...',
+                      hintText: _replyTo == null
+                          ? '说点什么...'
+                          : '回复 @${_replyTo!.author?.nickname ?? '用户'}',
                       hintStyle: TextStyle(color: colors.textSecondary),
                       prefixIcon: Icon(
                         Icons.edit_outlined,

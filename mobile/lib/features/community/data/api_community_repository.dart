@@ -87,6 +87,7 @@ class ApiCommunityRepository implements CommunityRepository {
   /// 将后端 [Comment] 映射为领域模型 [CommunityComment]
   static CommunityComment _toCommunityComment(Comment c) {
     return CommunityComment(
+      id: c.id,
       user: CommunityUser(
         id: c.userId,
         nickname: c.author?.nickname ?? '用户 #${c.userId}',
@@ -94,6 +95,17 @@ class ApiCommunityRepository implements CommunityRepository {
       ),
       content: c.content,
       createdAt: c.createdAt,
+      likeCount: c.likeCount,
+      liked: c.liked,
+      parentId: c.parentId,
+      replyTo: c.replyTo == null
+          ? null
+          : CommunityUser(
+              id: c.replyToId ?? 0,
+              nickname: c.replyTo!.nickname,
+              avatarUrl: c.replyTo!.avatar,
+            ),
+      replies: c.replies.map(_toCommunityComment).toList(),
     );
   }
 

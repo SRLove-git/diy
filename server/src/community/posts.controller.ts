@@ -11,7 +11,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { CurrentUser } from '../auth/current-user.decorator';
+import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
+import {
+  CurrentUser,
+  CurrentUserOptional,
+} from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { CreatePostDto } from './post.dto';
 import { CreateCommentDto } from './comment.dto';
@@ -183,11 +187,13 @@ export class PostsController {
 
   /** 获取评论列表 */
   @Get(':id/comments')
+  @UseGuards(OptionalJwtAuthGuard)
   getComments(
+    @CurrentUserOptional() user: AuthUser | undefined,
     @Param('id', ParseIntPipe) id: number,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
   ) {
-    return this.community.getComments(id, page);
+    return this.community.getComments(id, page, 20, user?.id);
   }
 
   /** 添加评论 */
@@ -198,7 +204,29 @@ export class PostsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CreateCommentDto,
   ) {
-    return this.community.addComment(user.id, id, dto.content);
+    return this.community.addComment(user.id, id, dto);
+  }
+
+  /** 切换评论点赞 */
+  @Post(':id/comments/:commentId/like')
+  @UseGuards(JwtAuthGuard)
+  toggleCommentLike(
+    @CurrentUser() user: AuthUser,
+    @Param('commentId', ParseIntPipe) commentId: number,
+  ) {
+    return this.community.toggleCommentLike(user.id, commentId);
+  }
+
+  /** 检查当前用户是否已点赞评论 */
+  @Get(':id/comments/:commentId/like')
+  @UseGuards(JwtAuthGuard)
+  isCommentLiked(
+    @CurrentUser() user: AuthUser,
+    @Param('commentId', ParseIntPipe) commentId: number,
+  ) {
+    return this.community
+      .isCommentLiked(user.id, commentId)
+      .then((liked) => ({ liked }));
   }
 
   // ──── History ────

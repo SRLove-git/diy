@@ -78,6 +78,8 @@ class _ChatPageState extends State<ChatPage> {
   bool _loadingMore = false;
   /// 表情面板是否显示
   bool _showEmoji = false;
+  /// 加号面板是否显示（相册 / 拍照 / 视频）
+  bool _showPlus = false;
   /// 语音输入模式（隐藏输入框，显示"按住说话"）
   bool _voiceMode = false;
 
@@ -155,9 +157,10 @@ class _ChatPageState extends State<ChatPage> {
 
   /// 键盘获得焦点时收起表情/加号/语音面板
   void _onInputFocusChanged() {
-    if (_inputFocus.hasFocus && (_showEmoji || _voiceMode)) {
+    if (_inputFocus.hasFocus && (_showEmoji || _showPlus || _voiceMode)) {
       setState(() {
         _showEmoji = false;
+        _showPlus = false;
         _voiceMode = false;
       });
     }
@@ -847,6 +850,7 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         _voiceMode = false;
         _showEmoji = false;
+        _showPlus = false;
       });
       _inputFocus.requestFocus();
     } else {
@@ -854,6 +858,7 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         _voiceMode = true;
         _showEmoji = false;
+        _showPlus = false;
       });
     }
   }
@@ -866,6 +871,22 @@ class _ChatPageState extends State<ChatPage> {
       FocusScope.of(context).unfocus();
       setState(() {
         _showEmoji = true;
+        _voiceMode = false;
+        _showPlus = false;
+      });
+    }
+  }
+
+  /// 加号面板：收起时聚焦输入框，展开时隐藏表情/语音面板
+  void _togglePlus() {
+    if (_showPlus) {
+      setState(() => _showPlus = false);
+      _inputFocus.requestFocus();
+    } else {
+      FocusScope.of(context).unfocus();
+      setState(() {
+        _showPlus = true;
+        _showEmoji = false;
         _voiceMode = false;
       });
     }
@@ -1369,23 +1390,16 @@ class _ChatPageState extends State<ChatPage> {
                     child: const Text('发送'),
                   ),
                 ] else ...[
-                  // 右侧：相册
+                  // 右侧：加号（相册 / 拍照 / 视频 入口）
                   IconButton(
                     icon: Icon(
-                      Icons.photo_library_outlined,
-                      color: colors.textSecondary,
+                      _showPlus
+                          ? Icons.close_rounded
+                          : Icons.add_circle_outline,
+                      color: _showPlus ? IgColors.blue : colors.textSecondary,
                     ),
-                    tooltip: '相册',
-                    onPressed: _loading ? null : () => _sendImage(ImageSource.gallery),
-                  ),
-                  // 右侧：视频
-                  IconButton(
-                    icon: Icon(
-                      Icons.videocam_outlined,
-                      color: colors.textSecondary,
-                    ),
-                    tooltip: '视频',
-                    onPressed: _loading ? null : _sendVideo,
+                    tooltip: '更多',
+                    onPressed: _togglePlus,
                   ),
                   // 右侧：表情
                   IconButton(
@@ -1412,6 +1426,7 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ),
           if (_showEmoji) _buildEmojiPanel(),
+          if (_showPlus) _buildPlusPanel(),
         ],
       ),
     );
@@ -1456,16 +1471,13 @@ class _ChatPageState extends State<ChatPage> {
       minLines: 1,
       maxLines: 4,
       textInputAction: TextInputAction.newline,
-      onChanged: (_) => setState(() {}),
+      onChanged: (_) => setState(() {
+        // 开始输入文字时自动收起加号面板
+        if (_showPlus && _input.text.trim().isNotEmpty) _showPlus = false;
+      }),
       decoration: InputDecoration(
         hintText: '发消息…',
         isDense: true,
-        prefixIcon: IconButton(
-          icon: Icon(Icons.photo_camera_outlined, color: colors.textSecondary),
-          tooltip: '拍照',
-          onPressed: _loading ? null : () => _sendImage(ImageSource.camera),
-        ),
-        prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 10,
@@ -1476,6 +1488,74 @@ class _ChatPageState extends State<ChatPage> {
           borderRadius: BorderRadius.circular(22),
           borderSide: BorderSide.none,
         ),
+      ),
+    );
+  }
+
+  /// 加号面板：相册 / 拍照 / 视频（微信风格）
+  Widget _buildPlusPanel() {
+    final colors = AppColors.of(context);
+    return Container(
+      height: 150,
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(top: BorderSide(color: colors.divider)),
+      ),
+      child: Row(
+        children: [
+          _buildPlusItem(
+            colors,
+            icon: Icons.photo_library_outlined,
+            label: '相册',
+            onTap: () => _sendImage(ImageSource.gallery),
+          ),
+          const SizedBox(width: 24),
+          _buildPlusItem(
+            colors,
+            icon: Icons.photo_camera_outlined,
+            label: '拍照',
+            onTap: () => _sendImage(ImageSource.camera),
+          ),
+          const SizedBox(width: 24),
+          _buildPlusItem(
+            colors,
+            icon: Icons.videocam_outlined,
+            label: '视频',
+            onTap: _sendVideo,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlusItem(
+    AppColors colors, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: _loading ? null : onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: colors.textPrimary.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: colors.textPrimary, size: 26),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(fontSize: 12, color: colors.textSecondary),
+          ),
+        ],
       ),
     );
   }

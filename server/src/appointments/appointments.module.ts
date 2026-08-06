@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Activity } from '../activities/activity.entity';
 import { ActivitySession } from '../activities/activity-session.entity';
+import { Coupon, UserCoupon } from '../members/coupon.entity';
 import { Membership } from '../members/membership.entity';
 import { Store } from '../stores/store.entity';
 import { StoreTable } from '../stores/store-table.entity';
@@ -22,6 +23,8 @@ import { AppointmentsService } from './appointments.service';
       Activity,
       ActivitySession,
       Membership,
+      Coupon,
+      UserCoupon,
     ]),
     UsersModule,
   ],

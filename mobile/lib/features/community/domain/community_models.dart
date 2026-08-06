@@ -140,11 +140,51 @@ class CommunityComment {
     required this.user,
     required this.content,
     required this.createdAt,
+    this.id = 0,
+    this.likeCount = 0,
+    this.liked = false,
+    this.parentId,
+    this.replyTo,
+    this.replies = const [],
   });
 
+  /// 服务端评论 ID（本地新增前为 0）
+  final int id;
   final CommunityUser user;
   final String content;
   final String createdAt;
+
+  /// 点赞数
+  final int likeCount;
+
+  /// 当前用户是否已点赞
+  final bool liked;
+
+  /// 所属顶级评论 ID；顶级评论为 null
+  final int? parentId;
+
+  /// 被回复的用户（回复展示「回复 @昵称」用）
+  final CommunityUser? replyTo;
+
+  /// 子回复列表（顶级评论携带）
+  final List<CommunityComment> replies;
+
+  CommunityComment copyWith({
+    int? likeCount,
+    bool? liked,
+    List<CommunityComment>? replies,
+  }) =>
+      CommunityComment(
+        id: id,
+        user: user,
+        content: content,
+        createdAt: createdAt,
+        likeCount: likeCount ?? this.likeCount,
+        liked: liked ?? this.liked,
+        parentId: parentId,
+        replyTo: replyTo,
+        replies: replies ?? this.replies,
+      );
 }
 
 /// 相对时间：刚刚 / x分钟前 / x小时前 / x天前 / 日期

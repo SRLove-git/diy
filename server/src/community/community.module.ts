@@ -6,6 +6,7 @@ import { AdminPostsController } from './admin-posts.controller';
 import { Post } from './post.entity';
 import { Like } from './like.entity';
 import { Comment } from './comment.entity';
+import { CommentLike } from './comment-like.entity';
 import { Collection } from './collection.entity';
 import { Follow } from '../follows/follow.entity';
 import { History } from '../users/history.entity';
@@ -19,6 +20,7 @@ import { Video } from '../videos/video.entity';
       Post,
       Like,
       Comment,
+      CommentLike,
       Collection,
       Follow,
       History,

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -52,37 +54,67 @@ class _CommentSheet extends StatefulWidget {
 class _CommentSheetState extends State<_CommentSheet> {
   late final List<CommunityComment> _comments = List.of(widget.comments);
   final _controller = TextEditingController();
+  final _focusNode = FocusNode();
+
+  /// 当前回复目标；null 表示发表顶级评论
+  CommunityComment? _replyTo;
 
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
+
+  int get _totalCount => _comments.fold(
+        0,
+        (sum, c) => sum + 1 + c.replies.length,
+      );
 
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    final target = _replyTo;
     try {
-      final comment = await PostApi.addComment(widget.post.id, text);
+      final parentId = target == null ? null : (target.parentId ?? target.id);
+      final comment = await PostApi.addComment(
+        widget.post.id,
+        text,
+        parentId: parentId,
+        replyToId: target?.user.id,
+      );
       if (!mounted) return;
       setState(() {
-        _comments.insert(
-          0,
-          CommunityComment(
-            user: CommunityUser(
-              id: comment.userId,
-              nickname: comment.author?.nickname ?? widget.currentUser.nickname,
-              avatarUrl: comment.author != null
-                  ? ChatApi.resolveUrl(comment.author!.avatar)
-                  : widget.currentUser.avatarUrl,
-            ),
-            content: comment.content,
-            createdAt: comment.createdAt,
+        final newComment = CommunityComment(
+          id: comment.id,
+          user: CommunityUser(
+            id: comment.userId,
+            nickname: comment.author?.nickname ?? widget.currentUser.nickname,
+            avatarUrl: comment.author != null
+                ? ChatApi.resolveUrl(comment.author!.avatar)
+                : widget.currentUser.avatarUrl,
           ),
+          content: comment.content,
+          createdAt: comment.createdAt,
+          parentId: parentId,
+          replyTo: comment.replyTo == null
+              ? null
+              : CommunityUser(
+                  id: comment.replyToId ?? 0,
+                  nickname: comment.replyTo!.nickname,
+                  avatarUrl: comment.replyTo!.avatar,
+                ),
         );
+        if (parentId == null) {
+          _comments.insert(0, newComment);
+        } else {
+          _appendReply(parentId, newComment);
+        }
         _controller.clear();
+        _replyTo = null;
       });
-      widget.onCommentAdded?.call();
+      // 帖子评论总数只统计顶级评论，与后端保持一致
+      if (parentId == null) widget.onCommentAdded?.call();
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -93,6 +125,74 @@ class _CommentSheetState extends State<_CommentSheet> {
         ),
       );
     }
+  }
+
+  /// 将回复挂到对应顶级评论下
+  void _appendReply(int parentId, CommunityComment reply) {
+    final index = _comments.indexWhere((c) => c.id == parentId);
+    if (index < 0) {
+      _comments.insert(0, reply);
+      return;
+    }
+    _comments[index] = _comments[index].copyWith(
+      replies: [..._comments[index].replies, reply],
+    );
+  }
+
+  Future<void> _toggleLike(CommunityComment comment) async {
+    final liked = !comment.liked;
+    _updateComment(
+      comment.id,
+      (c) => c.copyWith(
+        liked: liked,
+        likeCount: math.max(0, c.likeCount + (liked ? 1 : -1)),
+      ),
+    );
+    try {
+      await PostApi.toggleCommentLike(widget.post.id, comment.id);
+    } catch (_) {
+      if (!mounted) return;
+      _updateComment(
+        comment.id,
+        (c) => c.copyWith(
+          liked: !liked,
+          likeCount: math.max(0, c.likeCount + (liked ? -1 : 1)),
+        ),
+      );
+    }
+  }
+
+  /// 按 id 更新顶级评论或其任一回复
+  void _updateComment(
+    int id,
+    CommunityComment Function(CommunityComment) fn,
+  ) {
+    if (!mounted) return;
+    setState(() {
+      final topIndex = _comments.indexWhere((c) => c.id == id);
+      if (topIndex >= 0) {
+        _comments[topIndex] = fn(_comments[topIndex]);
+        return;
+      }
+      for (var i = 0; i < _comments.length; i++) {
+        final replies = _comments[i].replies;
+        final rIndex = replies.indexWhere((r) => r.id == id);
+        if (rIndex >= 0) {
+          _comments[i] = _comments[i].copyWith(
+            replies: [
+              for (var j = 0; j < replies.length; j++)
+                if (j == rIndex) fn(replies[j]) else replies[j],
+            ],
+          );
+          return;
+        }
+      }
+    });
+  }
+
+  void _startReply(CommunityComment comment) {
+    setState(() => _replyTo = comment);
+    _focusNode.requestFocus();
   }
 
   @override
@@ -133,7 +233,7 @@ class _CommentSheetState extends State<_CommentSheet> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  '${_comments.length}',
+                  '$_totalCount',
                   style: TextStyle(
                     fontSize: 13,
                     color: palette.isDark
@@ -161,7 +261,11 @@ class _CommentSheetState extends State<_CommentSheet> {
                     padding: const EdgeInsets.all(14),
                     itemCount: _comments.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 14),
-                    itemBuilder: (_, i) => _CommentRow(comment: _comments[i]),
+                    itemBuilder: (_, i) => _CommentRow(
+                      comment: _comments[i],
+                      onLike: _toggleLike,
+                      onReply: _startReply,
+                    ),
                   ),
           ),
           _buildInput(palette),
@@ -180,8 +284,11 @@ class _CommentSheetState extends State<_CommentSheet> {
             Expanded(
               child: TextField(
                 controller: _controller,
+                focusNode: _focusNode,
                 decoration: InputDecoration(
-                  hintText: '友善评论，温暖手作圈…',
+                  hintText: _replyTo == null
+                      ? '友善评论，温暖手作圈…'
+                      : '回复 @${_replyTo!.user.nickname}',
                   isDense: true,
                   filled: true,
                   fillColor: palette.isDark
@@ -214,62 +321,170 @@ class _CommentSheetState extends State<_CommentSheet> {
 }
 
 class _CommentRow extends StatelessWidget {
-  const _CommentRow({required this.comment});
+  const _CommentRow({
+    required this.comment,
+    required this.onLike,
+    required this.onReply,
+  });
 
   final CommunityComment comment;
+  final void Function(CommunityComment) onLike;
+  final void Function(CommunityComment) onReply;
 
   @override
   Widget build(BuildContext context) {
     final palette = CommunityPalette.of(context);
-    return Row(
+    final secondaryColor = palette.isDark
+        ? const Color(0xFF9A9AA6)
+        : const Color(0xFF8A8A94);
+    final faintColor = palette.isDark
+        ? const Color(0xFF6A6A76)
+        : const Color(0xFFB0B0BA);
+
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CommunityAvatar(user: comment.user, size: 34),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CommunityAvatar(user: comment.user, size: 34),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    comment.user.nickname,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: palette.isDark
-                          ? const Color(0xFF9A9AA6)
-                          : const Color(0xFF8A8A94),
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        comment.user.nickname,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: secondaryColor,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        timeAgo(comment.createdAt),
+                        style: TextStyle(fontSize: 11, color: faintColor),
+                      ),
+                    ],
                   ),
-                  const Spacer(),
-                  Text(
-                    timeAgo(comment.createdAt),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: palette.isDark
-                          ? const Color(0xFF6A6A76)
-                          : const Color(0xFFB0B0BA),
-                    ),
+                  const SizedBox(height: 3),
+                  _commentContent(context, comment: comment),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () => onReply(comment),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
+                          child: Text(
+                            '回复',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: faintColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () => onLike(comment),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                comment.liked
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                size: 16,
+                                color: comment.liked
+                                    ? Palette.accent
+                                    : faintColor,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                comment.likeCount > 0
+                                    ? formatCount(comment.likeCount)
+                                    : '赞',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: comment.liked
+                                      ? Palette.accent
+                                      : faintColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 3),
-              Text(
-                comment.content,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.4,
-                  color: palette.isDark
-                      ? const Color(0xFFE6E6EC)
-                      : const Color(0xFF2B2B33),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
+        // 子回复缩进展示
+        for (final reply in comment.replies)
+          Padding(
+            padding: const EdgeInsets.only(left: 44, top: 12),
+            child: _CommentRow(
+              comment: reply,
+              onLike: onLike,
+              onReply: onReply,
+            ),
+          ),
       ],
     );
+  }
+
+  /// 回复内联组件：被回复时展示「回复 @昵称：」
+  Widget _commentContent(
+    BuildContext context, {
+    required CommunityComment comment,
+  }) {
+    final textColor = _textColorOf(context);
+    final replyTo = comment.replyTo;
+    if (replyTo == null) {
+      return Text(
+        comment.content,
+        style: TextStyle(fontSize: 14, height: 1.4, color: textColor),
+      );
+    }
+    return RichText(
+      text: TextSpan(
+        style: TextStyle(fontSize: 14, height: 1.4, color: textColor),
+        children: [
+          TextSpan(
+            text: '回复 @${replyTo.nickname}：',
+            style: const TextStyle(
+              color: Palette.accent,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          TextSpan(text: comment.content),
+        ],
+      ),
+    );
+  }
+
+  Color _textColorOf(BuildContext context) {
+    final palette = CommunityPalette.of(context);
+    return palette.isDark
+        ? const Color(0xFFE6E6EC)
+        : const Color(0xFF2B2B33);
   }
 }
 

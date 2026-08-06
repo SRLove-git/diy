@@ -156,7 +156,7 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
             c.id == coupon.id ? c.copyWith(received: true) : c,
         ];
       });
-      _toast('${coupon.title} 已领取，可在到店核销时使用');
+      _toast('${coupon.title} 已领取，可在预约支付时使用');
     } catch (e) {
       if (!mounted) return;
       final message = e is DioException ? PostApi.messageOf(e) : '领取失败，请稍后再试';
@@ -575,7 +575,7 @@ class _MemberPlanPageState extends State<MemberPlanPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('会员优惠券', '到店核销时使用'),
+        _buildSectionHeader('会员优惠券', '预约支付时可抵扣'),
         SizedBox(
           height: 104,
           child: ListView.separated(

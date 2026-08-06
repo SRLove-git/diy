@@ -205,6 +205,8 @@ class AdminOrder {
     required this.type,
     required this.activityName,
     required this.amount,
+    required this.couponDiscount,
+    required this.couponTitle,
     required this.payStatus,
     required this.payMethod,
     required this.date,
@@ -226,6 +228,8 @@ class AdminOrder {
   final String type;
   final String activityName;
   final double amount;
+  final double couponDiscount;
+  final String couponTitle;
   final String payStatus;
   final String payMethod;
   final String date;
@@ -247,6 +251,8 @@ class AdminOrder {
         type: (json['type'] ?? 'store') as String,
         activityName: (json['activityName'] ?? '') as String,
         amount: (json['amount'] as num?)?.toDouble() ?? 0,
+        couponDiscount: (json['couponDiscount'] as num?)?.toDouble() ?? 0,
+        couponTitle: (json['couponTitle'] ?? '') as String,
         payStatus: (json['payStatus'] ?? 'unpaid') as String,
         payMethod: (json['payMethod'] ?? '') as String,
         date: (json['date'] ?? '') as String,
