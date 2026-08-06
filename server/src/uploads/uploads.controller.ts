@@ -59,6 +59,24 @@ const ALLOWED_VIDEO_MIMES = new Set([
   'video/x-matroska',
 ]);
 
+/** 扩展名兜底：部分客户端（安卓 dio）可能把文件上报为 application/octet-stream */
+const VIDEO_EXT = /\.(mp4|mov|avi|wmv|webm|ogg|3gp|mkv)$/i;
+const IMAGE_EXT = /\.(jpe?g|png|gif|webp)$/i;
+const AUDIO_EXT = /\.(mp3|m4a|aac|wav|ogg|webm|3gp|wma)$/i;
+
+/** MIME 白名单命中；octet-stream 时按扩展名兜底，避免安卓上传被误拦 */
+function mimeAllowed(
+  file: Express.Multer.File,
+  allowed: Set<string>,
+  ext: RegExp,
+): boolean {
+  if (allowed.has(file.mimetype)) return true;
+  return (
+    file.mimetype === 'application/octet-stream' &&
+    ext.test(file.originalname)
+  );
+}
+
 /** 短视频上传大小上限：手机高码率视频 2 分钟可达数百 MB，给足 1GB */
 const MAX_VIDEO_SIZE = 1024 * 1024 * 1024;
 
@@ -131,7 +149,7 @@ export class UploadsController {
     @Query('folder') folder?: string,
   ) {
     if (!file) throw new BadRequestException('缺少文件');
-    if (!ALLOWED_MIMES.has(file.mimetype)) {
+    if (!mimeAllowed(file, ALLOWED_MIMES, IMAGE_EXT)) {
       // 类型不合规：删掉临时文件再报错
       try {
         unlinkSync(file.path);
@@ -155,7 +173,7 @@ export class UploadsController {
   )
   async uploadAudio(@UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('缺少文件');
-    if (!ALLOWED_AUDIO_MIMES.has(file.mimetype)) {
+    if (!mimeAllowed(file, ALLOWED_AUDIO_MIMES, AUDIO_EXT)) {
       // 类型不合规：删掉临时文件再报错
       try {
         unlinkSync(file.path);
@@ -178,7 +196,7 @@ export class UploadsController {
   )
   async uploadVideo(@UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('缺少文件');
-    if (!ALLOWED_VIDEO_MIMES.has(file.mimetype)) {
+    if (!mimeAllowed(file, ALLOWED_VIDEO_MIMES, VIDEO_EXT)) {
       // 类型不合规：删掉临时文件再报错
       try {
         unlinkSync(file.path);

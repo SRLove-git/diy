@@ -1349,7 +1349,9 @@ class _VideoItemPageState extends State<_VideoItemPage>
                   Positioned(
                     left: 14,
                     right: 84,
-                    bottom: 0.2,
+                    // 多图笔记底部只有 3px 分段白条；视频/单图有 26px 高的可拖动进度条，
+                    // 抬高信息栏避免进度条压住歌曲信息
+                    bottom: video.isPhoto && video.photos.length > 1 ? 8 : 32,
                     child: _buildVideoInfo(widget.video),
                   ),
                 ],

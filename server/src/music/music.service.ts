@@ -52,4 +52,31 @@ export class MusicService {
     });
     return [items, total] as const;
   }
+
+  /** 更新曲目（不存在返回 null） */
+  async update(
+    id: number,
+    data: Partial<{
+      title: string;
+      artist: string;
+      cover: string;
+      musicUrl: string;
+      duration: number;
+    }>,
+  ) {
+    const item = await this.music.findOneBy({ id });
+    if (!item) return null;
+    if (data.title !== undefined) item.title = data.title;
+    if (data.artist !== undefined) item.artist = data.artist;
+    if (data.cover !== undefined) item.cover = data.cover;
+    if (data.musicUrl !== undefined) item.musicUrl = data.musicUrl;
+    if (data.duration !== undefined) item.duration = data.duration;
+    return this.music.save(item);
+  }
+
+  /** 删除曲目（不存在返回 false） */
+  async remove(id: number): Promise<boolean> {
+    const result = await this.music.delete(id);
+    return (result.affected ?? 0) > 0;
+  }
 }

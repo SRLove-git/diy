@@ -21,6 +21,7 @@ function logout() {
         <RouterLink to="/orders">订单管理</RouterLink>
         <RouterLink to="/posts">社区管理</RouterLink>
         <RouterLink to="/videos">视频管理</RouterLink>
+        <RouterLink to="/music">曲库管理</RouterLink>
         <RouterLink to="/users">用户管理</RouterLink>
         <RouterLink to="/members">会员运营</RouterLink>
         <RouterLink to="/notifications">通知管理</RouterLink>

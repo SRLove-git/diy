@@ -41,6 +41,11 @@ const router = createRouter({
           meta: { title: '视频管理' },
         },
         {
+          path: 'music',
+          component: () => import('../views/MusicView.vue'),
+          meta: { title: '曲库管理' },
+        },
+        {
           path: 'users',
           component: () => import('../views/UsersView.vue'),
           meta: { title: '用户管理' },

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -61,6 +62,8 @@ export interface VideoItem {
 
 @Injectable()
 export class VideosService {
+  private readonly logger = new Logger(VideosService.name);
+
   constructor(
     @InjectRepository(Video)
     private readonly videos: Repository<Video>,
@@ -429,9 +432,32 @@ export class VideosService {
 
   async create(userId: number, dto: CreateVideoDto): Promise<VideoItem> {
     let videoUrl = dto.videoUrl ?? '';
+    let duration = dto.duration ?? 15;
     // 视频作品 + 曲库配乐：服务端用 ffmpeg 把配乐混入视频音轨
     if (videoUrl && dto.musicId) {
+      this.logger.log(
+        `发布配乐混音：musicId=${dto.musicId}，源视频=${videoUrl}`,
+      );
       videoUrl = await this.mixer.mix(dto.musicId, videoUrl);
+      this.logger.log(`配乐混音完成：${videoUrl}`);
+    } else if (!videoUrl && dto.photos?.length && dto.musicId) {
+      // 照片作品 + 曲库配乐：把照片列表合成幻灯片视频，配乐作为音轨
+      this.logger.log(
+        `照片作品配乐合成：musicId=${dto.musicId}，照片 ${dto.photos.length} 张`,
+      );
+      const result = await this.mixer.makePhotoSlideshow(
+        dto.musicId,
+        dto.photos,
+        dto.cover ?? '',
+      );
+      videoUrl = result.url;
+      duration = result.duration;
+      this.logger.log(`照片配乐合成完成：${videoUrl}（${duration}s）`);
+    } else if (dto.music && !dto.musicId) {
+      // 客户端旧版本只传歌名不传曲库 ID，混音不会执行
+      this.logger.warn(
+        `发布带歌名但缺少 musicId（疑似客户端旧版本）：${dto.music}`,
+      );
     }
     const video = this.videos.create({
       userId,
@@ -445,7 +471,7 @@ export class VideosService {
       trimEnd: dto.trimEnd ?? 0,
       speed: dto.speed ?? 1,
       rotation: dto.rotation ?? 0,
-      duration: dto.duration ?? 15,
+      duration,
       aspectRatio: dto.aspectRatio ?? 0,
       music: dto.music ?? '',
       tags: dto.tags ?? [],

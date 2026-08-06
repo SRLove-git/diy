@@ -4,6 +4,7 @@ import '../features/community/domain/community_models.dart';
 import '../pages/short_video_models.dart';
 import 'api_client.dart';
 import 'chat_api.dart';
+import 'upload_media_type.dart';
 
 /// 短视频 REST API（对应服务端 videos 模块）。
 ///
@@ -92,7 +93,10 @@ class VideoApi {
   /// 上传视频文件，返回可访问的相对路径（/uploads/video/...）
   static Future<String> uploadVideo(String filePath) async {
     final form = FormData.fromMap({
-      'file': await MultipartFile.fromFile(filePath),
+      'file': await MultipartFile.fromFile(
+        filePath,
+        contentType: uploadMediaTypeFor(filePath),
+      ),
     });
     final resp = await ApiClient.instance.post(
       '/uploads/videos',
@@ -107,7 +111,10 @@ class VideoApi {
   /// 上传视频封面图，返回可访问的相对路径（/uploads/post/...）
   static Future<String> uploadCover(String filePath) async {
     final form = FormData.fromMap({
-      'file': await MultipartFile.fromFile(filePath),
+      'file': await MultipartFile.fromFile(
+        filePath,
+        contentType: uploadMediaTypeFor(filePath),
+      ),
     });
     final resp = await ApiClient.instance.post(
       '/uploads/images',

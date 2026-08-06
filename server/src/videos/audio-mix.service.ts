@@ -23,14 +23,6 @@ interface ProbeResult {
   hasAudio: boolean;
 }
 
-/**
- * 配乐混音：把曲库音乐与已上传视频合成新视频。
- *
- * 混音规则（短视频场景）：
- * - 保留原视频音轨（人声/环境音），配乐以 0.5 音量垫底；
- * - 配乐循环铺满整段视频（超出部分裁剪，不足部分循环）；
- * - 视频流直接 copy 不重编码，仅重编码音频，速度更快且不损失画质。
- */
 @Injectable()
 export class AudioMixService {
   private readonly logger = new Logger(AudioMixService.name);
@@ -45,6 +37,11 @@ export class AudioMixService {
   /**
    * 把 [musicId] 对应的曲目混入 [videoUrl]（/uploads/... 相对路径）指向的视频，
    * 返回混音后新视频的相对 URL；原视频文件在成功后删除。
+   *
+   * 混音规则（短视频场景）：
+   * - 保留原视频音轨（人声/环境音），配乐以 0.5 音量垫底；
+   * - 配乐循环铺满整段视频（超出部分裁剪，不足部分循环）；
+   * - 视频流直接 copy 不重编码，仅重编码音频，速度更快且不损失画质。
    */
   async mix(musicId: number, videoUrl: string): Promise<string> {
     const musicRow = await this.music.findOneBy({ id: musicId });
@@ -57,47 +54,99 @@ export class AudioMixService {
       throw new BadRequestException('视频文件不存在，无法合成配乐');
     }
 
-    const musicPath = this.resolveMusicInput(musicRow.musicUrl);
-    if (!musicPath) {
-      throw new BadRequestException('配乐音频文件不存在，无法合成');
-    }
-
-    let tempMusic: string | undefined;
-    let inputMusic = musicPath;
-    if (/^https?:\/\//i.test(musicPath)) {
-      // 远程曲库音频：先下载到临时文件再混音，避免流式循环失败
-      tempMusic = join(tmpdir(), `diy-music-${randomUUID()}.mp3`);
-      try {
-        const resp = await fetch(musicPath);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const { writeFile } = await import('fs/promises');
-        await writeFile(tempMusic, Buffer.from(await resp.arrayBuffer()));
-        inputMusic = tempMusic;
-      } catch (err) {
-        this.logger.warn(`配乐下载失败：${musicPath}（${String(err)}）`);
-        throw new BadRequestException('配乐下载失败，请更换配乐后重试');
-      }
-    }
+    const musicInput = await this.prepareMusicInput(musicRow.musicUrl);
 
     try {
       const probe = await this.probe(videoPath);
       const output = this.buildOutputPath();
-      await this.runFfmpeg(videoPath, inputMusic, output, probe);
+      await this.runFfmpeg(videoPath, musicInput.input, output, probe);
       // 混音成功：原上传视频已无保留价值，删除避免占用存储
-      try {
-        unlinkSync(videoPath);
-      } catch {
-        /* 删除失败不影响发布 */
-      }
+      this.removeFile(videoPath);
       return this.toRelativeUrl(output);
     } finally {
-      if (tempMusic) {
-        try {
-          unlinkSync(tempMusic);
-        } catch {
-          /* 临时文件清理失败忽略 */
-        }
+      if (musicInput.temp) this.removeFile(musicInput.temp);
+    }
+  }
+
+  /**
+   * 照片作品配乐：把照片列表 + 配乐合成一段竖屏幻灯片视频。
+   *
+   * 每张照片展示 [PHOTO_SECONDS] 秒，总时长 6~30 秒；配乐循环铺满整段。
+   * 返回生成的视频 URL 与真实时长（供作品元数据记录）。
+   */
+  async makePhotoSlideshow(
+    musicId: number,
+    photoUrls: string[],
+    cover: string,
+  ): Promise<{ url: string; duration: number }> {
+    const musicRow = await this.music.findOneBy({ id: musicId });
+    if (!musicRow || !musicRow.musicUrl) {
+      throw new NotFoundException('配乐不存在或缺少音频文件');
+    }
+
+    const photos = (photoUrls.length ? photoUrls : [cover]).filter((u) => u);
+    if (!photos.length) {
+      throw new BadRequestException('缺少照片素材，无法合成配乐');
+    }
+    const photoPaths = photos.map((u) => this.resolveLocalPath(u, 'videoUrl'));
+    for (const p of photoPaths) {
+      if (!p || !existsSync(p)) {
+        throw new BadRequestException('照片文件不存在，无法合成配乐');
       }
+    }
+
+    const totalSec = Math.max(
+      Math.min(photos.length * this.PHOTO_SECONDS, 30),
+      6,
+    );
+    const musicInput = await this.prepareMusicInput(musicRow.musicUrl);
+    try {
+      const output = this.buildOutputPath('photos');
+      await this.runSlideshowFfmpeg(
+        photoPaths as string[],
+        musicInput.input,
+        output,
+        totalSec,
+      );
+      return { url: this.toRelativeUrl(output), duration: totalSec };
+    } finally {
+      if (musicInput.temp) this.removeFile(musicInput.temp);
+    }
+  }
+
+  /** 每张照片在幻灯片视频中的展示秒数 */
+  private readonly PHOTO_SECONDS = 3;
+
+  /** 曲库音频 → 本地绝对路径；远程音频先下载到临时文件（流式循环更可靠） */
+  private async prepareMusicInput(
+    musicUrl: string,
+  ): Promise<{ input: string; temp?: string }> {
+    if (/^https?:\/\//i.test(musicUrl)) {
+      const temp = join(tmpdir(), `diy-music-${randomUUID()}.mp3`);
+      try {
+        const resp = await fetch(musicUrl);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const { writeFile } = await import('fs/promises');
+        await writeFile(temp, Buffer.from(await resp.arrayBuffer()));
+        return { input: temp, temp };
+      } catch (err) {
+        this.logger.warn(`配乐下载失败：${musicUrl}（${String(err)}）`);
+        throw new BadRequestException('配乐下载失败，请更换配乐后重试');
+      }
+    }
+    const local = this.resolveMusicInput(musicUrl);
+    if (!local) {
+      throw new BadRequestException('配乐音频文件不存在，无法合成');
+    }
+    return { input: local };
+  }
+
+  /** 删除文件；失败静默（不阻塞发布） */
+  private removeFile(path: string) {
+    try {
+      unlinkSync(path);
+    } catch {
+      /* 忽略删除失败 */
     }
   }
 
@@ -124,13 +173,13 @@ export class AudioMixService {
     return { durationSec, hasAudio };
   }
 
-  /** 混音输出路径：uploads/video/{yyyy}/{mm}/{uuid}-music.mp4 */
-  private buildOutputPath(): string {
+  /** 合成输出路径：uploads/video/{yyyy}/{mm}/{uuid}-{tag}.mp4 */
+  private buildOutputPath(tag = 'music'): string {
     const d = new Date();
     const mm = `${d.getMonth() + 1}`.padStart(2, '0');
     const dir = join(uploadRoot(), 'video', `${d.getFullYear()}`, mm);
     mkdirSync(dir, { recursive: true });
-    return join(dir, `${randomUUID()}-music.mp4`);
+    return join(dir, `${randomUUID()}-${tag}.mp4`);
   }
 
   private async runFfmpeg(
@@ -179,6 +228,70 @@ export class AudioMixService {
           ? String((err as { stderr: unknown }).stderr).slice(0, 500)
           : String(err);
       this.logger.error(`配乐混音失败：${stderr}`);
+      throw new BadRequestException('配乐合成失败，请重试或更换配乐');
+    }
+  }
+
+  /** 照片幻灯片 + 配乐 → 一段竖屏 MP4（mpeg4/aac，与客户端合成器一致） */
+  private async runSlideshowFfmpeg(
+    photos: string[],
+    musicPath: string,
+    outputPath: string,
+    totalSec: number,
+  ) {
+    const perSec = totalSec / photos.length;
+    const args = ['-y'];
+    for (const p of photos) {
+      args.push('-loop', '1', '-t', perSec.toFixed(3), '-i', p);
+    }
+    args.push('-stream_loop', '-1', '-i', musicPath);
+
+    const filters = photos.map(
+      (_, i) =>
+        `[${i}:v]scale=720:1280:force_original_aspect_ratio=decrease,` +
+        'pad=720:1280:(ow-iw)/2:(oh-ih)/2:black,setsar=1' +
+        `[v${i}]`,
+    );
+    const concatInputs = photos.map((_, i) => `[v${i}]`).join('');
+    filters.push(
+      `${concatInputs}concat=n=${photos.length}:v=1:a=0[vc]`,
+      `[${photos.length}:a]volume=0.9[a]`,
+    );
+    args.push(
+      '-filter_complex',
+      filters.join(';'),
+      '-map',
+      '[vc]',
+      '-map',
+      '[a]',
+      '-c:v',
+      'mpeg4',
+      '-q:v',
+      '3',
+      '-pix_fmt',
+      'yuv420p',
+      '-r',
+      '30',
+      '-c:a',
+      'aac',
+      '-b:a',
+      '192k',
+      '-ac',
+      '2',
+      '-t',
+      String(totalSec),
+      '-movflags',
+      '+faststart',
+      outputPath,
+    );
+    try {
+      await execFileAsync('ffmpeg', args, { timeout: 5 * 60 * 1000 });
+    } catch (err) {
+      const stderr =
+        err && typeof err === 'object' && 'stderr' in err
+          ? String((err as { stderr: unknown }).stderr).slice(0, 500)
+          : String(err);
+      this.logger.error(`照片配乐合成失败：${stderr}`);
       throw new BadRequestException('配乐合成失败，请重试或更换配乐');
     }
   }

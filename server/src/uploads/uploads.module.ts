@@ -12,5 +12,6 @@ import { createUploadProvider, UPLOAD_PROVIDER } from './uploads.provider';
       useFactory: createUploadProvider,
     },
   ],
+  exports: [UPLOAD_PROVIDER],
 })
 export class UploadsModule {}

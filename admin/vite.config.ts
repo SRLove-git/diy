@@ -16,6 +16,11 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      // 开发期种子曲库音频（/assets/music）由后端托管
+      '/assets': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
     },
   },
 })

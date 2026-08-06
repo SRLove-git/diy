@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import 'api_client.dart';
+import 'upload_media_type.dart';
 import 'config.dart';
 
 /// 会话模型
@@ -272,7 +273,10 @@ class ChatApi {
   /// [folder] 可选 'chat'（默认）| 'avatar' | 'post'
   static Future<String> uploadImage(String filePath, {String folder = 'chat'}) async {
     final form = FormData.fromMap({
-      'file': await MultipartFile.fromFile(filePath),
+      'file': await MultipartFile.fromFile(
+        filePath,
+        contentType: uploadMediaTypeFor(filePath),
+      ),
     });
     final resp = await ApiClient.instance.post(
       '/uploads/images',
@@ -303,7 +307,10 @@ class ChatApi {
   /// 上传聊天视频，返回可访问的相对路径（如 /uploads/video/2026/08/xxx.mp4）
   static Future<String> uploadVideo(String filePath) async {
     final form = FormData.fromMap({
-      'file': await MultipartFile.fromFile(filePath),
+      'file': await MultipartFile.fromFile(
+        filePath,
+        contentType: uploadMediaTypeFor(filePath),
+      ),
     });
     final resp = await ApiClient.instance.post(
       '/uploads/videos',
