@@ -59,8 +59,9 @@ dependencies:
   photo_manager: ^3.11.0
   ffmpeg_kit_flutter_new_video: ^2.5.2
   # 到店预约：门店地图与最近门店匹配
-  # Android 使用 Google Maps，iOS 使用 Apple Maps（平台原生，不依赖第三方瓦片）
-  google_maps_flutter: ^2.12.2
+  # Android 使用 OpenStreetMap 瓦片（flutter_map，免 API Key），iOS 使用 Apple Maps
+  flutter_map: ^8.3.1
+  latlong2: ^0.10.1
   apple_maps_flutter: ^1.4.0
   geolocator: ^14.0.3
   url_launcher: ^6.3.2

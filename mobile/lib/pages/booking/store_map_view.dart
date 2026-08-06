@@ -3,7 +3,9 @@ import 'dart:io' show Platform;
 import 'package:apple_maps_flutter/apple_maps_flutter.dart' as apple;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' as ll;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/appointment_api.dart';
@@ -28,7 +30,7 @@ class StoreMapViewData {
 typedef StoreMapBuilder =
     Widget Function(BuildContext context, StoreMapViewData data);
 
-/// 选店步骤顶部地图：Android 用 Google Maps，iOS 用 Apple Maps
+/// 选店步骤顶部地图：Android 用 OpenStreetMap（免 API Key），iOS 用 Apple Maps
 class StoreMapView extends StatelessWidget {
   const StoreMapView({
     super.key,
@@ -54,7 +56,7 @@ class StoreMapView extends StatelessWidget {
     } else if (Platform.isIOS) {
       map = _StoreAppleMap(data: data);
     } else {
-      map = _StoreGoogleMap(data: data);
+      map = _StoreOsmMap(data: data);
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
@@ -130,40 +132,39 @@ GeoPoint _centerOf(List<Store> stores) {
   return (minLat: minLat, maxLat: maxLat, minLng: minLng, maxLng: maxLng);
 }
 
-// ===== Android：Google Maps =====
+// ===== Android：OpenStreetMap（flutter_map 瓦片地图，免 API Key）=====
 
-class _StoreGoogleMap extends StatefulWidget {
-  const _StoreGoogleMap({required this.data});
+class _StoreOsmMap extends StatefulWidget {
+  const _StoreOsmMap({required this.data});
 
   final StoreMapViewData data;
 
   @override
-  State<_StoreGoogleMap> createState() => _StoreGoogleMapState();
+  State<_StoreOsmMap> createState() => _StoreOsmMapState();
 }
 
-class _StoreGoogleMapState extends State<_StoreGoogleMap> {
-  gmaps.GoogleMapController? _controller;
+class _StoreOsmMapState extends State<_StoreOsmMap> {
+  final MapController _controller = MapController();
   bool _fitted = false;
 
   @override
-  void didUpdateWidget(_StoreGoogleMap oldWidget) {
+  void didUpdateWidget(_StoreOsmMap oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.data.stores != widget.data.stores) _fitted = false;
     if (!_fitted) WidgetsBinding.instance.addPostFrameCallback((_) => _fitOnce());
   }
 
   void _fitOnce() {
-    final c = _controller;
-    if (c == null || _fitted || widget.data.stores.isEmpty) return;
+    if (_fitted || widget.data.stores.isEmpty) return;
     _fitted = true;
     final b = _boundsOf(widget.data.stores, widget.data.userLocation);
-    c.moveCamera(
-      gmaps.CameraUpdate.newLatLngBounds(
-        gmaps.LatLngBounds(
-          southwest: gmaps.LatLng(b.minLat, b.minLng),
-          northeast: gmaps.LatLng(b.maxLat, b.maxLng),
+    _controller.fitCamera(
+      CameraFit.bounds(
+        bounds: LatLngBounds(
+          ll.LatLng(b.minLat, b.minLng),
+          ll.LatLng(b.maxLat, b.maxLng),
         ),
-        48,
+        padding: const EdgeInsets.all(48),
       ),
     );
   }
@@ -172,40 +173,74 @@ class _StoreGoogleMapState extends State<_StoreGoogleMap> {
   Widget build(BuildContext context) {
     final data = widget.data;
     final center = _centerOf(data.stores);
-    return gmaps.GoogleMap(
-      initialCameraPosition: gmaps.CameraPosition(
-        target: gmaps.LatLng(center.lat, center.lng),
-        zoom: 13,
+    return FlutterMap(
+      mapController: _controller,
+      options: MapOptions(
+        initialCenter: ll.LatLng(center.lat, center.lng),
+        initialZoom: 13,
+        // 与原生地图一致：禁用旋转，保留拖动/缩放
+        interactionOptions: const InteractionOptions(
+          flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+        ),
       ),
-      markers: _markers(),
-      myLocationEnabled: data.userLocation != null,
-      myLocationButtonEnabled: false,
-      compassEnabled: false,
-      rotateGesturesEnabled: false,
-      tiltGesturesEnabled: false,
-      onMapCreated: (c) {
-        _controller = c;
-        WidgetsBinding.instance.addPostFrameCallback((_) => _fitOnce());
-      },
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.diy.diy_mobile',
+        ),
+        MarkerLayer(markers: _markers()),
+        RichAttributionWidget(
+          attributions: [
+            TextSourceAttribution(
+              'OpenStreetMap contributors',
+              onTap: () =>
+                  launchUrl(Uri.parse('https://www.openstreetmap.org/copyright')),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
-  Set<gmaps.Marker> _markers() {
+  List<Marker> _markers() {
     final data = widget.data;
-    return {
-      for (final s in _geocoded(data.stores))
-        gmaps.Marker(
-          markerId: gmaps.MarkerId('store-${s.store.id}'),
-          position: gmaps.LatLng(s.lat, s.lng),
-          infoWindow: gmaps.InfoWindow(title: s.store.name, snippet: s.store.address),
-          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
-            s.store.id == data.selectedStoreId
-                ? gmaps.BitmapDescriptor.hueGreen
-                : gmaps.BitmapDescriptor.hueRed,
+    return [
+      // 定位点：蓝色圆点（与原生地图“我的位置”视觉一致）
+      if (data.userLocation != null)
+        Marker(
+          point: ll.LatLng(data.userLocation!.lat, data.userLocation!.lng),
+          width: 16,
+          height: 16,
+          child: const DecoratedBox(
+            decoration: BoxDecoration(
+              color: Color(0xFF1A73E8),
+              shape: BoxShape.circle,
+              border: Border.fromBorderSide(
+                BorderSide(color: Colors.white, width: 3),
+              ),
+              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
+            ),
           ),
-          onTap: () => data.onSelectStore(s.store),
         ),
-    };
+      for (final s in _geocoded(data.stores))
+        Marker(
+          point: ll.LatLng(s.lat, s.lng),
+          width: 36,
+          height: 36,
+          // 图钉尖（图标底部）对准门店坐标
+          alignment: Alignment.topCenter,
+          child: GestureDetector(
+            onTap: () => data.onSelectStore(s.store),
+            child: Icon(
+              Icons.location_on,
+              size: 36,
+              color: s.store.id == data.selectedStoreId
+                  ? Colors.green
+                  : Colors.red,
+            ),
+          ),
+        ),
+    ];
   }
 }
 

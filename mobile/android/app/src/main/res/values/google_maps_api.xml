@@ -1,4 +1,0 @@
-<resources>
-    <!-- TODO: 替换为你申请的 Google Maps API Key（https://console.cloud.google.com/google/maps-apis） -->
-    <string name="google_maps_api_key">YOUR_GOOGLE_MAPS_API_KEY</string>
-</resources>
