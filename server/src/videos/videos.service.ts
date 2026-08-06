@@ -6,11 +6,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Like, Not, Repository } from 'typeorm';
+import { FindOptionsWhere, In, IsNull, Like, Not, Repository } from 'typeorm';
 
 import { Follow } from '../follows/follow.entity';
 import { User } from '../users/user.entity';
 import { AudioMixService } from './audio-mix.service';
+import { FeedCacheService } from '../common/feed-cache.service';
 import { Video } from './video.entity';
 import { VideoComment } from './video-comment.entity';
 import { VideoCommentLike } from './video-comment-like.entity';
@@ -80,6 +81,7 @@ export class VideosService {
     @InjectRepository(User)
     private readonly users: Repository<User>,
     private readonly mixer: AudioMixService,
+    private readonly feedCache: FeedCacheService,
   ) {}
 
   // ──── Helpers ────
@@ -167,29 +169,71 @@ export class VideosService {
     pageSize = 20,
     q = '',
   ) {
+    const keyword = (q ?? '').trim();
+    // 搜索词不缓存：结果因人而异且 key 随关键词无限膨胀
+    const cacheable = !keyword;
+
+    let items: VideoItem[];
+    let total: number;
+    if (cacheable) {
+      const cached = await this.feedCache.get<{
+        items: VideoItem[];
+        total: number;
+      }>('video', page, pageSize);
+      if (cached) {
+        items = cached.items;
+        total = cached.total;
+      } else {
+        const [list, count] = await this.queryRecommendFeed(page, pageSize);
+        total = count;
+        const authors = await this.resolveAuthors(list.map((v) => v.userId));
+        // 缓存中立形态：不带任何用户维度的点赞状态
+        items = this.enrich(list, authors, new Set<number>());
+        await this.feedCache.set('video', page, pageSize, '', { items, total });
+      }
+    } else {
+      const [list, count] = await this.queryRecommendFeed(
+        page,
+        pageSize,
+        keyword,
+      );
+      total = count;
+      const authors = await this.resolveAuthors(list.map((v) => v.userId));
+      items = this.enrich(list, authors, new Set<number>());
+    }
+
+    // 点赞状态是用户维度的，不能进共享缓存：单独回查后覆盖
+    if (userId != null) {
+      const liked = await this.likedSet(
+        userId,
+        items.map((v) => v.id),
+      );
+      if (liked.size > 0) {
+        items = items.map((v) => (liked.has(v.id) ? { ...v, liked: true } : v));
+      }
+    }
+    return [items, total];
+  }
+
+  /** 推荐信息流查询（缓存未命中 / 搜索时直查数据库） */
+  private async queryRecommendFeed(
+    page: number,
+    pageSize: number,
+    keyword = '',
+  ) {
     const qb = this.videos
       .createQueryBuilder('video')
       .where('video.status = :status', { status: 'approved' })
       .orderBy('video.createdAt', 'DESC')
       .skip((page - 1) * pageSize)
       .take(pageSize);
-
-    const keyword = (q ?? '').trim();
     if (keyword) {
       qb.andWhere(
         '(video.title LIKE :kw OR video.content LIKE :kw OR video.music LIKE :kw OR video.location LIKE :kw OR video.tags LIKE :kw)',
         { kw: `%${keyword}%` },
       );
     }
-    const [list, total] = await qb.getManyAndCount();
-    const [authors, liked] = await Promise.all([
-      this.resolveAuthors(list.map((v) => v.userId)),
-      this.likedSet(
-        userId,
-        list.map((v) => v.id),
-      ),
-    ]);
-    return [this.enrich(list, authors, liked), total];
+    return qb.getManyAndCount();
   }
 
   /** 关注信息流：已关注作者发布的视频 */
@@ -278,9 +322,7 @@ export class VideosService {
         { createdAt: new Date() },
       );
     } else {
-      await this.histories.save(
-        this.histories.create({ userId, videoId }),
-      );
+      await this.histories.save(this.histories.create({ userId, videoId }));
     }
   }
 
@@ -305,7 +347,10 @@ export class VideosService {
 
     const [authors, liked] = await Promise.all([
       this.resolveAuthors(videos.map((v) => v.userId)),
-      this.likedSet(userId, videos.map((v) => v.id)),
+      this.likedSet(
+        userId,
+        videos.map((v) => v.id),
+      ),
     ]);
     return [this.enrich(videos, authors, liked), total];
   }
@@ -324,8 +369,8 @@ export class VideosService {
 
   /** 管理端：全量视频列表（可按状态筛选） */
   async findAll(status?: string, page = 1, pageSize = 20) {
-    const where: any = {};
-    if (status) where.status = status;
+    const where: FindOptionsWhere<Video> = {};
+    if (status) where.status = status as Video['status'];
     return this.videos.findAndCount({
       where,
       order: { createdAt: 'DESC' },
@@ -344,6 +389,10 @@ export class VideosService {
     } else {
       video.rejectReason = '';
     }
+    // 审核通过后进入信息流，立即失效缓存
+    if (dto.status === 'approved') {
+      await this.feedCache.bumpContentVersion();
+    }
     return this.videos.save(video);
   }
 
@@ -354,6 +403,7 @@ export class VideosService {
     video.status = 'rejected';
     video.rejectReason = '管理员下架';
     await this.videos.save(video);
+    await this.feedCache.bumpContentVersion();
   }
 
   /** 管理端：物理删除视频/照片作品（连同点赞/评论/浏览历史） */
@@ -366,6 +416,7 @@ export class VideosService {
       this.histories.delete({ videoId: id }),
     ]);
     await this.videos.delete({ id });
+    await this.feedCache.bumpContentVersion();
   }
 
   /** 用户端：删除自己的视频/照片作品（校验归属后物理删除） */
@@ -479,6 +530,8 @@ export class VideosService {
       status: 'approved',
     });
     const saved = await this.videos.save(video);
+    // 新作品立即可见：版本 +1 使共享 feed 缓存立即失效
+    await this.feedCache.bumpContentVersion();
     const authors = await this.resolveAuthors([userId]);
     return this.enrich([saved], authors, new Set<number>())[0];
   }

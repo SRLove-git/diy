@@ -51,6 +51,14 @@ export function isValidChatContent(
   return body.length > 0;
 }
 
+/** 可 unref 的本地超时：用于 Promise.race 兜底，不阻止进程优雅退出 */
+function timeoutAfter(ms: number): Promise<null> {
+  return new Promise<null>((resolve) => {
+    const timer = setTimeout(() => resolve(null), ms);
+    timer.unref();
+  });
+}
+
 @Injectable()
 export class ChatService {
   constructor(
@@ -130,14 +138,41 @@ export class ChatService {
     try {
       // 网络层已有 commandTimeout（1500ms），此处再叠加本地超时兜底，
       // Redis 不可用时按"离线"处理，不阻塞消息推送主流程
+      // 注意：mget/get 需先挂 .catch，避免本地超时先胜出后命令才 reject，
+      // 造成无主 Promise 的 unhandled rejection
       const v = await Promise.race([
-        this.redis.get(`chat:online:${userId}`),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+        this.redis.get(`chat:online:${userId}`).catch(() => null),
+        timeoutAfter(1500),
       ]);
       return Number(v) > 0;
     } catch {
       // Redis 异常时回退为进程内连接表判断
       return false;
+    }
+  }
+
+  /**
+   * 批量在线判断：一次 mget 取回全部在线计数，返回在线用户 ID 集合。
+   * 群聊推送前调用，避免对每个成员串行 GET（大群下延迟随成员数线性增长）。
+   */
+  async onlineUserIds(userIds: number[]): Promise<Set<number>> {
+    const unique = [...new Set(userIds)];
+    if (!unique.length) return new Set();
+    try {
+      const counts = await Promise.race([
+        this.redis
+          .mget(unique.map((id) => `chat:online:${id}`))
+          .catch(() => null),
+        timeoutAfter(1500),
+      ]);
+      if (!counts) return new Set();
+      const online = new Set<number>();
+      counts.forEach((c, i) => {
+        if (Number(c) > 0) online.add(unique[i]);
+      });
+      return online;
+    } catch {
+      return new Set();
     }
   }
 

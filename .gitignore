@@ -22,6 +22,8 @@ dist/
 .vscode/
 .DS_Store
 *.iml
+__pycache__/
+*.pyc
 
 # ===== Docker =====
 docker/data/

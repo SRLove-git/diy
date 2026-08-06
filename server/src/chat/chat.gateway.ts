@@ -31,8 +31,25 @@ interface ChatFrame {
   [key: string]: unknown;
 }
 
+/** ws 底层 socket 的最小接口（禁用 Nagle 算法用，该属性不随 ws 公共类型暴露） */
+interface WsSocketLike {
+  setNoDelay?(noDelay?: boolean): void;
+}
+
 /** Redis 在线状态 TTL（秒）：客户端 25s 心跳续期，60s 未续期视为离线 */
 const PRESENCE_TTL = 60;
+
+/** 单用户最大连接数（多设备支持，防单账号异常刷连接） */
+const MAX_CONNECTIONS_PER_USER = 5;
+
+/** 单实例最大连接数：超出时拒绝新连接（多实例扩容时各实例共享此上限） */
+const MAX_TOTAL_CONNECTIONS = 20000;
+
+/** 发送缓冲阈值：超过说明对方消费不过来，断开让其重连（背压保护） */
+const MAX_BUFFERED_AMOUNT = 1024 * 1024;
+
+/** 单帧最大载荷（聊天帧都是小对象，1MB 已远大于合法帧） */
+const MAX_FRAME_PAYLOAD = 1024 * 1024;
 
 /** 跨实例转发事件 */
 interface RemoteEvent {
@@ -69,7 +86,7 @@ interface RemoteEvent {
  * 断开时计数 -1（归零删键）并广播下线。推送前用 Redis 判断对端是否在线，
  * 离线消息不实时推送（已落库，下次上线拉取历史可见）。
  */
-@WebSocketGateway({ path: '/ws' })
+@WebSocketGateway({ path: '/ws', maxPayload: MAX_FRAME_PAYLOAD })
 export class ChatGateway
   implements
     OnGatewayConnection,
@@ -82,6 +99,9 @@ export class ChatGateway
 
   /** 实例唯一标识：跨实例转发事件时用于去重（source 相同则跳过） */
   private readonly instanceId = randomUUID();
+
+  /** 本实例连接总数（含所有用户），连接保护用 */
+  private connectionCount = 0;
 
   /** 独立 pub/sub 连接（ioredis 的 subscribe 会独占该连接） */
   private readonly pubsub: Redis;
@@ -152,15 +172,25 @@ export class ChatGateway
     });
 
     let set = this.clients.get(userId);
+    // 连接保护：单用户多设备上限 + 单实例总连接上限（超限直接拒绝握手后的新连接）
+    if (set && set.size >= MAX_CONNECTIONS_PER_USER) {
+      client.close(4005, 'too many connections');
+      return;
+    }
+    if (this.connectionCount >= MAX_TOTAL_CONNECTIONS) {
+      client.close(4006, 'server busy');
+      return;
+    }
     if (!set) {
       set = new Set();
       this.clients.set(userId, set);
     }
     set.add(client);
+    this.connectionCount++;
 
     // 禁用 Nagle 算法：聊天帧都是小数据包，应立即发送不做合并缓冲
-    const sock = (client as any)._socket;
-    if (sock && typeof sock.setNoDelay === 'function') {
+    const sock = (client as WebSocket & { _socket?: WsSocketLike })._socket;
+    if (sock?.setNoDelay) {
       sock.setNoDelay(true);
     }
 
@@ -168,9 +198,9 @@ export class ChatGateway
     void this.onUserConnected(userId);
 
     // 手动挂消息监听：ws adapter 的 @SubscribeMessage 回调拿不到 client，无法定向回复
-    client.on('message', (buffer: Buffer) =>
-      this.handleFrame(userId, client, buffer),
-    );
+    client.on('message', (buffer: Buffer) => {
+      void this.handleFrame(userId, client, buffer);
+    });
     client.on('error', () => {
       /* 避免未捕获错误告警 */
     });
@@ -187,11 +217,14 @@ export class ChatGateway
 
   handleDisconnect(client: WebSocket): void {
     for (const [uid, set] of this.clients) {
-      if (set.delete(client) && set.size === 0) {
+      if (!set.delete(client)) continue;
+      this.connectionCount--;
+      if (set.size === 0) {
         this.clients.delete(uid);
         // Redis 在线计数 -1 并广播下线（异步）
         void this.onUserDisconnected(uid);
       }
+      return; // 每个连接只属于一个用户
     }
   }
 
@@ -403,13 +436,12 @@ export class ChatGateway
         groupId,
         message: this.serializeGroupMessage(message),
       };
-      for (const uid of memberIds) {
-        if (uid === userId) continue;
-        if (await this.chat.isUserOnline(uid)) {
-          this.sendToUser(uid, payload);
-          this.publish({ kind: 'groupNewMessage', toUserIds: [uid], payload });
-        }
-      }
+      await this.pushToOnlineMembers(
+        memberIds,
+        [userId],
+        'groupNewMessage',
+        payload,
+      );
     } catch (e) {
       this.reply(client, {
         type: 'error',
@@ -444,13 +476,12 @@ export class ChatGateway
       groupId,
       message: this.serializeGroupMessage(message),
     };
-    for (const uid of memberIds) {
-      if (uid === senderId) continue;
-      if (await this.chat.isUserOnline(uid)) {
-        this.sendToUser(uid, payload);
-        this.publish({ kind: 'groupNewMessage', toUserIds: [uid], payload });
-      }
-    }
+    await this.pushToOnlineMembers(
+      memberIds,
+      [senderId],
+      'groupNewMessage',
+      payload,
+    );
   }
 
   /**
@@ -462,12 +493,7 @@ export class ChatGateway
     memberIds: number[],
   ): Promise<void> {
     const payload = { type: 'groupEvent', groupId, kind: 'memberChanged' };
-    for (const uid of memberIds) {
-      if (await this.chat.isUserOnline(uid)) {
-        this.sendToUser(uid, payload);
-        this.publish({ kind: 'groupEvent', toUserIds: [uid], payload });
-      }
-    }
+    await this.pushToOnlineMembers(memberIds, [], 'groupEvent', payload);
   }
 
   /**
@@ -480,12 +506,27 @@ export class ChatGateway
     reason: 'dissolved' | 'kicked' = 'dissolved',
   ): Promise<void> {
     const payload = { type: 'groupEvent', groupId, kind: 'removed', reason };
-    for (const uid of userIds) {
-      if (await this.chat.isUserOnline(uid)) {
-        this.sendToUser(uid, payload);
-        this.publish({ kind: 'groupEvent', toUserIds: [uid], payload });
-      }
-    }
+    await this.pushToOnlineMembers(userIds, [], 'groupEvent', payload);
+  }
+
+  /**
+   * 群聊推送统一入口：一次批量在线判断（mget），本实例直推 + 单次跨实例发布。
+   * excludeIds 为不需要推送的成员（如发送者本人，发送方由 sent 回执确认）。
+   */
+  private async pushToOnlineMembers(
+    memberIds: number[],
+    excludeIds: number[],
+    kind: RemoteEvent['kind'],
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    const online = await this.chat.onlineUserIds(memberIds);
+    const excluded = new Set(excludeIds);
+    const targets = memberIds.filter(
+      (uid) => !excluded.has(uid) && online.has(uid),
+    );
+    if (!targets.length) return;
+    for (const uid of targets) this.sendToUser(uid, payload);
+    this.publish({ kind, toUserIds: targets, payload });
   }
 
   /** REST 标记已读后的实时转发 */
@@ -570,6 +611,12 @@ export class ChatGateway
     const data = Buffer.from(encode(payload));
     for (const client of set) {
       if (client.readyState !== WebSocket.OPEN) continue;
+      // 背压保护：发送缓冲堆积说明对方网络/消费慢，断开让其重连，
+      // 避免单条慢连接拖住实例内存（消息已落库，重连后可拉取）
+      if (client.bufferedAmount > MAX_BUFFERED_AMOUNT) {
+        client.close(4007, 'slow consumer');
+        continue;
+      }
       client.send(data, (err) => {
         if (err)
           console.warn(

@@ -2,7 +2,16 @@ import { ChatService } from './chat.service';
 
 describe('ChatService.getMessages', () => {
   function buildService(andWhereCalls: string[]) {
-    const fakeQb = {
+    // 显式接口打破对象字面量自引用的循环类型推断（否则 fakeQb 被推断为 any）
+    interface FakeQueryBuilder {
+      leftJoin: jest.Mock;
+      where: jest.Mock;
+      andWhere: jest.Mock;
+      orderBy: jest.Mock;
+      take: jest.Mock;
+      getMany: jest.Mock;
+    }
+    const fakeQb: FakeQueryBuilder = {
       leftJoin: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn((cond: string) => {
@@ -87,5 +96,45 @@ describe('ChatService.getMessages', () => {
       '对方已把你拉黑',
     );
     expect(blocks.status).toHaveBeenCalledWith(32, 33);
+  });
+});
+
+describe('ChatService.onlineUserIds', () => {
+  function buildService(mgetImpl: jest.Mock) {
+    const redis = { mget: mgetImpl };
+    return new ChatService(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      redis as any,
+    );
+  }
+
+  it('一次 mget 批量取回在线计数，仅返回在线用户', async () => {
+    const mget = jest.fn().mockResolvedValue(['1', '0', null, '3']);
+    const service = buildService(mget);
+
+    const online = await service.onlineUserIds([11, 22, 33, 44]);
+
+    expect(mget).toHaveBeenCalledTimes(1);
+    expect(mget).toHaveBeenCalledWith([
+      'chat:online:11',
+      'chat:online:22',
+      'chat:online:33',
+      'chat:online:44',
+    ]);
+    expect([...online].sort()).toEqual([11, 44]);
+  });
+
+  it('Redis 异常时降级为空集，不阻塞群聊推送', async () => {
+    const mget = jest.fn().mockRejectedValue(new Error('redis down'));
+    const service = buildService(mget);
+
+    const online = await service.onlineUserIds([11, 22]);
+
+    expect(online.size).toBe(0);
   });
 });

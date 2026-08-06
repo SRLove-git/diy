@@ -13,6 +13,7 @@ import { History } from '../users/history.entity';
 import { User } from '../users/user.entity';
 import { UsersModule } from '../users/users.module';
 import { Video } from '../videos/video.entity';
+import { FeedCacheService } from '../common/feed-cache.service';
 
 @Module({
   imports: [
@@ -30,7 +31,7 @@ import { Video } from '../videos/video.entity';
     UsersModule,
   ],
   controllers: [PostsController, AdminPostsController],
-  providers: [CommunityService],
+  providers: [CommunityService, FeedCacheService],
   exports: [CommunityService],
 })
 export class CommunityModule {}

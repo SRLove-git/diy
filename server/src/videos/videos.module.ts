@@ -13,6 +13,7 @@ import { VideosController } from './videos.controller';
 import { AdminVideosController } from './admin-videos.controller';
 import { VideosService } from './videos.service';
 import { UsersModule } from '../users/users.module';
+import { FeedCacheService } from '../common/feed-cache.service';
 
 @Module({
   imports: [
@@ -29,7 +30,7 @@ import { UsersModule } from '../users/users.module';
     UsersModule,
   ],
   controllers: [VideosController, AdminVideosController],
-  providers: [VideosService, AudioMixService],
+  providers: [VideosService, AudioMixService, FeedCacheService],
   exports: [VideosService],
 })
 export class VideosModule {}

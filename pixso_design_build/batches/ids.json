@@ -1,0 +1,18 @@
+{
+ "community-light": "3:4478",
+ "community-dark": "3:4549",
+ "reels-light": "3:4620",
+ "reels-dark": "3:4668",
+ "chat-list-light": "3:4716",
+ "chat-list-dark": "3:4772",
+ "chat-single-light": "3:4828",
+ "chat-single-dark": "3:4865",
+ "chat-group-light": "3:4902",
+ "profile-mine-light": "3:4939",
+ "profile-mine-dark": "3:5004",
+ "profile-other-light": "3:5069",
+ "profile-other-dark": "3:5136",
+ "tokens": "3:5203",
+ "states": "3:5297",
+ "motion": "3:5324"
+}

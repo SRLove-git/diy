@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Not, Repository } from 'typeorm';
+import { FindOptionsWhere, In, IsNull, Not, Repository } from 'typeorm';
 
 import { Post } from './post.entity';
 import { Like } from './like.entity';
@@ -16,6 +16,7 @@ import { Follow } from '../follows/follow.entity';
 import { History } from '../users/history.entity';
 import { User } from '../users/user.entity';
 import { Video } from '../videos/video.entity';
+import { FeedCacheService } from '../common/feed-cache.service';
 import { CreatePostDto, UpdatePostStatusDto } from './post.dto';
 import { CreateCommentDto } from './comment.dto';
 
@@ -49,6 +50,7 @@ export class CommunityService {
     private readonly histories: Repository<History>,
     @InjectRepository(User)
     private readonly users: Repository<User>,
+    private readonly feedCache: FeedCacheService,
   ) {}
 
   // ──── Helpers ────
@@ -95,11 +97,24 @@ export class CommunityService {
       location: dto.location ?? '',
       status: 'approved',
     });
-    return this.posts.save(post);
+    const saved = await this.posts.save(post);
+    // 新作品立即可见：版本 +1 使共享 feed 缓存立即失效
+    await this.feedCache.bumpContentVersion();
+    return saved;
   }
 
   /** 信息流：最新（按创建时间倒序），仅展示已通过作品，含作者信息 */
   async listLatest(page = 1, pageSize = 20, q = '', channel = '') {
+    // 搜索词不缓存：结果因人而异且 key 随关键词无限膨胀
+    const cacheable = !(q ?? '').trim();
+    if (cacheable) {
+      const cached = await this.feedCache.get<{
+        items: Array<Record<string, unknown>>;
+        total: number;
+      }>('post-latest', page, pageSize, channel);
+      if (cached) return [cached.items, cached.total];
+    }
+
     const [posts, total] = await this.feedQuery(
       { createdAt: 'DESC' },
       page,
@@ -110,12 +125,29 @@ export class CommunityService {
 
     const userIds = posts.map((p) => p.userId);
     const authors = await this.resolveAuthors(userIds);
+    const items = posts.map((p) => this.enrichPost(p, authors.get(p.userId)));
 
-    return [posts.map((p) => this.enrichPost(p, authors.get(p.userId))), total];
+    if (cacheable) {
+      await this.feedCache.set('post-latest', page, pageSize, channel, {
+        items,
+        total,
+      });
+    }
+
+    return [items, total];
   }
 
   /** 信息流：热门（按点赞数倒序），仅展示已通过作品，含作者信息 */
   async listHot(page = 1, pageSize = 20, q = '', channel = '') {
+    const cacheable = !(q ?? '').trim();
+    if (cacheable) {
+      const cached = await this.feedCache.get<{
+        items: Array<Record<string, unknown>>;
+        total: number;
+      }>('post-hot', page, pageSize, channel);
+      if (cached) return [cached.items, cached.total];
+    }
+
     const [posts, total] = await this.feedQuery(
       { likeCount: 'DESC', createdAt: 'DESC' },
       page,
@@ -126,8 +158,16 @@ export class CommunityService {
 
     const userIds = posts.map((p) => p.userId);
     const authors = await this.resolveAuthors(userIds);
+    const items = posts.map((p) => this.enrichPost(p, authors.get(p.userId)));
 
-    return [posts.map((p) => this.enrichPost(p, authors.get(p.userId))), total];
+    if (cacheable) {
+      await this.feedCache.set('post-hot', page, pageSize, channel, {
+        items,
+        total,
+      });
+    }
+
+    return [items, total];
   }
 
   /**
@@ -227,8 +267,8 @@ export class CommunityService {
     page = 1,
     pageSize = 20,
   ): Promise<[Post[], number]> {
-    const where: any = {};
-    if (status) where.status = status;
+    const where: FindOptionsWhere<Post> = {};
+    if (status) where.status = status as Post['status'];
     return this.posts.findAndCount({
       where,
       order: { createdAt: 'DESC' },
@@ -247,6 +287,10 @@ export class CommunityService {
     } else {
       post.rejectReason = '';
     }
+    // 审核通过后进入信息流，立即失效缓存
+    if (dto.status === 'approved') {
+      await this.feedCache.bumpContentVersion();
+    }
     return this.posts.save(post);
   }
 
@@ -257,6 +301,7 @@ export class CommunityService {
     post.status = 'rejected';
     post.rejectReason = '管理员下架';
     await this.posts.save(post);
+    await this.feedCache.bumpContentVersion();
   }
 
   /** 管理端：物理删除作品（连同点赞/评论/收藏/浏览记录） */
@@ -270,6 +315,7 @@ export class CommunityService {
       this.histories.delete({ postId: id }),
     ]);
     await this.posts.delete({ id });
+    await this.feedCache.bumpContentVersion();
   }
 
   /** 用户端：删除自己的作品（校验归属后物理删除） */
