@@ -1,5 +1,6 @@
 import {
   IsInt,
+  IsIn,
   IsOptional,
   IsString,
   Matches,
@@ -7,23 +8,43 @@ import {
   Min,
 } from 'class-validator';
 
-/** 创建预约：门店 + 日期 + 时段 + 人数 + 桌位 */
+/** 创建预约：门店桌位 或 活动场次 + 人数 + 支付方式 */
 export class CreateAppointmentDto {
-  @IsInt()
-  storeId: number;
+  @IsOptional()
+  @IsIn(['store', 'activity'])
+  type?: 'store' | 'activity';
 
+  @IsOptional()
   @IsInt()
-  tableId: number;
+  storeId?: number;
 
+  @IsOptional()
   @IsInt()
-  slotId: number;
+  tableId?: number;
 
+  @IsOptional()
+  @IsInt()
+  slotId?: number;
+
+  @IsOptional()
+  @IsInt()
+  activityId?: number;
+
+  @IsOptional()
+  @IsInt()
+  activitySessionId?: number;
+
+  @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: '日期格式为 YYYY-MM-DD' })
-  date: string;
+  date?: string;
 
   @IsInt()
   @Min(1, { message: '人数至少 1 人' })
   peopleCount: number;
+
+  @IsOptional()
+  @IsIn(['wechat', 'alipay'], { message: '支付方式仅支持微信/支付宝' })
+  payMethod?: 'wechat' | 'alipay';
 
   @IsOptional()
   @IsString()

@@ -23,7 +23,6 @@ import { Collection } from '../community/collection.entity';
 import { Comment as PostComment } from '../community/comment.entity';
 import { Like as PostLike } from '../community/like.entity';
 import { Post } from '../community/post.entity';
-import { Report } from '../community/report.entity';
 import { Follow } from '../follows/follow.entity';
 import { Membership } from '../members/membership.entity';
 import { UserCoupon } from '../members/coupon.entity';
@@ -50,7 +49,6 @@ export class UsersService {
     private readonly postComments: Repository<PostComment>,
     @InjectRepository(Collection)
     private readonly collections: Repository<Collection>,
-    @InjectRepository(Report) private readonly reports: Repository<Report>,
     @InjectRepository(History) private readonly history: Repository<History>,
     @InjectRepository(Video) private readonly videos: Repository<Video>,
     @InjectRepository(VideoLike)
@@ -116,13 +114,21 @@ export class UsersService {
 
   /** 按手机号查用户，不存在则创建（并发下靠唯一约束兜底） */
   async findByPhoneOrCreate(phone: string): Promise<User> {
+    return (await this.findByPhoneOrCreateWithFlag(phone)).user;
+  }
+
+  /** 按手机号查用户，不存在则创建（并发下靠唯一约束兜底），返回是否新建。
+   *  供验证码登录区分「老用户登录」与「新用户自动注册」。 */
+  async findByPhoneOrCreateWithFlag(
+    phone: string,
+  ): Promise<{ user: User; created: boolean }> {
     const existing = await this.findByPhone(phone);
-    if (existing) return existing;
+    if (existing) return { user: existing, created: false };
     try {
-      return await this.create({ phone });
+      return { user: await this.create({ phone }), created: true };
     } catch {
       const again = await this.findByPhone(phone);
-      if (again) return again;
+      if (again) return { user: again, created: false };
       throw new Error('用户创建失败');
     }
   }
@@ -280,7 +286,6 @@ export class UsersService {
         this.postLikes.delete({ postId: In(postIds) }),
         this.postComments.delete({ postId: In(postIds) }),
         this.collections.delete({ postId: In(postIds) }),
-        this.reports.delete({ postId: In(postIds) }),
         this.history.delete({ postId: In(postIds) }),
       ]);
       await this.posts.delete(postIds);
@@ -289,7 +294,6 @@ export class UsersService {
       await Promise.all([
         this.videoLikes.delete({ videoId: In(videoIds) }),
         this.videoComments.delete({ videoId: In(videoIds) }),
-        this.reports.delete({ videoId: In(videoIds) }),
       ]);
       await this.videos.delete(videoIds);
     }
@@ -310,7 +314,6 @@ export class UsersService {
       this.postLikes.delete({ userId }),
       this.postComments.delete({ userId }),
       this.collections.delete({ userId }),
-      this.reports.delete({ reporterId: userId }),
       this.history.delete({ userId }),
       this.videoLikes.delete({ userId }),
       this.videoComments.delete({ userId }),

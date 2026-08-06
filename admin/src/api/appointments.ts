@@ -5,11 +5,20 @@ export interface Appointment {
   userId: number
   userPhone?: string
   userNickname?: string
-  storeId: number
+  type?: 'store' | 'activity'
+  storeId: number | null
   storeName: string
-  tableId: number
+  tableId: number | null
   tableName: string
-  slotId: number
+  slotId: number | null
+  activityId?: number | null
+  activitySessionId?: number | null
+  activityName?: string
+  amount?: number
+  originalAmount?: number
+  payStatus?: 'unpaid' | 'paid'
+  payMethod?: string
+  paidAt?: string | null
   date: string
   startTime: string
   endTime: string

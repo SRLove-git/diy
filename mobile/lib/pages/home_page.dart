@@ -11,6 +11,7 @@ import '../core/chat_api.dart';
 import '../core/chat_service.dart';
 import '../core/notification_api.dart';
 import '../core/post_api.dart';
+import '../core/service_events.dart';
 import '../features/home/presentation/palette.dart';
 import '../features/member/presentation/member_plan_page.dart';
 import 'admin/admin_dashboard_page.dart';
@@ -18,7 +19,6 @@ import 'admin/admin_members_page.dart';
 import 'admin/admin_notifications_page.dart';
 import 'admin/admin_orders_page.dart';
 import 'admin/admin_posts_page.dart';
-import 'admin/admin_reports_page.dart';
 import 'admin/admin_stores_page.dart';
 import 'admin/admin_users_page.dart';
 import 'booking/booking_flow_page.dart';
@@ -44,10 +44,12 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   List<Appointment> _activeAppointments = [];
   int _unreadCount = 0;
+  int _sectionIndex = 0;
   Timer? _tickTimer;
   Timer? _pollTimer;
   Timer? _unreadTimer;
   StreamSubscription<ChatEvent>? _chatSub;
+  StreamSubscription<int>? _serviceSub;
 
   @override
   void initState() {
@@ -57,16 +59,30 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _chatSub = ChatService.instance.events.listen((event) {
       if (event is NotificationEvent) _loadUnreadCount();
     });
+    // 下钟成功后立即移除「服务中」卡片（乐观更新），不等 3s 轮询
+    _serviceSub = ServiceEvents.ended.listen(_onServiceEnded);
     if (!widget.loadActiveAppointments) return;
     _loadActiveAppointments();
     _loadUnreadCount();
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted &&
-          _activeAppointments.any(
-            (appointment) =>
-                appointment.status == 'in_service' &&
-                appointment.serviceStartTime != null,
-          )) {
+      if (!mounted) return;
+      final now = DateTime.now();
+      final expiredIds = _activeAppointments
+          .where((appointment) => _slotEnded(appointment, now))
+          .map((appointment) => appointment.id)
+          .toSet();
+      if (expiredIds.isNotEmpty) {
+        // 预约时段到点：乐观移除「服务中」卡片，与服务端自动下钟规则一致
+        setState(() {
+          _activeAppointments.removeWhere(
+            (appointment) => expiredIds.contains(appointment.id),
+          );
+        });
+      } else if (_activeAppointments.any(
+        (appointment) =>
+            appointment.status == 'in_service' &&
+            appointment.serviceStartTime != null,
+      )) {
         setState(() {});
       }
     });
@@ -87,6 +103,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _tickTimer?.cancel();
     _pollTimer?.cancel();
     _unreadTimer?.cancel();
+    _serviceSub?.cancel();
     super.dispose();
   }
 
@@ -106,6 +123,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
+  void _onServiceEnded(int appointmentId) {
+    if (!mounted) return;
+    setState(() {
+      _activeAppointments.removeWhere((a) => a.id == appointmentId);
+    });
+  }
+
   Future<void> _openNotifications() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const NotificationListPage()),
@@ -117,13 +141,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     try {
       final response = await ApiClient.instance.get('/appointments');
       if (!mounted) return;
+      final now = DateTime.now();
       final appointments = (response.data as List)
           .map((item) => Appointment.fromJson(item as Map<String, dynamic>))
-          .where(
-            (appointment) =>
-                appointment.status == 'in_service' ||
-                appointment.status == 'checked_in',
-          )
+          .where((appointment) {
+            // 预约时段已结束：乐观视为已下钟（服务端稍后自动置为已完成），
+            // 避免被下一次轮询结果重新加回首页。
+            if (_slotEnded(appointment, now)) return false;
+            return appointment.status == 'in_service' ||
+                appointment.status == 'checked_in';
+          })
           .toList();
       setState(() => _activeAppointments = appointments);
     } on DioException {
@@ -138,6 +165,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       ),
     );
     _loadActiveAppointments();
+  }
+
+  /// 预约时段结束时刻（date + endTime，按设备本地时区），与服务端自动下钟规则一致
+  DateTime? _scheduledEnd(Appointment appointment) =>
+      DateTime.tryParse('${appointment.date}T${appointment.endTime}:00');
+
+  /// 预约时段是否已到点（in_service 且当前时间 >= endTime）
+  bool _slotEnded(Appointment appointment, DateTime now) {
+    if (appointment.status != 'in_service') return false;
+    final end = _scheduledEnd(appointment);
+    return end != null && !now.isBefore(end);
   }
 
   void _openBooking() {
@@ -166,53 +204,210 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   ),
                 ),
                 SliverToBoxAdapter(
-                  child: FeatureEntryRow(
-                    isAdmin: isAdmin,
-                    onBooking: _openBooking,
-                    onStores: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const AdminStoresPage(),
-                      ),
-                    ),
-                    onCheckIn: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => isAdmin
-                            ? const ScanCheckInPage()
-                            : const MyCheckInQrPage(),
-                      ),
-                    ),
-                    onMembership: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const MemberPlanPage()),
-                    ),
-                    onOrders: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const AdminOrdersPage(),
-                      ),
-                    ),
+                  child: HomeSectionSwitcher(
+                    index: _sectionIndex,
+                    onChanged: (index) =>
+                        setState(() => _sectionIndex = index),
                   ),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                SliverToBoxAdapter(child: ShortcutBar(isAdmin: isAdmin)),
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: PromoBanner(onTap: _openBooking),
-                  ),
-                ),
-                if (_activeAppointments.isNotEmpty) ...[
-                  const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                if (_sectionIndex == 0) ...[
                   SliverToBoxAdapter(
-                    child: ActiveServiceSection(
-                      appointments: _activeAppointments,
-                      onTap: _openActiveService,
+                    child: FeatureEntryRow(
+                      isAdmin: isAdmin,
+                      onBooking: _openBooking,
+                      onStores: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const AdminStoresPage(),
+                        ),
+                      ),
+                      onCheckIn: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => isAdmin
+                              ? const ScanCheckInPage()
+                              : const MyCheckInQrPage(),
+                        ),
+                      ),
+                      onMembership: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const MemberPlanPage(),
+                        ),
+                      ),
+                      onOrders: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const AdminOrdersPage(),
+                        ),
+                      ),
                     ),
                   ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  SliverToBoxAdapter(child: ShortcutBar(isAdmin: isAdmin)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: PromoBanner(onTap: _openBooking),
+                    ),
+                  ),
+                  if (_activeAppointments.isNotEmpty) ...[
+                    const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                    SliverToBoxAdapter(
+                      child: ActiveServiceSection(
+                        appointments: _activeAppointments,
+                        onTap: _openActiveService,
+                      ),
+                    ),
+                  ],
+                ] else ...[
+                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                  const SliverToBoxAdapter(child: ComingSoonSection()),
                 ],
                 const SliverToBoxAdapter(child: SizedBox(height: 96)),
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// 首页顶部板块切换（拼豆 / 敬请期待）
+class HomeSectionSwitcher extends StatelessWidget {
+  const HomeSectionSwitcher({
+    super.key,
+    required this.index,
+    required this.onChanged,
+  });
+
+  final int index;
+  final ValueChanged<int> onChanged;
+
+  static const _tabs = ['拼豆', '敬请期待'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F3F4),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            for (var i = 0; i < _tabs.length; i++) ...[
+              if (i > 0) const SizedBox(width: 4),
+              Expanded(
+                child: _SectionTab(
+                  label: _tabs[i],
+                  selected: index == i,
+                  onTap: () => onChanged(i),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTab extends StatelessWidget {
+  const _SectionTab({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: selected
+                ? const [
+                    BoxShadow(
+                      color: Color(0x1A000000),
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected
+                  ? HomePalette.textPrimary
+                  : HomePalette.textSecondary,
+              fontSize: 14,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 「敬请期待」占位板块：浅色卡片 + 一句话，不引导、不给按钮
+class ComingSoonSection extends StatelessWidget {
+  const ComingSoonSection({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        height: 300,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F3F4),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.auto_awesome_outlined,
+              size: 48,
+              color: Color(0xFFD9A2B2),
+            ),
+            SizedBox(height: 16),
+            Text(
+              '敬请期待',
+              style: TextStyle(
+                color: Color(0xFF6F686B),
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              '更多精彩 DIY 手作板块正在筹备中',
+              style: TextStyle(
+                color: Color(0xFFA8A2A5),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -712,12 +907,6 @@ const _adminShortcutData = [
     label: '用户管理',
     colors: [Color(0xFFA895FF), Color(0xFF7563EC)],
     page: AdminUsersPage(),
-  ),
-  _AdminShortcutData(
-    icon: Icons.report_rounded,
-    label: '举报处理',
-    colors: [Color(0xFFFF8A80), Color(0xFFFF5C4D)],
-    page: AdminReportsPage(),
   ),
   _AdminShortcutData(
     icon: Icons.notifications_rounded,
@@ -1337,7 +1526,9 @@ class ActiveServiceCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${appointment.date} ${appointment.startTime}-${appointment.endTime} · ${appointment.tableName}',
+                    appointment.type == 'activity'
+                        ? '${appointment.date} ${appointment.startTime}-${appointment.endTime} · 活动'
+                        : '${appointment.date} ${appointment.startTime}-${appointment.endTime} · ${appointment.tableName}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(

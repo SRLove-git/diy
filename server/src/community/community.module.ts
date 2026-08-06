@@ -3,12 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CommunityService } from './community.service';
 import { PostsController } from './posts.controller';
 import { AdminPostsController } from './admin-posts.controller';
-import { AdminReportsController } from './admin-reports.controller';
 import { Post } from './post.entity';
 import { Like } from './like.entity';
 import { Comment } from './comment.entity';
 import { Collection } from './collection.entity';
-import { Report } from './report.entity';
 import { Follow } from '../follows/follow.entity';
 import { History } from '../users/history.entity';
 import { User } from '../users/user.entity';
@@ -22,7 +20,6 @@ import { Video } from '../videos/video.entity';
       Like,
       Comment,
       Collection,
-      Report,
       Follow,
       History,
       User,
@@ -30,7 +27,7 @@ import { Video } from '../videos/video.entity';
     ]),
     UsersModule,
   ],
-  controllers: [PostsController, AdminPostsController, AdminReportsController],
+  controllers: [PostsController, AdminPostsController],
   providers: [CommunityService],
   exports: [CommunityService],
 })

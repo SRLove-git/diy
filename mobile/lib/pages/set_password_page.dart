@@ -5,27 +5,54 @@ import 'package:flutter/material.dart';
 
 import '../core/app_colors.dart';
 import '../core/auth_service.dart';
+import '../widgets/agreement_checkbox.dart';
 
-/// 设置 / 重置密码：手机号 + 短信验证码校验后设置新密码，可选设置用户名。
+/// 密码操作场景：找回密码（未登录） / 修改密码（已登录）
+enum PasswordMode { forgot, change }
+
+/// 设置 / 重置密码：微信式短信验证码校验后写入新密码。
+/// - 找回密码：手机号可编辑，需勾选协议；
+/// - 修改密码：自动带入当前账号手机号，只发验证码不重输手机号。
 class SetPasswordPage extends StatefulWidget {
-  const SetPasswordPage({super.key});
+  const SetPasswordPage({
+    super.key,
+    this.mode = PasswordMode.forgot,
+    this.initialPhone,
+  });
+
+  final PasswordMode mode;
+  final String? initialPhone;
 
   @override
   State<SetPasswordPage> createState() => _SetPasswordPageState();
 }
 
 class _SetPasswordPageState extends State<SetPasswordPage> {
-  final _phoneCtrl = TextEditingController();
+  late final bool _isChange = widget.mode == PasswordMode.change;
+  late final TextEditingController _phoneCtrl = TextEditingController(
+    text: _isChange
+        ? (widget.initialPhone ?? AuthService.instance.user?.phone ?? '')
+        : (widget.initialPhone ?? ''),
+  );
   final _codeCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  final _usernameCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   bool _sendingCode = false;
   bool _submitting = false;
   bool _obscurePassword = true;
+  bool _obscureConfirm = true;
+  bool _agreed = false;
   int _countdown = 0;
   Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // 已登录的修改密码场景无需再勾选协议
+    _agreed = _isChange;
+  }
 
   @override
   void dispose() {
@@ -33,7 +60,7 @@ class _SetPasswordPageState extends State<SetPasswordPage> {
     _phoneCtrl.dispose();
     _codeCtrl.dispose();
     _passwordCtrl.dispose();
-    _usernameCtrl.dispose();
+    _confirmCtrl.dispose();
     super.dispose();
   }
 
@@ -50,6 +77,10 @@ class _SetPasswordPageState extends State<SetPasswordPage> {
   }
 
   Future<void> _sendCode() async {
+    if (!_isChange && !_agreed) {
+      _showError('请先阅读并同意《用户协议》和《隐私政策》');
+      return;
+    }
     final phoneValid = RegExp(r'^1[3-9]\d{9}$').hasMatch(_phoneCtrl.text);
     if (!phoneValid) {
       _formKey.currentState!.validate();
@@ -81,20 +112,22 @@ class _SetPasswordPageState extends State<SetPasswordPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_isChange && !_agreed) {
+      _showError('请先阅读并同意《用户协议》和《隐私政策》');
+      return;
+    }
     setState(() => _submitting = true);
     try {
-      final username = _usernameCtrl.text.trim();
       await AuthService.instance.setPassword(
         _phoneCtrl.text,
         _codeCtrl.text,
         _passwordCtrl.text,
-        username: username.isNotEmpty ? username : null,
       );
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop();
       messenger.showSnackBar(
-        const SnackBar(content: Text('密码设置成功，请使用新密码登录')),
+        SnackBar(content: Text(_isChange ? '密码修改成功' : '密码重置成功，请使用新密码登录')),
       );
     } on DioException catch (e) {
       _showError(_message(e));
@@ -114,15 +147,14 @@ class _SetPasswordPageState extends State<SetPasswordPage> {
 
   void _showError(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('设置密码')),
+      appBar: AppBar(title: Text(_isChange ? '修改密码' : '找回密码')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -133,12 +165,13 @@ class _SetPasswordPageState extends State<SetPasswordPage> {
               children: [
                 const SizedBox(height: 12),
                 Text(
-                  '通过短信验证码校验身份后设置新密码',
+                  _isChange ? '验证码将发送到当前绑定手机号，通过后设置新密码' : '通过短信验证码验证身份后设置新密码',
                   style: TextStyle(color: colors.textSecondary),
                 ),
                 const SizedBox(height: 24),
                 TextFormField(
                   controller: _phoneCtrl,
+                  enabled: !_isChange,
                   keyboardType: TextInputType.phone,
                   maxLength: 11,
                   decoration: const InputDecoration(
@@ -148,8 +181,8 @@ class _SetPasswordPageState extends State<SetPasswordPage> {
                   ),
                   validator: (v) =>
                       (v == null || !RegExp(r'^1[3-9]\d{9}$').hasMatch(v))
-                          ? '请输入正确的手机号'
-                          : null,
+                      ? '请输入正确的手机号'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -167,8 +200,8 @@ class _SetPasswordPageState extends State<SetPasswordPage> {
                         ),
                         validator: (v) =>
                             (v == null || !RegExp(r'^\d{6}$').hasMatch(v))
-                                ? '请输入 6 位验证码'
-                                : null,
+                            ? '请输入 6 位验证码'
+                            : null,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -210,20 +243,35 @@ class _SetPasswordPageState extends State<SetPasswordPage> {
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
-                  controller: _usernameCtrl,
-                  maxLength: 30,
-                  decoration: const InputDecoration(
-                    labelText: '设置用户名（可选，用于用户名登录）',
+                  controller: _confirmCtrl,
+                  obscureText: _obscureConfirm,
+                  maxLength: 32,
+                  decoration: InputDecoration(
+                    labelText: '确认新密码',
                     counterText: '',
-                    prefixIcon: Icon(Icons.person_outline),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirm
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscureConfirm = !_obscureConfirm),
+                    ),
                   ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return null; // 可选
-                    if (v.trim().length < 2) return '用户名至少 2 位';
-                    return null;
-                  },
+                  validator: (v) =>
+                      v != _passwordCtrl.text ? '两次输入的密码不一致' : null,
                 ),
-                const SizedBox(height: 32),
+                if (!_isChange) ...[
+                  const SizedBox(height: 20),
+                  AgreementCheckbox(
+                    checked: _agreed,
+                    onChanged: (v) => setState(() => _agreed = v),
+                    notice: '通过验证码重置密码即代表您已同意',
+                  ),
+                ],
+                const SizedBox(height: 28),
                 FilledButton(
                   onPressed: _submitting ? null : _submit,
                   child: _submitting
@@ -232,7 +280,7 @@ class _SetPasswordPageState extends State<SetPasswordPage> {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('确认设置'),
+                      : Text(_isChange ? '确认修改' : '确认重置'),
                 ),
               ],
             ),

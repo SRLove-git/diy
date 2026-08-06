@@ -48,6 +48,8 @@ function openCreate() {
     lng: 120.1,
     businessHours: '10:00-22:00',
     phone: '',
+    price: 39.9,
+    memberPrice: null,
     enabled: true,
   }
   isEdit.value = false
@@ -64,8 +66,15 @@ async function saveStore() {
   saving.value = true
   err.value = ''
   try {
-    if (isEdit.value) await storeApi.update(form.value.id!, form.value)
-    else await storeApi.create(form.value)
+    const payload = {
+      ...form.value,
+      memberPrice:
+        form.value.memberPrice == null
+          ? undefined
+          : form.value.memberPrice,
+    }
+    if (isEdit.value) await storeApi.update(form.value.id!, payload)
+    else await storeApi.create(payload)
     showForm.value = false
     await load()
   } catch (e: any) {
@@ -262,6 +271,10 @@ onMounted(load)
         <div class="row">
           <label>纬度<input v-model.number="form.lat" /></label>
           <label>经度<input v-model.number="form.lng" /></label>
+        </div>
+        <div class="row">
+          <label>门市价（元/人）<input v-model.number="form.price" type="number" min="0" step="0.1" /></label>
+          <label>会员价（元/人，0 = 会员免费）<input v-model.number="form.memberPrice" type="number" min="0" step="0.1" /></label>
         </div>
         <label>营业时间<input v-model="form.businessHours" placeholder="如 10:00-22:00" /></label>
         <label>联系电话<input v-model="form.phone" /></label>

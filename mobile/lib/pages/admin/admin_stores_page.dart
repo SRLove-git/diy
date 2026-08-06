@@ -271,6 +271,8 @@ class _StoreFormDialogState extends State<_StoreFormDialog> {
   late final TextEditingController _lng;
   late final TextEditingController _hours;
   late final TextEditingController _phone;
+  late final TextEditingController _price;
+  late final TextEditingController _memberPrice;
 
   bool get _isEdit => widget.store != null;
 
@@ -284,6 +286,10 @@ class _StoreFormDialogState extends State<_StoreFormDialog> {
     _lng = TextEditingController(text: (s?.lng ?? 120.1).toString());
     _hours = TextEditingController(text: s?.businessHours ?? '10:00-22:00');
     _phone = TextEditingController(text: s?.phone ?? '');
+    _price = TextEditingController(text: (s?.price ?? 39.9).toString());
+    _memberPrice = TextEditingController(
+      text: s?.memberPrice == null ? '' : s!.memberPrice.toString(),
+    );
   }
 
   @override
@@ -294,6 +300,8 @@ class _StoreFormDialogState extends State<_StoreFormDialog> {
     _lng.dispose();
     _hours.dispose();
     _phone.dispose();
+    _price.dispose();
+    _memberPrice.dispose();
     super.dispose();
   }
 
@@ -310,6 +318,9 @@ class _StoreFormDialogState extends State<_StoreFormDialog> {
       'lng': double.tryParse(_lng.text.trim()) ?? 0,
       'businessHours': _hours.text.trim(),
       'phone': _phone.text.trim(),
+      'price': double.tryParse(_price.text.trim()) ?? 0,
+      if (_memberPrice.text.trim().isNotEmpty)
+        'memberPrice': double.tryParse(_memberPrice.text.trim()) ?? 0,
     });
   }
 
@@ -332,6 +343,13 @@ class _StoreFormDialogState extends State<_StoreFormDialog> {
             ),
             _field(_hours, '营业时间', hint: '如 10:00-22:00'),
             _field(_phone, '联系电话'),
+            Row(
+              children: [
+                Expanded(child: _field(_price, '门市价（元/人）', hint: '如 39.9', number: true)),
+                const SizedBox(width: 8),
+                Expanded(child: _field(_memberPrice, '会员价（元/人）', hint: '0 = 会员免费', number: true)),
+              ],
+            ),
           ],
         ),
       ),

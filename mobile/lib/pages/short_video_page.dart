@@ -311,7 +311,7 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
       );
   }
 
-  /// Reels 右侧「更多」菜单：收藏 / 复制链接 / 举报 / 不感兴趣
+  /// Reels 右侧「更多」菜单：收藏 / 复制链接 / 不感兴趣
   Future<void> _openMore(ShortVideo v) async {
     final action = await showModalBottomSheet<String>(
       context: context,
@@ -329,11 +329,6 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
               leading: const Icon(Icons.link_rounded),
               title: const Text('复制链接'),
               onTap: () => Navigator.pop(ctx, 'copy'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.flag_outlined),
-              title: const Text('举报'),
-              onTap: () => Navigator.pop(ctx, 'report'),
             ),
             ListTile(
               leading: const Icon(Icons.visibility_off_outlined),
@@ -356,46 +351,8 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
         );
         _toast('链接已复制');
         break;
-      case 'report':
-        await _reportVideo(v);
-        break;
       default:
         _toast('已减少此类内容推荐');
-    }
-  }
-
-  /// 举报短视频：弹窗填写原因 → 上报服务端（与社区帖子同一套举报体系）
-  Future<void> _reportVideo(ShortVideo v) async {
-    final controller = TextEditingController();
-    final reason = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('举报作品'),
-        content: TextField(
-          controller: controller,
-          maxLength: 200,
-          maxLines: 3,
-          decoration: const InputDecoration(hintText: '请描述举报原因…'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
-            child: const Text('提交举报'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (reason == null || reason.isEmpty || !mounted) return;
-    try {
-      await VideoApi.report(v.id, reason);
-      _toast('举报已提交，我们会尽快处理');
-    } catch (_) {
-      _toast('举报失败，请稍后再试');
     }
   }
 
@@ -692,6 +649,15 @@ class _VideoItemPageState extends State<_VideoItemPage>
 
   bool _playing = false;
 
+  /// 拖动进度条中（拖动期间真实播放器/Mock 先暂停，松手后按原状态恢复）
+  bool _dragging = false;
+
+  /// 拖动中的目标进度（原始时间轴比例 0~1；非拖动时为 null）
+  double? _dragFraction;
+
+  /// 开始拖动时的播放状态（松手后按此恢复播放/暂停）
+  bool _resumeAfterSeek = false;
+
   /// 本视频是否曾真正播放过（区分「首次进入视频 Tab 自动播放」与
   /// 「从其他 Tab 切回保持暂停」）
   bool _everVisible = false;
@@ -822,6 +788,8 @@ class _VideoItemPageState extends State<_VideoItemPage>
   void _onVideoTick() {
     final c = _videoCtrl;
     if (c == null || !c.value.isInitialized) return;
+    // 拖动进度条期间暂停了播放器，但保持原播放态展示，避免中央播放键闪现
+    if (_dragging) return;
     final v = widget.video;
     // 超出裁剪终点跳回起点（元数据裁剪在播放侧生效）
     if (v.trimStart > 0 && v.trimEnd > v.trimStart) {
@@ -834,6 +802,89 @@ class _VideoItemPageState extends State<_VideoItemPage>
     if (playing != _playing && mounted) {
       setState(() => _playing = playing);
     }
+  }
+
+  // ==================== 进度条拖动/点击跳转 ====================
+
+  /// 把进度限制在可播区间内（有裁剪时限制在 [trimStart, trimEnd]）
+  double _clampFraction(double f) {
+    final v = widget.video;
+    if (v.trimStart > 0 && v.trimEnd > v.trimStart) {
+      final totalMs = v.duration.inMilliseconds;
+      if (totalMs > 0) {
+        final lo = (v.trimStart * 1000) / totalMs;
+        final hi = (v.trimEnd * 1000) / totalMs;
+        return f.clamp(lo, hi);
+      }
+    }
+    return f.clamp(0.0, 1.0);
+  }
+
+  /// Mock 播放当前展示进度（映射回原始时间轴后的比例）
+  double _mockDisplayFraction() {
+    final v = widget.video;
+    final playMs = _playDuration.inMilliseconds;
+    var rawMs = _progress.value * playMs * v.speed;
+    if (v.trimStart > 0 && v.trimEnd > v.trimStart) {
+      rawMs += v.trimStart * 1000;
+    }
+    final totalMs = v.duration.inMilliseconds;
+    return totalMs > 0 ? (rawMs / totalMs).clamp(0.0, 1.0) : 0.0;
+  }
+
+  /// 开始拖动：暂停播放并记录起始进度与恢复状态
+  void _onSeekStart() {
+    _dragging = true;
+    _resumeAfterSeek = _playing;
+    final c = _videoCtrl;
+    if (c != null && c.value.isInitialized) {
+      if (_dragFraction == null) {
+        final totalMs = c.value.duration.inMilliseconds;
+        final posMs = c.value.position.inMilliseconds;
+        _dragFraction = totalMs > 0 ? (posMs / totalMs).clamp(0.0, 1.0) : 0.0;
+      }
+      c.pause();
+    } else {
+      _dragFraction ??= _mockDisplayFraction();
+      _progress.stop();
+    }
+    setState(() {});
+  }
+
+  /// 拖动/点击过程中跳转进度
+  void _onSeekUpdate(double f) {
+    final target = _clampFraction(f);
+    setState(() => _dragFraction = target);
+    final c = _videoCtrl;
+    if (c != null && c.value.isInitialized) {
+      final totalMs = c.value.duration.inMilliseconds;
+      c.seekTo(Duration(milliseconds: (target * totalMs).round()));
+    } else {
+      final v = widget.video;
+      final totalMs = v.duration.inMilliseconds;
+      var rawMs = target * totalMs;
+      if (v.trimStart > 0 && v.trimEnd > v.trimStart) {
+        rawMs -= v.trimStart * 1000;
+      }
+      final denom = _playDuration.inMilliseconds * v.speed;
+      _progress.value = denom > 0 ? (rawMs / denom).clamp(0.0, 1.0) : 0.0;
+    }
+  }
+
+  /// 松手：按拖动前的播放状态恢复
+  void _onSeekEnd() {
+    if (!_dragging) return;
+    _dragging = false;
+    _dragFraction = null;
+    if (_resumeAfterSeek) {
+      final c = _videoCtrl;
+      if (c != null && c.value.isInitialized) {
+        c.play();
+      } else {
+        _progress.forward(from: _progress.value);
+      }
+    }
+    if (mounted) setState(() {});
   }
 
   /// 暂停播放（翻页滑走 或 切换 Tab 离开时）：真实播放器暂停到当前位置，Mock 复位
@@ -1041,276 +1092,276 @@ class _VideoItemPageState extends State<_VideoItemPage>
   Widget build(BuildContext context) {
     final video = widget.video;
     return RepaintBoundary(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: _togglePlay,
-        onDoubleTap: _onDoubleTap,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // 背景：照片多图轮播 / 视频真实画面 / 单封面（Mock 播放载体）/ 占位图
-            if (video.isPhoto && video.photos.length > 1)
-              PageView.builder(
-                controller: _photoCtrl,
-                itemCount: video.photos.length,
-                onPageChanged: (i) {
-                  setState(() => _photoIndex = i);
-                  _emitBadge();
-                },
-                itemBuilder: (_, i) => _coverImage(video.photos[i]),
-              )
-            else if (_videoReady)
-              _videoLayer()
-            else if (video.cover.isEmpty)
-              Container(
-                color: const Color(0xFF14141C),
-                child: const Center(
-                  child: Icon(
-                    Icons.movie_outlined,
-                    color: Color(0xFF3A3A48),
-                    size: 48,
-                  ),
-                ),
-              )
-            else
-              _coverImage(video.cover),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 视频内容 + 单击暂停/双击点赞
+          // （进度条区域单独放在上层处理手势，避免点击/拖动与双击互抢）
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _togglePlay,
+              onDoubleTap: _onDoubleTap,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // 背景：照片多图轮播 / 视频真实画面 / 单封面（Mock 播放载体）/ 占位图
+                  if (video.isPhoto && video.photos.length > 1)
+                    PageView.builder(
+                      controller: _photoCtrl,
+                      itemCount: video.photos.length,
+                      onPageChanged: (i) {
+                        setState(() => _photoIndex = i);
+                        _emitBadge();
+                      },
+                      itemBuilder: (_, i) => _coverImage(video.photos[i]),
+                    )
+                  else if (_videoReady)
+                    _videoLayer()
+                  else if (video.cover.isEmpty)
+                    Container(
+                      color: const Color(0xFF14141C),
+                      child: const Center(
+                        child: Icon(
+                          Icons.movie_outlined,
+                          color: Color(0xFF3A3A48),
+                          size: 48,
+                        ),
+                      ),
+                    )
+                  else
+                    _coverImage(video.cover),
 
-            if (_videoReady &&
-                normalizeVideoAspectRatio(
-                      video.aspectRatio,
-                      fallback: _videoCtrl!.value.aspectRatio,
-                    ) >
-                    0.82)
-              Positioned(
-                top: MediaQuery.paddingOf(context).top + 58,
-                right: 14,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black45,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    videoAspectLabel(
-                      video.aspectRatio > 0
-                          ? video.aspectRatio
-                          : _videoCtrl!.value.aspectRatio,
-                    ),
-                    style: const TextStyle(color: Colors.white70, fontSize: 11),
-                  ),
-                ),
-              ),
-
-            // 暂停态中央播放键（播放态隐藏）
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
-              child: _playing
-                  ? const SizedBox.shrink()
-                  : Center(
+                  if (_videoReady &&
+                      normalizeVideoAspectRatio(
+                            video.aspectRatio,
+                            fallback: _videoCtrl!.value.aspectRatio,
+                          ) >
+                          0.82)
+                    Positioned(
+                      top: MediaQuery.paddingOf(context).top + 58,
+                      right: 14,
                       child: Container(
-                        width: 68,
-                        height: 68,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.35),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white70),
+                          color: Colors.black45,
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Icon(
-                          Icons.play_arrow_rounded,
-                          color: Colors.white,
-                          size: 40,
+                        child: Text(
+                          videoAspectLabel(
+                            video.aspectRatio > 0
+                                ? video.aspectRatio
+                                : _videoCtrl!.value.aspectRatio,
+                          ),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
                     ),
-            ),
 
-            // 双击点赞爱心
-            IgnorePointer(
-              child: AnimatedBuilder(
-                animation: _burst,
-                builder: (context, _) => Center(
-                  child: Opacity(
-                    opacity: _burst.isAnimating
-                        ? (1 - _burst.value).clamp(0.0, 1.0)
-                        : 0.0,
-                    child: Transform.scale(
-                      scale: _burstScale.value,
-                      child: const Icon(
-                        Icons.favorite,
-                        color: Palette.accent,
-                        size: 96,
+                  // 暂停态中央播放键（播放态隐藏）
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    child: _playing
+                        ? const SizedBox.shrink()
+                        : Center(
+                            child: Container(
+                              width: 68,
+                              height: 68,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.35),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white70),
+                              ),
+                              child: const Icon(
+                                Icons.play_arrow_rounded,
+                                color: Colors.white,
+                                size: 40,
+                              ),
+                            ),
+                          ),
+                  ),
+
+                  // 双击点赞爱心
+                  IgnorePointer(
+                    child: AnimatedBuilder(
+                      animation: _burst,
+                      builder: (context, _) => Center(
+                        child: Opacity(
+                          opacity: _burst.isAnimating
+                              ? (1 - _burst.value).clamp(0.0, 1.0)
+                              : 0.0,
+                          child: Transform.scale(
+                            scale: _burstScale.value,
+                            child: const Icon(
+                              Icons.favorite,
+                              color: Palette.accent,
+                              size: 96,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
-            ),
 
-            // 底部渐变压暗（保证文字可读，随视频滑动）
-            Positioned.fill(
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      stops: const [0.0, 0.72, 1.0],
-                      colors: const [
-                        Colors.transparent,
-                        Colors.transparent,
-                        Colors.black54,
-                      ],
+                  // 底部渐变压暗（保证文字可读，随视频滑动）
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            stops: const [0.0, 0.72, 1.0],
+                            colors: const [
+                              Colors.transparent,
+                              Colors.transparent,
+                              Colors.black54,
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-            ),
 
-            // 底部毛玻璃层（模糊 + 暗色渐变，模糊随高度淡入避免生硬边缘）
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: 160,
-              child: ClipRect(
-                child: ShaderMask(
-                  // 顶部透明 → 底部不透明，让模糊效果渐变淡入
-                  shaderCallback: (rect) => const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.white],
-                    stops: [0.0, 0.6],
-                  ).createShader(rect),
-                  blendMode: BlendMode.dstIn,
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
+                  // 底部毛玻璃层（模糊 + 暗色渐变，模糊随高度淡入避免生硬边缘）
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: 160,
+                    child: ClipRect(
+                      child: ShaderMask(
+                        // 顶部透明 → 底部不透明，让模糊效果渐变淡入
+                        shaderCallback: (rect) => const LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          stops: const [0.0, 0.75],
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.55),
-                          ],
+                          colors: [Colors.transparent, Colors.white],
+                          stops: [0.0, 0.6],
+                        ).createShader(rect),
+                        blendMode: BlendMode.dstIn,
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                stops: const [0.0, 0.75],
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black.withValues(alpha: 0.55),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
+
+                  // 右侧交互栏（随视频滑动）
+                  Positioned(
+                    right: 10,
+                    bottom: 120,
+                    child: _RightRail(
+                      video: widget.video,
+                      followed: widget.followed,
+                      onFollow: widget.onFollow,
+                      onLike: widget.onLike,
+                      onComment: widget.onComment,
+                      onShare: widget.onShare,
+                      onMore: widget.onMore,
+                    ),
+                  ),
+
+                  // 底部信息区（随视频滑动）
+                  Positioned(
+                    left: 14,
+                    right: 84,
+                    bottom: 0.2,
+                    child: _buildVideoInfo(widget.video),
+                  ),
+                ],
               ),
             ),
+          ),
 
-            // 右侧交互栏（随视频滑动）
-            Positioned(
-              right: 10,
-              bottom: 120,
-              child: _RightRail(
-                video: widget.video,
-                followed: widget.followed,
-                onFollow: widget.onFollow,
-                onLike: widget.onLike,
-                onComment: widget.onComment,
-                onShare: widget.onShare,
-                onMore: widget.onMore,
-              ),
-            ),
-
-            // 底部信息区（随视频滑动）
-            Positioned(
-              left: 14,
-              right: 84,
-              bottom: 0.2,
-              child: _buildVideoInfo(widget.video),
-            ),
-
-            // 底部进度指示：照片作品（多图）→ 分段白条（当前张高亮，其余偏暗）；
-            // 视频/单图 → 播放进度条
-            Positioned(
-              left: 14,
-              right: 14,
-              bottom: 0,
-              child: SafeArea(
-                top: false,
-                child: IgnorePointer(
-                  child: video.isPhoto && video.photos.length > 1
-                      ? Row(
-                          children: [
-                            for (var i = 0; i < video.photos.length; i++)
-                              Expanded(
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  curve: Curves.easeOut,
-                                  height: 3,
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: i == _photoIndex
-                                        ? Colors.white
-                                        : Colors.white30,
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                ),
+          // 底部进度指示（可点击/拖动跳转）：照片作品（多图）→ 分段白条；
+          // 视频/单图 → 可拖动播放进度条
+          Positioned(
+            left: 14,
+            right: 14,
+            bottom: 0,
+            child: SafeArea(
+              top: false,
+              child: video.isPhoto && video.photos.length > 1
+                  ? Row(
+                      children: [
+                        for (var i = 0; i < video.photos.length; i++)
+                          Expanded(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeOut,
+                              height: 3,
+                              margin: const EdgeInsets.symmetric(horizontal: 3),
+                              decoration: BoxDecoration(
+                                color: i == _photoIndex
+                                    ? Colors.white
+                                    : Colors.white30,
+                                borderRadius: BorderRadius.circular(2),
                               ),
-                          ],
-                        )
-                      : _videoReady
-                      ? ValueListenableBuilder<VideoPlayerValue>(
-                          valueListenable: _videoCtrl!,
-                          builder: (context, value, _) {
-                            // 真实播放进度（原始时间轴比例）
-                            final total = value.duration.inMilliseconds;
-                            final pos = value.position.inMilliseconds;
-                            final display = total > 0
-                                ? (pos / total).clamp(0.0, 1.0)
-                                : 0.0;
-                            return ClipRRect(
-                              borderRadius: BorderRadius.circular(2),
-                              child: LinearProgressIndicator(
-                                value: display,
-                                minHeight: 3,
-                                backgroundColor: Colors.white24,
-                                color: Palette.accent,
-                              ),
-                            );
-                          },
-                        )
-                      : AnimatedBuilder(
-                          animation: _progress,
-                          builder: (context, _) {
-                            // 把 Mock 播放进度映射回原始时间轴：
-                            // 展示位置 = 裁剪起点 + 已播时长 × 倍速
-                            final v = widget.video;
-                            final playMs = _playDuration.inMilliseconds;
-                            var rawMs = _progress.value * playMs * v.speed;
-                            if (v.trimStart > 0 && v.trimEnd > v.trimStart) {
-                              rawMs += v.trimStart * 1000;
-                            }
-                            final totalMs = v.duration.inMilliseconds;
-                            final display = totalMs > 0
-                                ? (rawMs / totalMs).clamp(0.0, 1.0)
-                                : 0.0;
-                            return ClipRRect(
-                              borderRadius: BorderRadius.circular(2),
-                              child: LinearProgressIndicator(
-                                value: display,
-                                minHeight: 3,
-                                backgroundColor: Colors.white24,
-                                color: Palette.accent,
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ),
+                            ),
+                          ),
+                      ],
+                    )
+                  : _videoReady
+                  ? ValueListenableBuilder<VideoPlayerValue>(
+                      valueListenable: _videoCtrl!,
+                      builder: (context, value, _) {
+                        // 真实播放进度（原始时间轴比例）；拖动中显示目标位置
+                        final total = value.duration.inMilliseconds;
+                        final pos = value.position.inMilliseconds;
+                        final base = total > 0
+                            ? (pos / total).clamp(0.0, 1.0)
+                            : 0.0;
+                        final display = _dragging && _dragFraction != null
+                            ? _dragFraction!
+                            : base;
+                        return _SeekBar(
+                          progress: display,
+                          dragging: _dragging,
+                          onSeekStart: _onSeekStart,
+                          onSeek: _onSeekUpdate,
+                          onSeekEnd: _onSeekEnd,
+                        );
+                      },
+                    )
+                  : AnimatedBuilder(
+                      animation: _progress,
+                      builder: (context, _) {
+                        // 把 Mock 播放进度映射回原始时间轴：
+                        // 展示位置 = 裁剪起点 + 已播时长 × 倍速
+                        final display = _dragging && _dragFraction != null
+                            ? _dragFraction!
+                            : _mockDisplayFraction();
+                        return _SeekBar(
+                          progress: display,
+                          dragging: _dragging,
+                          onSeekStart: _onSeekStart,
+                          onSeek: _onSeekUpdate,
+                          onSeekEnd: _onSeekEnd,
+                        );
+                      },
+                    ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1678,6 +1729,119 @@ class _MusicDiscState extends State<_MusicDisc>
                 ),
         ),
       ),
+    );
+  }
+}
+
+// =====================================================================
+// 可拖动播放进度条
+// =====================================================================
+
+/// 底部细进度条：点击或左右拖动即可跳转播放进度。
+/// 拖动期间由父级暂停播放、松手后恢复，拖动时圆点放大提示可操作性。
+class _SeekBar extends StatelessWidget {
+  const _SeekBar({
+    required this.progress,
+    required this.dragging,
+    required this.onSeekStart,
+    required this.onSeek,
+    required this.onSeekEnd,
+  });
+
+  /// 当前进度（0~1）
+  final double progress;
+
+  /// 是否正在拖动（拖动时圆点放大）
+  final bool dragging;
+
+  /// 开始拖动
+  final VoidCallback onSeekStart;
+
+  /// 进度变化（点击或拖动中，参数为 0~1）
+  final ValueChanged<double> onSeek;
+
+  /// 拖动结束
+  final VoidCallback onSeekEnd;
+
+  static const double _trackHeight = 3;
+  static const double _hitHeight = 26;
+
+  void _seekToX(double dx, double width) {
+    if (width <= 0) return;
+    onSeek((dx / width).clamp(0.0, 1.0));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final ratio = progress.clamp(0.0, 1.0);
+        final filledWidth = ratio * width;
+        final knobSize = dragging ? 14.0 : 8.0;
+        final knobLeft = (filledWidth - knobSize / 2).clamp(
+          0.0,
+          width - knobSize,
+        );
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (d) => _seekToX(d.localPosition.dx, width),
+          onHorizontalDragStart: (_) => onSeekStart(),
+          onHorizontalDragUpdate: (d) => _seekToX(d.localPosition.dx, width),
+          onHorizontalDragEnd: (_) => onSeekEnd(),
+          onHorizontalDragCancel: onSeekEnd,
+          child: SizedBox(
+            height: _hitHeight,
+            width: width,
+            child: Stack(
+              children: [
+                // 底轨
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: (_hitHeight - _trackHeight) / 2,
+                  child: Container(
+                    height: _trackHeight,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                // 已播进度
+                Positioned(
+                  left: 0,
+                  top: (_hitHeight - _trackHeight) / 2,
+                  width: filledWidth,
+                  child: Container(
+                    height: _trackHeight,
+                    decoration: BoxDecoration(
+                      color: Palette.accent,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                // 进度圆点（拖动时放大，提示可拖动）
+                Positioned(
+                  left: knobLeft,
+                  top: (_hitHeight - knobSize) / 2,
+                  child: Container(
+                    width: knobSize,
+                    height: knobSize,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black45, blurRadius: 3),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

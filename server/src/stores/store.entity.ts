@@ -48,6 +48,26 @@ export class Store {
   @Column({ type: 'json', nullable: true })
   images: string[] | null;
 
+  /** 预约单价（元/人/次），会员价为空时等同门市价 */
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 39.9,
+    transformer: decimal,
+  })
+  price: number;
+
+  /** 会员专属预约价（元/人/次）；0 表示会员免费，null 表示无会员价 */
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: decimal,
+  })
+  memberPrice: number | null;
+
   @Column({ length: 50, default: '09:00-21:00' })
   businessHours: string;
 

@@ -28,7 +28,7 @@ class DashboardOverview {
     int todayComments,
   }) community;
   final ({int total, int today}) videos;
-  final ({int posts, int videos, int reports}) pending;
+  final ({int posts, int videos}) pending;
 
   factory DashboardOverview.fromJson(Map<String, dynamic> json) {
     final u = json['users'] as Map<String, dynamic>? ?? const {};
@@ -61,7 +61,6 @@ class DashboardOverview {
       pending: (
         posts: (p['posts'] as num?)?.toInt() ?? 0,
         videos: (p['videos'] as num?)?.toInt() ?? 0,
-        reports: (p['reports'] as num?)?.toInt() ?? 0,
       ),
     );
   }
@@ -152,6 +151,8 @@ class AdminStore {
     required this.rating,
     required this.businessHours,
     required this.phone,
+    required this.price,
+    required this.memberPrice,
     required this.enabled,
     required this.tables,
     required this.slots,
@@ -165,6 +166,8 @@ class AdminStore {
   final double rating;
   final String businessHours;
   final String phone;
+  final double price;
+  final double? memberPrice;
   final bool enabled;
   final List<AdminStoreTable> tables;
   final List<AdminTimeSlot> slots;
@@ -178,6 +181,8 @@ class AdminStore {
         rating: (json['rating'] as num?)?.toDouble() ?? 5,
         businessHours: (json['businessHours'] ?? '') as String,
         phone: (json['phone'] ?? '') as String,
+        price: (json['price'] as num?)?.toDouble() ?? 39.9,
+        memberPrice: (json['memberPrice'] as num?)?.toDouble(),
         enabled: (json['enabled'] ?? true) as bool,
         tables: ((json['tables'] ?? []) as List)
             .map((e) => AdminStoreTable.fromJson(e as Map<String, dynamic>))
@@ -197,6 +202,11 @@ class AdminOrder {
     required this.userPhone,
     required this.storeName,
     required this.tableName,
+    required this.type,
+    required this.activityName,
+    required this.amount,
+    required this.payStatus,
+    required this.payMethod,
     required this.date,
     required this.startTime,
     required this.endTime,
@@ -213,6 +223,11 @@ class AdminOrder {
   final String? userPhone;
   final String storeName;
   final String tableName;
+  final String type;
+  final String activityName;
+  final double amount;
+  final String payStatus;
+  final String payMethod;
   final String date;
   final String startTime;
   final String endTime;
@@ -229,6 +244,11 @@ class AdminOrder {
         userPhone: json['userPhone'] as String?,
         storeName: (json['storeName'] ?? '') as String,
         tableName: (json['tableName'] ?? '') as String,
+        type: (json['type'] ?? 'store') as String,
+        activityName: (json['activityName'] ?? '') as String,
+        amount: (json['amount'] as num?)?.toDouble() ?? 0,
+        payStatus: (json['payStatus'] ?? 'unpaid') as String,
+        payMethod: (json['payMethod'] ?? '') as String,
         date: (json['date'] ?? '') as String,
         startTime: (json['startTime'] ?? '') as String,
         endTime: (json['endTime'] ?? '') as String,
@@ -314,54 +334,6 @@ class AdminUser {
         isBanned: (json['isBanned'] ?? false) as bool,
         role: (json['role'] ?? 'user') as String,
         createdAt: (json['createdAt'] ?? '') as String,
-      );
-}
-
-// ─── 举报 ───
-
-class AdminReport {
-  const AdminReport({
-    required this.id,
-    required this.reporterId,
-    required this.postId,
-    required this.targetType,
-    this.videoId,
-    this.video,
-    required this.reason,
-    required this.status,
-    required this.createdAt,
-    required this.updatedAt,
-  });
-
-  final int id;
-  final int reporterId;
-  final int postId;
-  final String targetType;
-  final int? videoId;
-  final ({String title, String cover, String status, int userId})? video;
-  final String reason;
-  final String status;
-  final String createdAt;
-  final String updatedAt;
-
-  factory AdminReport.fromJson(Map<String, dynamic> json) => AdminReport(
-        id: json['id'] as int,
-        reporterId: (json['reporterId'] as num?)?.toInt() ?? 0,
-        postId: (json['postId'] as num?)?.toInt() ?? 0,
-        targetType: (json['targetType'] ?? 'post') as String,
-        videoId: (json['videoId'] as num?)?.toInt(),
-        video: json['video'] is Map<String, dynamic>
-            ? (
-                title: (json['video']['title'] ?? '') as String,
-                cover: (json['video']['cover'] ?? '') as String,
-                status: (json['video']['status'] ?? '') as String,
-                userId: ((json['video']['userId'] ?? 0) as num).toInt(),
-              )
-            : null,
-        reason: (json['reason'] ?? '') as String,
-        status: (json['status'] ?? '') as String,
-        createdAt: (json['createdAt'] ?? '') as String,
-        updatedAt: (json['updatedAt'] ?? '') as String,
       );
 }
 
@@ -685,7 +657,7 @@ class AdminApi {
     await ApiClient.instance.patch('/admin/posts/$id/remove');
   }
 
-  /// 物理删除作品（连同点赞/评论/收藏/举报记录）
+  /// 物理删除作品（连同点赞/评论/收藏记录）
   static Future<void> deletePost(int id) async {
     await ApiClient.instance.delete('/admin/posts/$id');
   }
@@ -731,33 +703,6 @@ class AdminApi {
   /// 删除用户（含其作品、互动、关注、会员、预约、聊天等全部关联数据）
   static Future<void> deleteUser(int id) async {
     await ApiClient.instance.delete('/admin/users/$id');
-  }
-
-  // ─── 举报处理 ───
-
-  static Future<Paged<AdminReport>> fetchReports({String? status, int page = 1}) async {
-    final resp = await ApiClient.instance.get(
-      '/admin/reports',
-      queryParameters: {
-        'page': page,
-        if (status != null && status.isNotEmpty) 'status': status,
-      },
-    );
-    final data = resp.data as List;
-    return Paged(
-      items: ((data.isNotEmpty ? data[0] : const []) as List)
-          .map((e) => AdminReport.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      total: data.length > 1 ? (data[1] as num?)?.toInt() ?? 0 : 0,
-    );
-  }
-
-  static Future<void> resolveReport(int id) async {
-    await ApiClient.instance.post('/admin/reports/$id/resolve');
-  }
-
-  static Future<void> dismissReport(int id) async {
-    await ApiClient.instance.post('/admin/reports/$id/dismiss');
   }
 
   // ─── 通知管理 ───
@@ -915,6 +860,23 @@ class AdminApi {
       data: {'enabled': enabled},
     );
   }
+
+  /// 新增活动场次
+  static Future<AdminActivitySession> addActivitySession(
+    int activityId,
+    Map<String, dynamic> data,
+  ) async {
+    final resp = await ApiClient.instance.post(
+      '/admin/activities/$activityId/sessions',
+      data: data,
+    );
+    return AdminActivitySession.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  /// 删除活动场次
+  static Future<void> removeActivitySession(int sessionId) async {
+    await ApiClient.instance.delete('/admin/activities/sessions/$sessionId');
+  }
 }
 
 // ─── 活动管理 ───
@@ -926,9 +888,16 @@ class AdminActivity {
     required this.date,
     required this.desc,
     required this.tag,
+    required this.address,
+    required this.price,
+    required this.bookable,
     required this.membersOnly,
     required this.enabled,
     required this.sort,
+    this.memberPrice,
+    this.lat,
+    this.lng,
+    this.sessions = const [],
   });
 
   final int id;
@@ -936,9 +905,16 @@ class AdminActivity {
   final String date;
   final String desc;
   final String tag;
+  final String address;
+  final double price;
+  final double? memberPrice;
+  final bool bookable;
   final bool membersOnly;
   final bool enabled;
   final int sort;
+  final double? lat;
+  final double? lng;
+  final List<AdminActivitySession> sessions;
 
   factory AdminActivity.fromJson(Map<String, dynamic> json) => AdminActivity(
         id: json['id'] as int,
@@ -946,8 +922,48 @@ class AdminActivity {
         date: (json['date'] ?? '') as String,
         desc: (json['desc'] ?? '') as String,
         tag: (json['tag'] ?? '') as String,
+        address: (json['address'] ?? '') as String,
+        price: (json['price'] as num?)?.toDouble() ?? 0,
+        memberPrice: (json['memberPrice'] as num?)?.toDouble(),
+        bookable: json['bookable'] == true,
         membersOnly: json['membersOnly'] == true,
         enabled: json['enabled'] != false,
         sort: (json['sort'] as num?)?.toInt() ?? 0,
+        lat: (json['lat'] as num?)?.toDouble(),
+        lng: (json['lng'] as num?)?.toDouble(),
+        sessions: ((json['sessions'] ?? []) as List)
+            .map((e) => AdminActivitySession.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+class AdminActivitySession {
+  const AdminActivitySession({
+    required this.id,
+    required this.activityId,
+    required this.date,
+    required this.startTime,
+    required this.endTime,
+    required this.capacity,
+    required this.enabled,
+  });
+
+  final int id;
+  final int activityId;
+  final String date;
+  final String startTime;
+  final String endTime;
+  final int capacity;
+  final bool enabled;
+
+  factory AdminActivitySession.fromJson(Map<String, dynamic> json) =>
+      AdminActivitySession(
+        id: json['id'] as int,
+        activityId: (json['activityId'] as num?)?.toInt() ?? 0,
+        date: (json['date'] ?? '') as String,
+        startTime: (json['startTime'] ?? '') as String,
+        endTime: (json['endTime'] ?? '') as String,
+        capacity: (json['capacity'] as num?)?.toInt() ?? 1,
+        enabled: json['enabled'] != false,
       );
 }

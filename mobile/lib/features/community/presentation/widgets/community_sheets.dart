@@ -398,7 +398,7 @@ class _ShareSheet extends StatelessWidget {
   }
 }
 
-/// 更多操作弹层：收藏 / 不感兴趣 / 举报（真实接口）
+/// 更多操作弹层：收藏 / 不感兴趣（真实接口）
 Future<void> showMoreSheet(
   BuildContext context, {
   required FeedPost post,
@@ -420,7 +420,6 @@ class _MoreSheet extends StatelessWidget {
   static const _actions = [
     (icon: Icons.bookmark_border_rounded, label: '收藏作品'),
     (icon: Icons.not_interested_rounded, label: '不感兴趣'),
-    (icon: Icons.report_gmailerrorred_rounded, label: '举报'),
   ];
 
   @override
@@ -460,11 +459,9 @@ class _MoreSheet extends StatelessWidget {
                   a.label,
                   style: TextStyle(
                     fontSize: 15,
-                    color: a.label == '举报'
-                        ? CommunityPalette.love
-                        : (palette.isDark
-                              ? const Color(0xFFE6E6EC)
-                              : const Color(0xFF2B2B33)),
+                    color: palette.isDark
+                        ? const Color(0xFFE6E6EC)
+                        : const Color(0xFF2B2B33),
                   ),
                 ),
                 onTap: () => _onTap(context, a.label),
@@ -482,8 +479,6 @@ class _MoreSheet extends StatelessWidget {
       await _toggleCollect(messenger);
     } else if (label == '不感兴趣') {
       _toast(messenger, '已减少此类内容');
-    } else if (label == '举报') {
-      await _showReportDialog(messenger);
     }
   }
 
@@ -494,40 +489,6 @@ class _MoreSheet extends StatelessWidget {
       _toast(messenger, collected ? '已收藏' : '已取消收藏');
     } catch (_) {
       _toast(messenger, '操作失败，请稍后再试');
-    }
-  }
-
-  Future<void> _showReportDialog(ScaffoldMessengerState messenger) async {
-    final controller = TextEditingController();
-    final reason = await showDialog<String>(
-      context: messenger.context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('举报作品'),
-        content: TextField(
-          controller: controller,
-          maxLength: 200,
-          maxLines: 3,
-          decoration: const InputDecoration(hintText: '请描述举报原因…'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
-            child: const Text('提交举报'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (reason == null || reason.isEmpty) return;
-    try {
-      await PostApi.report(post.id, reason);
-      _toast(messenger, '举报已提交，我们会尽快处理');
-    } catch (_) {
-      _toast(messenger, '举报失败，请稍后再试');
     }
   }
 

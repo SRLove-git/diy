@@ -13,6 +13,9 @@ import { randomInt } from 'crypto';
 import Redis from 'ioredis';
 import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import { REDIS_CLIENT } from '../redis/redis.module';
+import { Activity } from '../activities/activity.entity';
+import { ActivitySession } from '../activities/activity-session.entity';
+import { Membership } from '../members/membership.entity';
 import { Store } from '../stores/store.entity';
 import { StoreTable } from '../stores/store-table.entity';
 import { TimeSlot } from '../stores/time-slot.entity';
@@ -35,6 +38,12 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     private readonly tables: Repository<StoreTable>,
     @InjectRepository(TimeSlot)
     private readonly slots: Repository<TimeSlot>,
+    @InjectRepository(Activity)
+    private readonly activities: Repository<Activity>,
+    @InjectRepository(ActivitySession)
+    private readonly activitySessionsRepo: Repository<ActivitySession>,
+    @InjectRepository(Membership)
+    private readonly memberships: Repository<Membership>,
     private readonly users: UsersService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @InjectDataSource() private readonly dataSource: DataSource,
@@ -114,6 +123,33 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     userId: number,
     dto: CreateAppointmentDto,
   ): Promise<Appointment> {
+    const type = dto.type ?? 'store';
+    const isMember = await this.isMemberActive(userId);
+    if (type === 'activity') {
+      return this.createActivity(userId, dto, isMember);
+    }
+    return this.createStore(userId, dto, isMember);
+  }
+
+  /** 是否有效会员（预约价按会员价计算） */
+  private async isMemberActive(userId: number): Promise<boolean> {
+    const membership = await this.memberships.findOneBy({ userId });
+    return !!membership && membership.expireAt > new Date();
+  }
+
+  /**
+   * 创建门店预约：门店/时段/人数校验 → Redis 分布式锁 → 事务内冲突校验 + 落库。
+   * 防超卖策略：同店同桌同时段仅允许 1 条未取消预约，先经 Redis 锁串行化，
+   * 再由数据库唯一组合兜底（@Index 四列 + 事务内再查）。
+   */
+  private async createStore(
+    userId: number,
+    dto: CreateAppointmentDto,
+    isMember: boolean,
+  ): Promise<Appointment> {
+    if (dto.storeId == null || dto.tableId == null || dto.slotId == null) {
+      throw new BadRequestException('门店预约需要选择门店、桌位和时段');
+    }
     const store = await this.stores.findOneBy({
       id: dto.storeId,
       enabled: true,
@@ -143,9 +179,22 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
 
     // 不能预约过去的日期
     const todayStr = this.todayStr();
+    if (!dto.date) {
+      throw new BadRequestException('门店预约需要选择日期');
+    }
     if (dto.date < todayStr) {
       throw new BadRequestException('不能预约过去的日期');
     }
+
+    // 价格：会员且配置了会员价时按会员价（0 元 = 会员免费），否则按门市价
+    const unitPrice = this.unitPrice(
+      isMember,
+      store.price ?? 39.9,
+      store.memberPrice,
+    );
+    const originalUnit = store.price ?? 39.9;
+    const amount = this.roundMoney(unitPrice * dto.peopleCount);
+    const originalAmount = this.roundMoney(originalUnit * dto.peopleCount);
 
     // 1) Redis 分布式锁：串行化同一桌位同时段的创建请求
     const lockKey = `booking:lock:${dto.storeId}:${dto.tableId}:${dto.date}:${dto.slotId}`;
@@ -187,12 +236,171 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
           peopleCount: dto.peopleCount,
           code: await this.generateCode(em),
           note: dto.note ?? '',
+          amount,
+          originalAmount,
+          payStatus: dto.payMethod ? ('paid' as const) : ('unpaid' as const),
+          payMethod: dto.payMethod ?? '',
+          paidAt: dto.payMethod ? new Date() : null,
         });
         return em.save(appointment);
       });
     } finally {
       await this.redis.del(lockKey).catch(() => undefined);
     }
+  }
+
+  /**
+   * 创建活动预约：活动/场次/名额校验 → Redis 分布式锁 → 事务内名额校验 + 落库。
+   * 防超卖：同一场次已预约人数 + 本次人数 ≤ 场次名额上限。
+   */
+  private async createActivity(
+    userId: number,
+    dto: CreateAppointmentDto,
+    isMember: boolean,
+  ): Promise<Appointment> {
+    if (dto.activityId == null || dto.activitySessionId == null) {
+      throw new BadRequestException('活动预约需要选择活动和场次');
+    }
+    const activity = await this.activities.findOneBy({
+      id: dto.activityId,
+      enabled: true,
+      bookable: true,
+    });
+    if (!activity) throw new NotFoundException('活动不存在或不可预约');
+
+    const session = await this.activitySessionsRepo.findOneBy({
+      id: dto.activitySessionId,
+      activityId: dto.activityId,
+      enabled: true,
+    });
+    if (!session) throw new NotFoundException('活动场次不存在');
+
+    if (dto.peopleCount > session.capacity) {
+      throw new BadRequestException(
+        `该场次最多容纳 ${session.capacity} 人`,
+      );
+    }
+    if (session.date < this.todayStr()) {
+      throw new BadRequestException('不能预约过去的场次');
+    }
+
+    // 价格：会员且配置了会员价时按会员价（0 元 = 会员免费），否则按门市价
+    const unitPrice = this.unitPrice(
+      isMember,
+      activity.price ?? 0,
+      activity.memberPrice,
+    );
+    const originalUnit = activity.price ?? 0;
+    const amount = this.roundMoney(unitPrice * dto.peopleCount);
+    const originalAmount = this.roundMoney(originalUnit * dto.peopleCount);
+
+    const lockKey = `booking:activity:${dto.activityId}:${dto.activitySessionId}`;
+    const acquired = await this.redis.set(lockKey, '1', 'EX', 10, 'NX');
+    if (!acquired) {
+      throw new BadRequestException(
+        '该场次名额刚被其他用户抢走，请选择其他场次',
+      );
+    }
+
+    try {
+      return await this.dataSource.transaction(async (em) => {
+        const booked = await em.find(Appointment, {
+          where: {
+            activitySessionId: dto.activitySessionId,
+            status: Not(In(['cancelled', 'completed'])),
+          },
+        });
+        const bookedCount = booked.reduce(
+          (sum, a) => sum + a.peopleCount,
+          0,
+        );
+        if (bookedCount + dto.peopleCount > session.capacity) {
+          throw new BadRequestException(
+            `该场次剩余名额不足，剩余 ${
+              session.capacity - bookedCount
+            } 人`,
+          );
+        }
+
+        const appointment = em.create(Appointment, {
+          userId,
+          type: 'activity',
+          storeId: null,
+          storeName: activity.title,
+          tableId: null,
+          tableName: '',
+          slotId: null,
+          activityId: activity.id,
+          activitySessionId: session.id,
+          activityName: activity.title,
+          date: session.date,
+          startTime: session.startTime,
+          endTime: session.endTime,
+          peopleCount: dto.peopleCount,
+          code: await this.generateCode(em),
+          note: dto.note ?? '',
+          amount,
+          originalAmount,
+          payStatus: dto.payMethod ? ('paid' as const) : ('unpaid' as const),
+          payMethod: dto.payMethod ?? '',
+          paidAt: dto.payMethod ? new Date() : null,
+        });
+        return em.save(appointment);
+      });
+    } finally {
+      await this.redis.del(lockKey).catch(() => undefined);
+    }
+  }
+
+  /** 会员价计算：会员且 memberPrice 已配置（含 0 元免费）时用会员价 */
+  private unitPrice(
+    isMember: boolean,
+    normalPrice: number,
+    memberPrice: number | null | undefined,
+  ): number {
+    if (isMember && memberPrice != null) return memberPrice;
+    return normalPrice;
+  }
+
+  private roundMoney(value: number): number {
+    return Math.round(value * 100) / 100;
+  }
+
+  /** 活动场次列表（含剩余名额），预约流程选场次用 */
+  async activitySessions(activityId: number) {
+    const activity = await this.activities.findOneBy({
+      id: activityId,
+      enabled: true,
+      bookable: true,
+    });
+    if (!activity) throw new NotFoundException('活动不存在或不可预约');
+    const sessions = await this.activitySessionsRepo.find({
+      where: { activityId, enabled: true },
+      order: { date: 'ASC', startTime: 'ASC' },
+    });
+    if (!sessions.length) return [];
+    const ids = sessions.map((s) => s.id);
+    const booked = await this.appointments.find({
+      where: {
+        activitySessionId: In(ids),
+        status: Not(In(['cancelled', 'completed'])),
+      },
+    });
+    const bookedMap = new Map<number, number>();
+    for (const a of booked) {
+      bookedMap.set(
+        a.activitySessionId!,
+        (bookedMap.get(a.activitySessionId!) ?? 0) + a.peopleCount,
+      );
+    }
+    return sessions.map((s) => {
+      const bookedCount = bookedMap.get(s.id) ?? 0;
+      return {
+        ...s,
+        bookedCount,
+        remaining: Math.max(0, s.capacity - bookedCount),
+      };
+    });
   }
 
   /** 我的预约列表（按时间倒序） */

@@ -280,7 +280,7 @@ onMounted(load)
       <div class="modal">
         <h3>删除作品</h3>
         <p class="modal-tip">
-          确认永久删除该作品？删除后不可恢复，其点赞、评论、收藏与举报记录将一并清除。
+          确认永久删除该作品？删除后不可恢复，其点赞、评论与收藏记录将一并清除。
         </p>
         <div class="modal-actions">
           <button class="btn btn-sm" @click="cancelDelete">取消</button>

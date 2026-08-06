@@ -214,8 +214,106 @@ void main() {
     );
   });
 
+  testWidgets('顶部搜索框可按名称/地址过滤门店，并同步地图标记', (tester) async {
+    await _pumpBooking(tester, locate: () async => null);
+
+    // 搜索框位于地图上方（最顶部）
+    final searchField = find.byKey(const Key('store-search-field'));
+    expect(searchField, findsOneWidget);
+    expect(
+      tester.getTopLeft(searchField).dy,
+      lessThan(tester.getTopLeft(find.byType(StoreMapView)).dy),
+    );
+
+    // 输入「滨江」：列表与地图只保留滨江店
+    await tester.enterText(searchField, '滨江');
+    await tester.pumpAndSettle();
+    expect(find.text('找到 1 家门店'), findsOneWidget);
+    expect(find.text('滨江店'), findsOneWidget);
+    expect(find.text('西湖店'), findsNothing);
+    expect(find.text('余杭店'), findsNothing);
+    expect(find.byKey(const Key('store-marker-2')), findsOneWidget);
+    expect(find.byKey(const Key('store-marker-1')), findsNothing);
+    expect(find.byKey(const Key('store-marker-3')), findsNothing);
+
+    // 地址也支持搜索
+    await tester.enterText(searchField, '余杭区');
+    await tester.pumpAndSettle();
+    expect(find.text('找到 1 家门店'), findsOneWidget);
+    expect(find.text('余杭店'), findsOneWidget);
+    expect(find.byKey(const Key('store-marker-3')), findsOneWidget);
+
+    // 清除后恢复全部
+    await tester.tap(find.byKey(const Key('store-search-clear')));
+    await tester.pumpAndSettle();
+    expect(find.text('选择门店'), findsOneWidget);
+    expect(find.text('西湖店'), findsOneWidget);
+    expect(find.byKey(const Key('store-marker-1')), findsOneWidget);
+  });
+
+  testWidgets('搜索无结果时显示空状态，地图仍在', (tester) async {
+    await _pumpBooking(tester, locate: () async => null);
+
+    await tester.enterText(
+      find.byKey(const Key('store-search-field')),
+      '不存在的门店',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('找到 0 家门店'), findsOneWidget);
+    expect(find.text('未找到匹配的门店'), findsOneWidget);
+    expect(find.byType(StoreMapView), findsOneWidget);
+    expect(find.byType(ListView), findsNothing);
+  });
+
+  testWidgets('门店卡片可打开地图导航面板并调起地图应用', (tester) async {
+    final launched = <Uri>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BookingFlowPage(
+          storesLoader: () async => _stores,
+          locate: () async => null,
+          detailLoader: _emptyDetail,
+          mapBuilder: _fakeMapBuilder,
+          navigationLauncher: (uri) async {
+            launched.add(uri);
+            return true;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 预约页新增了类型切换与价格行，卡片可能不在首屏内，先滚动到可见
+    final navBtn = find.byKey(const Key('store-nav-1'));
+    await tester.ensureVisible(navBtn);
+    await tester.pumpAndSettle();
+    await tester.tap(navBtn);
+    await tester.pumpAndSettle();
+
+    // 面板列出系统地图与主流地图 App
+    expect(find.text('选择地图导航'), findsOneWidget);
+    expect(find.text('Google 地图'), findsOneWidget);
+    expect(find.text('高德地图'), findsOneWidget);
+    expect(find.text('百度地图'), findsOneWidget);
+    expect(find.text('腾讯地图'), findsOneWidget);
+
+    // 选择高德地图：优先使用 App 自定义 Scheme，坐标直传 GCJ-02
+    await tester.tap(find.text('高德地图'));
+    await tester.pumpAndSettle();
+    expect(launched, hasLength(1));
+    expect(
+      launched.single.toString(),
+      startsWith('androidamap://navi?sourceApplication=diy_mobile'),
+    );
+    expect(launched.single.toString(), contains('lat=30.25'));
+    expect(launched.single.toString(), contains('lon=120.15'));
+  });
+
   testWidgets('定位晚到时，自动选中会切到真正的最近门店', (tester) async {
     final completer = Completer<GeoPoint?>();
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     // 服务端顺序：滨江店在前
     final reversed = [for (final s in _stores.reversed) s];
     await tester.pumpWidget(

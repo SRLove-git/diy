@@ -56,6 +56,9 @@ class TiktokVideoModel {
   /// 视频时长
   Duration get duration => video.duration;
 
+  /// 视频展示画幅（width / height；0 表示使用视频文件原始画幅）
+  double get aspectRatio => video.aspectRatio;
+
   /// 浏览量（网格封面浮标）
   int get viewCount => video.viewCount;
 

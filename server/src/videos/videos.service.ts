@@ -8,7 +8,6 @@ import { In, Like, Not, Repository } from 'typeorm';
 
 import { Follow } from '../follows/follow.entity';
 import { User } from '../users/user.entity';
-import { Report } from '../community/report.entity';
 import { Video } from './video.entity';
 import { VideoComment } from './video-comment.entity';
 import { VideoLike } from './video-like.entity';
@@ -61,8 +60,6 @@ export class VideosService {
     private readonly likes: Repository<VideoLike>,
     @InjectRepository(VideoComment)
     private readonly comments: Repository<VideoComment>,
-    @InjectRepository(Report)
-    private readonly reports: Repository<Report>,
     @InjectRepository(Follow)
     private readonly follows: Repository<Follow>,
     @InjectRepository(User)
@@ -222,6 +219,33 @@ export class VideosService {
     return [this.enrich(list, authors, liked), total];
   }
 
+  /** 我点赞过的视频列表（按点赞时间倒序） */
+  async myLikedVideos(userId: number, page = 1, pageSize = 20) {
+    const [likeRows, total] = await this.likes.findAndCount({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    const videoIds = likeRows.map((l) => l.videoId);
+    if (!videoIds.length) return [[], total];
+
+    // 保持点赞时间倒序；已下架/驳回的视频不再返回
+    const videos = await this.videos.find({
+      where: { id: In(videoIds), status: Not('rejected') },
+    });
+    const orderMap = new Map(videoIds.map((id, index) => [id, index]));
+    videos.sort(
+      (a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0),
+    );
+
+    const authors = await this.resolveAuthors(videos.map((v) => v.userId));
+    return [
+      this.enrich(videos, authors, new Set(videos.map((v) => v.id))),
+      total,
+    ];
+  }
+
   /** 指定作者的视频列表 */
   async userVideos(authorId: number, page = 1, pageSize = 20) {
     const [list, total] = await this.videos.findAndCount({
@@ -275,7 +299,6 @@ export class VideosService {
     await Promise.all([
       this.likes.delete({ videoId: id }),
       this.comments.delete({ videoId: id }),
-      this.reports.delete({ videoId: id }),
     ]);
     await this.videos.delete({ id });
   }

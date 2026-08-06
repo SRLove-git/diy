@@ -277,6 +277,28 @@ class _OrderCard extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
+              if (order.type == 'activity')
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Palette.accentSoft,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '活动',
+                      style: TextStyle(
+                        color: Palette.accent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -308,12 +330,41 @@ class _OrderCard extends StatelessWidget {
           const SizedBox(height: 4),
           Row(
             children: [
-              Icon(Icons.table_bar, size: 14, color: colors.textSecondary),
-              const SizedBox(width: 4),
-              Text(
-                '桌位 ${order.tableName} · ${order.peopleCount} 人',
-                style: TextStyle(color: colors.textSecondary, fontSize: 14),
+              Icon(
+                order.type == 'activity'
+                    ? Icons.event_seat
+                    : Icons.table_bar,
+                size: 14,
+                color: colors.textSecondary,
               ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  order.type == 'activity'
+                      ? '${order.peopleCount} 人 · 活动名额'
+                      : '桌位 ${order.tableName} · ${order.peopleCount} 人',
+                  style: TextStyle(color: colors.textSecondary, fontSize: 14),
+                ),
+              ),
+              if (order.payStatus == 'paid')
+                Text(
+                  '已支付 ¥${_fmtAmount(order.amount)}'
+                  '${order.payMethod == 'alipay' ? '（支付宝）' : '（微信）'}',
+                  style: TextStyle(
+                    color: Palette.success,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                )
+              else
+                Text(
+                  '待支付 ¥${_fmtAmount(order.amount)}',
+                  style: TextStyle(
+                    color: Palette.warning,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
             ],
           ),
           if (order.code.isNotEmpty) ...[
@@ -374,4 +425,9 @@ class _OrderCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _fmtAmount(double value) {
+  if (value == value.roundToDouble()) return '${value.toInt()}';
+  return value.toStringAsFixed(2);
 }

@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -231,6 +233,16 @@ class _FullscreenVideoPageState extends State<FullscreenVideoPage> {
 
   // ──── 构建 ────
 
+  /// 当前作品是否为横屏（决定顶栏是否显示「全屏观看」按钮）。
+  /// 优先使用服务端下发的展示画幅，缺失时回退播放器原始画幅。
+  bool get _isCurrentLandscape {
+    final item = _videos[_current];
+    final ctrl = _pageKeys[_current].currentState?.videoController;
+    return isLandscapeVideo(
+      item.aspectRatio > 0 ? item.aspectRatio : ctrl?.value.aspectRatio,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final current = _videos[_current];
@@ -311,7 +323,8 @@ class _FullscreenVideoPageState extends State<FullscreenVideoPage> {
                           ),
                         ),
                       ),
-                      if (currentCtrl != null) ...[
+                      // 全屏观看仅横屏视频提供（竖屏视频本身已全屏铺满）
+                      if (_isCurrentLandscape) ...[
                         _RoundIconButton(
                           icon: Icons.crop_free_rounded,
                           onTap: _enterLandscape,
@@ -444,7 +457,7 @@ class _VideoPageState extends State<_VideoPage>
         // 抖音风格：关闭 chewie 原生控制条，使用自定义覆盖层
         showControls: false,
         // 覆盖层把视频按 BoxFit.cover 全屏裁剪铺满（TikTok 画幅）
-        overlay: const _FullBleedVideo(),
+        overlay: _FullBleedVideo(item: widget.item),
       );
       chewie.addListener(_onChewieChanged);
       if (!mounted) {
@@ -652,22 +665,89 @@ class _VideoPageState extends State<_VideoPage>
   }
 }
 
-/// Chewie overlay：把视频按源画幅 BoxFit.cover 全屏裁剪铺满。
+/// Chewie overlay：竖屏视频按源画幅 cover 全屏裁剪铺满（TikTok 画幅）；
+/// 横屏/方形视频完整显示（contain + 模糊背景补齐），避免被裁成竖条。
 ///
 /// 依赖 ChewieControllerProvider（Chewie 内部注入），
 /// 读取当前控制器后渲染与视频流同源的画面。
 class _FullBleedVideo extends StatelessWidget {
-  const _FullBleedVideo();
+  const _FullBleedVideo({this.item});
+
+  /// 服务端下发的展示画幅（0 表示使用视频文件原始画幅）
+  final TiktokVideoModel? item;
 
   @override
   Widget build(BuildContext context) {
     final chewie = ChewieController.of(context);
     final ctrl = chewie.videoPlayerController;
     return SizedBox.expand(
-      child: coverVideoFrame(
-        sourceAspectRatio: normalizeVideoAspectRatio(ctrl.value.aspectRatio),
-        child: VideoPlayer(ctrl),
+      child: _AdaptiveVideoFrame(
+        controller: ctrl,
+        displayAspectRatio: item?.aspectRatio,
       ),
+    );
+  }
+}
+
+/// 自适应视频画面层：与信息流页横屏处理一致。
+///
+/// - 竖屏（画幅 <= 0.82）：cover 铺满全屏；
+/// - 横屏/方形（画幅 > 0.82）：完整显示（contain）+ 同帧模糊背景补齐，
+///   避免横向视频被 cover 放大裁切成窄竖条导致比例观感错误。
+class _AdaptiveVideoFrame extends StatelessWidget {
+  const _AdaptiveVideoFrame({
+    required this.controller,
+    this.displayAspectRatio,
+    this.alwaysContain = false,
+  });
+
+  final VideoPlayerController controller;
+
+  /// 展示画幅（width / height）；为 null 时使用视频文件原始画幅
+  final double? displayAspectRatio;
+
+  /// 横屏播放层使用：无论画幅都完整显示（竖屏视频横放时不裁切）
+  final bool alwaysContain;
+
+  @override
+  Widget build(BuildContext context) {
+    final source = normalizeVideoAspectRatio(controller.value.aspectRatio);
+    final display = displayAspectRatio != null && displayAspectRatio! > 0
+        ? normalizeVideoAspectRatio(displayAspectRatio)
+        : source;
+    final shouldContain = alwaysContain || shouldContainVideo(display);
+    final foreground = Center(
+      child: AspectRatio(
+        aspectRatio: display,
+        child: coverVideoFrame(
+          sourceAspectRatio: source,
+          child: VideoPlayer(controller),
+        ),
+      ),
+    );
+    return ClipRect(
+      child: shouldContain
+          ? Stack(
+              fit: StackFit.expand,
+              children: [
+                ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+                  child: Opacity(
+                    opacity: 0.42,
+                    child: coverVideoFrame(
+                      sourceAspectRatio: source,
+                      child: VideoPlayer(controller),
+                    ),
+                  ),
+                ),
+                const ColoredBox(color: Color(0x55000000)),
+                foreground,
+              ],
+            )
+          : coverVideoFrame(
+              sourceAspectRatio: source,
+              child: VideoPlayer(controller),
+            ),
     );
   }
 }
@@ -713,11 +793,10 @@ class _LandscapePlayerState extends State<_LandscapePlayer> {
             return Stack(
               fit: StackFit.expand,
               children: [
-                // 全屏裁剪视频画面
-                coverVideoFrame(
-                  sourceAspectRatio:
-                      normalizeVideoAspectRatio(value.aspectRatio),
-                  child: VideoPlayer(widget.controller),
+                // 视频画面：横屏视频完整显示，竖屏视频横放时也完整显示
+                _AdaptiveVideoFrame(
+                  controller: widget.controller,
+                  alwaysContain: true,
                 ),
 
                 // 左上：退出横屏

@@ -238,6 +238,29 @@ class _ActivityCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
+              if (activity.bookable) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.sell_outlined,
+                      size: 14,
+                      color: Palette.accent,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      activity.memberPrice != null
+                          ? '可预约 · 会员价 ¥${_fmtNum(activity.memberPrice!)} / ${_fmtNum(activity.price)}'
+                          : '可预约 · ${_fmtNum(activity.price)} 元/人',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Palette.accent,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const Divider(height: 24),
               Row(
                 children: [
@@ -265,6 +288,15 @@ class _ActivityCard extends StatelessWidget {
                     value: activity.enabled,
                     onChanged: (_) => onToggle(),
                   ),
+                  TextButton(
+                    onPressed: () => showDialog<void>(
+                      context: context,
+                      builder: (_) => _SessionsManagerDialog(
+                        activity: activity,
+                      ),
+                    ),
+                    child: const Text('场次管理'),
+                  ),
                   TextButton(onPressed: onEdit, child: const Text('编辑')),
                 ],
               ),
@@ -291,7 +323,13 @@ class _ActivityFormDialogState extends State<_ActivityFormDialog> {
   late final TextEditingController _tagCtrl;
   late final TextEditingController _descCtrl;
   late final TextEditingController _sortCtrl;
+  late final TextEditingController _addressCtrl;
+  late final TextEditingController _latCtrl;
+  late final TextEditingController _lngCtrl;
+  late final TextEditingController _priceCtrl;
+  late final TextEditingController _memberPriceCtrl;
   late bool _membersOnly;
+  late bool _bookable;
   late bool _enabled;
 
   @override
@@ -303,7 +341,15 @@ class _ActivityFormDialogState extends State<_ActivityFormDialog> {
     _tagCtrl = TextEditingController(text: a?.tag ?? '');
     _descCtrl = TextEditingController(text: a?.desc ?? '');
     _sortCtrl = TextEditingController(text: (a?.sort ?? 0).toString());
+    _addressCtrl = TextEditingController(text: a?.address ?? '');
+    _latCtrl = TextEditingController(text: (a?.lat ?? 30.3).toString());
+    _lngCtrl = TextEditingController(text: (a?.lng ?? 120.1).toString());
+    _priceCtrl = TextEditingController(text: (a?.price ?? 0).toString());
+    _memberPriceCtrl = TextEditingController(
+      text: a?.memberPrice == null ? '' : a!.memberPrice.toString(),
+    );
     _membersOnly = a?.membersOnly ?? false;
+    _bookable = a?.bookable ?? false;
     _enabled = a?.enabled ?? true;
   }
 
@@ -314,6 +360,11 @@ class _ActivityFormDialogState extends State<_ActivityFormDialog> {
     _tagCtrl.dispose();
     _descCtrl.dispose();
     _sortCtrl.dispose();
+    _addressCtrl.dispose();
+    _latCtrl.dispose();
+    _lngCtrl.dispose();
+    _priceCtrl.dispose();
+    _memberPriceCtrl.dispose();
     super.dispose();
   }
 
@@ -329,6 +380,13 @@ class _ActivityFormDialogState extends State<_ActivityFormDialog> {
       'tag': _tagCtrl.text.trim(),
       'desc': _descCtrl.text.trim(),
       'membersOnly': _membersOnly,
+      'bookable': _bookable,
+      'address': _addressCtrl.text.trim(),
+      'lat': double.tryParse(_latCtrl.text.trim()) ?? 30.3,
+      'lng': double.tryParse(_lngCtrl.text.trim()) ?? 120.1,
+      'price': double.tryParse(_priceCtrl.text.trim()) ?? 0,
+      if (_memberPriceCtrl.text.trim().isNotEmpty)
+        'memberPrice': double.tryParse(_memberPriceCtrl.text.trim()) ?? 0,
       'enabled': _enabled,
       'sort': int.tryParse(_sortCtrl.text.trim()) ?? 0,
     });
@@ -365,11 +423,79 @@ class _ActivityFormDialogState extends State<_ActivityFormDialog> {
             ),
             const SizedBox(height: 10),
             TextField(
+              controller: _addressCtrl,
+              decoration: const InputDecoration(
+                labelText: '活动地址',
+                hintText: '可预约活动必填，用于附近排序',
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _latCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(labelText: '纬度'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _lngCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(labelText: '经度'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _priceCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: '门市价（元/人）',
+                      hintText: '如 68',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _memberPriceCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: '会员价（元/人）',
+                      hintText: '0 = 会员免费',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextField(
               controller: _sortCtrl,
               decoration: const InputDecoration(labelText: '排序权重', hintText: '越小越靠前'),
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('可预约（进入预约流程）'),
+              value: _bookable,
+              onChanged: (v) => setState(() => _bookable = v),
+            ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('会员专属'),
@@ -398,4 +524,215 @@ class _ActivityFormDialogState extends State<_ActivityFormDialog> {
       ],
     );
   }
+}
+
+/// 活动场次管理弹层：查看 / 新增 / 删除场次
+class _SessionsManagerDialog extends StatefulWidget {
+  const _SessionsManagerDialog({required this.activity});
+
+  final AdminActivity activity;
+
+  @override
+  State<_SessionsManagerDialog> createState() => _SessionsManagerDialogState();
+}
+
+class _SessionsManagerDialogState extends State<_SessionsManagerDialog> {
+  late final List<AdminActivitySession> _sessions = [
+    ...widget.activity.sessions,
+  ];
+  final _dateCtrl = TextEditingController();
+  final _startCtrl = TextEditingController();
+  final _endCtrl = TextEditingController();
+  final _capacityCtrl = TextEditingController(text: '12');
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _dateCtrl.dispose();
+    _startCtrl.dispose();
+    _endCtrl.dispose();
+    _capacityCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _add() async {
+    if (_dateCtrl.text.trim().isEmpty ||
+        _startCtrl.text.trim().isEmpty ||
+        _endCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请填写日期、开始和结束时间')),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final session = await AdminApi.addActivitySession(widget.activity.id, {
+        'date': _dateCtrl.text.trim(),
+        'startTime': _startCtrl.text.trim(),
+        'endTime': _endCtrl.text.trim(),
+        'capacity': int.tryParse(_capacityCtrl.text.trim()) ?? 12,
+      });
+      if (!mounted) return;
+      setState(() {
+        _sessions.add(session);
+        _saving = false;
+        _dateCtrl.clear();
+        _startCtrl.clear();
+        _endCtrl.clear();
+      });
+    } on DioException catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AdminApi.messageOf(e))),
+      );
+    }
+  }
+
+  Future<void> _remove(AdminActivitySession session) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除场次'),
+        content: Text('确认删除 ${session.date} ${session.startTime}-${session.endTime}？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await AdminApi.removeActivitySession(session.id);
+      if (!mounted) return;
+      setState(() => _sessions.removeWhere((s) => s.id == session.id));
+    } on DioException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AdminApi.messageOf(e))),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final sorted = [..._sessions]..sort((a, b) {
+        final c = a.date.compareTo(b.date);
+        return c != 0 ? c : a.startTime.compareTo(b.startTime);
+      });
+    return AlertDialog(
+      title: Text('场次管理 · ${widget.activity.title}'),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final s in sorted)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${s.date} ${s.startTime}-${s.endTime} · 上限 ${s.capacity} 人',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        onPressed: () => _remove(s),
+                        tooltip: '删除',
+                      ),
+                    ],
+                  ),
+                ),
+              const Divider(height: 16),
+              Text(
+                '新增场次（日期格式 YYYY-MM-DD）',
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _dateCtrl,
+                decoration: const InputDecoration(
+                  labelText: '日期',
+                  hintText: '如 2026-08-10',
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _startCtrl,
+                      decoration: const InputDecoration(
+                        labelText: '开始',
+                        hintText: '如 14:00',
+                        isDense: true,
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _endCtrl,
+                      decoration: const InputDecoration(
+                        labelText: '结束',
+                        hintText: '如 16:00',
+                        isDense: true,
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _capacityCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: '名额',
+                        isDense: true,
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _saving ? null : _add,
+                  child: Text(_saving ? '添加中…' : '添加场次'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('关闭'),
+        ),
+      ],
+    );
+  }
+}
+
+String _fmtNum(double value) {
+  if (value == value.roundToDouble()) return '${value.toInt()}';
+  return value.toStringAsFixed(2);
 }

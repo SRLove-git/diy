@@ -333,16 +333,6 @@ class PostApi {
     return Comment.fromJson(resp.data as Map<String, dynamic>);
   }
 
-  // --- Report ---
-
-  /// 举报作品
-  static Future<void> report(int postId, String reason) async {
-    await ApiClient.instance.post(
-      '/posts/$postId/report',
-      data: {'reason': reason},
-    );
-  }
-
   // --- Author profile ---
 
   /// 获取指定用户的作品列表

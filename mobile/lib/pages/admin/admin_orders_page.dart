@@ -236,6 +236,39 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 6),
+          Row(
+            children: [
+              if (o.type == 'activity') ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Palette.accentSoft,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '活动预约',
+                    style: TextStyle(
+                      color: Palette.accent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                o.payStatus == 'paid'
+                    ? '已支付 ¥${_fmtMoney(o.amount)}'
+                    : '待支付 ¥${_fmtMoney(o.amount)}',
+                style: TextStyle(
+                  color: o.payStatus == 'paid' ? Palette.success : Palette.warning,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
           _row(
             '用户',
             o.userNickname.isNotEmpty
@@ -246,7 +279,17 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
             colors,
           ),
           _row('日期', '${o.date} ${o.startTime} - ${o.endTime}', colors),
-          _row('桌位', '${o.tableName} · ${o.peopleCount} 人', colors),
+          if (o.type == 'activity')
+            _row('场次', '${o.date} ${o.startTime}-${o.endTime}', colors)
+          else
+            _row('桌位', '${o.tableName} · ${o.peopleCount} 人', colors),
+          _row('人数', '${o.peopleCount} 人', colors),
+          if (o.payMethod.isNotEmpty)
+            _row(
+              '支付方式',
+              o.payMethod == 'alipay' ? '支付宝' : '微信支付',
+              colors,
+            ),
           _row('核销时间', _fmtTime(o.checkInTime), colors),
           _row('上钟 / 下钟', '${_fmtTime(o.serviceStartTime)} / ${_fmtTime(o.serviceEndTime)}', colors),
           _row('使用时长', _fmtDuration(o.serviceStartTime, o.serviceEndTime), colors),
@@ -349,6 +392,11 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
     final sec = (ms.inSeconds % 60).toString().padLeft(2, '0');
     return '$h:$m:$sec';
   }
+}
+
+String _fmtMoney(double value) {
+  if (value == value.roundToDouble()) return '${value.toInt()}';
+  return value.toStringAsFixed(2);
 }
 
 class _FilterChip extends StatelessWidget {

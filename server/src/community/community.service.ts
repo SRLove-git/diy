@@ -11,13 +11,11 @@ import { Post } from './post.entity';
 import { Like } from './like.entity';
 import { Comment } from './comment.entity';
 import { Collection } from './collection.entity';
-import { Report } from './report.entity';
 import { Follow } from '../follows/follow.entity';
 import { History } from '../users/history.entity';
 import { User } from '../users/user.entity';
 import { Video } from '../videos/video.entity';
 import { CreatePostDto, UpdatePostStatusDto } from './post.dto';
-import { ReportTargetType } from './report.entity';
 
 /** 简易敏感词列表（一期机审用） */
 const BLOCKED_KEYWORDS = ['违禁', '色情', '赌博', '诈骗', '枪支', '毒品'];
@@ -39,8 +37,6 @@ export class CommunityService {
     private readonly comments: Repository<Comment>,
     @InjectRepository(Collection)
     private readonly collections: Repository<Collection>,
-    @InjectRepository(Report)
-    private readonly reports: Repository<Report>,
     @InjectRepository(Video)
     private readonly videos: Repository<Video>,
     @InjectRepository(Follow)
@@ -267,7 +263,7 @@ export class CommunityService {
     await this.posts.save(post);
   }
 
-  /** 管理端：物理删除作品（连同点赞/评论/收藏/举报/浏览记录） */
+  /** 管理端：物理删除作品（连同点赞/评论/收藏/浏览记录） */
   async hardDelete(id: number): Promise<void> {
     const post = await this.posts.findOneBy({ id });
     if (!post) throw new NotFoundException('作品不存在');
@@ -275,7 +271,6 @@ export class CommunityService {
       this.likes.delete({ postId: id }),
       this.comments.delete({ postId: id }),
       this.collections.delete({ postId: id }),
-      this.reports.delete({ postId: id }),
       this.histories.delete({ postId: id }),
     ]);
     await this.posts.delete({ id });
@@ -487,114 +482,6 @@ export class CommunityService {
       .map((p) => this.enrichPost(p, authors.get(p.userId)));
 
     return [ordered, total];
-  }
-
-  // ──── Report operations ────
-
-  /**
-   * 创建举报：targetType = post 举报社区帖子，video 举报短视频。
-   */
-  async createReport(
-    reporterId: number,
-    reason: string,
-    target: {
-      targetType?: ReportTargetType;
-      postId?: number;
-      videoId?: number;
-    },
-  ): Promise<Report> {
-    const targetType = target.targetType ?? 'post';
-    if (targetType === 'video') {
-      const video = await this.videos.findOneBy({ id: target.videoId });
-      if (!video) throw new NotFoundException('视频不存在');
-    } else {
-      const post = await this.posts.findOneBy({ id: target.postId });
-      if (!post) throw new NotFoundException('作品不存在');
-    }
-
-    const report = this.reports.create({
-      reporterId,
-      postId: targetType === 'post' ? target.postId : 0,
-      videoId: targetType === 'video' ? target.videoId : null,
-      targetType,
-      reason,
-    });
-    return this.reports.save(report);
-  }
-
-  async findAllReports(
-    status?: string,
-    page = 1,
-    pageSize = 20,
-  ): Promise<[Report[], number]> {
-    const where: any = {};
-    if (status) where.status = status;
-    const [reports, total] = await this.reports.findAndCount({
-      where,
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    });
-    // 附带被举报对象信息，便于管理端直接查看上下文
-    const postIds = Array.from(new Set(reports.map((r) => r.postId)));
-    const posts = postIds.length
-      ? await this.posts.findBy({ id: In(postIds) })
-      : [];
-    const postMap = new Map(posts.map((p) => [p.id, p]));
-    const videoIds = Array.from(
-      new Set(
-        reports.filter((r) => r.targetType === 'video').map((r) => r.videoId),
-      ),
-    ).filter((id): id is number => id != null);
-    const videos = videoIds.length
-      ? await this.videos.findBy({ id: In(videoIds) })
-      : [];
-    const videoMap = new Map(videos.map((v) => [v.id, v]));
-    return [
-      reports.map((r) => {
-        if (r.targetType === 'video') {
-          const video = r.videoId != null ? videoMap.get(r.videoId) : undefined;
-          return {
-            ...r,
-            video: video
-              ? {
-                  title: video.title,
-                  cover: video.cover,
-                  status: video.status,
-                  userId: video.userId,
-                }
-              : null,
-          };
-        }
-        const post = postMap.get(r.postId);
-        return {
-          ...r,
-          post: post
-            ? {
-                content: post.content,
-                images: post.images ?? [],
-                status: post.status,
-                userId: post.userId,
-              }
-            : null,
-        };
-      }),
-      total,
-    ];
-  }
-
-  async resolveReport(id: number): Promise<Report> {
-    const report = await this.reports.findOneBy({ id });
-    if (!report) throw new NotFoundException('举报不存在');
-    report.status = 'resolved';
-    return this.reports.save(report);
-  }
-
-  async dismissReport(id: number): Promise<Report> {
-    const report = await this.reports.findOneBy({ id });
-    if (!report) throw new NotFoundException('举报不存在');
-    report.status = 'dismissed';
-    return this.reports.save(report);
   }
 
   // ──── User posts ────

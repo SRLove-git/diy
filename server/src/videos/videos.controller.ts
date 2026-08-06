@@ -13,17 +13,13 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { CommunityService } from '../community/community.service';
 import { CreateVideoCommentDto, CreateVideoDto } from './video.dto';
 import { VideosService } from './videos.service';
 
 /** 客户端：短视频（信息流/发布/点赞/评论/分享/浏览） */
 @Controller('videos')
 export class VideosController {
-  constructor(
-    private readonly videos: VideosService,
-    private readonly community: CommunityService,
-  ) {}
+  constructor(private readonly videos: VideosService) {}
 
   /** 推荐信息流（全部已通过视频，按创建时间倒序；q 为关键词模糊搜索） */
   @Get()
@@ -32,20 +28,6 @@ export class VideosController {
     @Query('q') q?: string,
   ) {
     return this.videos.recommendFeed(undefined, page, 20, q ?? '');
-  }
-
-  /** 举报短视频（需登录） */
-  @Post(':id/report')
-  @UseGuards(JwtAuthGuard)
-  reportVideo(
-    @CurrentUser() user: AuthUser,
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: { reason: string },
-  ) {
-    return this.community.createReport(user.id, dto.reason ?? '', {
-      targetType: 'video',
-      videoId: id,
-    });
   }
 
   /** 关注信息流（已关注作者的视频，需登录） */
@@ -66,6 +48,16 @@ export class VideosController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
   ) {
     return this.videos.myVideos(user.id, page);
+  }
+
+  /** 我点赞过的视频列表（必须在 :id 路由前） */
+  @Get('my-likes')
+  @UseGuards(JwtAuthGuard)
+  myLikes(
+    @CurrentUser() user: AuthUser,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+  ) {
+    return this.videos.myLikedVideos(user.id, page);
   }
 
   /** 批量查询当前用户点赞状态（必须在 :id 路由前） */

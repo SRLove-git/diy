@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Activity } from '../activities/activity.entity';
+import { ActivitySession } from '../activities/activity-session.entity';
+import { Membership } from '../members/membership.entity';
 import { Store } from '../stores/store.entity';
 import { StoreTable } from '../stores/store-table.entity';
 import { TimeSlot } from '../stores/time-slot.entity';
@@ -11,7 +14,15 @@ import { AppointmentsService } from './appointments.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Appointment, Store, StoreTable, TimeSlot]),
+    TypeOrmModule.forFeature([
+      Appointment,
+      Store,
+      StoreTable,
+      TimeSlot,
+      Activity,
+      ActivitySession,
+      Membership,
+    ]),
     UsersModule,
   ],
   controllers: [AppointmentsController, AdminAppointmentsController],

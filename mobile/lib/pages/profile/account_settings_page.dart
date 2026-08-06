@@ -20,9 +20,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final user = AuthService.instance.user;
-    final display = user?.nickname.isNotEmpty == true
-        ? user!.nickname
-        : '手作新人';
+    final display = user?.nickname.isNotEmpty == true ? user!.nickname : '手作新人';
     return Scaffold(
       appBar: AppBar(title: const Text('账号设置')),
       body: ListView(
@@ -40,8 +38,10 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                 _Avatar(user: user),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 6,
+                    runSpacing: 2,
                     children: [
                       Text(
                         display,
@@ -50,7 +50,6 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 2),
                       Text(
                         '已登录账号',
                         style: TextStyle(
@@ -89,7 +88,8 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const SetPasswordPage(),
+                        builder: (_) =>
+                            const SetPasswordPage(mode: PasswordMode.change),
                       ),
                     );
                   },
@@ -114,9 +114,9 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
   }
 
   Future<void> _openEditProfile() async {
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const EditProfilePage()),
-    );
+    await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const EditProfilePage()));
     if (mounted) setState(() {});
   }
 
@@ -203,7 +203,10 @@ class _SwitchAccountSheetState extends State<SwitchAccountSheet> {
             if (user != null) _accountRow(user, active: true),
             for (final s in sessions) _savedRow(s, colors),
             ListTile(
-              leading: Icon(Icons.add_circle_outline_rounded, color: colors.primary),
+              leading: Icon(
+                Icons.add_circle_outline_rounded,
+                color: colors.primary,
+              ),
               title: Text(
                 '添加账号',
                 style: TextStyle(color: colors.primary, fontSize: 15),
@@ -271,17 +274,17 @@ class _SwitchAccountSheetState extends State<SwitchAccountSheet> {
     setState(() => _switching = false);
     Navigator.of(context).pop();
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('切换失败，请重新登录该账号')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('切换失败，请重新登录该账号')));
     }
   }
 
   Future<void> _addAccount() async {
     Navigator.of(context).pop();
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-    );
+    await Navigator.of(
+      context,
+    ).push<void>(MaterialPageRoute(builder: (_) => const LoginPage()));
   }
 }
 
@@ -316,8 +319,10 @@ class _Avatar extends StatelessWidget {
 
   /// 当前登录用户（有 user 时优先用其头像）
   final User? user;
+
   /// 已保存会话的用户 ID（无 user 时的兜底展示）
   final int userId;
+
   /// 头像 URL（相对 /uploads/ 或 http(s)）
   final String avatar;
   final double size;
@@ -349,11 +354,7 @@ class _Avatar extends StatelessWidget {
                 size: size * 0.5,
               ),
             )
-          : Icon(
-              Icons.person,
-              color: colors.textSecondary,
-              size: size * 0.5,
-            ),
+          : Icon(Icons.person, color: colors.textSecondary, size: size * 0.5),
     );
   }
 }

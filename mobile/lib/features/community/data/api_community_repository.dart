@@ -22,7 +22,7 @@ class ApiCommunityRepository implements CommunityRepository {
       // 未登录或网络异常时忽略
     }
 
-    return items.map((p) => _toFeedPost(p, likedMap[p.id] ?? false)).toList();
+    return items.map((p) => toFeedPost(p, liked: likedMap[p.id] ?? false)).toList();
   }
 
   @override
@@ -42,8 +42,8 @@ class ApiCommunityRepository implements CommunityRepository {
 
   // ──── 模型映射 ────
 
-  /// 将后端 [Post] 映射为领域模型 [FeedPost]
-  static FeedPost _toFeedPost(Post p, bool liked) {
+  /// 将后端 [Post] 映射为领域模型 [FeedPost]（点赞与收藏页复用）
+  static FeedPost toFeedPost(Post p, {bool liked = false}) {
     // 优先使用 medias（新格式），回退到 images（旧格式）
     var medias = p.medias
         .where((m) => m.url.trim().isNotEmpty)

@@ -94,10 +94,6 @@ const maxVal = computed(() => {
             <div class="todo-num">{{ overview.pending.videos }}</div>
             <div class="todo-label">短视频待审核</div>
           </RouterLink>
-          <RouterLink to="/reports" class="todo-card">
-            <div class="todo-num">{{ overview.pending.reports }}</div>
-            <div class="todo-label">举报待处理</div>
-          </RouterLink>
         </div>
       </section>
 

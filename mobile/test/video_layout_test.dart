@@ -18,6 +18,17 @@ void main() {
       expect(videoAspectLabel(16 / 9), '16:9');
     });
 
+    test('decides contain vs cover by display aspect', () {
+      // 竖屏（9:16、3:4）：cover 铺满
+      expect(shouldContainVideo(9 / 16), isFalse);
+      expect(shouldContainVideo(3 / 4), isFalse);
+      expect(shouldContainVideo(null), isFalse);
+      // 横屏 16:9 / 方形：完整显示，避免被裁成竖条
+      expect(shouldContainVideo(16 / 9), isTrue);
+      expect(shouldContainVideo(1), isTrue);
+      expect(shouldContainVideo(3 / 2), isTrue);
+    });
+
     test('orients camera sensor ratio from the live preview bounds', () {
       expect(
         orientedCameraAspectRatio(

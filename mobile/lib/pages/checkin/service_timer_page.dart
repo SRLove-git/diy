@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../core/api_client.dart';
 import '../../core/app_colors.dart';
 import '../../core/appointment_api.dart';
+import '../../core/service_events.dart';
 import 'experience_summary_page.dart';
 
 /// 上钟/计时/下钟页：核销后进入上钟，显示实时时长，主按钮「下钟」
@@ -146,6 +147,8 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
       await ApiClient.instance
           .post('/appointments/${widget.appointmentId}/clockout');
       if (!mounted) return;
+      // 乐观通知首页：本次服务已结束，立即移除「服务中」卡片
+      ServiceEvents.notifyEnded(widget.appointmentId);
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
@@ -197,6 +200,8 @@ class _ServiceTimerPageState extends State<ServiceTimerPage> {
     final end = _scheduledEnd!;
     _timer?.cancel();
     _pollTimer?.cancel();
+    // 乐观通知首页：预约时段到点，服务已结束
+    ServiceEvents.notifyEnded(widget.appointmentId);
     _goToSummary(start, end);
     _syncServerClockout();
   }

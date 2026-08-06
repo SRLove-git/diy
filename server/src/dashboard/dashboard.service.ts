@@ -5,7 +5,6 @@ import { Appointment } from '../appointments/appointment.entity';
 import { Comment } from '../community/comment.entity';
 import { Like } from '../community/like.entity';
 import { Post } from '../community/post.entity';
-import { Report } from '../community/report.entity';
 import { User } from '../users/user.entity';
 import { Video } from '../videos/video.entity';
 
@@ -22,8 +21,6 @@ export class DashboardService {
     private readonly likeRepo: Repository<Like>,
     @InjectRepository(Comment)
     private readonly commentRepo: Repository<Comment>,
-    @InjectRepository(Report)
-    private readonly reportRepo: Repository<Report>,
     @InjectRepository(Video)
     private readonly videoRepo: Repository<Video>,
   ) {}
@@ -48,7 +45,6 @@ export class DashboardService {
       todayVideos,
       pendingPosts,
       pendingVideos,
-      pendingReports,
     ] = await Promise.all([
       this.userRepo.count(),
       this.userRepo
@@ -83,7 +79,6 @@ export class DashboardService {
         .getCount(),
       this.postRepo.count({ where: { status: 'pending' } }),
       this.videoRepo.count({ where: { status: 'pending' } }),
-      this.reportRepo.count({ where: { status: 'pending' } }),
     ]);
 
     return {
@@ -108,7 +103,6 @@ export class DashboardService {
       pending: {
         posts: pendingPosts,
         videos: pendingVideos,
-        reports: pendingReports,
       },
     };
   }

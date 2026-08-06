@@ -23,6 +23,13 @@
 	<string>需要使用麦克风录制语音消息发送到聊天</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>需要访问相册以选择图片和视频用于发布作品或发送消息</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>iosamap</string>
+		<string>baidumap</string>
+		<string>qqmap</string>
+		<string>comgooglemaps</string>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

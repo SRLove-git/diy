@@ -43,4 +43,38 @@ void main() {
       reason: exception is FlutterError ? exception.toStringDeep() : null,
     );
   });
+
+  testWidgets('首页顶部展示拼豆/敬请期待切换，默认拼豆', (tester) async {
+    await pumpHome(tester, size: const Size(390, 844));
+
+    expect(find.text('拼豆'), findsOneWidget);
+    expect(find.text('敬请期待'), findsOneWidget);
+    expect(find.text('到店预约'), findsOneWidget);
+  });
+
+  testWidgets('切换到敬请期待后显示占位内容，隐藏拼豆模块', (tester) async {
+    await pumpHome(tester, size: const Size(390, 844));
+
+    await tester.tap(find.text('敬请期待'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('到店预约'), findsNothing);
+    expect(find.text('快速开始制作'), findsNothing);
+    expect(find.text('更多精彩 DIY 手作板块正在筹备中'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('从敬请期待可切回拼豆板块', (tester) async {
+    await pumpHome(tester, size: const Size(390, 844));
+
+    await tester.tap(find.text('敬请期待'));
+    await tester.pumpAndSettle();
+    expect(find.text('到店预约'), findsNothing);
+
+    await tester.tap(find.text('拼豆'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('到店预约'), findsOneWidget);
+    expect(find.text('更多精彩 DIY 手作板块正在筹备中'), findsNothing);
+  });
 }

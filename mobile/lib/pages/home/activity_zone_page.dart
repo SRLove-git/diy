@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_colors.dart';
+import '../../core/appointment_api.dart';
 import '../../features/home/presentation/palette.dart';
-import '../../features/member/data/api_member_repository.dart';
-import '../../features/member/domain/member_models.dart';
-import '../../features/member/domain/member_repository.dart';
 import '../../widgets/state_widgets.dart';
+import '../booking/booking_flow_page.dart';
 
 /// 活动专区
 ///
@@ -19,9 +18,7 @@ class ActivityZonePage extends StatefulWidget {
 }
 
 class _ActivityZonePageState extends State<ActivityZonePage> {
-  final MemberRepository _repo = const ApiMemberRepository();
-
-  List<MemberActivity> _activities = [];
+  List<Activity> _activities = [];
   bool _loading = true;
   String? _error;
 
@@ -37,7 +34,7 @@ class _ActivityZonePageState extends State<ActivityZonePage> {
       _error = null;
     });
     try {
-      final activities = await _repo.fetchActivities();
+      final activities = await AppointmentApi.fetchAllActivities();
       if (!mounted) return;
       setState(() {
         _activities = activities;
@@ -184,7 +181,7 @@ class _ActivityZonePageState extends State<ActivityZonePage> {
 class _ActivityCard extends StatelessWidget {
   const _ActivityCard({required this.activity});
 
-  final MemberActivity activity;
+  final Activity activity;
 
   @override
   Widget build(BuildContext context) {
@@ -262,8 +259,50 @@ class _ActivityCard extends StatelessWidget {
               color: colors.textSecondary,
             ),
           ),
+          if (activity.bookable) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Text(
+                  activity.memberPrice != null
+                      ? '会员 ${_fmtPrice(activity.memberPrice!)} / ${_fmtPrice(activity.price)}'
+                      : '${_fmtPrice(activity.price)} /人',
+                  style: TextStyle(
+                    color: Palette.accent,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const BookingFlowPage(initialType: 'activity'),
+                    ),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Palette.accent,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(0, 34),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  child: const Text('去预约'),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
+}
+
+String _fmtPrice(double value) {
+  if (value == value.roundToDouble()) return '¥${value.toInt()}';
+  return '¥${value.toStringAsFixed(2)}';
 }

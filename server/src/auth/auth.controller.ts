@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Ip, Post, UseGuards } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import {
@@ -22,8 +22,8 @@ export class AuthController {
 
   /** 发送短信验证码（防刷：60 秒/手机号） */
   @Post('sms-code')
-  sendSmsCode(@Body() dto: SendCodeDto) {
-    return this.auth.sendSmsCode(dto.phone);
+  sendSmsCode(@Body() dto: SendCodeDto, @Ip() ip: string) {
+    return this.auth.sendSmsCode(dto.phone, ip);
   }
 
   /** 验证码登录（未注册自动注册） */

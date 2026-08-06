@@ -207,7 +207,7 @@ onMounted(load)
       <div class="modal">
         <h3>删除用户作品</h3>
         <p class="modal-desc">
-          确认删除该用户发布的全部作品（社区帖子 + 短视频/照片）？删除后不可恢复，其点赞、评论、收藏与举报记录将一并清除。
+          确认删除该用户发布的全部作品（社区帖子 + 短视频/照片）？删除后不可恢复，其点赞、评论与收藏记录将一并清除。
         </p>
         <p class="modal-user">
           {{ worksTarget.nickname || worksTarget.phone }}

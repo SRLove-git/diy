@@ -6,11 +6,17 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Delete,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AdminGuard } from '../stores/admin.guard';
-import { SaveActivityDto, UpdateActivityDto } from './activity.dto';
+import {
+  SaveActivityDto,
+  SaveActivitySessionDto,
+  UpdateActivityDto,
+  UpdateActivitySessionDto,
+} from './activity.dto';
 import { ActivitiesService } from './activities.service';
 
 /** 管理端：活动管理 */
@@ -39,5 +45,28 @@ export class AdminActivitiesController {
     @Body('enabled') enabled: boolean,
   ) {
     return this.activities.toggleEnabled(id, enabled);
+  }
+
+  // ===== 活动场次 =====
+
+  @Post(':id/sessions')
+  addSession(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SaveActivitySessionDto,
+  ) {
+    return this.activities.addSession(id, dto);
+  }
+
+  @Patch('sessions/:sessionId')
+  updateSession(
+    @Param('sessionId', ParseIntPipe) sessionId: number,
+    @Body() dto: UpdateActivitySessionDto,
+  ) {
+    return this.activities.updateSession(sessionId, dto);
+  }
+
+  @Delete('sessions/:sessionId')
+  removeSession(@Param('sessionId', ParseIntPipe) sessionId: number) {
+    return this.activities.removeSession(sessionId);
   }
 }

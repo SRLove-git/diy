@@ -14,8 +14,11 @@ void main() {
 
     // 登录页元素
     expect(find.text('IDOL BEADS'), findsOneWidget);
-    expect(find.text('登录'), findsOneWidget);
+    expect(find.text('登录 / 注册'), findsOneWidget);
     expect(find.text('获取验证码'), findsOneWidget);
+    // 微信式协议勾选
+    expect(find.textContaining('未注册手机号登录时将自动注册'), findsOneWidget);
+    expect(find.text('《用户协议》'), findsOneWidget);
   });
 
   testWidgets('全局主题使用 Instagram 风近黑主色和纯白背景', (tester) async {

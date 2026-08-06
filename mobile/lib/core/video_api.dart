@@ -58,6 +58,17 @@ class VideoApi {
     return _parseList(resp.data);
   }
 
+  /// 我点赞过的视频列表
+  static Future<({List<ShortVideo> items, int total})> fetchMyLikedVideos({
+    int page = 1,
+  }) async {
+    final resp = await ApiClient.instance.get(
+      '/videos/my-likes',
+      queryParameters: {'page': page},
+    );
+    return _parseList(resp.data);
+  }
+
   /// 指定作者的视频列表
   static Future<({List<ShortVideo> items, int total})> fetchByUser(
     int userId, {
@@ -221,16 +232,6 @@ class VideoApi {
   /// 记录分享（分享数 +1）
   static Future<void> recordShare(int videoId) async {
     await ApiClient.instance.post('/videos/$videoId/share');
-  }
-
-  // ──── 举报 ────
-
-  /// 举报短视频（与社区帖子同一套举报体系，管理端统一处理）
-  static Future<void> report(int videoId, String reason) async {
-    await ApiClient.instance.post(
-      '/videos/$videoId/report',
-      data: {'reason': reason},
-    );
   }
 
   // ──── Helpers ────

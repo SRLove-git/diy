@@ -23,7 +23,6 @@ function logout() {
         <RouterLink to="/videos">视频管理</RouterLink>
         <RouterLink to="/users">用户管理</RouterLink>
         <RouterLink to="/members">会员运营</RouterLink>
-        <RouterLink to="/reports">举报处理</RouterLink>
         <RouterLink to="/notifications">通知管理</RouterLink>
       </nav>
     </aside>

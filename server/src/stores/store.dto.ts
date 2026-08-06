@@ -42,6 +42,16 @@ export class CreateStoreDto {
   images?: string[];
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  price?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  memberPrice?: number;
+
+  @IsOptional()
   @IsString()
   @MaxLength(50)
   businessHours?: string;

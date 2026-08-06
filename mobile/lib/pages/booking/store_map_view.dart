@@ -90,6 +90,39 @@ GeoPoint _centerOf(List<Store> stores) {
   return GeoPoint(lat: lat / stores.length, lng: lng / stores.length);
 }
 
+/// 计算门店（+定位点）包围盒；单点/零面积时外扩约 1km，
+/// 避免搜索筛选后只剩一家店时地图视野退化为点导致异常
+({double minLat, double maxLat, double minLng, double maxLng}) _boundsOf(
+  List<Store> stores,
+  GeoPoint? user,
+) {
+  var minLat = 90.0, maxLat = -90.0, minLng = 180.0, maxLng = -180.0;
+  for (final s in stores) {
+    minLat = s.lat < minLat ? s.lat : minLat;
+    maxLat = s.lat > maxLat ? s.lat : maxLat;
+    minLng = s.lng < minLng ? s.lng : minLng;
+    maxLng = s.lng > maxLng ? s.lng : maxLng;
+  }
+  if (user != null && _nearStores(stores, user)) {
+    minLat = user.lat < minLat ? user.lat : minLat;
+    maxLat = user.lat > maxLat ? user.lat : maxLat;
+    minLng = user.lng < minLng ? user.lng : minLng;
+    maxLng = user.lng > maxLng ? user.lng : maxLng;
+  }
+  const minSpan = 0.01; // 约 1km
+  if (maxLat - minLat < minSpan) {
+    final pad = (minSpan - (maxLat - minLat)) / 2;
+    minLat -= pad;
+    maxLat += pad;
+  }
+  if (maxLng - minLng < minSpan) {
+    final pad = (minSpan - (maxLng - minLng)) / 2;
+    minLng -= pad;
+    maxLng += pad;
+  }
+  return (minLat: minLat, maxLat: maxLat, minLng: minLng, maxLng: maxLng);
+}
+
 // ===== Android：Google Maps =====
 
 class _StoreGoogleMap extends StatefulWidget {
@@ -116,26 +149,12 @@ class _StoreGoogleMapState extends State<_StoreGoogleMap> {
     final c = _controller;
     if (c == null || _fitted || widget.data.stores.isEmpty) return;
     _fitted = true;
-    final stores = widget.data.stores;
-    var minLat = 90.0, maxLat = -90.0, minLng = 180.0, maxLng = -180.0;
-    for (final s in stores) {
-      minLat = s.lat < minLat ? s.lat : minLat;
-      maxLat = s.lat > maxLat ? s.lat : maxLat;
-      minLng = s.lng < minLng ? s.lng : minLng;
-      maxLng = s.lng > maxLng ? s.lng : maxLng;
-    }
-    final user = widget.data.userLocation;
-    if (user != null && _nearStores(stores, user)) {
-      minLat = user.lat < minLat ? user.lat : minLat;
-      maxLat = user.lat > maxLat ? user.lat : maxLat;
-      minLng = user.lng < minLng ? user.lng : minLng;
-      maxLng = user.lng > maxLng ? user.lng : maxLng;
-    }
+    final b = _boundsOf(widget.data.stores, widget.data.userLocation);
     c.moveCamera(
       gmaps.CameraUpdate.newLatLngBounds(
         gmaps.LatLngBounds(
-          southwest: gmaps.LatLng(minLat, minLng),
-          northeast: gmaps.LatLng(maxLat, maxLng),
+          southwest: gmaps.LatLng(b.minLat, b.minLng),
+          northeast: gmaps.LatLng(b.maxLat, b.maxLng),
         ),
         48,
       ),
@@ -209,26 +228,12 @@ class _StoreAppleMapState extends State<_StoreAppleMap> {
     final c = _controller;
     if (c == null || _fitted || widget.data.stores.isEmpty) return;
     _fitted = true;
-    final stores = widget.data.stores;
-    var minLat = 90.0, maxLat = -90.0, minLng = 180.0, maxLng = -180.0;
-    for (final s in stores) {
-      minLat = s.lat < minLat ? s.lat : minLat;
-      maxLat = s.lat > maxLat ? s.lat : maxLat;
-      minLng = s.lng < minLng ? s.lng : minLng;
-      maxLng = s.lng > maxLng ? s.lng : maxLng;
-    }
-    final user = widget.data.userLocation;
-    if (user != null && _nearStores(stores, user)) {
-      minLat = user.lat < minLat ? user.lat : minLat;
-      maxLat = user.lat > maxLat ? user.lat : maxLat;
-      minLng = user.lng < minLng ? user.lng : minLng;
-      maxLng = user.lng > maxLng ? user.lng : maxLng;
-    }
+    final b = _boundsOf(widget.data.stores, widget.data.userLocation);
     c.moveCamera(
       apple.CameraUpdate.newLatLngBounds(
         apple.LatLngBounds(
-          southwest: apple.LatLng(minLat, minLng),
-          northeast: apple.LatLng(maxLat, maxLng),
+          southwest: apple.LatLng(b.minLat, b.minLng),
+          northeast: apple.LatLng(b.maxLat, b.maxLng),
         ),
         48,
       ),

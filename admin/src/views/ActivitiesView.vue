@@ -14,9 +14,26 @@ const form = reactive({
   date: '',
   desc: '',
   tag: '',
+  address: '',
+  lat: 30.3,
+  lng: 120.1,
+  price: 0,
+  memberPrice: null as number | null,
+  bookable: false,
   membersOnly: false,
   enabled: true,
   sort: 0,
+})
+
+// 场次管理
+const showSessions = ref(false)
+const currentActivity = ref<Activity | null>(null)
+const sessionList = ref<NonNullable<Activity['sessions']>>([])
+const newSession = reactive({
+  date: '',
+  startTime: '',
+  endTime: '',
+  capacity: 12,
 })
 
 async function load() {
@@ -38,6 +55,12 @@ function openCreate() {
   form.date = ''
   form.desc = ''
   form.tag = ''
+  form.address = ''
+  form.lat = 30.3
+  form.lng = 120.1
+  form.price = 0
+  form.memberPrice = null
+  form.bookable = false
   form.membersOnly = false
   form.enabled = true
   form.sort = 0
@@ -50,6 +73,12 @@ function openEdit(a: Activity) {
   form.date = a.date
   form.desc = a.desc
   form.tag = a.tag
+  form.address = a.address ?? ''
+  form.lat = a.lat ?? 30.3
+  form.lng = a.lng ?? 120.1
+  form.price = a.price ?? 0
+  form.memberPrice = a.memberPrice ?? null
+  form.bookable = a.bookable
   form.membersOnly = a.membersOnly
   form.enabled = a.enabled
   form.sort = a.sort
@@ -67,10 +96,17 @@ async function save() {
   }
   saving.value = true
   try {
+    const payload = {
+      ...form,
+      memberPrice:
+        form.memberPrice == null
+          ? undefined
+          : form.memberPrice,
+    }
     if (editingId.value) {
-      await activityApi.update(editingId.value, { ...form })
+      await activityApi.update(editingId.value, payload)
     } else {
-      await activityApi.create({ ...form })
+      await activityApi.create(payload)
     }
     showForm.value = false
     await load()
@@ -78,6 +114,48 @@ async function save() {
     alert(e?.response?.data?.message ?? '保存失败')
   } finally {
     saving.value = false
+  }
+}
+
+function openSessionManager(a: Activity) {
+  currentActivity.value = a
+  sessionList.value = [...(a.sessions ?? [])].sort(
+    (x, y) => x.date.localeCompare(y.date) || x.startTime.localeCompare(y.startTime),
+  )
+  newSession.date = ''
+  newSession.startTime = ''
+  newSession.endTime = ''
+  newSession.capacity = 12
+  showSessions.value = true
+}
+
+async function addSession() {
+  const a = currentActivity.value
+  if (!a || !newSession.date || !newSession.startTime || !newSession.endTime) {
+    alert('请填写场次日期、开始和结束时间')
+    return
+  }
+  try {
+    const { data } = await activityApi.addSession(a.id, {
+      ...newSession,
+      capacity: Number(newSession.capacity) || 12,
+    })
+    sessionList.value.push(data)
+    newSession.date = ''
+    newSession.startTime = ''
+    newSession.endTime = ''
+  } catch (e: any) {
+    alert(e?.response?.data?.message ?? '添加失败')
+  }
+}
+
+async function removeSession(s: NonNullable<Activity['sessions']>[number]) {
+  if (!confirm(`确认删除场次 ${s.date} ${s.startTime}-${s.endTime}？`)) return
+  try {
+    await activityApi.removeSession(s.id)
+    sessionList.value = sessionList.value.filter((x) => x.id !== s.id)
+  } catch (e: any) {
+    alert(e?.response?.data?.message ?? '删除失败')
   }
 }
 
@@ -131,10 +209,12 @@ onMounted(load)
           <th style="width: 130px">活动时间</th>
           <th>描述</th>
           <th style="width: 90px">标签</th>
+          <th style="width: 90px">可预约</th>
+          <th style="width: 110px">价格</th>
           <th style="width: 80px">会员专属</th>
           <th style="width: 60px">排序</th>
           <th style="width: 80px">状态</th>
-          <th style="width: 200px">操作</th>
+          <th style="width: 260px">操作</th>
         </tr>
       </thead>
       <tbody>
@@ -151,6 +231,14 @@ onMounted(load)
             <span v-if="a.tag" class="tag">#{{ a.tag }}</span>
             <span v-else class="muted">-</span>
           </td>
+          <td>{{ a.bookable ? '是' : '否' }}</td>
+          <td>
+            <template v-if="a.bookable">
+              <span v-if="a.memberPrice != null">会员 {{ a.memberPrice }} / {{ a.price }}</span>
+              <span v-else>{{ a.price }} 元/人</span>
+            </template>
+            <span v-else class="muted">-</span>
+          </td>
           <td>{{ a.membersOnly ? '是' : '否' }}</td>
           <td>{{ a.sort }}</td>
           <td>
@@ -164,6 +252,7 @@ onMounted(load)
           <td class="actions">
             <button class="btn btn-sm" @click="move(a, -1)" :disabled="a.sort === 0 && a.id === activities[0].id">上移</button>
             <button class="btn btn-sm" @click="move(a, 1)">下移</button>
+            <button class="btn btn-sm" @click="openSessionManager(a)">场次</button>
             <button class="btn btn-sm" @click="openEdit(a)">编辑</button>
             <button
               class="btn btn-sm"
@@ -195,6 +284,26 @@ onMounted(load)
             <input v-model="form.tag" type="text" placeholder="如 限会员 / 早鸟 8 折" />
           </label>
           <label>
+            <span>活动地址（可预约必填）</span>
+            <input v-model="form.address" type="text" placeholder="如 杭州市西湖区文一西路 1 号" />
+          </label>
+          <label>
+            <span>纬度</span>
+            <input v-model.number="form.lat" type="number" step="0.000001" />
+          </label>
+          <label>
+            <span>经度</span>
+            <input v-model.number="form.lng" type="number" step="0.000001" />
+          </label>
+          <label>
+            <span>门市价（元/人）</span>
+            <input v-model.number="form.price" type="number" min="0" step="0.1" />
+          </label>
+          <label>
+            <span>会员价（元/人，0 = 会员免费）</span>
+            <input v-model.number="form.memberPrice" type="number" min="0" step="0.1" />
+          </label>
+          <label>
             <span>排序权重</span>
             <input v-model.number="form.sort" type="number" min="0" />
           </label>
@@ -204,6 +313,7 @@ onMounted(load)
           </label>
         </div>
         <div class="check-row">
+          <label><input v-model="form.bookable" type="checkbox" /> 可预约（进入预约流程）</label>
           <label><input v-model="form.membersOnly" type="checkbox" /> 会员专属</label>
           <label><input v-model="form.enabled" type="checkbox" /> 立即上架</label>
         </div>
@@ -211,6 +321,42 @@ onMounted(load)
           <button class="btn btn-sm" @click="closeForm">取消</button>
           <button class="btn btn-sm btn-primary" :disabled="saving" @click="save">保存</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 场次管理 -->
+  <div v-if="showSessions" class="modal-overlay" @click.self="showSessions = false">
+    <div class="modal wide">
+      <h3>场次管理 · {{ currentActivity?.title }}</h3>
+      <table class="table">
+        <thead>
+          <tr><th>日期</th><th>开始</th><th>结束</th><th>名额上限</th><th style="width: 90px">操作</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="s in sessionList" :key="s.id">
+            <td>{{ s.date }}</td>
+            <td>{{ s.startTime }}</td>
+            <td>{{ s.endTime }}</td>
+            <td>{{ s.capacity }}</td>
+            <td class="actions">
+              <button class="btn btn-sm btn-danger" @click="removeSession(s)">删除</button>
+            </td>
+          </tr>
+          <tr v-if="sessionList.length === 0">
+            <td colspan="5" class="muted">暂无场次，请在下方添加</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="session-row">
+        <input v-model="newSession.date" type="date" />
+        <input v-model="newSession.startTime" type="time" />
+        <input v-model="newSession.endTime" type="time" />
+        <input v-model.number="newSession.capacity" type="number" min="1" placeholder="名额" />
+        <button class="btn btn-sm btn-primary" @click="addSession">添加场次</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-sm btn-primary" @click="showSessions = false">完成</button>
       </div>
     </div>
   </div>
@@ -297,7 +443,23 @@ onMounted(load)
   width: 480px;
   max-width: 92vw;
 }
+.modal.wide { width: 720px; max-width: 96vw; }
 .modal h3 { margin: 0 0 16px; font-size: 16px; }
+.session-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.session-row input {
+  flex: 1;
+  min-width: 110px;
+  padding: 8px 10px;
+  border: 1px solid #eceae6;
+  border-radius: 8px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

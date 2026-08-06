@@ -9,6 +9,8 @@ export interface Store {
   rating: number
   businessHours: string
   phone: string
+  price: number
+  memberPrice?: number | null
   enabled: boolean
   tables?: StoreTable[]
   slots?: TimeSlot[]

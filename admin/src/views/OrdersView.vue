@@ -145,6 +145,11 @@ function formatDuration(s: string | null, e: string | null): string {
   return `${h}:${m}:${sec}`
 }
 
+function fmtAmount(v: number | undefined): string {
+  const value = Number(v ?? 0)
+  return Number.isInteger(value) ? String(value) : value.toFixed(2)
+}
+
 onMounted(() => {
   loadStores()
   load()
@@ -181,10 +186,11 @@ onMounted(() => {
           <th>预约码</th>
           <th>用户</th>
           <th>门店</th>
-          <th>桌位</th>
+          <th>类型/桌位</th>
           <th>日期</th>
           <th>时段</th>
           <th>人数</th>
+          <th>金额/支付</th>
           <th>备注</th>
           <th>状态</th>
           <th>核销</th>
@@ -204,10 +210,23 @@ onMounted(() => {
             </div>
           </td>
           <td>{{ o.storeName }}</td>
-          <td>{{ o.tableName }}</td>
+          <td>
+            <span v-if="o.type === 'activity'" class="tag" style="color: #e8633a; border-color: #f3c6b6">
+              活动
+            </span>
+            <span v-else>{{ o.tableName || '-' }}</span>
+          </td>
           <td>{{ o.date }}</td>
           <td>{{ o.startTime }} - {{ o.endTime }}</td>
           <td>{{ o.peopleCount }} 人</td>
+          <td>
+            <span :style="{ color: o.payStatus === 'paid' ? '#2e9e5b' : '#e6a23c' }">
+              {{ o.payStatus === 'paid' ? '已支付' : '待支付' }} ¥{{ fmtAmount(o.amount) }}
+            </span>
+            <span v-if="o.payMethod" class="muted">
+              （{{ o.payMethod === 'alipay' ? '支付宝' : '微信' }}）
+            </span>
+          </td>
           <td class="note-cell">
             <span v-if="o.note" :title="o.note" class="note">{{ o.note }}</span>
             <span v-else class="muted">-</span>

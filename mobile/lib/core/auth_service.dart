@@ -51,19 +51,20 @@ class User {
   bool get isAdmin => role == 'admin';
 
   factory User.fromJson(Map<String, dynamic> json) => User(
-        id: json['id'] as int,
-        phone: json['phone'] as String,
-        nickname: (json['nickname'] ?? '') as String,
-        avatar: (json['avatar'] ?? '') as String,
-        role: (json['role'] ?? 'user') as String,
-        username: json['username'] as String?,
-        usernameUpdatedAt:
-            DateTime.tryParse((json['usernameUpdatedAt'] as String?) ?? ''),
-        bio: (json['bio'] ?? '') as String,
-        gender: (json['gender'] ?? 'secret') as String,
-        birthday: json['birthday'] as String?,
-        location: (json['location'] ?? '') as String,
-      );
+    id: json['id'] as int,
+    phone: json['phone'] as String,
+    nickname: (json['nickname'] ?? '') as String,
+    avatar: (json['avatar'] ?? '') as String,
+    role: (json['role'] ?? 'user') as String,
+    username: json['username'] as String?,
+    usernameUpdatedAt: DateTime.tryParse(
+      (json['usernameUpdatedAt'] as String?) ?? '',
+    ),
+    bio: (json['bio'] ?? '') as String,
+    gender: (json['gender'] ?? 'secret') as String,
+    birthday: json['birthday'] as String?,
+    location: (json['location'] ?? '') as String,
+  );
 }
 
 /// 已保存的多账号会话（登录后自动记录，供「切换账号」快速切换）。
@@ -83,28 +84,28 @@ class SavedSession {
   final String refreshToken;
 
   SavedSession copyWith({String? nickname, String? avatar}) => SavedSession(
-        userId: userId,
-        nickname: nickname ?? this.nickname,
-        avatar: avatar ?? this.avatar,
-        accessToken: accessToken,
-        refreshToken: refreshToken,
-      );
+    userId: userId,
+    nickname: nickname ?? this.nickname,
+    avatar: avatar ?? this.avatar,
+    accessToken: accessToken,
+    refreshToken: refreshToken,
+  );
 
   factory SavedSession.fromJson(Map<String, dynamic> json) => SavedSession(
-        userId: (json['userId'] as num).toInt(),
-        nickname: (json['nickname'] ?? '') as String,
-        avatar: (json['avatar'] ?? '') as String,
-        accessToken: (json['accessToken'] ?? '') as String,
-        refreshToken: (json['refreshToken'] ?? '') as String,
-      );
+    userId: (json['userId'] as num).toInt(),
+    nickname: (json['nickname'] ?? '') as String,
+    avatar: (json['avatar'] ?? '') as String,
+    accessToken: (json['accessToken'] ?? '') as String,
+    refreshToken: (json['refreshToken'] ?? '') as String,
+  );
 
   Map<String, dynamic> toJson() => {
-        'userId': userId,
-        'nickname': nickname,
-        'avatar': avatar,
-        'accessToken': accessToken,
-        'refreshToken': refreshToken,
-      };
+    'userId': userId,
+    'nickname': nickname,
+    'avatar': avatar,
+    'accessToken': accessToken,
+    'refreshToken': refreshToken,
+  };
 }
 
 /// 登录态管理：token 安全存储（Keychain/Keystore）+ 登录/刷新/登出。
@@ -180,9 +181,11 @@ class AuthService extends ChangeNotifier {
   String? _refreshToken;
   Map<int, SavedSession> _sessions = {};
   bool _isRefreshing = false;
+
   /// refresh token 被服务端明确拒绝（会话确实失效）时置位，用于区分瞬时网络错误
   bool _sessionInvalid = false;
   DateTime? _lastRefreshAt;
+
   /// 刷新失败后的冷却期：避免断网时对刷新接口的连发请求
   static const _refreshCooldown = Duration(seconds: 10);
 
@@ -222,13 +225,20 @@ class AuthService extends ChangeNotifier {
 
   /// 发送验证码，返回 code（开发环境），生产环境返回 null
   Future<String?> sendCode(String phone) async {
-    final resp = await ApiClient.instance.post('/auth/sms-code', data: {'phone': phone});
+    final resp = await ApiClient.instance.post(
+      '/auth/sms-code',
+      data: {'phone': phone},
+    );
     return (resp.data as Map<String, dynamic>)['code'] as String?;
   }
 
-  Future<void> login(String phone, String code) async {
-    final resp = await ApiClient.instance
-        .post('/auth/login', data: {'phone': phone, 'code': code});
+  /// 验证码登录（未注册自动注册），返回是否为首次注册的新用户。
+  Future<bool> login(String phone, String code) async {
+    final resp = await ApiClient.instance.post(
+      '/auth/login',
+      data: {'phone': phone, 'code': code},
+    );
+    final isNewUser = resp.data['isNewUser'] == true;
     await _saveTokens(
       resp.data['accessToken'] as String,
       resp.data['refreshToken'] as String,
@@ -236,12 +246,15 @@ class AuthService extends ChangeNotifier {
     await _fetchMe();
     await _saveCurrentSession();
     notifyListeners();
+    return isNewUser;
   }
 
   /// 密码登录（需先用验证码设置过密码）
   Future<void> passwordLogin(String phone, String password) async {
-    final resp = await ApiClient.instance.post('/auth/password-login',
-        data: {'phone': phone, 'password': password});
+    final resp = await ApiClient.instance.post(
+      '/auth/password-login',
+      data: {'phone': phone, 'password': password},
+    );
     await _saveTokens(
       resp.data['accessToken'] as String,
       resp.data['refreshToken'] as String,
@@ -253,8 +266,10 @@ class AuthService extends ChangeNotifier {
 
   /// 用户名 + 密码登录
   Future<void> usernameLogin(String username, String password) async {
-    final resp = await ApiClient.instance.post('/auth/username-login',
-        data: {'username': username, 'password': password});
+    final resp = await ApiClient.instance.post(
+      '/auth/username-login',
+      data: {'username': username, 'password': password},
+    );
     await _saveTokens(
       resp.data['accessToken'] as String,
       resp.data['refreshToken'] as String,
@@ -265,8 +280,12 @@ class AuthService extends ChangeNotifier {
   }
 
   /// 设置/重置密码（短信验证码校验后生效），可选同时设置用户名
-  Future<void> setPassword(String phone, String code, String password,
-      {String? username}) async {
+  Future<void> setPassword(
+    String phone,
+    String code,
+    String password, {
+    String? username,
+  }) async {
     final data = <String, dynamic>{
       'phone': phone,
       'code': code,
@@ -360,8 +379,10 @@ class AuthService extends ChangeNotifier {
       ),
     );
     final url = (upload.data as Map<String, dynamic>)['url'] as String;
-    final resp = await ApiClient.instance
-        .patch('/users/me', data: {'avatar': url});
+    final resp = await ApiClient.instance.patch(
+      '/users/me',
+      data: {'avatar': url},
+    );
     _user = User.fromJson(resp.data as Map<String, dynamic>);
     await _refreshCurrentSessionMeta();
     notifyListeners();

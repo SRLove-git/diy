@@ -151,7 +151,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('删除作品'),
-        content: const Text('确认永久删除该作品？删除后不可恢复，其点赞、评论、收藏与举报记录将一并清除。'),
+        content: const Text('确认永久删除该作品？删除后不可恢复，其点赞、评论与收藏记录将一并清除。'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
           FilledButton(

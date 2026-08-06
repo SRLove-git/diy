@@ -11,6 +11,12 @@ import {
 export type AppointmentStatus =
   'booked' | 'checked_in' | 'in_service' | 'completed' | 'cancelled';
 
+/** 预约类型：门店桌位预约 / 活动场次预约 */
+export type AppointmentType = 'store' | 'activity';
+
+/** 支付状态：预约时同步支付（演示支付），历史数据为 unpaid */
+export type PayStatus = 'unpaid' | 'paid';
+
 /** 预约单 */
 @Entity('appointments')
 @Index(['storeId', 'tableId', 'date', 'slotId']) // 防超卖：同店同桌同日期同时段冲突校验
@@ -18,25 +24,43 @@ export class Appointment {
   @PrimaryGeneratedColumn()
   id: number;
 
+  /** 预约类型 */
+  @Column({
+    type: 'enum',
+    enum: ['store', 'activity'],
+    default: 'store',
+  })
+  type: AppointmentType;
+
   @Column()
   userId: number;
 
-  @Column()
-  storeId: number;
+  @Column({ type: 'int', nullable: true })
+  storeId: number | null;
 
   /** 冗余门店名，列表免 join */
   @Column({ length: 100 })
   storeName: string;
 
-  @Column()
-  tableId: number;
+  @Column({ type: 'int', nullable: true })
+  tableId: number | null;
 
   /** 冗余桌位名 */
   @Column({ length: 50 })
   tableName: string;
 
-  @Column()
-  slotId: number;
+  @Column({ type: 'int', nullable: true })
+  slotId: number | null;
+
+  /** 活动预约：活动 ID / 场次 ID / 活动名（冗余） */
+  @Column({ type: 'int', nullable: true })
+  activityId: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  activitySessionId: number | null;
+
+  @Column({ length: 100, default: '' })
+  activityName: string;
 
   /** 预约日期 YYYY-MM-DD */
   @Column({ length: 10 })
@@ -56,6 +80,48 @@ export class Appointment {
   /** 预约码：到店核销凭证（6 位数字） */
   @Column({ length: 10, unique: true })
   code: string;
+
+  /** 应付金额（会员折扣后） */
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: {
+      to: (v: number) => v,
+      from: (v: string) => Number(v),
+    },
+  })
+  amount: number;
+
+  /** 原价金额（会员折扣前） */
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: {
+      to: (v: number) => v,
+      from: (v: string) => Number(v),
+    },
+  })
+  originalAmount: number;
+
+  /** 支付状态 */
+  @Column({
+    type: 'enum',
+    enum: ['unpaid', 'paid'],
+    default: 'unpaid',
+  })
+  payStatus: PayStatus;
+
+  /** 支付方式：wechat / alipay */
+  @Column({ length: 20, default: '' })
+  payMethod: string;
+
+  /** 支付时间 */
+  @Column({ type: 'datetime', nullable: true })
+  paidAt: Date | null;
 
   @Column({
     type: 'enum',

@@ -146,7 +146,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 class _PendingRow extends StatelessWidget {
   const _PendingRow({required this.pending});
 
-  final ({int posts, int videos, int reports}) pending;
+  final ({int posts, int videos}) pending;
 
   @override
   Widget build(BuildContext context) {
@@ -183,8 +183,6 @@ class _PendingRow extends StatelessWidget {
         item('作品待审', pending.posts),
         const SizedBox(width: 10),
         item('视频待审', pending.videos),
-        const SizedBox(width: 10),
-        item('举报待处', pending.reports),
       ],
     );
   }

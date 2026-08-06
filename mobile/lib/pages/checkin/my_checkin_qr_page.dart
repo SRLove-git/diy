@@ -243,9 +243,12 @@ class _MyCheckInQrPageState extends State<MyCheckInQrPage> {
                                             ),
                                             const SizedBox(height: 4),
                                             _InfoLine(
-                                              icon: Icons.table_bar,
-                                              text:
-                                                  '桌位 ${appt.tableName} · ${appt.peopleCount} 人',
+                                              icon: appt.type == 'activity'
+                                                  ? Icons.event_seat
+                                                  : Icons.table_bar,
+                                              text: appt.type == 'activity'
+                                                  ? '${appt.peopleCount} 人 · 活动名额'
+                                                  : '桌位 ${appt.tableName} · ${appt.peopleCount} 人',
                                             ),
                                             const SizedBox(height: 4),
                                             _InfoLine(

@@ -43,6 +43,12 @@ export class AppointmentsController {
     return this.appointments.availability(storeId, date, slotId);
   }
 
+  /** 活动场次列表（含剩余名额，预约选场次前查询） */
+  @Get('activity-sessions')
+  activitySessions(@Query('activityId', ParseIntPipe) activityId: number) {
+    return this.appointments.activitySessions(activityId);
+  }
+
   /** 按预约码查询（公开，用于核销前确认） */
   @Get('code/:code')
   findByCode(@Param('code') code: string) {

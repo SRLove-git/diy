@@ -9,11 +9,10 @@ import 'admin_members_page.dart';
 import 'admin_notifications_page.dart';
 import 'admin_orders_page.dart';
 import 'admin_posts_page.dart';
-import 'admin_reports_page.dart';
 import 'admin_stores_page.dart';
 import 'admin_users_page.dart';
 
-/// 管理后台首页：管理端功能入口宫格（数据看板 / 门店 / 订单 / 作品 / 用户 / 举报 / 通知）
+/// 管理后台首页：管理端功能入口宫格（数据看板 / 门店 / 订单 / 作品 / 用户 / 通知）
 class AdminHomePage extends StatelessWidget {
   const AdminHomePage({super.key});
 
@@ -47,7 +46,6 @@ class AdminHomePage extends StatelessWidget {
       ),
       (icon: Icons.article_outlined, label: '社区管理', page: AdminPostsPage()),
       (icon: Icons.people_outline, label: '用户管理', page: AdminUsersPage()),
-      (icon: Icons.report_outlined, label: '举报处理', page: AdminReportsPage()),
       (
         icon: Icons.notifications_outlined,
         label: '通知管理',

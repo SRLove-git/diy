@@ -9,8 +9,6 @@ import { VideosController } from './videos.controller';
 import { AdminVideosController } from './admin-videos.controller';
 import { VideosService } from './videos.service';
 import { UsersModule } from '../users/users.module';
-import { CommunityModule } from '../community/community.module';
-import { Report } from '../community/report.entity';
 
 @Module({
   imports: [
@@ -20,10 +18,8 @@ import { Report } from '../community/report.entity';
       VideoComment,
       Follow,
       User,
-      Report,
     ]),
     UsersModule,
-    CommunityModule,
   ],
   controllers: [VideosController, AdminVideosController],
   providers: [VideosService],

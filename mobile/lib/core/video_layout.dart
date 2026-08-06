@@ -26,6 +26,13 @@ double normalizeVideoAspectRatio(double? value, {double fallback = 9 / 16}) {
 bool isLandscapeVideo(double? aspectRatio) =>
     normalizeVideoAspectRatio(aspectRatio) > 1.05;
 
+/// 画幅是否应「完整显示」而非 cover 铺满。
+///
+/// 与信息流页横屏处理保持一致：画幅 > 0.82（横屏 16:9、方形等）时完整
+/// 显示 + 模糊背景补齐，避免 cover 放大裁切成窄竖条导致比例观感错误。
+bool shouldContainVideo(double? displayAspectRatio) =>
+    normalizeVideoAspectRatio(displayAspectRatio ?? 0) > 0.82;
+
 /// 相机插件返回的是传感器横向宽高比；竖向预览时需要取倒数。
 ///
 /// 方向以当前预览区域为准，而不是相机插件异步上报的设备方向。系统旋转时，

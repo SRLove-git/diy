@@ -21,7 +21,9 @@ Future<void> showCheckInQrDialog(BuildContext context, Appointment appt) {
             ),
             const SizedBox(height: 4),
             Text(
-              '${appt.date} ${appt.startTime}-${appt.endTime} · 桌位 ${appt.tableName}',
+              appt.type == 'activity'
+                  ? '${appt.date} ${appt.startTime}-${appt.endTime} · ${appt.peopleCount} 人'
+                  : '${appt.date} ${appt.startTime}-${appt.endTime} · 桌位 ${appt.tableName}',
               style: TextStyle(
                 color: AppColors.of(ctx).textSecondary,
                 fontSize: 13,

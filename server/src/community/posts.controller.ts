@@ -15,7 +15,6 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { CreatePostDto } from './post.dto';
 import { CreateCommentDto } from './comment.dto';
-import { ReportReasonDto } from './report.dto';
 import { CommunityService } from './community.service';
 
 /** 客户端：社区作品（发布/列表/详情） */
@@ -212,19 +211,6 @@ export class PostsController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.community.addHistory(user.id, id);
-  }
-
-  // ──── Report ────
-
-  /** 举报作品 */
-  @Post(':id/report')
-  @UseGuards(JwtAuthGuard)
-  createReport(
-    @CurrentUser() user: AuthUser,
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: ReportReasonDto,
-  ) {
-    return this.community.createReport(user.id, dto.reason, { postId: id });
   }
 
   // ──── View ────

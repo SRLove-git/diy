@@ -16,7 +16,6 @@ import { Post } from '../community/post.entity';
 import { Like } from '../community/like.entity';
 import { Comment } from '../community/comment.entity';
 import { Collection } from '../community/collection.entity';
-import { Report } from '../community/report.entity';
 import { Follow } from '../follows/follow.entity';
 import { Membership } from '../members/membership.entity';
 import { UserCoupon } from '../members/coupon.entity';
@@ -37,7 +36,6 @@ import { AdminUsersController } from './admin-users.controller';
       Like,
       Comment,
       Collection,
-      Report,
       Video,
       VideoLike,
       VideoComment,

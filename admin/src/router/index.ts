@@ -46,11 +46,6 @@ const router = createRouter({
           meta: { title: '用户管理' },
         },
         {
-          path: 'reports',
-          component: () => import('../views/ReportsView.vue'),
-          meta: { title: '举报处理' },
-        },
-        {
           path: 'notifications',
           component: () => import('../views/NotificationsView.vue'),
           meta: { title: '通知管理' },

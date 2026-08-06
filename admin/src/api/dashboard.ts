@@ -16,7 +16,7 @@ export interface DashboardOverview {
     todayComments: number
   }
   videos: { total: number; today: number }
-  pending: { posts: number; videos: number; reports: number }
+  pending: { posts: number; videos: number }
 }
 
 export interface TrendItem {

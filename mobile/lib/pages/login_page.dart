@@ -5,9 +5,14 @@ import 'package:flutter/material.dart';
 
 import '../core/app_colors.dart';
 import '../core/auth_service.dart';
+import '../widgets/agreement_checkbox.dart';
 import 'set_password_page.dart';
 
-/// 登录 / 注册（验证码 + 密码 + 用户名 三模式）：未注册手机号登录时自动注册。
+/// 登录方式：验证码登录/注册为主流程，密码登录与用户名登录为次级入口。
+enum _LoginMode { code, password, username }
+
+/// 登录 / 注册（微信式）：验证码登录未注册自动注册；无独立注册页，
+/// 登录前必须勾选协议；忘记密码走短信验证重设。
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -25,6 +30,8 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordFormKey = GlobalKey<FormState>();
   final _usernameFormKey = GlobalKey<FormState>();
 
+  _LoginMode _mode = _LoginMode.code;
+  bool _agreed = false;
   bool _sendingCode = false;
   bool _loggingIn = false;
   bool _passwordLoggingIn = false;
@@ -45,6 +52,10 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  void _switchMode(_LoginMode mode) {
+    setState(() => _mode = mode);
+  }
+
   void _startCountdown() {
     setState(() => _countdown = 60);
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
@@ -58,10 +69,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _sendCode() async {
+    if (!_ensureAgreed()) return;
     // 只校验手机号：获取验证码时验证码框为空是正常的，不能全表单校验
     final phoneValid = RegExp(r'^1[3-9]\d{9}$').hasMatch(_phoneCtrl.text);
     if (!phoneValid) {
-      // 触发手机号字段的错误显示
       _codeFormKey.currentState!.validate();
       return;
     }
@@ -90,11 +101,20 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _login() async {
+    if (!_ensureAgreed()) return;
     if (!_codeFormKey.currentState!.validate()) return;
     setState(() => _loggingIn = true);
     try {
-      await AuthService.instance.login(_phoneCtrl.text, _codeCtrl.text);
+      final isNewUser = await AuthService.instance.login(
+        _phoneCtrl.text,
+        _codeCtrl.text,
+      );
       // 登录成功后 AuthGate 自动切换到主界面
+      if (isNewUser && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('注册成功，欢迎加入 IDOL BEADS')));
+      }
     } on DioException catch (e) {
       _showError(_message(e));
     } finally {
@@ -103,6 +123,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _passwordLogin() async {
+    if (!_ensureAgreed()) return;
     if (!_passwordFormKey.currentState!.validate()) return;
     setState(() => _passwordLoggingIn = true);
     try {
@@ -119,6 +140,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _usernameLogin() async {
+    if (!_ensureAgreed()) return;
     if (!_usernameFormKey.currentState!.validate()) return;
     setState(() => _usernameLoggingIn = true);
     try {
@@ -135,9 +157,17 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _goSetPassword() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const SetPasswordPage()));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const SetPasswordPage(mode: PasswordMode.forgot),
+      ),
+    );
+  }
+
+  bool _ensureAgreed() {
+    if (_agreed) return true;
+    _showError('请先阅读并同意《用户协议》和《隐私政策》');
+    return false;
   }
 
   String _message(DioException e) {
@@ -157,94 +187,88 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 48),
-                Center(
-                  child: Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      gradient: Palette.gradientPink,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Palette.accentTint,
-                          blurRadius: 18,
-                          offset: Offset(0, 7),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.auto_awesome_rounded,
-                      size: 34,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'IDOL BEADS',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: colors.primary,
-                    fontSize: 27,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  '拼出美好 · 豆住快乐',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: colors.textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 30),
-                TabBar(
-                  labelColor: colors.primary,
-                  unselectedLabelColor: colors.textSecondary,
-                  indicatorColor: colors.primary,
-                  indicatorSize: TabBarIndicatorSize.label,
-                  labelStyle: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  tabs: const [
-                    Tab(text: '验证码登录'),
-                    Tab(text: '密码登录'),
-                    Tab(text: '用户名登录'),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  height: 300,
-                  child: TabBarView(
-                    children: [
-                      _buildCodeTab(),
-                      _buildPasswordTab(),
-                      _buildUsernameTab(),
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 40),
+              Center(
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    gradient: Palette.gradientPink,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Palette.accentTint,
+                        blurRadius: 18,
+                        offset: Offset(0, 7),
+                      ),
                     ],
                   ),
+                  child: const Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 34,
+                    color: Colors.white,
+                  ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'IDOL BEADS',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: colors.primary,
+                  fontSize: 27,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                '拼出美好 · 豆住快乐',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 32),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                child: KeyedSubtree(key: ValueKey(_mode), child: _buildForm()),
+              ),
+              const SizedBox(height: 8),
+              _buildModeSwitcher(),
+              const SizedBox(height: 16),
+              AgreementCheckbox(
+                checked: _agreed,
+                onChanged: (v) => setState(() => _agreed = v),
+              ),
+              const SizedBox(height: 12),
+            ],
           ),
         ),
       ),
     );
   }
 
-  /// 验证码登录表单
+  Widget _buildForm() {
+    switch (_mode) {
+      case _LoginMode.code:
+        return _buildCodeTab();
+      case _LoginMode.password:
+        return _buildPasswordTab();
+      case _LoginMode.username:
+        return _buildUsernameTab();
+    }
+  }
+
+  /// 验证码登录 / 注册表单（主流程）
   Widget _buildCodeTab() {
     return Form(
       key: _codeFormKey,
@@ -311,7 +335,7 @@ class _LoginPageState extends State<LoginPage> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('登录'),
+                : const Text('登录 / 注册'),
           ),
         ],
       ),
@@ -450,6 +474,62 @@ class _LoginPageState extends State<LoginPage> {
                 : const Text('登录'),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 次级登录入口切换：验证码登录是主流程，密码/用户名登录为链接入口
+  Widget _buildModeSwitcher() {
+    final colors = AppColors.of(context);
+    final links = <Widget>[
+      if (_mode != _LoginMode.code)
+        _ModeLink(label: '验证码登录', onTap: () => _switchMode(_LoginMode.code)),
+      if (_mode != _LoginMode.password)
+        _ModeLink(label: '密码登录', onTap: () => _switchMode(_LoginMode.password)),
+      if (_mode != _LoginMode.username)
+        _ModeLink(
+          label: '用户名登录',
+          onTap: () => _switchMode(_LoginMode.username),
+        ),
+    ];
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 16,
+      children: [
+        for (var i = 0; i < links.length; i++) ...[
+          if (i > 0)
+            Text(
+              '·',
+              style: TextStyle(color: colors.textTertiary, fontSize: 13),
+            ),
+          links[i],
+        ],
+      ],
+    );
+  }
+}
+
+class _ModeLink extends StatelessWidget {
+  const _ModeLink({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: onTap,
+      style: TextButton.styleFrom(
+        minimumSize: Size.zero,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 13,
+          color: AppColors.of(context).textSecondary,
+        ),
       ),
     );
   }
