@@ -11,6 +11,11 @@ export class MusicService {
     private readonly music: Repository<Music>,
   ) {}
 
+  /** 按 ID 查找曲目（发布混音/管理端用） */
+  findById(id: number) {
+    return this.music.findOneBy({ id });
+  }
+
   /** 按歌名+歌手精确查找（种子数据防重复） */
   findByTitleArtist(title: string, artist: string) {
     return this.music.findOne({ where: { title, artist } });

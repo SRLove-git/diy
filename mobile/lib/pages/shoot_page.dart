@@ -237,7 +237,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
       await _openPublishPage(
         initialVideo: file,
         durationSeconds: seconds,
-        musicTitle: edit.music?.title ?? _music?.title,
+        music: edit.music ?? _music,
         edit: edit,
         aspectRatio: edit.aspectRatio,
       );
@@ -263,7 +263,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
       if (edit == null || !mounted) return;
       await _openPublishPage(
         initialImage: shot,
-        musicTitle: edit.music?.title ?? _music?.title,
+        music: edit.music ?? _music,
         edit: edit,
       );
     } catch (_) {
@@ -285,7 +285,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
     if (onlyPhotos) {
       await _openPublishPage(
         initialImages: selected.map((item) => XFile(item.path)).toList(),
-        musicTitle: _music?.title,
+        music: _music,
       );
       return;
     }
@@ -328,7 +328,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
     if (edit == null || !mounted) return;
     await _openPublishPage(
       initialVideo: video,
-      musicTitle: edit.music?.title ?? _music?.title,
+      music: edit.music ?? _music,
       edit: edit,
       aspectRatio: edit.aspectRatio,
     );
@@ -347,7 +347,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
         builder: (_) => PostEditPage(
           video: video,
           photo: photo,
-          initialMusic: _music?.title,
+          initialMusic: _music,
           durationSeconds: durationSeconds,
           aspectRatio: aspectRatio,
         ),
@@ -361,7 +361,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
     XFile? initialImage,
     List<XFile>? initialImages,
     int? durationSeconds,
-    String? musicTitle,
+    MusicItem? music,
     PostEditResult? edit,
     double? aspectRatio,
   }) async {
@@ -372,7 +372,7 @@ class _ShootPageState extends State<ShootPage> with WidgetsBindingObserver {
           initialVideo: initialVideo,
           initialImage: initialImage,
           initialImages: initialImages,
-          initialMusic: musicTitle,
+          initialMusic: music,
           durationSeconds: durationSeconds,
           initialEdit: edit,
           initialAspectRatio: aspectRatio,

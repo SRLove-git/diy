@@ -93,6 +93,12 @@ export class CreateVideoDto {
   @IsOptional()
   music?: string;
 
+  /** 配乐 ID（曲库音乐；非空且为视频作品时，服务端把配乐混入视频音轨） */
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  musicId?: number;
+
   /** 话题标签列表 */
   @IsArray()
   @IsOptional()

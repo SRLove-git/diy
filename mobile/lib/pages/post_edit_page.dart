@@ -69,8 +69,8 @@ class PostEditPage extends StatefulWidget {
   /// 拍下的照片素材（与 [video] 二选一）
   final XFile? photo;
 
-  /// 拍摄页已选配乐名（可空）
-  final String? initialMusic;
+  /// 拍摄页已选配乐（可空）
+  final MusicItem? initialMusic;
 
   /// 视频实测时长（秒，相册视频可能为空）
   final int? durationSeconds;
@@ -130,16 +130,7 @@ class _PostEditPageState extends State<PostEditPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialMusic != null && widget.initialMusic!.isNotEmpty) {
-      _music = MusicItem(
-        id: 0,
-        title: widget.initialMusic!,
-        artist: '',
-        cover: '',
-        musicUrl: '',
-        duration: 0,
-      );
-    }
+    _music = widget.initialMusic;
     // 默认裁剪区间 = 完整视频
     _trimEnd = _videoLength;
     // 视频素材：初始化真实播放器用于预览

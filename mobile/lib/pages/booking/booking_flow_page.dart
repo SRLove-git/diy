@@ -379,13 +379,14 @@ class _BookingFlowPageState extends State<BookingFlowPage> {
 
   /// 搜索过滤后的门店（名称/地址模糊匹配，同时作用于地图与列表）
   List<Store> get _visibleStores {
-    final q = _query.trim().toLowerCase();
+    // 忽略输入与地址中的空白，便于按地址片段（如「滨江区」「文一西路」）查找
+    String compact(String v) =>
+        v.trim().toLowerCase().replaceAll(RegExp(r'\s+'), '');
+    final q = compact(_query);
     if (q.isEmpty) return _stores;
     return _stores
         .where(
-          (s) =>
-              s.name.toLowerCase().contains(q) ||
-              s.address.toLowerCase().contains(q),
+          (s) => compact(s.name).contains(q) || compact(s.address).contains(q),
         )
         .toList();
   }

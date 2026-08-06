@@ -299,6 +299,22 @@ void main() {
     expect(find.byType(ListView), findsNothing);
   });
 
+  testWidgets('搜索支持地址片段，且忽略输入中的空格', (tester) async {
+    await _pumpBooking(tester, locate: () async => null);
+
+    // 按地址关键词「文一西路」可同时命中西湖店与余杭店
+    await tester.enterText(
+      find.byKey(const Key('store-search-field')),
+      '文一 西路',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('找到 2 家门店'), findsOneWidget);
+    expect(find.text('西湖店'), findsOneWidget);
+    expect(find.text('余杭店'), findsOneWidget);
+    expect(find.text('滨江店'), findsNothing);
+  });
+
   testWidgets('门店卡片可打开地图导航面板并调起地图应用', (tester) async {
     final launched = <Uri>[];
     await tester.pumpWidget(

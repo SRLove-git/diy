@@ -378,17 +378,31 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
               ],
             )
           else
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => _deletePost(p),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.danger,
-                  side: BorderSide(color: colors.danger),
-                  minimumSize: const Size(0, 38),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => _approve(p),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Palette.success,
+                      minimumSize: const Size(0, 38),
+                    ),
+                    child: const Text('上架'),
+                  ),
                 ),
-                child: const Text('删除'),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _deletePost(p),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.danger,
+                      side: BorderSide(color: colors.danger),
+                      minimumSize: const Size(0, 38),
+                    ),
+                    child: const Text('删除'),
+                  ),
+                ),
+              ],
             ),
         ],
       ),

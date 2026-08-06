@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
 import '../core/app_colors.dart';
@@ -39,18 +40,27 @@ class MusicPickerSheet extends StatefulWidget {
 
 class _MusicPickerSheetState extends State<MusicPickerSheet> {
   final _searchCtrl = TextEditingController();
+  final AudioPlayer _player = AudioPlayer();
   Timer? _debounce;
+  StreamSubscription<void>? _playCompleteSub;
   List<MusicItem> _items = [];
+  /// 当前正在试听的曲目 ID（null 表示未播放）
+  int? _playingId;
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
+    _playCompleteSub = _player.onPlayerComplete.listen((_) {
+      if (mounted) setState(() => _playingId = null);
+    });
     _load();
   }
 
   @override
   void dispose() {
+    _playCompleteSub?.cancel();
+    unawaited(_player.dispose());
     _debounce?.cancel();
     _searchCtrl.dispose();
     super.dispose();
@@ -74,6 +84,27 @@ class _MusicPickerSheetState extends State<MusicPickerSheet> {
   void _onSearch(String v) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), () => _load(v));
+  }
+
+  /// 试听/暂停：点击曲目右侧播放按钮触发，不改变选中状态
+  Future<void> _togglePlay(MusicItem item) async {
+    if (_playingId == item.id) {
+      try {
+        await _player.pause();
+      } catch (_) {}
+      if (mounted) setState(() => _playingId = null);
+      return;
+    }
+    if (item.musicUrl.isEmpty) return;
+    try {
+      await _player.stop();
+    } catch (_) {}
+    if (mounted) setState(() => _playingId = item.id);
+    try {
+      await _player.play(UrlSource(ChatApi.resolveUrl(item.musicUrl)));
+    } catch (_) {
+      if (mounted) setState(() => _playingId = null);
+    }
   }
 
   static String _fmt(int seconds) =>
@@ -261,6 +292,20 @@ class _MusicPickerSheetState extends State<MusicPickerSheet> {
               style: const TextStyle(color: Color(0xFF6A6A76), fontSize: 12),
             ),
             const SizedBox(width: 8),
+            // 试听
+            GestureDetector(
+              onTap: () => _togglePlay(item),
+              child: Icon(
+                _playingId == item.id
+                    ? Icons.pause_circle_filled_rounded
+                    : Icons.play_circle_fill_rounded,
+                color: _playingId == item.id
+                    ? Palette.accent
+                    : const Color(0xFF6A6A76),
+                size: 26,
+              ),
+            ),
+            const SizedBox(width: 12),
             // 选中态
             Icon(
               selected

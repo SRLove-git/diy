@@ -252,22 +252,89 @@ class _StoreOsmMapState extends State<_StoreOsmMap> {
       for (final s in _geocoded(data.stores))
         Marker(
           point: ll.LatLng(s.lat, s.lng),
-          width: 36,
-          height: 36,
-          // 图钉尖（图标底部）对准门店坐标
+          width: 170,
+          // 图钉尖（图标底部）对准门店坐标，标签在钉尖上方
+          height: s.store.id == data.selectedStoreId ? 86 : 64,
           alignment: Alignment.topCenter,
-          child: GestureDetector(
+          child: _StoreOsmMarker(
+            store: s.store,
+            selected: s.store.id == data.selectedStoreId,
             onTap: () => data.onSelectStore(s.store),
-            child: Icon(
-              Icons.location_on,
-              size: 36,
-              color: s.store.id == data.selectedStoreId
-                  ? Colors.green
-                  : Colors.red,
-            ),
           ),
         ),
     ];
+  }
+}
+
+/// OSM 门店标记：图钉 + 店名标签，选中门店额外展示地址，
+/// 便于在搜索后按店名/地址在地图上确认门店
+class _StoreOsmMarker extends StatelessWidget {
+  const _StoreOsmMarker({
+    required this.store,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Store store;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Container(
+            constraints: const BoxConstraints(maxWidth: 170),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6),
+              boxShadow: const [
+                BoxShadow(color: Colors.black26, blurRadius: 4),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  store.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: selected
+                        ? const Color(0xFF2E7D32)
+                        : Colors.black87,
+                  ),
+                ),
+                if (selected)
+                  Text(
+                    store.address,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.black54,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 2),
+          Icon(
+            Icons.location_on,
+            size: 36,
+            color: selected ? Colors.green : Colors.red,
+          ),
+        ],
+      ),
+    );
   }
 }
 

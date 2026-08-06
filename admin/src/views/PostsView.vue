@@ -237,6 +237,13 @@ onMounted(load)
               下架
             </button>
             <button
+              v-if="p.status === 'rejected'"
+              class="btn btn-sm btn-success"
+              @click="approve(p.id)"
+            >
+              上架
+            </button>
+            <button
               class="btn btn-sm btn-delete"
               @click="openDelete(p.id)"
             >

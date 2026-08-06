@@ -130,6 +130,7 @@ class VideoApi {
     String videoUrl = '',
     int? duration,
     String music = '',
+    int? musicId,
     List<String> tags = const [],
     String location = '',
     List<String> photos = const [],
@@ -147,6 +148,7 @@ class VideoApi {
     if (videoUrl.isNotEmpty) data['videoUrl'] = videoUrl;
     if (duration != null && duration > 0) data['duration'] = duration;
     if (music.isNotEmpty) data['music'] = music;
+    if (musicId != null && musicId > 0) data['musicId'] = musicId;
     if (tags.isNotEmpty) data['tags'] = tags;
     if (location.isNotEmpty) data['location'] = location;
     if (photos.isNotEmpty) data['photos'] = photos;

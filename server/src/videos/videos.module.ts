@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Follow } from '../follows/follow.entity';
+import { Music } from '../music/music.entity';
 import { User } from '../users/user.entity';
+import { AudioMixService } from './audio-mix.service';
 import { Video } from './video.entity';
 import { VideoComment } from './video-comment.entity';
 import { VideoCommentLike } from './video-comment-like.entity';
@@ -22,11 +24,12 @@ import { UsersModule } from '../users/users.module';
       VideoHistory,
       Follow,
       User,
+      Music,
     ]),
     UsersModule,
   ],
   controllers: [VideosController, AdminVideosController],
-  providers: [VideosService],
+  providers: [VideosService, AudioMixService],
   exports: [VideosService],
 })
 export class VideosModule {}

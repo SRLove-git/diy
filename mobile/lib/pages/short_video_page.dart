@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 import '../core/app_colors.dart';
+import '../core/auth_service.dart';
 import '../core/follow_api.dart';
 import '../core/photo_filters.dart';
 import '../core/route_observer.dart';
@@ -284,6 +285,8 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
   }
 
   void _toggleFollow(ShortVideo v) {
+    // 自己的视频不展示关注入口，这里再兜底一次，避免误关注自己
+    if (v.authorId == AuthService.instance.user?.id) return;
     final following = !_followedIds.contains(v.authorId);
     setState(() {
       following
@@ -442,6 +445,7 @@ class _ShortVideoPageState extends State<ShortVideoPage> {
                   active: i == _currentIndex,
                   pageActive: widget.active,
                   followed: _followedIds.contains(feed[i].authorId),
+                  isMine: feed[i].authorId == AuthService.instance.user?.id,
                   onDoubleTapLike: () => _toggleLike(feed[i]),
                   onFollow: () => _toggleFollow(feed[i]),
                   onLike: () => _toggleLike(feed[i]),
@@ -648,6 +652,7 @@ class _VideoItemPage extends StatefulWidget {
     required this.active,
     required this.pageActive,
     required this.followed,
+    required this.isMine,
     required this.onDoubleTapLike,
     required this.onFollow,
     required this.onLike,
@@ -667,6 +672,9 @@ class _VideoItemPage extends StatefulWidget {
 
   /// 当前用户是否已关注该作者
   final bool followed;
+
+  /// 是否为当前登录用户自己的视频
+  final bool isMine;
 
   /// 双击点赞回调
   final VoidCallback onDoubleTapLike;
@@ -1328,6 +1336,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
                     child: _RightRail(
                       video: widget.video,
                       followed: widget.followed,
+                      isMine: widget.isMine,
                       onFollow: widget.onFollow,
                       onLike: widget.onLike,
                       onComment: widget.onComment,
@@ -1444,7 +1453,7 @@ class _VideoItemPageState extends State<_VideoItemPage>
                   ),
                 ),
               ),
-              if (!widget.followed) ...[
+              if (!widget.isMine && !widget.followed) ...[
                 const SizedBox(width: 8),
                 GestureDetector(
                   onTap: widget.onFollow,
@@ -1531,6 +1540,7 @@ class _RightRail extends StatefulWidget {
   const _RightRail({
     required this.video,
     required this.followed,
+    required this.isMine,
     required this.onFollow,
     required this.onLike,
     required this.onComment,
@@ -1540,6 +1550,7 @@ class _RightRail extends StatefulWidget {
 
   final ShortVideo video;
   final bool followed;
+  final bool isMine;
   final VoidCallback onFollow;
   final VoidCallback onLike;
   final VoidCallback onComment;
@@ -1641,7 +1652,8 @@ class _RightRailState extends State<_RightRail>
   Widget _buildAvatar(ShortVideo v) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: widget.onFollow,
+      // 自己的视频不提供关注入口，点击头像也不触发关注
+      onTap: widget.isMine ? null : widget.onFollow,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -1675,23 +1687,24 @@ class _RightRailState extends State<_RightRail>
                     ),
                   ),
           ),
-          Positioned(
-            bottom: -9,
-            right: -3,
-            child: Container(
-              width: 22,
-              height: 22,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Palette.accent,
-              ),
-              child: Icon(
-                widget.followed ? Icons.check_rounded : Icons.add_rounded,
-                color: Colors.white,
-                size: 15,
+          if (!widget.isMine)
+            Positioned(
+              bottom: -9,
+              right: -3,
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Palette.accent,
+                ),
+                child: Icon(
+                  widget.followed ? Icons.check_rounded : Icons.add_rounded,
+                  color: Colors.white,
+                  size: 15,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

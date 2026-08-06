@@ -16,7 +16,16 @@ async function bootstrap() {
   app.use('/uploads', express.static(uploadDir));
 
   // 开发环境演示短视频（bootstrap 种子引用的真实视频资产）
-  app.use('/assets/demo', express.static(join(process.cwd(), 'assets', 'demo')));
+  app.use(
+    '/assets/demo',
+    express.static(join(process.cwd(), 'assets', 'demo')),
+  );
+
+  // 曲库音频（发布视频时可选配乐，bootstrap 种子引用 assets/music 下的真实音频）
+  app.use(
+    '/assets/music',
+    express.static(join(process.cwd(), 'assets', 'music')),
+  );
 
   // 管理后台（admin）与客户端共用同一套 /api 前缀 API
   app.setGlobalPrefix('api');

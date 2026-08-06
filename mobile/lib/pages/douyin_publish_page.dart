@@ -46,8 +46,8 @@ class DouyinPublishPage extends StatefulWidget {
   /// 相册页按选择顺序带入的照片笔记素材。
   final List<XFile>? initialImages;
 
-  /// 拍摄页选中的配乐名（可空）
-  final String? initialMusic;
+  /// 拍摄页选中的配乐（可空，含曲库 ID 与试听地址）
+  final MusicItem? initialMusic;
 
   /// 录制视频的实测时长（秒，可空则由服务端默认）
   final int? durationSeconds;
@@ -109,16 +109,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
     if (widget.initialImages != null) {
       _photos.addAll(widget.initialImages!.take(_maxPhotos));
     }
-    if (widget.initialMusic != null && widget.initialMusic!.isNotEmpty) {
-      _music = MusicItem(
-        id: 0,
-        title: widget.initialMusic!,
-        artist: '',
-        cover: '',
-        musicUrl: '',
-        duration: 0,
-      );
-    }
+    _music = widget.initialMusic;
     _edit = widget.initialEdit;
     // 编辑页选择的配乐优先
     final editMusic = _edit?.music;
@@ -344,6 +335,7 @@ class _DouyinPublishPageState extends State<DouyinPublishPage> {
             : widget.durationSeconds ??
                   (_videoCtrl?.value.duration.inSeconds ?? 0),
         music: _music?.title ?? '',
+        musicId: (_music?.id ?? 0) > 0 ? _music!.id : null,
         tags: tags,
         photos: photos,
         filter: edit?.filterId ?? '',

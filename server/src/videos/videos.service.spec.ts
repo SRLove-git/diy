@@ -8,6 +8,7 @@ import { VideoHistory } from './video-history.entity';
 import { VideoLike } from './video-like.entity';
 import { Video } from './video.entity';
 import { VideosService } from './videos.service';
+import type { AudioMixService } from './audio-mix.service';
 
 describe('VideosService', () => {
   it('returns the author when a video is created', async () => {
@@ -68,6 +69,7 @@ describe('VideosService', () => {
       {} as Repository<VideoHistory>,
       follows,
       users,
+      { mix: jest.fn() } as unknown as AudioMixService,
     );
 
     const result = await service.create(7, { title: '新作品' });

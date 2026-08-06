@@ -105,6 +105,8 @@ interface DemoMusic {
   title: string;
   artist: string;
   duration: number;
+  /** 音频 URL；缺省时回退到 SoundHelix 公共示例 */
+  musicUrl?: string;
 }
 
 /** 演示配乐（音频走 SoundHelix 公共示例，客户端可试听） */
@@ -115,6 +117,12 @@ const DEMO_MUSIC: DemoMusic[] = [
   { title: '串珠小调', artist: '手工串珠', duration: 90 },
   { title: '彩珠圆舞曲', artist: '轻音乐', duration: 200 },
   { title: '手作时光', artist: '氛围音乐', duration: 130 },
+  {
+    title: '1000 Funk Songs (In A Day)',
+    artist: 'Thomas Park',
+    duration: 192,
+    musicUrl: '/assets/music/thomas-park-1000-funk-songs.mp3',
+  },
 ];
 
 /** 启动初始化：开发环境预置管理员账号 + 演示短视频 */
@@ -206,7 +214,9 @@ export class BootstrapService implements OnApplicationBootstrap {
         title: m.title,
         artist: m.artist,
         duration: m.duration,
-        musicUrl: `https://www.soundhelix.com/examples/mp3/SoundHelix-Song-${i + 1}.mp3`,
+        musicUrl:
+          m.musicUrl ??
+          `https://www.soundhelix.com/examples/mp3/SoundHelix-Song-${i + 1}.mp3`,
       });
     }
     this.logger.log('已确保预置演示配乐就绪');

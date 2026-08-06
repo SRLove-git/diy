@@ -9,6 +9,7 @@ import { In, IsNull, Like, Not, Repository } from 'typeorm';
 
 import { Follow } from '../follows/follow.entity';
 import { User } from '../users/user.entity';
+import { AudioMixService } from './audio-mix.service';
 import { Video } from './video.entity';
 import { VideoComment } from './video-comment.entity';
 import { VideoCommentLike } from './video-comment-like.entity';
@@ -75,6 +76,7 @@ export class VideosService {
     private readonly follows: Repository<Follow>,
     @InjectRepository(User)
     private readonly users: Repository<User>,
+    private readonly mixer: AudioMixService,
   ) {}
 
   // ──── Helpers ────
@@ -426,12 +428,17 @@ export class VideosService {
   }
 
   async create(userId: number, dto: CreateVideoDto): Promise<VideoItem> {
+    let videoUrl = dto.videoUrl ?? '';
+    // 视频作品 + 曲库配乐：服务端用 ffmpeg 把配乐混入视频音轨
+    if (videoUrl && dto.musicId) {
+      videoUrl = await this.mixer.mix(dto.musicId, videoUrl);
+    }
     const video = this.videos.create({
       userId,
       title: dto.title ?? '',
       content: dto.content ?? '',
       cover: dto.cover ?? '',
-      videoUrl: dto.videoUrl ?? '',
+      videoUrl,
       photos: dto.photos ?? [],
       filter: dto.filter ?? '',
       trimStart: dto.trimStart ?? 0,
