@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:diy_ui_app/utils/pix_adapted_screen.dart';
 import 'package:diy_ui_app/utils/pix_extensions.dart';
 import 'package:diy_ui_app/utils/pix_base64_string.dart';
-import 'package:diy_ui_app/custom_widget/CustomWidget_5_50351.dart';
+import 'package:diy_ui_app/custom_widget/CustomWidget_6_9931.dart';
 import 'package:diy_ui_app/utils/pix_text_rich.dart';
-import 'package:diy_ui_app/custom_widget/CustomWidget_5_50366.dart';
-import 'package:diy_ui_app/custom_widget/CustomWidget_5_50371.dart';
-import 'package:diy_ui_app/custom_widget/CustomWidget_5_50385.dart';
+import 'package:diy_ui_app/custom_widget/CustomWidget_6_9946.dart';
+import 'package:diy_ui_app/custom_widget/CustomWidget_6_9951.dart';
+import 'package:diy_ui_app/custom_widget/CustomWidget_6_9965.dart';
 
 class Reels extends StatefulWidget {
 
@@ -16,12 +16,12 @@ class Reels extends StatefulWidget {
 }
 
 class _ReelsState extends State<Reels> {
-  late final ImageProvider _image_zyke5_50350 = MemoryImage(imageStr_imageStr_zyel5_50350.decodeBase64Image());
-  late final ImageProvider _image_vrvl5_50365 = MemoryImage(imageStr_imageStr_tjmg5_50365.decodeBase64Image());
-  late final ImageProvider _image_fjmv5_50374 = MemoryImage(imageStr_imageStr_jlme5_50374.decodeBase64Image());
-  late final ImageProvider _image_znsn5_50376 = MemoryImage(imageStr_imageStr_yfdb5_50376.decodeBase64Image());
-  late final ImageProvider _image_ivhq5_50387 = MemoryImage(imageStr_imageStr_bkcu5_50387.decodeBase64Image());
-  late final ImageProvider _image_rfdt5_50389 = MemoryImage(imageStr_imageStr_tudc5_50389.decodeBase64Image());
+  late final ImageProvider _image_cmep6_9930 = MemoryImage(imageStr_pjkc6_9930.decodeBase64Image());
+  late final ImageProvider _image_iotp6_9945 = MemoryImage(imageStr_izal6_9945.decodeBase64Image());
+  late final ImageProvider _image_hxws6_9954 = MemoryImage(imageStr_rdiw6_9954.decodeBase64Image());
+  late final ImageProvider _image_mnke6_9956 = MemoryImage(imageStr_nlfw6_9956.decodeBase64Image());
+  late final ImageProvider _image_mjqa6_9967 = MemoryImage(imageStr_aiim6_9967.decodeBase64Image());
+  late final ImageProvider _image_pmis6_9969 = MemoryImage(imageStr_oxnk6_9969.decodeBase64Image());
 
   @override
   void initState() {
@@ -32,7 +32,7 @@ class _ReelsState extends State<Reels> {
 
   @override
   Widget build(BuildContext context) {
-    ScreenUtil().rootSize = Size(390, 844);
+    ScreenUtil().rootSize = Size(440, 956);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: MediaQuery.removePadding(
@@ -40,50 +40,60 @@ class _ReelsState extends State<Reels> {
         removeTop: true,
         removeBottom: true,
         child: SizedBox(
-            width: 390.w,
-            height: 844.h,
+            width: 440.w,
+            height: 956.h,
             child: ListView(
               children: [
                 Container(
-                width: 390.w,
-                height: 844.h,
+                width: 440.w,
+                height: 956.h,
                 decoration: BoxDecoration(color: Color.fromRGBO(255, 255, 255,1),),
                 clipBehavior: Clip.hardEdge,
                 child: Stack(
-                  key: ValueKey("5:50349"),
+                  key: ValueKey("6:9928"),
                   children: [
                     Positioned(
-                      width: 390.w,
-                      height: 844.h,
+                      width: 440.w,
+                      height: 952.h,
                       left: 0.w,
                       top: 0.h,
-                      child: Container(
-                        decoration: BoxDecoration(image: DecorationImage(image: _image_zyke5_50350, fit: BoxFit.fill),),
-                        clipBehavior: Clip.hardEdge,
-                        child: Stack(
-                          key: ValueKey("5:50350"),
-                          children: [
-                            CustomWidget_5_50351(),
-                            Positioned(
-                              width: 390.w,
-                              height: 844.h,
-                              left: 0.w,
-                              top: 0.h,
-                              child: Container(
-                                key: ValueKey("5:50365"),
-                                decoration: BoxDecoration(image: DecorationImage(image: _image_vrvl5_50365, fit: BoxFit.fill),),),),
-                            CustomWidget_5_50366(),
-                            CustomWidget_5_50371(),
-                            CustomWidget_5_50385(),
-                            Positioned(
-                              width: 390.w,
-                              height: 96.h,
-                              left: 0.w,
-                              top: 748.h,
-                              child: Image(
-                                key: ValueKey("5:50410"),
-                                image: AssetImage("assets/divtabwrap.png"),),),
-                          ],),),),
+                      child: Stack(
+                        key: ValueKey("6:9929"),
+                        clipBehavior: Clip.none,
+                        children: [
+                          Positioned(
+                            width: 440.w,
+                            height: 952.h,
+                            left: 0.w,
+                            top: 0.h,
+                            child: Container(
+                              decoration: BoxDecoration(image: DecorationImage(image: _image_cmep6_9930, fit: BoxFit.fill),),
+                              clipBehavior: Clip.hardEdge,
+                              child: Stack(
+                                key: ValueKey("6:9930"),
+                                children: [
+                                  CustomWidget_6_9931(),
+                                  Positioned(
+                                    width: 440.w,
+                                    height: 952.h,
+                                    left: 0.w,
+                                    top: 0.h,
+                                    child: Container(
+                                      key: ValueKey("6:9945"),
+                                      decoration: BoxDecoration(image: DecorationImage(image: _image_iotp6_9945, fit: BoxFit.fill),),),),
+                                  CustomWidget_6_9946(),
+                                  CustomWidget_6_9951(),
+                                  CustomWidget_6_9965(),
+                                  Positioned(
+                                    width: 440.w,
+                                    height: 108.h,
+                                    left: 0.w,
+                                    top: 844.h,
+                                    child: Image(
+                                      key: ValueKey("6:9990"),
+                                      image: AssetImage("assets/divtabwrap-reels.png"),),),
+                                ],),),),
+                        ],),),
                   ],),),
               ],
             )

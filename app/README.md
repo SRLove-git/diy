@@ -1,50 +1,30 @@
-# 手作星球 · 新版客户端（Flutter）
+# 手作星球 · Flutter UI 预览
 
-由 Pixso 82 屏设计稿生成的新版 UI App，已接入后端 `server/`（NestJS，`/api` 前缀）。
-旧版 `mobile/` 中的客户端 API 层已整体移植到本工程的 `lib/core/`，入口已从「设计稿预览壳」
-改为真实客户端：登录 → 底部五 Tab（首页 / Reels / 社区 / 消息 / 我的）。
+由 Pixso 设计稿（82 屏）通过 Pixso MCP `design_to_code` 生成的 Flutter/Dart 工程。
 
 ## 运行
 
 ```bash
 flutter pub get
-cp .env.example .env   # 首次，配置 API_BASE_URL
-flutter run            # iOS / Android
+flutter run            # 选择设备（iOS / Android / Chrome）
+flutter build web      # 构建 Web 版（build/web）
 flutter test           # 冒烟测试
 ```
-
-## API 地址配置（`.env`）
-
-```env
-API_BASE_URL=http://localhost:3000/api
-```
-
-读取顺序：`.env` → `--dart-define=API_BASE_URL=...` → 默认 `http://localhost:3000/api`。
-编辑 `.env` 后热重启生效。真机调试时把地址改成电脑局域网 IP。
 
 ## 目录结构
 
 | 目录 | 说明 |
 |---|---|
-| `lib/core/` | 从旧版 `mobile/` 移植的完整 API 层：`api_client`（dio）、`auth_service`（登录/token 刷新）、`post_api` / `video_api` / `chat_api` / `chat_service`（WebSocket 实时聊天）/ `appointment_api` / `follow_api` / `notification_api` / `music_api` 等 |
-| `lib/features/` | 社区 / 会员领域模型与数据仓库（API 实现） |
-| `lib/screens/` | 真实功能页：登录、主框架（五 Tab）、首页、Reels、社区、消息、个人主页、作品详情 |
-| `lib/pages/` + `lib/custom_widget/` | Pixso 生成的 82 屏静态设计稿（开发预览用，见「我的 → 设计稿预览」） |
-| `lib/screens/dev/gallery_page.dart` | 82 屏设计稿预览入口 |
-| `lib/utils/`、`lib/variables/` | Pixso 适配工具与变量 |
+| `lib/pages/` | 82 个屏幕页面（Frame_<节点id>.dart，16-Reels 为 Reels.dart） |
+| `lib/custom_widget/` | 页面引用的自定义组件 |
+| `lib/utils/` | 适配工具（pix_adapted_screen、pix_extensions、pix_base64_string 等） |
+| `lib/variables/` | Pixso 变量管理（当前页面未直接使用） |
+| `assets/` | 从设计稿重新导出的栅格图片（Tab 栏、卡片、渐变占位等） |
+| `lib/main.dart` | 预览壳：82 屏宫格入口 + 440×956 画幅预览（59 为横屏 956×440） |
+| `lib/screens_registry.dart` | 屏幕名 → 页面组件映射（自动生成） |
 
-## 已对接后端的功能
+## 说明
 
-- 验证码 / 密码登录、token 自动刷新、登出
-- 首页：活动专区、附近门店、最新作品信息流
-- 社区：发现 / 关注、频道筛选（推荐/最新/热门/教程/日常/活动）、作品卡片、点赞、作品详情与评论
-- Reels：短视频推荐流（video_player 播放、点赞、浏览记录上报）
-- 消息：会话列表（WebSocket 实时更新、未读角标、在线状态）、按手机号发起会话、单聊收发文本
-- 我的：个人资料、作品/收藏/喜欢统计、我的作品网格
-
-## 待接入（后续迭代）
-
-- 发布作品 / 发布视频（图片与视频选择、上传、配乐）
-- 预约流程（门店详情 → 选桌位 → 确认 → 核销）、会员开通、卡包优惠券
-- 群聊、黑名单、通知列表、设置与编辑资料
-- 将更多 82 屏设计稿逐步替换为功能页
+- 页面为设计稿 1:1 还原（**iPhone 17 Pro Max 基准 440×956**，横屏页 956×440），含状态栏、底部 Tab、弹窗、动效规范等全部状态。
+- 生成代码由 Pixso MCP 产出，`flutter analyze` 提示多为生成代码的命名/风格 lint，不影响运行；如需要可加 `// ignore_for_file: camel_case_types, non_constant_identifier_names`。
+- 图片资源分两类：`assets/`（重新导出的 PNG）与 `pix_base64_string.dart`（内嵌 base64，按节点 id 合并）。
