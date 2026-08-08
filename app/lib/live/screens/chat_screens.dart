@@ -422,6 +422,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   /// 长按消息气泡：弹出操作菜单（对齐 Pixso 36-聊天-长按气泡菜单）。
   Future<void> _showMessageMenu(ChatMessage msg, Offset globalPos) async {
+    // 长按消息弹出操作菜单前先收起键盘，避免键盘遮挡菜单。
+    FocusScope.of(context).unfocus();
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
     if (overlay == null) return;
     final overlaySize = overlay.size;
