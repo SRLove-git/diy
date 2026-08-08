@@ -2015,19 +2015,63 @@ class SettingsScreen extends StatelessWidget {
                   onTap: () async {
                     final ok = await showDialog<bool>(
                       context: context,
-                      builder: (_) => AlertDialog(
-                        title: const Text('退出登录'),
-                        content: const Text('确定要退出当前账号吗？'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text('再想想'),
+                      // 对齐 Pixso 39-弹窗-退出登录确认：
+                      // 遮罩 + 居中白色圆角 22 对话框 + 灰底取消 / 红底退出登录。
+                      barrierColor: const Color(0x6B141414),
+                      builder: (_) => Center(
+                        child: Container(
+                          width: 312,
+                          padding: const EdgeInsets.fromLTRB(25, 29, 25, 22),
+                          decoration: BoxDecoration(
+                            color: LiveColors.bg,
+                            borderRadius: BorderRadius.circular(22),
                           ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text('退出'),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                '退出登录',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: LiveColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                '退出后需要重新登录，才能查看消息、预约和会员信息，确定退出吗？',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  height: 1.5,
+                                  color: LiveColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _DialogButton(
+                                      label: '取消',
+                                      backgroundColor: LiveColors.card,
+                                      textColor: LiveColors.textPrimary,
+                                      onTap: () => Navigator.pop(context, false),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: _DialogButton(
+                                      label: '退出登录',
+                                      backgroundColor: const Color(0xFFFF3B30),
+                                      textColor: Colors.white,
+                                      onTap: () => Navigator.pop(context, true),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     );
                     if (ok == true) await LiveRoutes.logout(context);
@@ -2038,6 +2082,45 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 弹窗底部按钮（对齐 Pixso 39-弹窗-退出登录确认：灰底取消 / 红底退出登录）。
+class _DialogButton extends StatelessWidget {
+  const _DialogButton({
+    required this.label,
+    required this.backgroundColor,
+    required this.textColor,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color backgroundColor;
+  final Color textColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: backgroundColor,
+      borderRadius: BorderRadius.circular(15),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: Container(
+          height: 52,
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+        ),
       ),
     );
   }
