@@ -266,10 +266,12 @@ class _ProfileHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // 内容整体下移一点，避免贴住顶部导航
+        const SizedBox(height: 22),
         Row(
           children: [
-            Avatar(url: user.avatar, name: user.nickname, size: 76),
-            const SizedBox(width: 18),
+            Avatar(url: user.avatar, name: user.nickname, size: 84),
+            const SizedBox(width: 20),
             Expanded(
               child: Row(
                 children: [
@@ -293,35 +295,35 @@ class _ProfileHeader extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         Text(
           user.displayName,
-          style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
           user.bio.isEmpty
               ? '@${user.phone}'
               : '@${user.phone} · ${user.bio}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12.6, color: LiveColors.textSecondary),
+          style: const TextStyle(fontSize: 14, color: LiveColors.textSecondary),
         ),
-        const SizedBox(height: 3),
+        const SizedBox(height: 4),
         Text(
           '手作星球${joinYear != null ? ' ${joinYear} 年 ${joinMonth ?? ''} 月入驻' : ''}'
           '${user.location.isNotEmpty ? ' · ${user.location}' : ''}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 11.6, color: LiveColors.textTertiary),
+          style: const TextStyle(fontSize: 13, color: LiveColors.textTertiary),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 18),
         Row(
           children: [
             Expanded(
               child: PrimaryButton(
                 label: '编辑资料',
-                height: 50,
+                height: 54,
                 onTap: onEdit,
               ),
             ),
@@ -329,7 +331,7 @@ class _ProfileHeader extends StatelessWidget {
             Expanded(
               child: PrimaryButton(
                 label: '分享主页',
-                height: 50,
+                height: 54,
                 onTap: onShare,
               ),
             ),
@@ -361,12 +363,12 @@ class _StatColumn extends StatelessWidget {
           children: [
             Text(
               value,
-              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 4),
             Text(
               label,
-              style: const TextStyle(fontSize: 11.6, color: LiveColors.textSecondary),
+              style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
             ),
           ],
         ),
@@ -671,7 +673,29 @@ class _ProfileMenuButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       icon: const Icon(Icons.menu, color: LiveColors.textPrimary),
-      onPressed: () => LiveRoutes.push(context, const ProfileMenuScreen()),
+      // 侧边栏以浮层形式展示在当前「个人」页之上，
+      // 而非 push 一个全新页面（对齐设计稿 26-我的主页-菜单）。
+      onPressed: () => showGeneralDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: '我的服务',
+        barrierColor: Colors.black.withOpacity(0.35),
+        transitionDuration: const Duration(milliseconds: 220),
+        pageBuilder: (_, __, ___) => const ProfileMenuScreen(),
+        transitionBuilder: (_, animation, __, child) {
+          final t = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          );
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1, 0),
+              end: Offset.zero,
+            ).animate(t),
+            child: child,
+          );
+        },
+      ),
     );
   }
 }
@@ -702,24 +726,32 @@ class ProfileMenuScreen extends StatelessWidget {
                 children: [
                   const SizedBox(height: 18),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
                     child: Row(
                       children: [
                         const Text(
                           '我的服务',
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
                             color: LiveColors.textPrimary,
                           ),
                         ),
                         const Spacer(),
-                        InkWell(
-                          onTap: () => Navigator.of(context).pop(),
-                          child: const Icon(
-                            Icons.close,
-                            size: 22,
-                            color: LiveColors.textSecondary,
+                        Material(
+                          color: LiveColors.card,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () => Navigator.of(context).pop(),
+                            child: const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.close,
+                                size: 20,
+                                color: LiveColors.textSecondary,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -771,7 +803,7 @@ class ProfileMenuScreen extends StatelessWidget {
                     padding: EdgeInsets.fromLTRB(20, 0, 20, 28),
                     child: Text(
                       '更多服务持续上线',
-                      style: TextStyle(fontSize: 11.6, color: LiveColors.textTertiary),
+                      style: TextStyle(fontSize: 12, color: LiveColors.textTertiary),
                     ),
                   ),
                 ],
@@ -802,11 +834,20 @@ class _MenuEntryTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         child: Row(
           children: [
-            Icon(icon, size: 22, color: LiveColors.textPrimary),
-            const SizedBox(width: 14),
+            // 图标盒：浅色圆角底（对齐设计稿 iconbox soft）
+            Container(
+              width: 45,
+              height: 45,
+              decoration: BoxDecoration(
+                color: LiveColors.card,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, size: 22, color: LiveColors.textPrimary),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -822,7 +863,7 @@ class _MenuEntryTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: const TextStyle(fontSize: 11.6, color: LiveColors.textTertiary),
+                    style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
                   ),
                 ],
               ),
