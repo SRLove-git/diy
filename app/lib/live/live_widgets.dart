@@ -14,6 +14,7 @@ class LivePage extends StatelessWidget {
     this.bottomBar,
     this.fullBleed = false,
     this.backgroundColor = LiveColors.bg,
+    this.resizeToAvoidBottomInset = true,
   });
 
   final Widget child;
@@ -21,6 +22,9 @@ class LivePage extends StatelessWidget {
   /// 深色全屏页（Reels / 播放页）：顶部铺满、状态栏图标用浅色。
   final bool fullBleed;
   final Color backgroundColor;
+  /// 键盘弹出时是否压缩页面高度。默认 true（Scaffold 默认行为）；
+  /// 登录等页面设为 false，键盘直接覆盖在页面之上，避免页面被压缩变小。
+  final bool resizeToAvoidBottomInset;
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +36,7 @@ class LivePage extends StatelessWidget {
     );
     return Scaffold(
       backgroundColor: backgroundColor,
+      resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       body: fullBleed
           ? AnnotatedRegion<SystemUiOverlayStyle>(
               value: const SystemUiOverlayStyle(
@@ -483,6 +488,7 @@ class StatRow extends StatelessWidget {
 }
 
 void showLiveSnack(BuildContext context, String message) {
+  if (!context.mounted) return;
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(message)));

@@ -102,132 +102,156 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return LivePage(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 90),
-            const Center(
-              child: Text(
-                '手作星球',
-                style: TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.w800,
-                  color: LiveColors.textPrimary,
-                ),
-              ),
-            ),
-            const Center(
-              child: Text(
-                '发现手作 · 遇见同好',
-                style: TextStyle(fontSize: 13, color: LiveColors.textSecondary),
-              ),
-            ),
-            const SizedBox(height: 46),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-                  decoration: BoxDecoration(
-                    color: LiveColors.inputBg,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Text(
-                    '+86',
-                    style: TextStyle(fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _phoneCtrl,
-                    keyboardType: TextInputType.phone,
-                    maxLength: 11,
-                    decoration: const InputDecoration(
-                      hintText: '请输入手机号',
-                      counterText: '',
-                    ),
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _codeCtrl,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    decoration: const InputDecoration(
-                      hintText: '请输入验证码',
-                      counterText: '',
-                    ),
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 118,
-                  height: 50,
-                  child: OutlinedButton(
-                    onPressed: (_countdown > 0 || _sending) ? null : _sendCode,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: LiveColors.brand,
-                      side: const BorderSide(color: LiveColors.brand, width: 1),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+      // 键盘弹出时不压缩页面高度，键盘直接覆盖在页面之上，
+      // 避免出现“登录页变小、键盘在下方”的上下分层效果。
+      resizeToAvoidBottomInset: false,
+      child: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 90),
+                  const Center(
+                    child: Text(
+                      '手作星球',
+                      style: TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w800,
+                        color: LiveColors.textPrimary,
                       ),
                     ),
+                  ),
+                  const Center(
                     child: Text(
-                      _countdown > 0 ? '${_countdown}s 后重发' : '获取验证码',
-                      style: const TextStyle(fontSize: 13),
+                      '发现手作 · 遇见同好',
+                      style: TextStyle(fontSize: 13, color: LiveColors.textSecondary),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            PrimaryButton(
-              label: '登录 / 注册',
-              onTap: _loading ? null : _login,
-              loading: _loading,
-            ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => LiveRoutes.push(context, const PasswordLoginScreen()),
-                    child: const Text(
-                      '密码登录',
-                      style: TextStyle(color: LiveColors.textSecondary, fontSize: 14),
-                    ),
+                  const SizedBox(height: 46),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                        decoration: BoxDecoration(
+                          color: LiveColors.inputBg,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Text(
+                          '+86',
+                          style: TextStyle(fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _phoneCtrl,
+                          keyboardType: TextInputType.phone,
+                          maxLength: 11,
+                          decoration: const InputDecoration(
+                            hintText: '请输入手机号',
+                            counterText: '',
+                          ),
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => LiveRoutes.push(context, const SetPasswordScreen()),
-                    child: const Text(
-                      '忘记密码',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: LiveColors.textSecondary, fontSize: 14),
-                    ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _codeCtrl,
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                          decoration: const InputDecoration(
+                            hintText: '请输入验证码',
+                            counterText: '',
+                          ),
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 118,
+                        height: 50,
+                        child: OutlinedButton(
+                          onPressed: (_countdown > 0 || _sending) ? null : _sendCode,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: LiveColors.brand,
+                            side: const BorderSide(color: LiveColors.brand, width: 1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: Text(
+                            _countdown > 0 ? '${_countdown}s 后重发' : '获取验证码',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 40),
-            const Center(
-              child: Text(
-                '登录即代表同意《用户协议》和《隐私政策》',
-                style: TextStyle(fontSize: 10.5, color: LiveColors.textTertiary),
+                  const SizedBox(height: 24),
+                  PrimaryButton(
+                    label: '登录 / 注册',
+                    color: LiveColors.brand,
+                    textColor: Colors.white,
+                    borderRadius: 16,
+                    onTap: _loading ? null : _login,
+                    loading: _loading,
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => LiveRoutes.push(
+                            context,
+                            const PasswordLoginScreen(),
+                            resizeToAvoidBottomInset: false,
+                          ),
+                          child: const Text(
+                            '密码登录',
+                            style: TextStyle(color: LiveColors.textSecondary, fontSize: 14),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => LiveRoutes.push(
+                            context,
+                            const SetPasswordScreen(),
+                            resizeToAvoidBottomInset: false,
+                          ),
+                          child: const Text(
+                            '忘记密码',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: LiveColors.textSecondary, fontSize: 14),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+          // 协议文字固定在页面底部略上位置，不随内容滚动。
+          Padding(
+            padding: const EdgeInsets.only(bottom: 28, top: 8),
+            child: const Center(
+              child: Text(
+                '登录即代表同意《用户协议》和《隐私政策》',
+                style: TextStyle(fontSize: 11, color: LiveColors.textTertiary),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -285,6 +309,7 @@ class _PasswordLoginScreenState extends State<PasswordLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return LivePage(
+      resizeToAvoidBottomInset: false,
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 18),
         child: Column(
@@ -432,6 +457,7 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return LivePage(
+      resizeToAvoidBottomInset: false,
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 18),
         child: Column(

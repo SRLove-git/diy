@@ -75,20 +75,44 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
       bottomBar: const LiveTabBar(current: 3),
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 8, 12, 4),
-            child: Row(
+          // 标题「聊天」居中对齐
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: Stack(
+              alignment: Alignment.center,
               children: [
                 const Text(
                   '聊天',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.person_add_alt, color: LiveColors.textPrimary),
-                  onPressed: () => LiveRoutes.push(context, const AddFriendScreen()),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: LiveColors.textPrimary,
+                  ),
                 ),
               ],
+            ),
+          ),
+          // 搜索框：位于「聊天」正下方（对齐设计稿 21-会话列表）
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 4, 18, 6),
+            child: Container(
+              height: 50,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: LiveColors.inputBg,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.search, size: 20, color: LiveColors.textTertiary),
+                  const SizedBox(width: 8),
+                  Text(
+                    '搜索',
+                    style: const TextStyle(fontSize: 15, color: LiveColors.textTertiary),
+                  ),
+                ],
+              ),
             ),
           ),
           Expanded(
