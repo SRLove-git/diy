@@ -6,8 +6,6 @@ import '../../api/models.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
-import 'post_screens.dart';
-import 'profile_screens.dart';
 
 class CommunityHomeScreen extends StatefulWidget {
   const CommunityHomeScreen({super.key, this.root = false});
@@ -41,7 +39,6 @@ class _CommunityHomeScreenState extends State<CommunityHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return LivePage(
-      bottomBar: const LiveTabBar(current: 1),
       child: Column(
         children: [
           Padding(
@@ -58,11 +55,11 @@ class _CommunityHomeScreenState extends State<CommunityHomeScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.search, color: LiveColors.textPrimary),
-                  onPressed: () => LiveRoutes.push(context, const SearchScreen()),
+                  onPressed: () => LiveRoutes.push(context, RoutePaths.search),
                 ),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, color: LiveColors.textPrimary),
-                  onPressed: () => LiveRoutes.push(context, const PostPublishScreen()),
+                  onPressed: () => LiveRoutes.push(context, RoutePaths.postPublish),
                 ),
               ],
             ),
@@ -103,13 +100,15 @@ class _CommunityHomeScreenState extends State<CommunityHomeScreen> {
                     separatorBuilder: (_, __) => const SizedBox(height: 14),
                     itemBuilder: (_, i) => PostCard(
                       post: posts[i],
-                      onTap: () => LiveRoutes.push(
+                      onTap: () => LiveRoutes.pushId(
                         context,
-                        PostDetailScreen(postId: posts[i].id),
+                        RoutePaths.postDetail,
+                        posts[i].id,
                       ),
-                      onAuthorTap: () => LiveRoutes.push(
+                      onAuthorTap: () => LiveRoutes.pushId(
                         context,
-                        UserProfileScreen(userId: posts[i].userId),
+                        RoutePaths.userDetail,
+                        posts[i].userId,
                       ),
                     ),
                   ),

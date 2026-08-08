@@ -211,8 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: TextButton(
                           onPressed: () => LiveRoutes.push(
                             context,
-                            const PasswordLoginScreen(),
-                            resizeToAvoidBottomInset: false,
+                            RoutePaths.loginPassword,
                           ),
                           child: const Text(
                             '密码登录',
@@ -224,8 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: TextButton(
                           onPressed: () => LiveRoutes.push(
                             context,
-                            const SetPasswordScreen(),
-                            resizeToAvoidBottomInset: false,
+                            RoutePaths.loginSetPassword,
                           ),
                           child: const Text(
                             '忘记密码',
@@ -342,7 +340,7 @@ class _PasswordLoginScreenState extends State<PasswordLoginScreen> {
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
-                onPressed: () => LiveRoutes.push(context, const SetPasswordScreen()),
+                onPressed: () => LiveRoutes.push(context, RoutePaths.loginSetPassword),
                 child: const Text('忘记密码？', style: TextStyle(fontSize: 13, color: LiveColors.textSecondary)),
               ),
             ),
@@ -353,11 +351,11 @@ class _PasswordLoginScreenState extends State<PasswordLoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton(
-                  onPressed: () => LiveRoutes.replace(context, const LoginScreen()),
+                  onPressed: () => LiveRoutes.replace(context, RoutePaths.login),
                   child: const Text('验证码登录', style: TextStyle(color: LiveColors.textSecondary)),
                 ),
                 TextButton(
-                  onPressed: () => LiveRoutes.replace(context, const LoginScreen()),
+                  onPressed: () => LiveRoutes.replace(context, RoutePaths.login),
                   child: const Text('注册新账号', style: TextStyle(color: LiveColors.textSecondary)),
                 ),
               ],
@@ -446,7 +444,7 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
       );
       if (!mounted) return;
       showLiveSnack(context, '密码设置成功，请登录');
-      LiveRoutes.replace(context, const PasswordLoginScreen());
+      LiveRoutes.replace(context, RoutePaths.loginPassword);
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
     } finally {

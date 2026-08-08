@@ -73,14 +73,14 @@ class _MemberCenterScreenState extends State<MemberCenterScreen> {
                         icon: Icons.confirmation_number_outlined,
                         label: '卡包 · 优惠券',
                         value: '${data.coupons.where((c) => c.usable).length} 张可用',
-                        onTap: () => LiveRoutes.push(context, const CouponsScreen()),
+                        onTap: () => LiveRoutes.push(context, RoutePaths.memberCoupons),
                       ),
                       const SizedBox(height: 8),
                       _QuickEntry(
                         icon: Icons.redeem_outlined,
                         label: '领券中心',
                         value: '',
-                        onTap: () => LiveRoutes.push(context, const CouponCenterScreen()),
+                        onTap: () => LiveRoutes.push(context, RoutePaths.memberCouponCenter),
                       ),
                       const SizedBox(height: 20),
                       const SectionHeader(title: '会员套餐'),
@@ -89,7 +89,8 @@ class _MemberCenterScreenState extends State<MemberCenterScreen> {
                           plan: p,
                           onTap: () => LiveRoutes.push(
                             context,
-                            MemberPurchaseScreen(plan: p),
+                            RoutePaths.memberPurchase,
+                            extra: p,
                           ),
                         ),
                       ),
@@ -550,7 +551,7 @@ class _CouponsScreenState extends State<CouponsScreen> {
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.add_circle_outline, color: LiveColors.brand),
-                    onPressed: () => LiveRoutes.push(context, const CouponCenterScreen()),
+                    onPressed: () => LiveRoutes.push(context, RoutePaths.memberCouponCenter),
                   ),
                 ],
               ),
@@ -576,13 +577,13 @@ class _CouponsScreenState extends State<CouponsScreen> {
                 icon: Icons.workspace_premium_outlined,
                 label: '会员专属体验',
                 value: '每月 1 次 ›',
-                onTap: () => LiveRoutes.push(context, const MemberCenterScreen()),
+                onTap: () => LiveRoutes.push(context, RoutePaths.memberCenter),
               ),
               _QuickEntry(
                 icon: Icons.redeem_outlined,
                 label: '领取更多优惠券',
                 value: '',
-                onTap: () => LiveRoutes.push(context, const CouponCenterScreen()),
+                onTap: () => LiveRoutes.push(context, RoutePaths.memberCouponCenter),
               ),
             ],
           );

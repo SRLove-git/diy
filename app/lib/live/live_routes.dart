@@ -1,80 +1,112 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../api/auth_store.dart';
 import 'live_theme.dart';
-import 'screens/chat_screens.dart';
-import 'screens/community_screens.dart';
-import 'screens/home_screen.dart';
-import 'screens/auth_screens.dart';
-import 'screens/profile_screens.dart';
-import 'screens/video_screens.dart';
 
-/// 实时页面路由：统一套 440×956 手机外框，与原型预览保持一致。
+/// 路由路径常量（go_router 声明式路由表，定义见 live_router.dart）。
+class RoutePaths {
+  RoutePaths._();
+
+  static const splash = '/splash';
+  static const login = '/login';
+  static const loginPassword = '/login/password';
+  static const loginSetPassword = '/login/set-password';
+  static const loginVerify = '/login/verify';
+
+  // 底部 5 Tab（StatefulShellRoute 分支）
+  static const home = '/home';
+  static const community = '/community';
+  static const reels = '/reels';
+  static const chat = '/chat';
+  static const profile = '/profile';
+
+  // 详情页（顶层路由，覆盖 Tab 壳）
+  static const search = '/search';
+  static const notifications = '/notifications';
+  static const userDetail = '/user/:id';
+  static const userFollows = '/user/follows';
+  static const postDetail = '/post/:id';
+  static const postPublish = '/post/publish';
+  static const postPublishSuccess = '/post/publish/success';
+  static const videoDetail = '/video/:id';
+  static const videoSearch = '/video/search';
+  static const videoCapture = '/video/capture';
+  static const videoPublish = '/video/publish';
+  static const videoMusic = '/video/music';
+  static const videoPlayer = '/video/player';
+  static const videoLandscape = '/video/landscape';
+  static const viewer = '/viewer';
+  static const chatDetail = '/chat/detail';
+  static const chatInfo = '/chat/info';
+  static const chatGroupSettings = '/chat/group-settings/:id';
+  static const chatBlocks = '/chat/blocks';
+  static const chatAddFriend = '/chat/add-friend';
+  static const activityList = '/activity/list';
+  static const activityDetail = '/activity/:id';
+  static const storeList = '/store/list';
+  static const storeDetail = '/store/:id';
+  static const storeSearch = '/store/search';
+  static const storeCheckin = '/store/checkin';
+  static const storeTableSelect = '/store/table-select';
+  static const appointmentConfirm = '/appointment/confirm';
+  static const appointmentDetail = '/appointment/:id';
+  static const appointmentSuccess = '/appointment/success';
+  static const appointmentCheckinQr = '/appointment/checkin-qr';
+  static const appointmentMy = '/appointment/my';
+  static const memberCenter = '/member/center';
+  static const memberCoupons = '/member/coupons';
+  static const memberCouponCenter = '/member/coupon-center';
+  static const memberPurchase = '/member/purchase';
+  static const profileEdit = '/profile/edit';
+  static const profileSettings = '/profile/settings';
+  static const profileLiked = '/profile/liked';
+  static const profileHistory = '/profile/history';
+}
+
+/// 实时页面导航（go_router 封装）。
+/// 声明式路由表见 live_router.dart（RoutePaths / appRouter）。
 class LiveRoutes {
   LiveRoutes._();
 
-  static const tabHome = '03-首页';
-  static const tabCommunity = '12-社区';
-  static const tabReels = '16-Reels';
-  static const tabChat = '21-会话列表';
-  static const tabProfile = '26-我的主页';
+  static void switchTab(BuildContext context, int index) =>
+      context.go(switch (index) {
+        0 => RoutePaths.home,
+        1 => RoutePaths.community,
+        2 => RoutePaths.reels,
+        3 => RoutePaths.chat,
+        _ => RoutePaths.profile,
+      });
 
-  static Future<T?> push<T>(
-    BuildContext context,
-    Widget child, {
-    bool resizeToAvoidBottomInset = true,
-  }) {
-    return Navigator.of(context).push<T>(
-      MaterialPageRoute(
-        builder: (_) => LiveHost(
-          child: child,
-          resizeToAvoidBottomInset: resizeToAvoidBottomInset,
-        ),
-      ),
-    );
-  }
+  static void goHome(BuildContext context) => context.go(RoutePaths.home);
 
-  static void replace(
-    BuildContext context,
-    Widget child, {
-    bool resizeToAvoidBottomInset = true,
-  }) {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => LiveHost(
-          child: child,
-          resizeToAvoidBottomInset: resizeToAvoidBottomInset,
-        ),
-      ),
-    );
-  }
+  static void goLogin(BuildContext context) => context.go(RoutePaths.login);
 
-  /// 清空栈后切换到指定页面（登录成功 / Tab 切换 / 退出登录）。
-  static void reset(
-    BuildContext context,
-    Widget child, {
-    bool resizeToAvoidBottomInset = true,
-  }) {
-    // 用一步式 pushAndRemoveUntil 替换「popUntil + pushReplacement」，
-    // 避免同一帧内连续移除/添加 route 导致 Overlay 中 InheritedElement
-    // 在 deactivate 时仍被依赖（framework 断言 _dependents.isEmpty）。
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (_) => LiveHost(
-          child: child,
-          resizeToAvoidBottomInset: resizeToAvoidBottomInset,
-        ),
-      ),
-      (route) => false,
-    );
+  /// 打开目标页（顶层路由，覆盖 Tab 壳）。
+  /// 泛型 T 用于接收 pop 返回值（如选音乐）。
+  static Future<T?> push<T>(BuildContext context, String path,
+          {Object? extra}) =>
+      context.push<T>(path, extra: extra);
+
+  /// 替换当前页（登录流程用）。
+  static void replace(BuildContext context, String path, {Object? extra}) =>
+      context.pushReplacement(path, extra: extra);
+
+  /// 带 int 路径参数（:id）的跳转。
+  static Future<void> pushId(BuildContext context, String path, int id) =>
+      context.push(path.replaceFirst(':id', '$id'));
+
+  static Future<void> logout(BuildContext context) async {
+    await AuthStore.instance.clear();
+    if (context.mounted) goLogin(context);
   }
 
   /// 先关掉当前页（如抽屉菜单），再打开目标页。
   /// 使用捕获的 NavigatorState，避免在已卸载的 context 上再取 Navigator。
   static void pushAfterPop(
     BuildContext context,
-    Widget child, {
-    bool resizeToAvoidBottomInset = true,
+    String path, {
+    Object? extra,
   }) {
     final nav = Navigator.of(context);
     nav.pop();
@@ -82,39 +114,9 @@ class LiveRoutes {
     // InheritedElement 依赖残留断言。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (nav.mounted) {
-        nav.push(
-          MaterialPageRoute(
-            builder: (_) => LiveHost(
-              child: child,
-              resizeToAvoidBottomInset: resizeToAvoidBottomInset,
-            ),
-          ),
-        );
+        nav.context.push(path, extra: extra);
       }
     });
-  }
-
-  static void switchTab(BuildContext context, int index) {
-    final target = switch (index) {
-      0 => const HomeScreen(root: true),
-      1 => const CommunityHomeScreen(root: true),
-      2 => const ReelsScreen(root: true),
-      3 => const ConversationListScreen(root: true),
-      4 => const ProfileScreen(root: true),
-      _ => const HomeScreen(root: true),
-    };
-    reset(context, target);
-  }
-
-  static void goHome(BuildContext context) =>
-      reset(context, const HomeScreen(root: true));
-
-  static void goLogin(BuildContext context) =>
-      reset(context, const LoginScreen(), resizeToAvoidBottomInset: false);
-
-  static Future<void> logout(BuildContext context) async {
-    await AuthStore.instance.clear();
-    if (context.mounted) goLogin(context);
   }
 }
 
@@ -184,41 +186,6 @@ class _LiveHostState extends State<LiveHost> {
                 child: canvas,
               ),
             ),
-    );
-  }
-}
-
-/// 启动入口：恢复登录态后进入登录页或首页。
-class AuthGate extends StatefulWidget {
-  const AuthGate({super.key});
-
-  @override
-  State<AuthGate> createState() => _AuthGateState();
-}
-
-class _AuthGateState extends State<AuthGate> {
-  @override
-  void initState() {
-    super.initState();
-    AuthStore.instance.restore().then((_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!AuthStore.instance.loaded) {
-      return const LiveHost(
-        child: Center(
-          child: CircularProgressIndicator(color: LiveColors.brand),
-        ),
-      );
-    }
-    return LiveHost(
-      resizeToAvoidBottomInset: !AuthStore.instance.isLoggedIn,
-      child: AuthStore.instance.isLoggedIn
-          ? const HomeScreen(root: true)
-          : const LoginScreen(),
     );
   }
 }

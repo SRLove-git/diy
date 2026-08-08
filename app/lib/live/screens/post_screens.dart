@@ -9,7 +9,6 @@ import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
 import 'community_screens.dart';
-import 'profile_screens.dart';
 
 class PostDetailScreen extends StatefulWidget {
   const PostDetailScreen({super.key, required this.postId});
@@ -183,9 +182,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                   post: _post!,
                                   liked: _liked,
                                   collected: _collected,
-                                  onAuthorTap: () => LiveRoutes.push(
+                                  onAuthorTap: () => LiveRoutes.pushId(
                                     context,
-                                    UserProfileScreen(userId: _post!.userId),
+                                    RoutePaths.userDetail,
+                                    _post!.userId,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
@@ -370,7 +370,8 @@ class _PostDetailBody extends StatelessWidget {
                 ? GestureDetector(
                     onTap: () => LiveRoutes.push(
                       context,
-                      ImageViewerPage(url: urls.first),
+                      RoutePaths.viewer,
+                      extra: urls.first,
                     ),
                     child: AspectRatio(
                       aspectRatio: 1,
@@ -636,7 +637,7 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
       };
       final post = await CommunityService.instance.create(body);
       if (!mounted) return;
-      LiveRoutes.push(context, PostPublishSuccessScreen(post: post));
+      LiveRoutes.push(context, RoutePaths.postPublishSuccess, extra: post);
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
     } finally {
@@ -801,7 +802,7 @@ class PostPublishSuccessScreen extends StatelessWidget {
             const Spacer(),
             PrimaryButton(
               label: '查看我的作品',
-              onTap: () => LiveRoutes.push(context, PostDetailScreen(postId: post.id)),
+              onTap: () => LiveRoutes.pushId(context, RoutePaths.postDetail, post.id),
             ),
             const SizedBox(height: 12),
             OutlineButton(
@@ -1126,9 +1127,10 @@ class _SearchScreenState extends State<SearchScreen> {
                                 separatorBuilder: (_, __) => const Divider(height: 1, color: LiveColors.divider),
                                 itemBuilder: (_, i) => _UserRow(
                                   user: _users[i],
-                                  onTap: () => LiveRoutes.push(
+                                  onTap: () => LiveRoutes.pushId(
                                     context,
-                                    UserProfileScreen(userId: _users[i].id),
+                                    RoutePaths.userDetail,
+                                    _users[i].id,
                                   ),
                                 ),
                               )
@@ -1140,13 +1142,15 @@ class _SearchScreenState extends State<SearchScreen> {
                                 separatorBuilder: (_, __) => const SizedBox(height: 14),
                                 itemBuilder: (_, i) => PostCard(
                                   post: _posts[i],
-                                  onTap: () => LiveRoutes.push(
+                                  onTap: () => LiveRoutes.pushId(
                                     context,
-                                    PostDetailScreen(postId: _posts[i].id),
+                                    RoutePaths.postDetail,
+                                    _posts[i].id,
                                   ),
-                                  onAuthorTap: () => LiveRoutes.push(
+                                  onAuthorTap: () => LiveRoutes.pushId(
                                     context,
-                                    UserProfileScreen(userId: _posts[i].userId),
+                                    RoutePaths.userDetail,
+                                    _posts[i].userId,
                                   ),
                                 ),
                               ),
@@ -1350,7 +1354,7 @@ class _TopicChannelScreenState extends State<TopicChannelScreen> {
                                           height: 42,
                                           onTap: () => LiveRoutes.push(
                                             context,
-                                            const PostPublishScreen(),
+                                            RoutePaths.postPublish,
                                           ),
                                         ),
                                       ),
@@ -1395,13 +1399,15 @@ class _TopicChannelScreenState extends State<TopicChannelScreen> {
                                   padding: const EdgeInsets.only(bottom: 12),
                                   child: PostCard(
                                     post: p,
-                                    onTap: () => LiveRoutes.push(
+                                    onTap: () => LiveRoutes.pushId(
                                       context,
-                                      PostDetailScreen(postId: p.id),
+                                      RoutePaths.postDetail,
+                                      p.id,
                                     ),
-                                    onAuthorTap: () => LiveRoutes.push(
+                                    onAuthorTap: () => LiveRoutes.pushId(
                                       context,
-                                      UserProfileScreen(userId: p.userId),
+                                      RoutePaths.userDetail,
+                                      p.userId,
                                     ),
                                   ),
                                 ),

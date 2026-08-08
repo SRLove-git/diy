@@ -7,12 +7,6 @@ import '../../api/services.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
-import 'activity_screens.dart';
-import 'appointment_screens.dart';
-import 'member_screens.dart';
-import 'notifications_screen.dart';
-import 'post_screens.dart';
-import 'store_screens.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.root = false});
@@ -48,7 +42,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return LivePage(
-      bottomBar: const LiveTabBar(current: 0),
       child: FutureBuilder(
         future: _future,
         builder: (context, snap) {
@@ -87,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: '拼豆',
                   badge: '人气手作',
                   more: '查看全部 ›',
-                  onMore: () => LiveRoutes.push(context, const ActivityListScreen()),
+                  onMore: () => LiveRoutes.push(context, RoutePaths.activityList),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -95,11 +88,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     onTap: (key) {
                       switch (key) {
                         case 'appoint':
-                          LiveRoutes.push(context, const StoreListScreen());
+                          LiveRoutes.push(context, RoutePaths.storeList);
                         case 'checkin':
-                          LiveRoutes.push(context, const CheckinFlowScreen());
+                          LiveRoutes.push(context, RoutePaths.storeCheckin);
                         case 'member':
-                          LiveRoutes.push(context, const MemberCenterScreen());
+                          LiveRoutes.push(context, RoutePaths.memberCenter);
                       }
                     },
                   ),
@@ -119,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 _SectionHeader(
                   title: '活动推荐',
                   more: '查看全部 ›',
-                  onMore: () => LiveRoutes.push(context, const ActivityListScreen()),
+                  onMore: () => LiveRoutes.push(context, RoutePaths.activityList),
                 ),
                 if (data.activities.isNotEmpty)
                   Padding(
@@ -165,7 +158,7 @@ class _TopBar extends StatelessWidget {
           const Spacer(),
           IconButton(
             icon: const Icon(Icons.search, color: LiveColors.textPrimary, size: 24),
-            onPressed: () => LiveRoutes.push(context, const SearchScreen()),
+            onPressed: () => LiveRoutes.push(context, RoutePaths.search),
           ),
           IconButton(
             icon: Stack(
@@ -192,7 +185,7 @@ class _TopBar extends StatelessWidget {
                   ),
               ],
             ),
-            onPressed: () => LiveRoutes.push(context, const NotificationsScreen()),
+            onPressed: () => LiveRoutes.push(context, RoutePaths.notifications),
           ),
         ],
       ),
@@ -356,9 +349,10 @@ class _ActivityGrid extends StatelessWidget {
                 Expanded(
                   child: _ActivityCard(
                     activity: activities[i],
-                    onTap: () => LiveRoutes.push(
+                    onTap: () => LiveRoutes.pushId(
                       context,
-                      ActivityDetailScreen(activityId: activities[i].id),
+                      RoutePaths.activityDetail,
+                      activities[i].id,
                     ),
                   ),
                 ),
@@ -367,9 +361,10 @@ class _ActivityGrid extends StatelessWidget {
                   Expanded(
                     child: _ActivityCard(
                       activity: activities[i + 1],
-                      onTap: () => LiveRoutes.push(
+                      onTap: () => LiveRoutes.pushId(
                         context,
-                        ActivityDetailScreen(activityId: activities[i + 1].id),
+                        RoutePaths.activityDetail,
+                        activities[i + 1].id,
                       ),
                     ),
                   ),

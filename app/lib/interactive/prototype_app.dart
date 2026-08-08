@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 
-import '../live/live_routes.dart';
+import '../live/live_router.dart';
 import '../live/live_theme.dart';
 
-/// 手作星球 App 入口：启动时恢复登录态，进入登录页或首页。
+/// 手作星球 App 入口：go_router 声明式路由，启动时由 redirect 处理登录态。
 class PrototypeApp extends StatelessWidget {
   const PrototypeApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: '手作星球',
       debugShowCheckedModeBanner: false,
       theme: LiveTheme.data,
-      home: const AuthGate(),
+      routerConfig: appRouter,
     );
   }
 }

@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import '../api/api_config.dart';
 import 'live_theme.dart';
-import 'live_routes.dart';
 
 /// 实时页面共享组件
 
@@ -86,10 +85,12 @@ class LiveAppBar extends StatelessWidget implements PreferredSizeWidget {
 }
 
 /// 底部 5 Tab（主页/社区/Reels/聊天/我的），使用设计稿高亮资源图。
+/// 由 go_router StatefulShellRoute 的 shell 提供，切换时保活各分支状态。
 class LiveTabBar extends StatelessWidget {
-  const LiveTabBar({super.key, required this.current});
+  const LiveTabBar({super.key, required this.current, this.onTap});
 
   final int current;
+  final ValueChanged<int>? onTap;
 
   static const _assets = [
     'assets/divtabwrap-home.png',
@@ -116,7 +117,7 @@ class LiveTabBar extends StatelessWidget {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
-                    if (i != current) LiveRoutes.switchTab(context, i);
+                    if (i != current) onTap?.call(i);
                   },
                 ),
               );

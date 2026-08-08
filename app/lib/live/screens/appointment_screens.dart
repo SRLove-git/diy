@@ -8,8 +8,6 @@ import '../../api/services.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
-import 'activity_screens.dart';
-import 'store_screens.dart';
 
 class AppointmentConfirmScreen extends StatefulWidget {
   const AppointmentConfirmScreen({
@@ -118,7 +116,8 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
       if (!mounted) return;
       LiveRoutes.push(
         context,
-        AppointmentSuccessScreen(appointment: appointment),
+        RoutePaths.appointmentSuccess,
+        extra: appointment,
       );
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -406,9 +405,10 @@ class AppointmentSuccessScreen extends StatelessWidget {
             const Spacer(),
             PrimaryButton(
               label: '查看预约',
-              onTap: () => LiveRoutes.push(
+              onTap: () => LiveRoutes.pushId(
                 context,
-                AppointmentDetailScreen(appointmentId: appointment.id),
+                RoutePaths.appointmentDetail,
+                appointment.id,
               ),
             ),
             const SizedBox(height: 12),
@@ -463,11 +463,11 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
 
   void _again(Appointment a) {
     if (a.type == 'activity' && a.activityId != null) {
-      LiveRoutes.push(context, ActivityDetailScreen(activityId: a.activityId!));
+      LiveRoutes.pushId(context, RoutePaths.activityDetail, a.activityId!);
     } else if (a.storeId != null) {
-      LiveRoutes.push(context, StoreDetailScreen(storeId: a.storeId!));
+      LiveRoutes.pushId(context, RoutePaths.storeDetail, a.storeId!);
     } else {
-      LiveRoutes.push(context, const StoreListScreen());
+      LiveRoutes.push(context, RoutePaths.storeList);
     }
   }
 
@@ -515,22 +515,26 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                             final a = list[i];
                             return _AppointmentCard(
                               appointment: a,
-                              onTap: () => LiveRoutes.push(
+                              onTap: () => LiveRoutes.pushId(
                                 context,
-                                AppointmentDetailScreen(appointmentId: a.id),
+                                RoutePaths.appointmentDetail,
+                                a.id,
                               ),
                               onAction: switch (a.status) {
                                 'booked' => () => LiveRoutes.push(
                                       context,
-                                      CheckinQrScreen(appointment: a),
+                                      RoutePaths.appointmentCheckinQr,
+                                      extra: a,
                                     ),
                                 'checked_in' => () => LiveRoutes.push(
                                       context,
-                                      CheckinQrScreen(appointment: a),
+                                      RoutePaths.appointmentCheckinQr,
+                                      extra: a,
                                     ),
                                 'in_service' => () => LiveRoutes.push(
                                       context,
-                                      CheckinQrScreen(appointment: a),
+                                      RoutePaths.appointmentCheckinQr,
+                                      extra: a,
                                     ),
                                 _ => () => _again(a),
                               },
@@ -816,7 +820,8 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                               height: 42,
                               onTap: () => LiveRoutes.push(
                                 context,
-                                CheckinQrScreen(appointment: a),
+                                RoutePaths.appointmentCheckinQr,
+                                extra: a,
                               ),
                             ),
                           ),
@@ -1216,7 +1221,7 @@ class _CheckinFlowScreenState extends State<CheckinFlowScreen> {
                 title: '到店核销',
                 actions: [
                   TextButton(
-                    onPressed: () => LiveRoutes.push(context, const VerifyCodeScreen()),
+                    onPressed: () => LiveRoutes.push(context, RoutePaths.loginVerify),
                     child: const Text(
                       '输入核销码',
                       style: TextStyle(fontSize: 13, color: LiveColors.textPrimary),
@@ -1240,7 +1245,8 @@ class _CheckinFlowScreenState extends State<CheckinFlowScreen> {
                           appointment: a,
                           onScan: () => LiveRoutes.push(
                             context,
-                            CheckinQrScreen(appointment: a),
+                            RoutePaths.appointmentCheckinQr,
+                            extra: a,
                           ),
                         ),
                       ),
@@ -1396,7 +1402,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
   void _scanQr() {
     final a = _found;
     if (a != null) {
-      LiveRoutes.push(context, CheckinQrScreen(appointment: a));
+      LiveRoutes.push(context, RoutePaths.appointmentCheckinQr, extra: a);
     } else {
       showLiveSnack(context, '请先查询预约');
     }

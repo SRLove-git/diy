@@ -8,7 +8,6 @@ import '../../api/services.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
-import 'appointment_screens.dart';
 
 class StoreListScreen extends StatefulWidget {
   const StoreListScreen({super.key});
@@ -63,7 +62,7 @@ class _StoreListScreenState extends State<StoreListScreen> {
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.search, color: LiveColors.textPrimary),
-                    onPressed: () => LiveRoutes.push(context, const StoreSearchScreen()),
+                    onPressed: () => LiveRoutes.push(context, RoutePaths.storeSearch),
                   ),
                 ],
               ),
@@ -85,9 +84,10 @@ class _StoreListScreenState extends State<StoreListScreen> {
                           separatorBuilder: (_, __) => const SizedBox(height: 12),
                           itemBuilder: (_, i) => _StoreCard(
                             store: filtered[i],
-                            onTap: () => LiveRoutes.push(
+                            onTap: () => LiveRoutes.pushId(
                               context,
-                              StoreDetailScreen(storeId: filtered[i].id),
+                              RoutePaths.storeDetail,
+                              filtered[i].id,
                             ),
                           ),
                         ),
@@ -401,7 +401,7 @@ class _StoreSearchScreenState extends State<StoreSearchScreen> {
                 InkWell(
                   onTap: () => LiveRoutes.replace(
                     context,
-                    const StoreListScreen(),
+                    RoutePaths.storeList,
                   ),
                   child: const Text(
                     '地图模式 ›',
@@ -424,9 +424,10 @@ class _StoreSearchScreenState extends State<StoreSearchScreen> {
                             separatorBuilder: (_, __) => const SizedBox(height: 12),
                             itemBuilder: (_, i) => _StoreCard(
                               store: _filtered[i],
-                              onTap: () => LiveRoutes.push(
+                              onTap: () => LiveRoutes.pushId(
                                 context,
-                                StoreDetailScreen(storeId: _filtered[i].id),
+                                RoutePaths.storeDetail,
+                                _filtered[i].id,
                               ),
                             ),
                           ),
@@ -563,11 +564,12 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                           : () {
                               LiveRoutes.push(
                                 context,
-                                TableSelectScreen(
-                                  store: store,
-                                  date: _date!,
-                                  slot: _slot!,
-                                ),
+                                RoutePaths.storeTableSelect,
+                                extra: {
+                                  'store': store,
+                                  'date': _date!,
+                                  'slot': _slot!,
+                                },
                               );
                             },
                     ),
@@ -862,14 +864,15 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                                 ? null
                                 : () => LiveRoutes.push(
                                     context,
-                                    AppointmentConfirmScreen(
-                                      type: 'store',
-                                      store: store,
-                                      date: widget.date,
-                                      slot: widget.slot,
-                                      table: _table!,
-                                      peopleCount: _people,
-                                    ),
+                                    RoutePaths.appointmentConfirm,
+                                    extra: {
+                                      'type': 'store',
+                                      'store': store,
+                                      'date': widget.date,
+                                      'slot': widget.slot,
+                                      'table': _table!,
+                                      'peopleCount': _people,
+                                    },
                                   ),
                           ),
                           const SizedBox(height: 20),

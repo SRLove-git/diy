@@ -12,7 +12,6 @@ import '../../api/services.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
-import 'profile_screens.dart';
 
 class ReelsScreen extends StatefulWidget {
   const ReelsScreen({super.key, this.root = false});
@@ -160,17 +159,19 @@ class _ReelsScreenState extends State<ReelsScreen> {
                               liked: _liked.contains(video.id),
                               followed: _followed.contains(video.userId),
                               hideFollow: isSelf,
-                              onTapAuthor: () => LiveRoutes.push(
+                              onTapAuthor: () => LiveRoutes.pushId(
                                 context,
-                                UserProfileScreen(userId: video.userId),
+                                RoutePaths.userDetail,
+                                video.userId,
                               ),
                               onLike: () => _toggleLike(video),
                               onComment: () => _openComments(video),
                               onShare: () => _share(video),
                               onFollow: () => _toggleFollow(video),
-                              onOpen: () => LiveRoutes.push(
+                              onOpen: () => LiveRoutes.pushId(
                                 context,
-                                VideoDetailScreen(videoId: video.id),
+                                RoutePaths.videoDetail,
+                                video.id,
                               ),
                             );
                           },
@@ -191,24 +192,17 @@ class _ReelsScreenState extends State<ReelsScreen> {
                                     icon: const Icon(Icons.search, color: Colors.white, size: 26),
                                     onPressed: () => LiveRoutes.push(
                                       context,
-                                      const VideoSearchScreen(),
-                                      resizeToAvoidBottomInset: false,
+                                      RoutePaths.videoSearch,
                                     ),
                                   ),
                                   IconButton(
                                     icon: const Icon(Icons.videocam, color: Colors.white, size: 26),
-                                    onPressed: () => LiveRoutes.push(context, const CaptureScreen()),
+                                    onPressed: () => LiveRoutes.push(context, RoutePaths.videoCapture),
                                   ),
                                 ],
                               ),
                             ),
                           ),
-                        ),
-                        const Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          child: LiveTabBar(current: 2),
                         ),
                       ],
                     ),
@@ -906,7 +900,7 @@ class _VideoDetailScreenState extends State<VideoDetailScreen> {
   void _openPlayer() {
     final v = _video;
     if (v == null) return;
-    LiveRoutes.push(context, VideoPlayerPage(video: v));
+    LiveRoutes.push(context, RoutePaths.videoPlayer, extra: v);
   }
 
   @override
@@ -983,9 +977,10 @@ class _VideoDetailScreenState extends State<VideoDetailScreen> {
                                 ),
                                 const SizedBox(height: 12),
                                 InkWell(
-                                  onTap: () => LiveRoutes.push(
+                                  onTap: () => LiveRoutes.pushId(
                                     context,
-                                    UserProfileScreen(userId: _video!.userId),
+                                    RoutePaths.userDetail,
+                                    _video!.userId,
                                   ),
                                   child: Row(
                                     children: [
@@ -1395,7 +1390,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                         IconButton(
                           onPressed: () => LiveRoutes.push(
                             context,
-                            VideoLandscapePage(video: widget.video),
+                            RoutePaths.videoLandscape,
+                            extra: widget.video,
                           ),
                           icon: const Icon(Icons.fullscreen, size: 22, color: Colors.white),
                         ),
@@ -1768,7 +1764,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
         folder: 'post',
       );
       if (mounted) {
-        LiveRoutes.push(context, VideoPublishScreen(initialCover: url));
+        LiveRoutes.push(context, RoutePaths.videoPublish, extra: url);
       }
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -1923,7 +1919,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                           ),
                           const Spacer(),
                           InkWell(
-                            onTap: () => LiveRoutes.push(context, const MusicPickerScreen()),
+                            onTap: () => LiveRoutes.push(context, RoutePaths.videoMusic),
                             child: const _CaptureThumb(label: '选音乐', icon: Icons.music_note),
                           ),
                         ],
@@ -2102,7 +2098,7 @@ class _VideoPublishScreenState extends State<VideoPublishScreen> {
       final video = await VideoService.instance.create(body);
       if (!mounted) return;
       showLiveSnack(context, '发布成功');
-      LiveRoutes.push(context, VideoDetailScreen(videoId: video.id));
+      LiveRoutes.pushId(context, RoutePaths.videoDetail, video.id);
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
     } finally {
@@ -2200,7 +2196,7 @@ class _VideoPublishScreenState extends State<VideoPublishScreen> {
                             onTap: () async {
                               final m = await LiveRoutes.push<Music?>(
                                 context,
-                                const MusicPickerScreen(),
+                                RoutePaths.videoMusic,
                               );
                               if (m != null) setState(() => _music = m);
                             },
@@ -2746,13 +2742,15 @@ class _VideoSearchScreenState extends State<VideoSearchScreen> {
       separatorBuilder: (_, __) => const SizedBox(height: 14),
       itemBuilder: (_, i) => _ReelCard(
         video: list[i],
-        onTap: () => LiveRoutes.push(
+        onTap: () => LiveRoutes.pushId(
           context,
-          VideoDetailScreen(videoId: list[i].id),
+          RoutePaths.videoDetail,
+          list[i].id,
         ),
-        onAuthorTap: () => LiveRoutes.push(
+        onAuthorTap: () => LiveRoutes.pushId(
           context,
-          UserProfileScreen(userId: list[i].userId),
+          RoutePaths.userDetail,
+          list[i].userId,
         ),
       ),
     );

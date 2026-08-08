@@ -6,17 +6,9 @@ import '../../api/chat_services.dart';
 import '../../api/content_services.dart';
 import '../../api/models.dart';
 import '../../api/services.dart';
-import '../../main.dart' show GalleryPage;
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
-import 'appointment_screens.dart';
-import 'auth_screens.dart';
-import 'chat_screens.dart';
-import 'member_screens.dart';
-import 'notifications_screen.dart';
-import 'post_screens.dart';
-import 'video_screens.dart';
 
 /// 我的主页
 class ProfileScreen extends StatefulWidget {
@@ -82,7 +74,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return LivePage(
-      bottomBar: const LiveTabBar(current: 4),
       child: Column(
         children: [
           const LiveAppBar(
@@ -107,16 +98,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   worksCount: _posts.length + _videos.length,
                                   totalLikes: _totalLikes,
                                   onEdit: () async {
-                                    await LiveRoutes.push(
-                                      context,
-                                      const EditProfileScreen(),
-                                      resizeToAvoidBottomInset: false,
-                                    );
+                                    await LiveRoutes.push(context, RoutePaths.profileEdit);
                                     _load();
                                   },
                                   onFans: () => LiveRoutes.push(
                                     context,
-                                    FollowScreen(targetId: _me!.id, initialTab: 'followers'),
+                                    RoutePaths.userFollows,
+                                    extra: {'targetId': _me!.id, 'initialTab': 'followers'},
                                   ),
                                   onShare: () =>
                                       showLiveSnack(context, '已复制主页分享链接（模拟）'),
@@ -136,27 +124,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   _WorksGrid(
                                     posts: _textPosts,
                                     textStyle: true,
-                                    onTapPost: (p) => LiveRoutes.push(
+                                    onTapPost: (p) => LiveRoutes.pushId(
                                       context,
-                                      PostDetailScreen(postId: p.id),
+                                      RoutePaths.postDetail,
+                                      p.id,
                                     ),
                                     emptyText: '还没有发布帖子',
                                   )
                                 else if (_tab == 1)
                                   _WorksGrid(
                                     posts: _notePosts,
-                                    onTapPost: (p) => LiveRoutes.push(
+                                    onTapPost: (p) => LiveRoutes.pushId(
                                       context,
-                                      PostDetailScreen(postId: p.id),
+                                      RoutePaths.postDetail,
+                                      p.id,
                                     ),
                                     emptyText: '还没有发布笔记',
                                   )
                                 else
                                   _VideoGrid(
                                     videos: _videos,
-                                    onTapVideo: (v) => LiveRoutes.push(
+                                    onTapVideo: (v) => LiveRoutes.pushId(
                                       context,
-                                      VideoDetailScreen(videoId: v.id),
+                                      RoutePaths.videoDetail,
+                                      v.id,
                                     ),
                                     emptyText: '还没有发布视频',
                                   ),
@@ -767,7 +758,7 @@ class ProfileMenuScreen extends StatelessWidget {
                     title: '我的卡包',
                     subtitle: '优惠券 · 会员体验',
                     onTap: () {
-                      LiveRoutes.pushAfterPop(context, const CouponsScreen());
+                      LiveRoutes.pushAfterPop(context, RoutePaths.memberCoupons);
                     },
                   ),
                   _MenuEntryTile(
@@ -775,7 +766,7 @@ class ProfileMenuScreen extends StatelessWidget {
                     title: '点赞与收藏',
                     subtitle: '我喜欢的作品',
                     onTap: () {
-                      LiveRoutes.pushAfterPop(context, const LikedFavoritesScreen());
+                      LiveRoutes.pushAfterPop(context, RoutePaths.profileLiked);
                     },
                   ),
                   _MenuEntryTile(
@@ -783,7 +774,7 @@ class ProfileMenuScreen extends StatelessWidget {
                     title: '观看历史',
                     subtitle: '作品 · 视频浏览记录',
                     onTap: () {
-                      LiveRoutes.pushAfterPop(context, const WatchHistoryScreen());
+                      LiveRoutes.pushAfterPop(context, RoutePaths.profileHistory);
                     },
                   ),
                   _MenuEntryTile(
@@ -791,7 +782,7 @@ class ProfileMenuScreen extends StatelessWidget {
                     title: '我的订单',
                     subtitle: '预约 · 体验记录',
                     onTap: () {
-                      LiveRoutes.pushAfterPop(context, const MyAppointmentsScreen());
+                      LiveRoutes.pushAfterPop(context, RoutePaths.appointmentMy);
                     },
                   ),
                   _MenuEntryTile(
@@ -799,7 +790,7 @@ class ProfileMenuScreen extends StatelessWidget {
                     title: '设置',
                     subtitle: '账号与安全 · 通用',
                     onTap: () {
-                      LiveRoutes.pushAfterPop(context, const SettingsScreen());
+                      LiveRoutes.pushAfterPop(context, RoutePaths.profileSettings);
                     },
                   ),
                   const Spacer(),
@@ -990,7 +981,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                                 value: '${fmtCount(_status!.followingCount)}',
                                                 onTap: () => LiveRoutes.push(
                                                   context,
-                                                  FollowScreen(targetId: widget.userId, initialTab: 'following'),
+                                                  RoutePaths.userFollows,
+                                                  extra: {'targetId': widget.userId, 'initialTab': 'following'},
                                                 ),
                                               ),
                                               const SizedBox(width: 20),
@@ -999,7 +991,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                                 value: '${fmtCount(_status!.followerCount)}',
                                                 onTap: () => LiveRoutes.push(
                                                   context,
-                                                  FollowScreen(targetId: widget.userId, initialTab: 'followers'),
+                                                  RoutePaths.userFollows,
+                                                  extra: {'targetId': widget.userId, 'initialTab': 'followers'},
                                                 ),
                                               ),
                                             ],
@@ -1033,13 +1026,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                             if (context.mounted) {
                                               LiveRoutes.push(
                                                 context,
-                                                ChatScreen(
-                                                  conversationId: conv.id,
-                                                  peerId: widget.userId,
-                                                  peerName: _status!.nickname,
-                                                  peerAvatar: _status!.avatar,
-                                                ),
-                                                resizeToAvoidBottomInset: false,
+                                                RoutePaths.chatDetail,
+                                                extra: {
+                                                  'conversationId': conv.id,
+                                                  'peerId': widget.userId,
+                                                  'peerName': _status!.nickname,
+                                                  'peerAvatar': _status!.avatar,
+                                                },
                                               );
                                             }
                                           } on ApiException catch (e) {
@@ -1065,27 +1058,30 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                   _WorksGrid(
                                     posts: _posts.where((p) => p.mediaUrls.isEmpty).toList(),
                                     textStyle: true,
-                                    onTapPost: (p) => LiveRoutes.push(
+                                    onTapPost: (p) => LiveRoutes.pushId(
                                       context,
-                                      PostDetailScreen(postId: p.id),
+                                      RoutePaths.postDetail,
+                                      p.id,
                                     ),
                                     emptyText: 'TA 还没有发布帖子',
                                   )
                                 else if (_tab == 1)
                                   _WorksGrid(
                                     posts: _posts.where((p) => p.mediaUrls.isNotEmpty).toList(),
-                                    onTapPost: (p) => LiveRoutes.push(
+                                    onTapPost: (p) => LiveRoutes.pushId(
                                       context,
-                                      PostDetailScreen(postId: p.id),
+                                      RoutePaths.postDetail,
+                                      p.id,
                                     ),
                                     emptyText: 'TA 还没有发布笔记',
                                   )
                                 else
                                   _VideoGrid(
                                     videos: _videos,
-                                    onTapVideo: (v) => LiveRoutes.push(
+                                    onTapVideo: (v) => LiveRoutes.pushId(
                                       context,
-                                      VideoDetailScreen(videoId: v.id),
+                                      RoutePaths.videoDetail,
+                                      v.id,
                                     ),
                                     emptyText: 'TA 还没有发布视频',
                                   ),
@@ -1608,9 +1604,10 @@ class _LikedFavoritesScreenState extends State<LikedFavoritesScreen> {
                             ? const EmptyView(text: '还没有点赞的视频')
                             : _VideoGrid(
                                 videos: _videos,
-                                onTapVideo: (v) => LiveRoutes.push(
+                                onTapVideo: (v) => LiveRoutes.pushId(
                                   context,
-                                  VideoDetailScreen(videoId: v.id),
+                                  RoutePaths.videoDetail,
+                                  v.id,
                                 ),
                                 emptyText: '',
                               ))
@@ -1619,9 +1616,10 @@ class _LikedFavoritesScreenState extends State<LikedFavoritesScreen> {
                                 text: _tab == 0 ? '还没有点赞的作品' : '还没有收藏的作品')
                             : _WorksGrid(
                                 posts: _posts,
-                                onTapPost: (p) => LiveRoutes.push(
+                                onTapPost: (p) => LiveRoutes.pushId(
                                   context,
-                                  PostDetailScreen(postId: p.id),
+                                  RoutePaths.postDetail,
+                                  p.id,
                                 ),
                                 emptyText: '',
                               )),
@@ -1795,9 +1793,10 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
                             ? const EmptyView(text: '暂无作品浏览历史')
                             : _WorksGrid(
                                 posts: _posts,
-                                onTapPost: (p) => LiveRoutes.push(
+                                onTapPost: (p) => LiveRoutes.pushId(
                                   context,
-                                  PostDetailScreen(postId: p.id),
+                                  RoutePaths.postDetail,
+                                  p.id,
                                 ),
                                 emptyText: '',
                               )
@@ -1805,9 +1804,10 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
                             ? const EmptyView(text: '暂无视频浏览历史')
                             : _VideoGrid(
                                 videos: _videos,
-                                onTapVideo: (v) => LiveRoutes.push(
+                                onTapVideo: (v) => LiveRoutes.pushId(
                                   context,
-                                  VideoDetailScreen(videoId: v.id),
+                                  RoutePaths.videoDetail,
+                                  v.id,
                                 ),
                                 emptyText: '',
                               ),
@@ -1936,9 +1936,10 @@ class _MyContentScreenState extends State<MyContentScreen> {
                             ? const EmptyView(text: '暂无视频')
                             : _VideoGrid(
                                 videos: _videos,
-                                onTapVideo: (v) => LiveRoutes.push(
+                                onTapVideo: (v) => LiveRoutes.pushId(
                                   context,
-                                  VideoDetailScreen(videoId: v.id),
+                                  RoutePaths.videoDetail,
+                                  v.id,
                                 ),
                                 emptyText: '',
                               ))
@@ -1946,9 +1947,10 @@ class _MyContentScreenState extends State<MyContentScreen> {
                             ? const EmptyView(text: '暂无内容')
                             : _WorksGrid(
                                 posts: _posts,
-                                onTapPost: (p) => LiveRoutes.push(
+                                onTapPost: (p) => LiveRoutes.pushId(
                                   context,
-                                  PostDetailScreen(postId: p.id),
+                                  RoutePaths.postDetail,
+                                  p.id,
                                 ),
                                 emptyText: '',
                               )),
@@ -1976,24 +1978,19 @@ class SettingsScreen extends StatelessWidget {
                 _SettingRow(
                   icon: Icons.lock_outline,
                   label: '修改密码',
-                  onTap: () => LiveRoutes.push(context, const SetPasswordScreen()),
+                  onTap: () => LiveRoutes.push(context, RoutePaths.loginSetPassword),
                 ),
                 const SizedBox(height: 16),
                 const _SettingGroupHeader('通用'),
                 _SettingRow(
                   icon: Icons.notifications_outlined,
                   label: '消息通知',
-                  onTap: () => LiveRoutes.push(context, const NotificationsScreen()),
+                  onTap: () => LiveRoutes.push(context, RoutePaths.notifications),
                 ),
                 _SettingRow(
                   icon: Icons.card_giftcard_outlined,
                   label: '我的卡包',
-                  onTap: () => LiveRoutes.push(context, const CouponsScreen()),
-                ),
-                _SettingRow(
-                  icon: Icons.grid_view_outlined,
-                  label: 'UI 预览（82 屏图库）',
-                  onTap: () => LiveRoutes.push(context, const GalleryPage()),
+                  onTap: () => LiveRoutes.push(context, RoutePaths.memberCoupons),
                 ),
                 const SizedBox(height: 16),
                 const _SettingGroupHeader('关于'),

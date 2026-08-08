@@ -6,7 +6,6 @@ import '../../api/services.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
-import 'appointment_screens.dart';
 
 class ActivityListScreen extends StatefulWidget {
   const ActivityListScreen({super.key});
@@ -60,9 +59,10 @@ class _ActivityListScreenState extends State<ActivityListScreen> {
                           separatorBuilder: (_, __) => const SizedBox(height: 12),
                           itemBuilder: (_, i) => _ActivityCard(
                             activity: list[i],
-                            onTap: () => LiveRoutes.push(
+                            onTap: () => LiveRoutes.pushId(
                               context,
-                              ActivityDetailScreen(activityId: list[i].id),
+                              RoutePaths.activityDetail,
+                              list[i].id,
                             ),
                           ),
                         ),
@@ -373,14 +373,15 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                             ? null
                             : () => LiveRoutes.push(
                                 context,
-                                AppointmentConfirmScreen(
-                                  type: 'activity',
-                                  activity: activity,
-                                  session: _session,
-                                  date: _session!.date,
-                                  peopleCount: _people,
-                                  note: _noteCtrl.text.trim(),
-                                ),
+                                RoutePaths.appointmentConfirm,
+                                extra: {
+                                  'type': 'activity',
+                                  'activity': activity,
+                                  'session': _session,
+                                  'date': _session!.date,
+                                  'peopleCount': _people,
+                                  'note': _noteCtrl.text.trim(),
+                                },
                               ),
                       ),
                     ] else ...[

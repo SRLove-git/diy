@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:diy_ui_app/api/auth_store.dart';
 import 'package:diy_ui_app/interactive/prototype_app.dart';
+import 'package:diy_ui_app/live/live_router.dart';
+import 'package:diy_ui_app/live/live_routes.dart';
 
 void main() {
   setUp(() {
@@ -13,7 +16,11 @@ void main() {
   Future<void> pumpApp(WidgetTester tester) async {
     tester.view.physicalSize = const Size(1320, 2868);
     tester.view.devicePixelRatio = 3.0;
+    // 模拟 main() 中的登录态恢复；未调用时 redirect 会一直停留在 Splash。
+    await AuthStore.instance.restore();
     await tester.pumpWidget(const PrototypeApp());
+    // appRouter 是全局单例，显式回到 Splash 重置路由位置，避免上个用例残留。
+    appRouter.go(RoutePaths.splash);
     await tester.pumpAndSettle();
   }
 
@@ -29,6 +36,9 @@ void main() {
     await tester.tap(find.text('登录 / 注册'));
     await tester.pump();
     expect(find.text('请输入正确的手机号'), findsOneWidget);
+    // 等待顶部 Toast 的 2.2s 自动消失定时器结束，避免测试 teardown 断言挂起。
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('进入密码登录页', (tester) async {

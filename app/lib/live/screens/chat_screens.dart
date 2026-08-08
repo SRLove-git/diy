@@ -166,7 +166,6 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
       });
 
     return LivePage(
-      bottomBar: const LiveTabBar(current: 3),
       child: Column(
         children: [
           // 标题「聊天」居中对齐，右侧保留添加好友入口
@@ -190,8 +189,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                     icon: const Icon(Icons.person_add_alt, color: LiveColors.textPrimary),
                     onPressed: () => LiveRoutes.push(
                       context,
-                      const AddFriendScreen(),
-                      resizeToAvoidBottomInset: false,
+                      RoutePaths.chatAddFriend,
                     ),
                   ),
                 ),
@@ -246,20 +244,23 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                                   if (it.group != null) {
                                     LiveRoutes.push(
                                       context,
-                                      ChatScreen(groupId: it.group!.id, groupName: it.group!.name),
-                                      resizeToAvoidBottomInset: false,
+                                      RoutePaths.chatDetail,
+                                      extra: {
+                                        'groupId': it.group!.id,
+                                        'groupName': it.group!.name,
+                                      },
                                     );
                                   } else {
                                     final c = it.conv!;
                                     LiveRoutes.push(
                                       context,
-                                      ChatScreen(
-                                        conversationId: c.id,
-                                        peerId: c.peerId,
-                                        peerName: c.peerNickname,
-                                        peerAvatar: c.peerAvatar,
-                                      ),
-                                      resizeToAvoidBottomInset: false,
+                                      RoutePaths.chatDetail,
+                                      extra: {
+                                        'conversationId': c.id,
+                                        'peerId': c.peerId,
+                                        'peerName': c.peerNickname,
+                                        'peerAvatar': c.peerAvatar,
+                                      },
                                     );
                                   }
                                 },
@@ -776,18 +777,20 @@ class _ChatScreenState extends State<ChatScreen> {
               IconButton(
                 icon: const Icon(Icons.more_horiz, color: LiveColors.textPrimary),
                 onPressed: widget.isGroup
-                    ? () => LiveRoutes.push(
+                    ? () => LiveRoutes.pushId(
                         context,
-                        GroupSettingsScreen(groupId: widget.groupId!),
+                        RoutePaths.chatGroupSettings,
+                        widget.groupId!,
                       )
                     : () => LiveRoutes.push(
                         context,
-                        ChatInfoScreen(
-                          peerId: widget.peerId,
-                          peerName: widget.peerName,
-                          peerAvatar: widget.peerAvatar,
-                          conversationId: widget.conversationId ?? 0,
-                        ),
+                        RoutePaths.chatInfo,
+                        extra: {
+                          'peerId': widget.peerId,
+                          'peerName': widget.peerName,
+                          'peerAvatar': widget.peerAvatar,
+                          'conversationId': widget.conversationId ?? 0,
+                        },
                       ),
               ),
             ],
@@ -917,7 +920,8 @@ class _Bubble extends StatelessWidget {
           child: GestureDetector(
             onTap: () => LiveRoutes.push(
               context,
-              ImageViewerPage(url: message.content),
+              RoutePaths.viewer,
+              extra: message.content,
             ),
             child: NetImage(url: message.content),
           ),
@@ -1564,13 +1568,13 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
       if (!mounted) return;
       LiveRoutes.push(
         context,
-        ChatScreen(
-          conversationId: conv.id,
-          peerId: u.id,
-          peerName: u.displayName,
-          peerAvatar: u.avatar,
-        ),
-        resizeToAvoidBottomInset: false,
+        RoutePaths.chatDetail,
+        extra: {
+          'conversationId': conv.id,
+          'peerId': u.id,
+          'peerName': u.displayName,
+          'peerAvatar': u.avatar,
+        },
       );
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -1599,8 +1603,8 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
       if (!mounted) return;
       LiveRoutes.push(
         context,
-        ChatScreen(groupId: group.id, groupName: group.name),
-        resizeToAvoidBottomInset: false,
+        RoutePaths.chatDetail,
+        extra: {'groupId': group.id, 'groupName': group.name},
       );
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -2038,7 +2042,7 @@ class ChatInfoScreen extends StatelessWidget {
                 _ChatInfoRow(
                   icon: Icons.block,
                   label: '黑名单管理',
-                  onTap: () => LiveRoutes.push(context, const BlocksScreen()),
+                  onTap: () => LiveRoutes.push(context, RoutePaths.chatBlocks),
                 ),
                 _ChatInfoRow(
                   icon: Icons.delete_outline,

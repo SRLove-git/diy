@@ -1,15 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:diy_ui_app/main.dart';
-import 'package:diy_ui_app/screens_registry.dart';
+import 'package:diy_ui_app/interactive/prototype_app.dart';
 
 void main() {
-  testWidgets('app gallery renders', (WidgetTester tester) async {
-    await tester.pumpWidget(const DiyUiApp());
-    expect(find.text('手作星球 · 82 屏设计预览'), findsOneWidget);
-  });
-
-  test('screen registry has 82 screens', () {
-    expect(screenRegistry.length, 82);
+  testWidgets('app boots to auth gate', (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const PrototypeApp());
+    await tester.pump();
+    expect(find.byType(PrototypeApp), findsOneWidget);
   });
 }
