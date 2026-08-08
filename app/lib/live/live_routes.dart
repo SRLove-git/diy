@@ -84,9 +84,19 @@ class LiveRoutes {
 
   /// 打开目标页（顶层路由，覆盖 Tab 壳）。
   /// 泛型 T 用于接收 pop 返回值（如选音乐）。
-  static Future<T?> push<T>(BuildContext context, String path,
-          {Object? extra}) =>
-      context.push<T>(path, extra: extra);
+  static Future<T?> push<T>(
+    BuildContext context,
+    String path, {
+    Object? extra,
+  }) {
+    // go_router 的 page key 由完整路径生成：同路径重复入栈会触发
+    // '!keyReservation.contains(key)' 断言。连续点击同一入口时直接跳过，
+    // 避免向同一 Navigator 压入两个相同 key 的页面。
+    final router = GoRouter.of(context);
+    final current = router.routeInformationProvider.value.uri.path;
+    if (current == path) return Future<T?>.value();
+    return context.push<T>(path, extra: extra);
+  }
 
   /// 替换当前页（登录流程用）。
   static void replace(BuildContext context, String path, {Object? extra}) =>
@@ -94,11 +104,13 @@ class LiveRoutes {
 
   /// 带 int 路径参数（:id）的跳转。
   static Future<void> pushId(BuildContext context, String path, int id) =>
-      context.push(path.replaceFirst(':id', '$id'));
+      push(context, path.replaceFirst(':id', '$id'));
 
   static Future<void> logout(BuildContext context) async {
     await AuthStore.instance.clear();
-    if (context.mounted) goLogin(context);
+    // clear() 会触发 refreshListenable 的 redirect（AuthStore 已置为未登录），
+    // 自动跳转到登录页。这里不再显式 goLogin，避免与 redirect 同时导航、
+    // 向 Navigator 重复压入相同 key 的页面而触发 keyReservation 断言。
   }
 
   /// 先关掉当前页（如抽屉菜单），再打开目标页。
@@ -114,7 +126,7 @@ class LiveRoutes {
     // InheritedElement 依赖残留断言。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (nav.mounted) {
-        nav.context.push(path, extra: extra);
+        push(nav.context, path, extra: extra);
       }
     });
   }

@@ -76,7 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return LivePage(
       child: Column(
         children: [
-          const LiveAppBar(
+          LiveAppBar(
             title: '我的',
             actions: [_ProfileMenuButton()],
           ),
@@ -90,7 +90,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         : RefreshIndicator(
                             onRefresh: _load,
                             child: ListView(
-                              padding: const EdgeInsets.all(18),
+                              padding: const EdgeInsets.fromLTRB(18, 6, 18, 24),
                               children: [
                                 _ProfileHeader(
                                   user: _me!,
@@ -261,8 +261,8 @@ class _ProfileHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 内容整体下移一点，避免贴住顶部导航
-        const SizedBox(height: 22),
+        // 内容与顶部导航保持少量间距
+        const SizedBox(height: 10),
         Row(
           children: [
             Avatar(url: user.avatar, name: user.nickname, size: 84),
@@ -714,15 +714,16 @@ class ProfileMenuScreen extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: Container(
-              width: 343,
+              width: 300,
               color: LiveColors.bg,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 42),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
                     child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text(
                           '我的服务',
@@ -730,23 +731,6 @@ class ProfileMenuScreen extends StatelessWidget {
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
                             color: LiveColors.textPrimary,
-                          ),
-                        ),
-                        const Spacer(),
-                        Material(
-                          color: LiveColors.card,
-                          shape: const CircleBorder(),
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: () => Navigator.of(context).pop(),
-                            child: const Padding(
-                              padding: EdgeInsets.all(8),
-                              child: Icon(
-                                Icons.close,
-                                size: 20,
-                                color: LiveColors.textSecondary,
-                              ),
-                            ),
                           ),
                         ),
                       ],
@@ -798,7 +782,7 @@ class ProfileMenuScreen extends StatelessWidget {
                     padding: EdgeInsets.fromLTRB(20, 0, 20, 28),
                     child: Text(
                       '更多服务持续上线',
-                      style: TextStyle(fontSize: 12, color: LiveColors.textTertiary),
+                      style: TextStyle(fontSize: 11, color: LiveColors.textTertiary),
                     ),
                   ),
                 ],
@@ -850,7 +834,7 @@ class _MenuEntryTile extends StatelessWidget {
                   Text(
                     title,
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: LiveColors.textPrimary,
                     ),
@@ -858,7 +842,7 @@ class _MenuEntryTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
+                    style: const TextStyle(fontSize: 10, color: LiveColors.textTertiary),
                   ),
                 ],
               ),

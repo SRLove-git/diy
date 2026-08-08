@@ -239,10 +239,10 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                                 item: items[i],
                                 onLongPress: (pos) =>
                                     _showConversationMenu(items[i], pos),
-                                onTap: () {
+                                onTap: () async {
                                   final it = items[i];
                                   if (it.group != null) {
-                                    LiveRoutes.push(
+                                    await LiveRoutes.push(
                                       context,
                                       RoutePaths.chatDetail,
                                       extra: {
@@ -252,7 +252,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                                     );
                                   } else {
                                     final c = it.conv!;
-                                    LiveRoutes.push(
+                                    await LiveRoutes.push(
                                       context,
                                       RoutePaths.chatDetail,
                                       extra: {
@@ -263,6 +263,8 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                                       },
                                     );
                                   }
+                                  // 从聊天页返回后重新拉取列表，刷新未读角标/最后消息
+                                  if (mounted) _load();
                                 },
                               ),
                             ),
@@ -418,11 +420,23 @@ class _ChatScreenState extends State<ChatScreen> {
   int? _nextCursor;
   final _scrollCtrl = ScrollController();
   bool _hasMore = false;
+  /// 群成员（导航栏成员头像 + 标题成员数），群聊进入时拉取
+  List<GroupMember> _groupMembers = [];
 
   @override
   void initState() {
     super.initState();
     _loadMessages();
+    if (widget.isGroup) _loadGroupMeta();
+  }
+
+  Future<void> _loadGroupMeta() async {
+    try {
+      final members = await GroupService.instance.members(widget.groupId!);
+      if (mounted) setState(() => _groupMembers = members);
+    } catch (_) {
+      // 成员信息拉取失败不阻塞聊天页
+    }
   }
 
   @override
@@ -772,17 +786,29 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Column(
         children: [
           LiveAppBar(
-            title: widget.isGroup ? widget.groupName : widget.peerName,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.more_horiz, color: LiveColors.textPrimary),
-                onPressed: widget.isGroup
-                    ? () => LiveRoutes.pushId(
-                        context,
-                        RoutePaths.chatGroupSettings,
-                        widget.groupId!,
-                      )
-                    : () => LiveRoutes.push(
+            title: widget.isGroup
+                ? (_groupMembers.isNotEmpty
+                    ? '${widget.groupName} (${_groupMembers.length})'
+                    : widget.groupName)
+                : widget.peerName,
+            actions: widget.isGroup
+                ? [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 10),
+                      child: _GroupNavAvatars(
+                        members: _groupMembers,
+                        onTap: () => LiveRoutes.pushId(
+                          context,
+                          RoutePaths.chatGroupSettings,
+                          widget.groupId!,
+                        ),
+                      ),
+                    ),
+                  ]
+                : [
+                    IconButton(
+                      icon: const Icon(Icons.more_horiz, color: LiveColors.textPrimary),
+                      onPressed: () => LiveRoutes.push(
                         context,
                         RoutePaths.chatInfo,
                         extra: {
@@ -792,8 +818,8 @@ class _ChatScreenState extends State<ChatScreen> {
                           'conversationId': widget.conversationId ?? 0,
                         },
                       ),
-              ),
-            ],
+                    ),
+                  ],
           ),
           Expanded(
             child: _error != null && _messages.isEmpty
@@ -816,12 +842,54 @@ class _ChatScreenState extends State<ChatScreen> {
                           }
                           final msg = _messages[i - (_hasMore ? 1 : 0)];
                           final isMine = msg.senderId == me;
-                          return _Bubble(
-                            message: msg,
-                            isMine: isMine,
-                            showAvatar: widget.isGroup && !isMine,
-                            onLongPress: (globalPos) =>
-                                _showMessageMenu(msg, globalPos),
+                          // 群聊：系统消息居中展示；普通消息按天插入时间分隔
+                          if (msg.contentType == 'system') {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Center(
+                                child: Text(
+                                  msg.content,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: LiveColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          final idx = i - (_hasMore ? 1 : 0);
+                          final showTime = widget.isGroup &&
+                              (idx == 0 ||
+                                  !_sameDay(
+                                    _messages[idx - 1].createdAt,
+                                    msg.createdAt,
+                                  ));
+                          return Column(
+                            children: [
+                              if (showTime)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8, bottom: 2),
+                                  child: Center(
+                                    child: Text(
+                                      fmtTime(msg.createdAt),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: LiveColors.textTertiary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              _Bubble(
+                                message: msg,
+                                isMine: isMine,
+                                isGroup: widget.isGroup,
+                                showAvatar: widget.isGroup && !isMine,
+                                onLongPress: (globalPos) =>
+                                    _showMessageMenu(msg, globalPos),
+                              ),
+                            ],
                           );
                         },
                       ),
@@ -835,51 +903,128 @@ class _ChatScreenState extends State<ChatScreen> {
             child: SafeArea(
               top: false,
               child: Container(
-                padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
                 decoration: const BoxDecoration(
                   color: LiveColors.bg,
                   border: Border(top: BorderSide(color: LiveColors.divider)),
                 ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () =>
-                          showLiveSnack(context, '语音消息敬请期待'),
-                      icon: const Icon(Icons.mic_none, color: LiveColors.textSecondary, size: 22),
-                    ),
-                    IconButton(
-                      onPressed: _showEmojiPanel,
-                      icon: const Icon(Icons.emoji_emotions_outlined, color: LiveColors.textSecondary, size: 22),
-                    ),
-                    Expanded(
-                      child: TextField(
-                        controller: _inputCtrl,
-                        minLines: 1,
-                        maxLines: 4,
-                        decoration: InputDecoration(
-                          hintText: '发送消息…',
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          isDense: true,
+                child: widget.isGroup
+                    // 群聊输入栏：对齐 Pixso 23-群聊（语音 / 胶囊输入 / 表情 / 发送）
+                    ? Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 16, 12, 14),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            IconButton(
+                              onPressed: () =>
+                                  showLiveSnack(context, '语音消息敬请期待'),
+                              icon: const Icon(Icons.mic_none, color: LiveColors.textSecondary, size: 25),
+                            ),
+                            const SizedBox(width: 2),
+                            Expanded(
+                              child: Container(
+                                constraints: const BoxConstraints(minHeight: 47),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: LiveColors.inputBg,
+                                  borderRadius: BorderRadius.circular(21),
+                                ),
+                                child: TextField(
+                                  controller: _inputCtrl,
+                                  minLines: 1,
+                                  maxLines: 4,
+                                  style: const TextStyle(fontSize: 13),
+                                  decoration: const InputDecoration(
+                                    hintText: '@ 提及成员…',
+                                    hintStyle: TextStyle(fontSize: 13, color: LiveColors.textTertiary),
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              onPressed: _showEmojiPanel,
+                              icon: const Icon(Icons.emoji_emotions_outlined, color: LiveColors.textSecondary, size: 25),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: _sending ? null : _send,
+                              child: Container(
+                                width: 62,
+                                height: 43,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [Color(0xFF333333), Color(0xFF141414)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                child: _sending
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      )
+                                    : const Text(
+                                        '发送',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              onPressed: () =>
+                                  showLiveSnack(context, '语音消息敬请期待'),
+                              icon: const Icon(Icons.mic_none, color: LiveColors.textSecondary, size: 22),
+                            ),
+                            IconButton(
+                              onPressed: _showEmojiPanel,
+                              icon: const Icon(Icons.emoji_emotions_outlined, color: LiveColors.textSecondary, size: 22),
+                            ),
+                            Expanded(
+                              child: TextField(
+                                controller: _inputCtrl,
+                                minLines: 1,
+                                maxLines: 4,
+                                decoration: InputDecoration(
+                                  hintText: '发送消息…',
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: _showAttachPanel,
+                              icon: const Icon(Icons.add_circle_outline, color: LiveColors.textSecondary, size: 24),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              onPressed: _sending ? null : _send,
+                              icon: _sending
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: LiveColors.brand),
+                                    )
+                                  : const Icon(Icons.send, color: LiveColors.brand),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    IconButton(
-                      onPressed: _showAttachPanel,
-                      icon: const Icon(Icons.add_circle_outline, color: LiveColors.textSecondary, size: 24),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: _sending ? null : _send,
-                      icon: _sending
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: LiveColors.brand),
-                            )
-                          : const Icon(Icons.send, color: LiveColors.brand),
-                    ),
-                  ],
-                ),
               ),
             ),
           ),
@@ -893,12 +1038,14 @@ class _Bubble extends StatelessWidget {
   const _Bubble({
     required this.message,
     required this.isMine,
+    required this.isGroup,
     required this.showAvatar,
     required this.onLongPress,
   });
 
   final ChatMessage message;
   final bool isMine;
+  final bool isGroup;
   final bool showAvatar;
   final void Function(Offset globalPosition) onLongPress;
 
@@ -907,7 +1054,8 @@ class _Bubble extends StatelessWidget {
     final isImage = message.contentType == 'image';
     final isVoice = message.contentType == 'voice';
     final isVideo = message.contentType == 'video';
-    final bubbleColor = isMine ? LiveColors.brand : LiveColors.card;
+    final bubbleColor =
+        isMine ? LiveColors.brand : LiveColors.card;
     final textColor = isMine ? Colors.white : LiveColors.textPrimary;
 
     Widget bubbleContent;
@@ -958,14 +1106,26 @@ class _Bubble extends StatelessWidget {
 
     final bubble = Container(
       constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.62),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: isGroup
+          ? const EdgeInsets.symmetric(horizontal: 14, vertical: 11)
+          : const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: message.isRecalled ? LiveColors.card : bubbleColor,
+        color: message.isRecalled
+            ? LiveColors.card
+            : (isGroup ? (isMine ? null : LiveColors.card) : bubbleColor),
+        gradient:
+            isGroup && !message.isRecalled && isMine
+                ? const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFF333333), Color(0xFF141414)],
+                  )
+                : null,
         borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(14),
-          topRight: const Radius.circular(14),
-          bottomLeft: Radius.circular(isMine ? 14 : 4),
-          bottomRight: Radius.circular(isMine ? 4 : 14),
+          topLeft: Radius.circular(isGroup ? 16 : 14),
+          topRight: Radius.circular(isGroup ? 16 : 14),
+          bottomLeft: Radius.circular(isMine ? (isGroup ? 4 : 14) : 16),
+          bottomRight: Radius.circular(isMine ? 16 : (isGroup ? 4 : 14)),
         ),
       ),
       child: bubbleContent,
@@ -985,22 +1145,31 @@ class _Bubble extends StatelessWidget {
             if (!isMine && showAvatar)
               Padding(
                 padding: const EdgeInsets.only(right: 8),
-                child: Avatar(
-                  url: message.author?.avatar ?? '',
-                  name: message.author?.nickname ?? '',
-                  size: 36,
-                ),
+                child: isGroup
+                    ? _GradientAvatar(
+                        name: message.author?.nickname ?? '',
+                        size: 36,
+                      )
+                    : Avatar(
+                        url: message.author?.avatar ?? '',
+                        name: message.author?.nickname ?? '',
+                        size: 36,
+                      ),
               ),
             Flexible(
               child: Column(
                 crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                 children: [
-                if (!isMine && showAvatar && message.author != null)
+                if (isGroup && !isMine && showAvatar && message.author != null)
                   Padding(
                     padding: const EdgeInsets.only(left: 4, bottom: 3),
                     child: Text(
-                      message.author!.displayName,
-                      style: const TextStyle(fontSize: 10, color: LiveColors.textTertiary),
+                      '@${message.author!.displayName}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w400,
+                        color: LiveColors.textSecondary,
+                      ),
                     ),
                   ),
                 if (message.replyPreview != null &&
@@ -1027,23 +1196,26 @@ class _Bubble extends StatelessWidget {
                     ),
                   ),
                 bubble,
-                const SizedBox(height: 3),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      fmtTime(message.createdAt),
-                      style: const TextStyle(fontSize: 10, color: LiveColors.textTertiary),
-                    ),
-                    if (isMine && message.readAt != null) ...[
-                      const SizedBox(width: 6),
-                      const Text(
-                        '已读',
-                        style: TextStyle(fontSize: 10, color: LiveColors.textTertiary),
+                // 单聊保留时间/已读小字；群聊按设计稿仅以居中时间分隔展示
+                if (!isGroup) ...[
+                  const SizedBox(height: 3),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        fmtTime(message.createdAt),
+                        style: const TextStyle(fontSize: 10, color: LiveColors.textTertiary),
                       ),
+                      if (isMine && message.readAt != null) ...[
+                        const SizedBox(width: 6),
+                        const Text(
+                          '已读',
+                          style: TextStyle(fontSize: 10, color: LiveColors.textTertiary),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1052,6 +1224,90 @@ class _Bubble extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 群聊导航栏右侧：最多 3 个成员小头像（对齐 Pixso 23-群聊）。
+class _GroupNavAvatars extends StatelessWidget {
+  const _GroupNavAvatars({required this.members, required this.onTap});
+
+  final List<GroupMember> members;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    var shown = members.take(3).toList();
+    if (shown.isEmpty) {
+      shown = [const GroupMember(id: 0, userId: 0, nickname: '群')];
+    }
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < shown.length; i++) ...[
+              if (i > 0) const SizedBox(width: 2),
+              _GradientAvatar(name: shown[i].nickname, size: 25),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 渐变圆形头像（白字首字，对齐设计稿 div.av 系列渐变）。
+class _GradientAvatar extends StatelessWidget {
+  const _GradientAvatar({required this.name, required this.size});
+
+  final String name;
+  final double size;
+
+  static const _palettes = [
+    [Color(0xFF36D1DC), Color(0xFF5B86E5)],
+    [Color(0xFFA18CD1), Color(0xFFFBC2EB)],
+    [Color(0xFF667EEA), Color(0xFF764EA2)],
+    [Color(0xFF43E97B), Color(0xFF38F9D7)],
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final initial =
+        name.trim().isNotEmpty ? name.characters.first : '群';
+    final palette = _palettes[
+        (name.hashCode % _palettes.length).abs() % _palettes.length];
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(size * 0.44),
+      child: Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: palette,
+          ),
+        ),
+        child: Text(
+          initial,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: size * (size <= 28 ? 0.36 : 0.34),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 两条消息是否同一天（用于群聊居中时间分隔）。
+bool _sameDay(DateTime? a, DateTime? b) {
+  if (a == null || b == null) return false;
+  return a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
 /// 长按消息气泡操作菜单（对齐 Pixso 36-聊天-长按气泡菜单）：

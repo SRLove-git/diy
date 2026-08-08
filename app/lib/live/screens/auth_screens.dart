@@ -91,7 +91,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (r.isNewUser) {
         showLiveSnack(context, '欢迎新用户，登录成功');
       }
-      LiveRoutes.goHome(context);
+      // save() 触发 AuthStore notifyListeners -> 路由 redirect 自动跳转首页；
+      // 这里不再显式 goHome，避免与 redirect 竞态导致重复 page key 断言。
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
     } finally {
@@ -296,7 +297,8 @@ class _PasswordLoginScreenState extends State<PasswordLoginScreen> {
         refreshToken: r.refreshToken,
         userId: r.userId,
       );
-      if (mounted) LiveRoutes.goHome(context);
+      // save() 触发 AuthStore notifyListeners -> 路由 redirect 自动跳转首页，
+      // 无需再显式 goHome（显式导航会与 redirect 竞态导致重复 page key）。
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
     } finally {
