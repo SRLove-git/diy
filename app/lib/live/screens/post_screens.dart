@@ -834,6 +834,8 @@ class PostPublishSuccessScreen extends StatelessWidget {
             const Spacer(),
             PrimaryButton(
               label: '查看我的作品',
+              color: Colors.black,
+              textColor: Colors.white,
               onTap: () => LiveRoutes.pushId(context, RoutePaths.postDetail, post.id),
             ),
             const SizedBox(height: 12),

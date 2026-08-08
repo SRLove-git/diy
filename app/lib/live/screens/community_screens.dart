@@ -43,23 +43,27 @@ class _CommunityHomeScreenState extends State<CommunityHomeScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 8, 12, 4),
-            child: Row(
+            // 用 Stack 让“社区”标题严格水平居中，不受左右图标按钮宽度影响。
+            child: Stack(
               children: [
-                const SizedBox(width: 44),
-                const Expanded(
+                const Center(
                   child: Text(
                     '社区',
-                    textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.search, color: LiveColors.textPrimary),
-                  onPressed: () => LiveRoutes.push(context, RoutePaths.search),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, color: LiveColors.textPrimary),
-                  onPressed: () => LiveRoutes.push(context, RoutePaths.postPublish),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.search, color: LiveColors.textPrimary),
+                      onPressed: () => LiveRoutes.push(context, RoutePaths.search),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, color: LiveColors.textPrimary),
+                      onPressed: () => LiveRoutes.push(context, RoutePaths.postPublish),
+                    ),
+                  ],
                 ),
               ],
             ),

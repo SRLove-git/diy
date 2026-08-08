@@ -1276,7 +1276,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
                     decoration: BoxDecoration(
-                      color: LiveColors.brand,
+                      color: Colors.black,
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: _saving

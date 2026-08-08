@@ -427,6 +427,8 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
                   const SizedBox(height: 24),
                   PrimaryButton(
                     label: '确认开通',
+                    color: Colors.black,
+                    textColor: Colors.white,
                     loading: _loading,
                     onTap: _loading ? null : _purchase,
                   ),

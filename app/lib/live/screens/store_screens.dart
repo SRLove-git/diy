@@ -189,6 +189,8 @@ class _StoreCard extends StatelessWidget {
                           label: '立即预约',
                           height: 40,
                           borderRadius: 12,
+                          color: Colors.black,
+                          textColor: Colors.white,
                           onTap: onTap,
                         ),
                       ),
@@ -559,6 +561,8 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                     const SizedBox(height: 26),
                     PrimaryButton(
                       label: '下一步 · 选择桌位',
+                      color: Colors.black,
+                      textColor: Colors.white,
                       onTap: _date == null || _slot == null
                           ? null
                           : () {
@@ -860,6 +864,8 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                           const SizedBox(height: 20),
                           PrimaryButton(
                             label: '确认预约',
+                            color: Colors.black,
+                            textColor: Colors.white,
                             onTap: _table == null
                                 ? null
                                 : () => LiveRoutes.push(

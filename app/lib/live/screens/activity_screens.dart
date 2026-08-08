@@ -369,6 +369,8 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                       const SizedBox(height: 24),
                       PrimaryButton(
                         label: '立即预约',
+                        color: Colors.black,
+                        textColor: Colors.white,
                         onTap: _session == null
                             ? null
                             : () => LiveRoutes.push(

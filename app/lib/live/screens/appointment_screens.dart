@@ -405,6 +405,8 @@ class AppointmentSuccessScreen extends StatelessWidget {
             const Spacer(),
             PrimaryButton(
               label: '查看预约',
+              color: Colors.black,
+              textColor: Colors.white,
               onTap: () => LiveRoutes.pushId(
                 context,
                 RoutePaths.appointmentDetail,
@@ -1497,6 +1499,8 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                       const SizedBox(height: 12),
                       PrimaryButton(
                         label: '确认核销',
+                        color: Colors.black,
+                        textColor: Colors.white,
                         loading: _checking,
                         onTap: _checking ? null : _checkIn,
                       ),

@@ -199,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 24),
                   PrimaryButton(
                     label: '登录 / 注册',
-                    color: LiveColors.brand,
+                    color: Colors.black,
                     textColor: Colors.white,
                     borderRadius: 16,
                     onTap: _loading ? null : _login,
