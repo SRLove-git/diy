@@ -430,10 +430,8 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
                     onTap: _loading ? null : _purchase,
                   ),
                   const SizedBox(height: 12),
-                  PrimaryButton(
+                  OutlineButton(
                     label: '再想想',
-                    color: LiveColors.card,
-                    textColor: LiveColors.textPrimary,
                     onTap: () => Navigator.of(context).pop(false),
                   ),
                   const SizedBox(height: 14),

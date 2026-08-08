@@ -804,10 +804,8 @@ class PostPublishSuccessScreen extends StatelessWidget {
               onTap: () => LiveRoutes.push(context, PostDetailScreen(postId: post.id)),
             ),
             const SizedBox(height: 12),
-            PrimaryButton(
+            OutlineButton(
               label: '返回社区',
-              color: LiveColors.card,
-              textColor: LiveColors.textPrimary,
               onTap: () => LiveRoutes.switchTab(context, 1),
             ),
             const SizedBox(height: 24),
@@ -1333,10 +1331,8 @@ class _TopicChannelScreenState extends State<TopicChannelScreen> {
                                   Row(
                                     children: [
                                       Expanded(
-                                        child: PrimaryButton(
+                                        child: OutlineButton(
                                           label: _followed ? '已关注' : '关注话题',
-                                          color: LiveColors.card,
-                                          textColor: LiveColors.textPrimary,
                                           height: 42,
                                           onTap: () {
                                             setState(() => _followed = !_followed);

@@ -200,7 +200,7 @@ class _SegmentedTab extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 12.6,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
               color: selected ? LiveColors.textPrimary : LiveColors.textSecondary,
             ),

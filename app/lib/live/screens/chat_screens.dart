@@ -81,7 +81,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
               children: [
                 const Text(
                   '聊天',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
                 ),
                 const Spacer(),
                 IconButton(
@@ -89,27 +89,6 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                   onPressed: () => LiveRoutes.push(context, const AddFriendScreen()),
                 ),
               ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 2, 18, 6),
-            child: Container(
-              height: 44,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: LiveColors.inputBg,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.search, size: 20, color: LiveColors.textTertiary),
-                  const SizedBox(width: 8),
-                  Text(
-                    '搜索',
-                    style: const TextStyle(fontSize: 15, color: LiveColors.textTertiary),
-                  ),
-                ],
-              ),
             ),
           ),
           Expanded(
@@ -123,48 +102,35 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                             onRefresh: () async => _load(),
                             child: ListView.separated(
                               padding: const EdgeInsets.all(8),
-                              itemCount: items.length + 1,
+                              itemCount: items.length,
                               separatorBuilder: (_, __) => const Divider(
                                 height: 1,
                                 indent: 76,
                                 color: LiveColors.divider,
                               ),
-                              itemBuilder: (_, i) {
-                                if (i == items.length) {
-                                  return const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 14),
-                                    child: Center(
-                                      child: Text(
-                                        '— 已展示全部会话 —',
-                                        style: TextStyle(fontSize: 11, color: LiveColors.textTertiary),
+                              itemBuilder: (_, i) => _ConversationTile(
+                                item: items[i],
+                                onTap: () {
+                                  final it = items[i];
+                                  if (it.group != null) {
+                                    LiveRoutes.push(
+                                      context,
+                                      ChatScreen(groupId: it.group!.id, groupName: it.group!.name),
+                                    );
+                                  } else {
+                                    final c = it.conv!;
+                                    LiveRoutes.push(
+                                      context,
+                                      ChatScreen(
+                                        conversationId: c.id,
+                                        peerId: c.peerId,
+                                        peerName: c.peerNickname,
+                                        peerAvatar: c.peerAvatar,
                                       ),
-                                    ),
-                                  );
-                                }
-                                return _ConversationTile(
-                                  item: items[i],
-                                  onTap: () {
-                                    final it = items[i];
-                                    if (it.group != null) {
-                                      LiveRoutes.push(
-                                        context,
-                                        ChatScreen(groupId: it.group!.id, groupName: it.group!.name),
-                                      );
-                                    } else {
-                                      final c = it.conv!;
-                                      LiveRoutes.push(
-                                        context,
-                                        ChatScreen(
-                                          conversationId: c.id,
-                                          peerId: c.peerId,
-                                          peerName: c.peerNickname,
-                                          peerAvatar: c.peerAvatar,
-                                        ),
-                                      );
-                                    }
-                                  },
-                                );
-                              },
+                                    );
+                                  }
+                                },
+                              ),
                             ),
                           ),
           ),
@@ -509,9 +475,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 label: '拍摄',
                 onTap: () {
                   Navigator.of(context).pop();
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (context.mounted) showLiveSnack(context, '拍摄功能敬请期待');
-                  });
+                  showLiveSnack(context, '拍摄功能敬请期待');
                 },
               ),
               _AttachItem(
@@ -519,9 +483,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 label: '文件',
                 onTap: () {
                   Navigator.of(context).pop();
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (context.mounted) showLiveSnack(context, '文件功能敬请期待');
-                  });
+                  showLiveSnack(context, '文件功能敬请期待');
                 },
               ),
               _AttachItem(
@@ -529,9 +491,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 label: '名片',
                 onTap: () {
                   Navigator.of(context).pop();
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (context.mounted) showLiveSnack(context, '名片功能敬请期待');
-                  });
+                  showLiveSnack(context, '名片功能敬请期待');
                 },
               ),
             ],
@@ -1148,7 +1108,6 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                           const SizedBox(height: 18),
                           PrimaryButton(
                             label: _isOwner ? '解散群聊' : '退出群聊',
-                            color: LiveColors.card,
                             textColor: LiveColors.danger,
                             loading: _busy,
                             onTap: _busy
@@ -1623,15 +1582,12 @@ class ChatInfoScreen extends StatelessWidget {
 
   Future<void> _deleteConversation(BuildContext context) async {
     final nav = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     try {
       await ChatService.instance.deleteConversation(conversationId);
       if (context.mounted) {
         nav.pop();
         nav.pop();
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          messenger.showSnackBar(const SnackBar(content: Text('会话已删除')));
-        });
+        showLiveSnack(context, '会话已删除');
       }
     } on ApiException catch (e) {
       if (context.mounted) showLiveSnack(context, e.message);

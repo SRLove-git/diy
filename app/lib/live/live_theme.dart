@@ -6,8 +6,6 @@ abstract class LiveColors {
   static const card = Color(0xFFF7F7F8);
   static const cardBorder = Color(0xFFE8E8EC);
   static const divider = Color(0xFFF0F0F2);
-  /// 卡片描边 / 分隔线（对齐设计稿 --line: #EFEFEF）
-  static const line = Color(0xFFEFEFEF);
   static const textPrimary = Color(0xFF141414);
   static const textSecondary = Color(0xFF8E8E93);
   static const textTertiary = Color(0xFFC7C7CC);

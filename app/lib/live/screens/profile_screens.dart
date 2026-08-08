@@ -6,6 +6,7 @@ import '../../api/chat_services.dart';
 import '../../api/content_services.dart';
 import '../../api/models.dart';
 import '../../api/services.dart';
+import '../../main.dart' show GalleryPage;
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
@@ -13,6 +14,7 @@ import 'appointment_screens.dart';
 import 'auth_screens.dart';
 import 'chat_screens.dart';
 import 'member_screens.dart';
+import 'notifications_screen.dart';
 import 'post_screens.dart';
 import 'video_screens.dart';
 
@@ -85,7 +87,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           const LiveAppBar(
             title: '我的',
-            titleStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             actions: [_ProfileMenuButton()],
           ),
           Expanded(
@@ -295,7 +296,7 @@ class _ProfileHeader extends StatelessWidget {
         const SizedBox(height: 14),
         Text(
           user.displayName,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: LiveColors.textPrimary),
+          style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
         ),
         const SizedBox(height: 4),
         Text(
@@ -304,7 +305,7 @@ class _ProfileHeader extends StatelessWidget {
               : '@${user.phone} · ${user.bio}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
+          style: const TextStyle(fontSize: 12.6, color: LiveColors.textSecondary),
         ),
         const SizedBox(height: 3),
         Text(
@@ -312,7 +313,7 @@ class _ProfileHeader extends StatelessWidget {
           '${user.location.isNotEmpty ? ' · ${user.location}' : ''}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
+          style: const TextStyle(fontSize: 11.6, color: LiveColors.textTertiary),
         ),
         const SizedBox(height: 14),
         Row(
@@ -320,8 +321,6 @@ class _ProfileHeader extends StatelessWidget {
             Expanded(
               child: PrimaryButton(
                 label: '编辑资料',
-                color: LiveColors.brand,
-                textColor: Colors.white,
                 height: 50,
                 onTap: onEdit,
               ),
@@ -330,8 +329,6 @@ class _ProfileHeader extends StatelessWidget {
             Expanded(
               child: PrimaryButton(
                 label: '分享主页',
-                color: LiveColors.card,
-                textColor: LiveColors.textPrimary,
                 height: 50,
                 onTap: onShare,
               ),
@@ -364,12 +361,12 @@ class _StatColumn extends StatelessWidget {
           children: [
             Text(
               value,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
+              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
             ),
             const SizedBox(height: 3),
             Text(
               label,
-              style: const TextStyle(fontSize: 11, color: LiveColors.textSecondary),
+              style: const TextStyle(fontSize: 11.6, color: LiveColors.textSecondary),
             ),
           ],
         ),
@@ -406,36 +403,53 @@ class _ProfileTabs extends StatelessWidget {
       '笔记 ${counts.$2}',
       '视频 ${counts.$3}',
     ];
-    return Row(
-      children: [
-        for (var i = 0; i < labels.length; i++)
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              height: 34,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: tab == i ? LiveColors.brand : LiveColors.card,
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: InkWell(
-                onTap: () => onChanged(i),
-                borderRadius: BorderRadius.circular(15),
-                child: Center(
-                  child: Text(
-                    labels[i],
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                      color: tab == i ? Colors.white : LiveColors.textPrimary,
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: LiveColors.card,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < labels.length; i++)
+            Expanded(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                height: 38,
+                margin: const EdgeInsets.symmetric(horizontal: 1),
+                decoration: BoxDecoration(
+                  color: tab == i ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(17),
+                  boxShadow: tab == i
+                      ? const [
+                          BoxShadow(
+                            color: Color(0x14000000),
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: InkWell(
+                  onTap: () => onChanged(i),
+                  borderRadius: BorderRadius.circular(17),
+                  child: Center(
+                    child: Text(
+                      labels[i],
+                      style: TextStyle(
+                        fontSize: 12.6,
+                        fontWeight: tab == i ? FontWeight.w700 : FontWeight.w400,
+                        color: tab == i
+                            ? LiveColors.textPrimary
+                            : LiveColors.textSecondary,
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -958,19 +972,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                         label: _status!.following ? '已关注' : '关注',
                                         height: 42,
                                         color: _status!.following ? LiveColors.card : null,
-                                        textColor: _status!.following
-                                            ? LiveColors.textPrimary
-                                            : Colors.white,
                                         loading: _followBusy,
                                         onTap: _followBusy ? null : _toggleFollow,
                                       ),
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
-                                      child: PrimaryButton(
+                                      child: OutlineButton(
                                         label: '私信',
-                                        color: LiveColors.card,
-                                        textColor: LiveColors.textPrimary,
                                         height: 42,
                                         onTap: () async {
                                           try {
@@ -1657,41 +1666,8 @@ class _MyContentScreenState extends State<MyContentScreen> {
   }
 }
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
-
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  bool _notifyEnabled = true;
-  bool _darkModeEnabled = false;
-
-  void _comingSoon(String feature) {
-    showLiveSnack(context, '$feature功能开发中，敬请期待');
-  }
-
-  Future<void> _confirmLogout() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('退出登录'),
-        content: const Text('确定要退出当前账号吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('再想想'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('退出'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true) await LiveRoutes.logout(context);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1701,83 +1677,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const LiveAppBar(title: '设置'),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              padding: const EdgeInsets.all(18),
               children: [
                 const _SettingGroupHeader('账号与安全'),
-                _SettingsCard(
-                  children: [
-                    const _SettingsRow(title: '手机号', subtitle: '138****2211 已绑定'),
-                    const _SettingsDivider(),
-                    const _SettingsRow(title: '用户名', subtitle: 'xiaodouzi · 已设置'),
-                    const _SettingsDivider(),
-                    _SettingsRow(
-                      title: '登录密码',
-                      subtitle: '已设置 · 可用密码登录',
-                      trailing: const _SettingsChevron(),
-                      onTap: () => LiveRoutes.push(context, const SetPasswordScreen()),
-                    ),
-                    const _SettingsDivider(),
-                    const _SettingsRow(title: '登录设备', subtitle: '2 台设备在线'),
-                    const _SettingsDivider(),
-                    _SettingsRow(
-                      title: '切换账号',
-                      subtitle: '登录其他账号',
-                      trailing: const _SettingsChevron(),
-                      onTap: () => _comingSoon('切换账号'),
-                    ),
-                  ],
+                _SettingRow(
+                  icon: Icons.lock_outline,
+                  label: '修改密码',
+                  onTap: () => LiveRoutes.push(context, const SetPasswordScreen()),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 const _SettingGroupHeader('通用'),
-                _SettingsCard(
-                  children: [
-                    _SettingsRow(
-                      title: '消息通知',
-                      subtitle: '互动、系统消息提醒',
-                      trailing: _SettingsSwitch(
-                        value: _notifyEnabled,
-                        onChanged: (v) => setState(() => _notifyEnabled = v),
-                      ),
-                    ),
-                    const _SettingsDivider(),
-                    _SettingsRow(
-                      title: '深色模式',
-                      subtitle: '跟随系统',
-                      trailing: _SettingsSwitch(
-                        value: _darkModeEnabled,
-                        onChanged: (v) => setState(() => _darkModeEnabled = v),
-                      ),
-                    ),
-                    const _SettingsDivider(),
-                    _SettingsRow(
-                      title: '隐私设置',
-                      subtitle: '谁可以评论我的作品',
-                      trailing: const _SettingsChevron(),
-                      onTap: () => _comingSoon('隐私设置'),
-                    ),
-                  ],
+                _SettingRow(
+                  icon: Icons.notifications_outlined,
+                  label: '消息通知',
+                  onTap: () => LiveRoutes.push(context, const NotificationsScreen()),
                 ),
-                const SizedBox(height: 24),
+                _SettingRow(
+                  icon: Icons.card_giftcard_outlined,
+                  label: '我的卡包',
+                  onTap: () => LiveRoutes.push(context, const CouponsScreen()),
+                ),
+                _SettingRow(
+                  icon: Icons.grid_view_outlined,
+                  label: 'UI 预览（82 屏图库）',
+                  onTap: () => LiveRoutes.push(context, const GalleryPage()),
+                ),
+                const SizedBox(height: 16),
                 const _SettingGroupHeader('关于'),
-                _SettingsCard(
-                  children: [
-                    const _SettingsRow(title: '版本', subtitle: '手作星球 v1.0.0'),
-                    const _SettingsDivider(),
-                    _SettingsRow(
-                      title: '用户协议',
-                      trailing: const _SettingsChevron(),
-                      onTap: () => _comingSoon('用户协议'),
-                    ),
-                    const _SettingsDivider(),
-                    _SettingsRow(
-                      title: '隐私政策',
-                      trailing: const _SettingsChevron(),
-                      onTap: () => _comingSoon('隐私政策'),
-                    ),
-                  ],
+                _SettingRow(
+                  icon: Icons.info_outline,
+                  label: '关于手作星球',
+                  onTap: () => showAboutDialog(
+                    context: context,
+                    applicationName: '手作星球',
+                    applicationVersion: '1.0.0',
+                    applicationLegalese: '发现手作 · 遇见同好',
+                  ),
                 ),
-                const SizedBox(height: 24),
-                _LogoutButton(onTap: _confirmLogout),
+                const SizedBox(height: 28),
+                _SettingRow(
+                  icon: Icons.logout,
+                  label: '退出登录',
+                  danger: true,
+                  onTap: () async {
+                    final ok = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('退出登录'),
+                        content: const Text('确定要退出当前账号吗？'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('再想想'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('退出'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (ok == true) await LiveRoutes.logout(context);
+                  },
+                ),
+                const SizedBox(height: 16),
               ],
             ),
           ),
@@ -1787,7 +1750,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-/// 设置分组标题（对齐设计稿：17/700/主文字色，下方 8px 间距）
 class _SettingGroupHeader extends StatelessWidget {
   const _SettingGroupHeader(this.title);
 
@@ -1796,176 +1758,58 @@ class _SettingGroupHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 2, bottom: 8),
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
         title,
         style: const TextStyle(
-          fontSize: 17,
+          fontSize: 13,
           fontWeight: FontWeight.w700,
-          letterSpacing: -0.2,
-          color: LiveColors.textPrimary,
+          color: LiveColors.textSecondary,
         ),
       ),
     );
   }
 }
 
-/// 设置页白色卡片：1px 描边 + 16 圆角（对齐设计稿 card）
-class _SettingsCard extends StatelessWidget {
-  const _SettingsCard({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: LiveColors.bg,
-        border: Border.all(color: LiveColors.line),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(children: children),
-    );
-  }
-}
-
-class _SettingsDivider extends StatelessWidget {
-  const _SettingsDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Divider(height: 1, thickness: 1, color: LiveColors.line);
-  }
-}
-
-/// 设置行：主标题（14/600）+ 可选副标题（11/三级色）+ 可选右侧控件
-class _SettingsRow extends StatelessWidget {
-  const _SettingsRow({
-    required this.title,
-    this.subtitle,
-    this.trailing,
-    this.onTap,
+class _SettingRow extends StatelessWidget {
+  const _SettingRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.danger = false,
   });
 
-  final String title;
-  final String? subtitle;
-  final Widget? trailing;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: LiveColors.textPrimary,
-                  ),
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle!,
-                    style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (trailing != null) ...[
-            const SizedBox(width: 8),
-            trailing!,
-          ],
-        ],
-      ),
-    );
-    if (onTap == null) return content;
-    return InkWell(onTap: onTap, child: content);
-  }
-}
-
-/// 设计稿样式的 chevron（三级文字色）
-class _SettingsChevron extends StatelessWidget {
-  const _SettingsChevron();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Icon(Icons.chevron_right, size: 18, color: LiveColors.textTertiary);
-  }
-}
-
-/// 设计稿样式开关：44×26、圆角 13、开=深色底白钮 / 关=浅灰底
-class _SettingsSwitch extends StatelessWidget {
-  const _SettingsSwitch({required this.value, required this.onChanged});
-
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => onChanged(!value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: 44,
-        height: 26,
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: value ? LiveColors.textPrimary : const Color(0xFFE4E4E8),
-          borderRadius: BorderRadius.circular(13),
-        ),
-        child: AnimatedAlign(
-          duration: const Duration(milliseconds: 180),
-          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            width: 20,
-            height: 20,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 退出登录（设计稿：surface 底色 + 危险色文字的全宽按钮）
-class _LogoutButton extends StatelessWidget {
-  const _LogoutButton({required this.onTap});
-
+  final IconData icon;
+  final String label;
   final VoidCallback onTap;
+  final bool danger;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: LiveColors.card,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: SizedBox(
-          height: 52,
-          child: Center(
-            child: Text(
-              '退出登录',
-              style: const TextStyle(
-                fontSize: 16,
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+        decoration: BoxDecoration(
+          color: LiveColors.card,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: danger ? LiveColors.danger : LiveColors.brand),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: LiveColors.danger,
+                color: danger ? LiveColors.danger : LiveColors.textPrimary,
               ),
             ),
-          ),
+            const Spacer(),
+            const Icon(Icons.chevron_right, size: 18, color: LiveColors.textTertiary),
+          ],
         ),
       ),
     );

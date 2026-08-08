@@ -14,7 +14,6 @@ class LivePage extends StatelessWidget {
     this.bottomBar,
     this.fullBleed = false,
     this.backgroundColor = LiveColors.bg,
-    this.resizeToAvoidBottomInset = true,
   });
 
   final Widget child;
@@ -22,9 +21,6 @@ class LivePage extends StatelessWidget {
   /// 深色全屏页（Reels / 播放页）：顶部铺满、状态栏图标用浅色。
   final bool fullBleed;
   final Color backgroundColor;
-  /// 键盘弹出时是否压缩页面高度。默认 true（Scaffold 默认行为）；
-  /// 登录等页面设为 false，键盘直接覆盖在页面之上，避免页面被压缩变小。
-  final bool resizeToAvoidBottomInset;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +32,6 @@ class LivePage extends StatelessWidget {
     );
     return Scaffold(
       backgroundColor: backgroundColor,
-      resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       body: fullBleed
           ? AnnotatedRegion<SystemUiOverlayStyle>(
               value: const SystemUiOverlayStyle(
@@ -55,14 +50,12 @@ class LiveAppBar extends StatelessWidget implements PreferredSizeWidget {
   const LiveAppBar({
     super.key,
     this.title,
-    this.titleStyle,
     this.actions = const [],
     this.leading,
     this.bottom,
   });
 
   final String? title;
-  final TextStyle? titleStyle;
   final List<Widget> actions;
   final Widget? leading;
   final PreferredSizeWidget? bottom;
@@ -73,7 +66,7 @@ class LiveAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: title == null ? null : Text(title!, style: titleStyle),
+      title: title == null ? null : Text(title!),
       leading: leading ??
           (Navigator.of(context).canPop()
               ? IconButton(
@@ -138,7 +131,7 @@ class PrimaryButton extends StatelessWidget {
     this.loading = false,
     this.height = 52,
     this.color,
-    this.textColor = Colors.white,
+    this.textColor = LiveColors.textPrimary,
     this.borderRadius = 14,
   });
 
@@ -152,29 +145,34 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 设计稿主按钮为深色底 + 白字（btn-black / btn-grad）；禁用态浅灰
-    final bg = color ?? (onTap == null ? LiveColors.card : LiveColors.brand);
-    final fg = color == null && onTap == null ? LiveColors.textSecondary : textColor;
+    // 设计稿按钮为浅色底 + 深色文字；禁用态浅灰
+    final bg = color ?? (onTap == null ? LiveColors.card : Colors.white);
+    final side = color == null
+        ? const BorderSide(color: LiveColors.cardBorder, width: 1)
+        : BorderSide.none;
     return SizedBox(
       height: height,
       width: double.infinity,
       child: Material(
         color: bg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(borderRadius)),
+        shape: RoundedRectangleBorder(
+          side: side,
+          borderRadius: BorderRadius.circular(borderRadius),
+        ),
         child: InkWell(
           borderRadius: BorderRadius.circular(borderRadius),
           onTap: onTap,
           child: Center(
             child: loading
-                ? SizedBox(
+                ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: fg),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: LiveColors.brand),
                   )
                 : Text(
                     label,
                     style: TextStyle(
-                      color: fg,
+                      color: textColor,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -403,13 +401,7 @@ class ErrorView extends StatelessWidget {
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 16),
-              PrimaryButton(
-                label: '重试',
-                color: LiveColors.card,
-                textColor: LiveColors.textPrimary,
-                onTap: onRetry,
-                height: 40,
-              ),
+              OutlineButton(label: '重试', onTap: onRetry, height: 40),
             ],
           ],
         ),
@@ -491,7 +483,6 @@ class StatRow extends StatelessWidget {
 }
 
 void showLiveSnack(BuildContext context, String message) {
-  if (!context.mounted) return;
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(message)));

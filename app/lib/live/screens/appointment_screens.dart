@@ -412,10 +412,8 @@ class AppointmentSuccessScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            PrimaryButton(
+            OutlineButton(
               label: '返回首页',
-              color: LiveColors.card,
-              textColor: LiveColors.textPrimary,
               onTap: () => LiveRoutes.goHome(context),
             ),
             const SizedBox(height: 20),
@@ -802,10 +800,8 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: PrimaryButton(
+                            child: OutlineButton(
                               label: '复制',
-                              color: LiveColors.brand,
-                              textColor: Colors.white,
                               height: 42,
                               onTap: () {
                                 Clipboard.setData(ClipboardData(text: a.code));
@@ -817,8 +813,6 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                           Expanded(
                             child: PrimaryButton(
                               label: '扫码核销',
-                              color: LiveColors.card,
-                              textColor: LiveColors.textPrimary,
                               height: 42,
                               onTap: () => LiveRoutes.push(
                                 context,
@@ -835,7 +829,6 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                     if (a.status == 'booked')
                       PrimaryButton(
                         label: '取消预约',
-                        color: LiveColors.card,
                         textColor: LiveColors.danger,
                         loading: _acting,
                         onTap: _acting ? null : _cancel,

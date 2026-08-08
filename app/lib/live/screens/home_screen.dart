@@ -87,7 +87,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: '拼豆',
                   badge: '人气手作',
                   more: '查看全部 ›',
-                  titleSize: 22,
                   onMore: () => LiveRoutes.push(context, const ActivityListScreen()),
                 ),
                 Padding(
@@ -109,7 +108,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 _SectionHeader(
                   title: '敬请期待',
                   trailing: '更多精彩即将上线',
-                  titleSize: 17,
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -121,7 +119,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 _SectionHeader(
                   title: '活动推荐',
                   more: '查看全部 ›',
-                  titleSize: 17,
                   onMore: () => LiveRoutes.push(context, const ActivityListScreen()),
                 ),
                 if (data.activities.isNotEmpty)
@@ -159,7 +156,7 @@ class _TopBar extends StatelessWidget {
           const Text(
             '手作星球',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: FontWeight.w800,
               color: LiveColors.textPrimary,
               letterSpacing: -0.4,
@@ -211,7 +208,6 @@ class _SectionHeader extends StatelessWidget {
     this.more,
     this.trailing,
     this.onMore,
-    this.titleSize = 21.6,
   });
 
   final String title;
@@ -219,7 +215,6 @@ class _SectionHeader extends StatelessWidget {
   final String? more;
   final String? trailing;
   final VoidCallback? onMore;
-  final double titleSize;
 
   @override
   Widget build(BuildContext context) {
@@ -229,11 +224,11 @@ class _SectionHeader extends StatelessWidget {
         children: [
           Text(
             title,
-            style: TextStyle(
+            style: const TextStyle(
+              fontSize: 21.6,
               fontWeight: FontWeight.w800,
               color: LiveColors.textPrimary,
               letterSpacing: -0.4,
-              fontSize: titleSize,
             ),
           ),
           if (badge != null) ...[
@@ -247,7 +242,7 @@ class _SectionHeader extends StatelessWidget {
               child: Text(
                 badge!,
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: 10.6,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
@@ -260,7 +255,7 @@ class _SectionHeader extends StatelessWidget {
               onTap: onMore,
               child: Text(
                 more!,
-                style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
+                style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
               ),
             )
           else if (trailing != null)

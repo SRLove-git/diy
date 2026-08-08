@@ -307,7 +307,7 @@ class _ReelPage extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 15,
+                            fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
                             shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
@@ -323,7 +323,7 @@ class _ReelPage extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: Colors.white,
                     height: 1.4,
                     shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
@@ -341,7 +341,7 @@ class _ReelPage extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             color: Colors.white,
                             shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
                           ),
