@@ -141,6 +141,9 @@ class GroupService {
 
   Future<void> markRead(int groupId, int lastMessageId) =>
       ApiClient.instance.post('/groups/$groupId/read', body: {'lastMessageId': lastMessageId});
+
+  Future<void> deleteMessage(int groupId, int messageId) =>
+      ApiClient.instance.delete('/groups/$groupId/messages/$messageId');
 }
 
 class NotificationService {

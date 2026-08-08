@@ -420,6 +420,87 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  /// 长按消息气泡：弹出操作菜单（对齐 Pixso 36-聊天-长按气泡菜单）。
+  Future<void> _showMessageMenu(ChatMessage msg, Offset globalPos) async {
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (overlay == null) return;
+    final overlaySize = overlay.size;
+    const menuW = 170.0;
+    const menuH = 310.0;
+    // 菜单位置：优先显示在气泡右侧，右侧放不下则靠左
+    double left = globalPos.dx + 16;
+    if (left + menuW > overlaySize.width) {
+      left = globalPos.dx - menuW - 8;
+    }
+    double top = globalPos.dy - menuH / 2;
+    if (top < 80) top = 80;
+    if (top + menuH > overlaySize.height - 40) {
+      top = overlaySize.height - menuH - 40;
+    }
+
+    final action = await showGeneralDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '消息操作',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 120),
+      pageBuilder: (_, __, ___) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+            ),
+          ),
+          Positioned(
+            left: left,
+            top: top,
+            child: _MessageActionMenu(
+              isMine: msg.senderId == AuthStore.instance.userId,
+              onSelect: (action) => Navigator.of(context).pop(action),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (action == null || !mounted) return;
+
+    switch (action) {
+      case 'copy':
+        await Clipboard.setData(ClipboardData(text: msg.content));
+        if (mounted) showLiveSnack(context, '已复制');
+      case 'forward':
+        if (mounted) showLiveSnack(context, '转发功能敬请期待');
+      case 'favorite':
+        if (mounted) showLiveSnack(context, '收藏功能敬请期待');
+      case 'recall':
+        if (msg.senderId != AuthStore.instance.userId) {
+          if (mounted) showLiveSnack(context, '仅能撤回自己发送的消息');
+        } else {
+          if (mounted) showLiveSnack(context, '撤回功能敬请期待');
+        }
+      case 'delete':
+        await _deleteMessage(msg);
+      case 'multi':
+        if (mounted) showLiveSnack(context, '多选功能敬请期待');
+    }
+  }
+
+  Future<void> _deleteMessage(ChatMessage msg) async {
+    try {
+      if (widget.isGroup) {
+        await GroupService.instance.deleteMessage(widget.groupId!, msg.id);
+      } else {
+        await ChatService.instance.deleteMessage(widget.conversationId!, msg.id);
+      }
+      if (mounted) {
+        setState(() => _messages.removeWhere((m) => m.id == msg.id));
+        showLiveSnack(context, '已删除');
+      }
+    } on ApiException catch (e) {
+      if (mounted) showLiveSnack(context, e.message);
+    }
+  }
+
   Future<void> _sendImage(String url) async {
     if (_sending) return;
     setState(() => _sending = true);
@@ -625,6 +706,8 @@ class _ChatScreenState extends State<ChatScreen> {
                             message: msg,
                             isMine: isMine,
                             showAvatar: widget.isGroup && !isMine,
+                            onLongPress: (globalPos) =>
+                                _showMessageMenu(msg, globalPos),
                           );
                         },
                       ),
@@ -693,11 +776,17 @@ class _ChatScreenState extends State<ChatScreen> {
 }
 
 class _Bubble extends StatelessWidget {
-  const _Bubble({required this.message, required this.isMine, required this.showAvatar});
+  const _Bubble({
+    required this.message,
+    required this.isMine,
+    required this.showAvatar,
+    required this.onLongPress,
+  });
 
   final ChatMessage message;
   final bool isMine;
   final bool showAvatar;
+  final void Function(Offset globalPosition) onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -767,25 +856,29 @@ class _Bubble extends StatelessWidget {
       child: bubbleContent,
     );
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!isMine && showAvatar)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Avatar(
-                url: message.author?.avatar ?? '',
-                name: message.author?.nickname ?? '',
-                size: 36,
+    return GestureDetector(
+      // 长按消息气泡呼出操作菜单（复制/转发/收藏/撤回/删除/多选）
+      onLongPressStart: (details) =>
+          onLongPress(details.globalPosition),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!isMine && showAvatar)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Avatar(
+                  url: message.author?.avatar ?? '',
+                  name: message.author?.nickname ?? '',
+                  size: 36,
+                ),
               ),
-            ),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              children: [
+            Flexible(
+              child: Column(
+                crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                children: [
                 if (!isMine && showAvatar && message.author != null)
                   Padding(
                     padding: const EdgeInsets.only(left: 4, bottom: 3),
@@ -839,6 +932,70 @@ class _Bubble extends StatelessWidget {
             ),
           ),
         ],
+      ),
+      ),
+    );
+  }
+}
+
+/// 长按消息气泡操作菜单（对齐 Pixso 36-聊天-长按气泡菜单）：
+/// 深色半透明圆角面板，包含 复制 / 转发 / 收藏 / 撤回 / 删除 / 多选。
+class _MessageActionMenu extends StatelessWidget {
+  const _MessageActionMenu({
+    required this.isMine,
+    required this.onSelect,
+  });
+
+  final bool isMine;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    const items = [
+      ('copy', '复制'),
+      ('forward', '转发'),
+      ('favorite', '收藏'),
+      ('recall', '撤回'),
+      ('delete', '删除'),
+      ('multi', '多选'),
+    ];
+    // Material 提供 InkWell 所需的材质祖先（showGeneralDialog 弹出的
+    // 浮层上方没有 Scaffold，直接使用 Material 承载菜单）。
+    return SizedBox(
+      width: 170,
+      child: Material(
+        color: const Color(0xE6141416),
+        borderRadius: BorderRadius.circular(14),
+        elevation: 6,
+        shadowColor: Colors.black38,
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final (key, label) in items)
+                InkWell(
+                  onTap: () => onSelect(key),
+                  child: Container(
+                    width: double.infinity,
+                    height: 48,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: key == 'delete'
+                            ? const Color(0xFFFF5A5A)
+                            : Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
