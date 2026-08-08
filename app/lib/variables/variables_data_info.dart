@@ -13,7 +13,7 @@ class VariablesDataInfo {
 
   Map variableMap = {};
 
-  _getVariableByKey(String key) {
+  dynamic _getVariableByKey(String key) {
     return variableMap[key];
   }
 
@@ -39,7 +39,7 @@ class VariablesDataInfo {
     return "";
   }
 
-  getVariableValueByKey(String key) {
+  dynamic getVariableValueByKey(String key) {
     Map? variable = _getVariableByKey(key);
     if (variable != null) {
       String mode = _getModeByKey(key);
@@ -51,7 +51,7 @@ class VariablesDataInfo {
     return null;
   }
 
-  _formatValue(Map modeValue) {
+  dynamic _formatValue(Map modeValue) {
     String dataType = modeValue["dataType"];
     Map? valueMap = modeValue["value"];
     if (valueMap == null) {
@@ -87,21 +87,21 @@ class VariablesDataInfo {
     bool needNotify = false;
     variableSetMap.forEach((key, value) {
       List valueList = value;
-      valueList.forEach((element) {
+      for (var element in valueList) {
         if (element["id"] == newMode) {
           if (_currentModeIdData != null) {
             if (_currentModeIdData![key] != newMode) {
               _currentModeIdData![key] = newMode;
               needNotify = true;
             }
-            return;
+            continue;
           } else {
             _currentModeIdData = {key: newMode};
             needNotify = true;
-            return;
+            continue;
           }
         }
-      });
+      }
     });
     return needNotify;
   }
