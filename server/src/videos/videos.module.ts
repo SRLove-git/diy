@@ -14,6 +14,7 @@ import { AdminVideosController } from './admin-videos.controller';
 import { VideosService } from './videos.service';
 import { UsersModule } from '../users/users.module';
 import { FeedCacheService } from '../common/feed-cache.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { FeedCacheService } from '../common/feed-cache.service';
       Music,
     ]),
     UsersModule,
+    NotificationsModule,
   ],
   controllers: [VideosController, AdminVideosController],
   providers: [VideosService, AudioMixService, FeedCacheService],

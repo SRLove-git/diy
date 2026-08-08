@@ -14,6 +14,7 @@ import { User } from '../users/user.entity';
 import { UsersModule } from '../users/users.module';
 import { Video } from '../videos/video.entity';
 import { FeedCacheService } from '../common/feed-cache.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { FeedCacheService } from '../common/feed-cache.service';
       Video,
     ]),
     UsersModule,
+    NotificationsModule,
   ],
   controllers: [PostsController, AdminPostsController],
   providers: [CommunityService, FeedCacheService],

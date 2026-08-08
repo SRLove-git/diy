@@ -19,6 +19,7 @@ import { Video } from '../videos/video.entity';
 import { FeedCacheService } from '../common/feed-cache.service';
 import { CreatePostDto, UpdatePostStatusDto } from './post.dto';
 import { CreateCommentDto } from './comment.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 /** 简易敏感词列表（一期机审用） */
 const BLOCKED_KEYWORDS = ['违禁', '色情', '赌博', '诈骗', '枪支', '毒品'];
@@ -51,7 +52,33 @@ export class CommunityService {
     @InjectRepository(User)
     private readonly users: Repository<User>,
     private readonly feedCache: FeedCacheService,
+    private readonly notifications: NotificationsService,
   ) {}
+
+  /** 发送互动通知（失败不影响主流程），仅通知内容作者本人且跳过自己给自己发 */
+  private async notifyInteraction(params: {
+    actorId: number;
+    ownerId: number;
+    title: string;
+    content: string;
+    actionType: 'post' | 'video' | 'user';
+    actionId: number;
+  }): Promise<void> {
+    const { actorId, ownerId, title, content, actionType, actionId } = params;
+    if (actorId === ownerId) return;
+    try {
+      await this.notifications.createAndSend({
+        title,
+        content,
+        targetType: 'user',
+        targetUserIds: String(ownerId),
+        actionType,
+        actionId,
+      });
+    } catch {
+      // 通知失败不阻断点赞/评论/收藏等主操作
+    }
+  }
 
   // ──── Helpers ────
 
@@ -345,6 +372,18 @@ export class CommunityService {
     }
     await this.likes.save(this.likes.create({ userId, postId }));
     await this.posts.increment({ id: postId }, 'likeCount', 1);
+    if (post.userId !== userId) {
+      const author = (await this.resolveAuthors([userId])).get(userId);
+      const nickname = author?.nickname ?? `用户 #${userId}`;
+      await this.notifyInteraction({
+        actorId: userId,
+        ownerId: post.userId,
+        title: `${nickname} 赞了你的作品`,
+        content: `「${post.title || post.content || '作品'}」获赞 +1`,
+        actionType: 'post',
+        actionId: postId,
+      });
+    }
     return { liked: true };
   }
 
@@ -417,10 +456,31 @@ export class CommunityService {
       await this.posts.increment({ id: postId }, 'commentCount', 1);
     }
 
-    // 与评论列表/短视频接口保持一致：发布后立即返回作者信息，
-    // 客户端可直接在本地列表头部展示完整昵称与头像，无需刷新页面。
+    // 互动通知：新评论通知作品作者；回复同时通知被回复人（均跳过自己）
     const authorIds = replyToId == null ? [userId] : [userId, replyToId];
     const authors = await this.resolveAuthors(authorIds);
+    const nickname = authors.get(userId)?.nickname ?? `用户 #${userId}`;
+    await this.notifyInteraction({
+      actorId: userId,
+      ownerId: post.userId,
+      title: `${nickname} 评论了你`,
+      content: `「${dto.content}」`,
+      actionType: 'post',
+      actionId: postId,
+    });
+    if (replyToId != null && replyToId !== userId) {
+      await this.notifyInteraction({
+        actorId: userId,
+        ownerId: replyToId,
+        title: `${nickname} 回复了你`,
+        content: `「${dto.content}」`,
+        actionType: 'post',
+        actionId: postId,
+      });
+    }
+
+    // 与评论列表/短视频接口保持一致：发布后立即返回作者信息，
+    // 客户端可直接在本地列表头部展示完整昵称与头像，无需刷新页面。
     return {
       ...saved,
       author: authors.get(userId) ?? {
@@ -547,6 +607,18 @@ export class CommunityService {
     }
     await this.collections.save(this.collections.create({ userId, postId }));
     await this.posts.increment({ id: postId }, 'collectCount', 1);
+    if (post.userId !== userId) {
+      const author = (await this.resolveAuthors([userId])).get(userId);
+      const nickname = author?.nickname ?? `用户 #${userId}`;
+      await this.notifyInteraction({
+        actorId: userId,
+        ownerId: post.userId,
+        title: `${nickname} 收藏了你的作品`,
+        content: `「${post.title || post.content || '作品'}」被收藏`,
+        actionType: 'post',
+        actionId: postId,
+      });
+    }
     return { collected: true };
   }
 

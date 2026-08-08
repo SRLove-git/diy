@@ -70,7 +70,8 @@ describe('VideosService', () => {
       follows,
       users,
       { mix: jest.fn() } as unknown as AudioMixService,
-      { bumpContentVersion: jest.fn().mockResolvedValue(undefined) },
+      { bumpContentVersion: jest.fn().mockResolvedValue(undefined) } as any,
+      { createAndSend: jest.fn().mockResolvedValue({ id: 1 }) } as any,
     );
 
     const result = await service.create(7, { title: '新作品' });

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'api_client.dart';
 import 'models.dart';
 
@@ -150,6 +152,9 @@ class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
 
+  /// 未读通知数（首页铃铛角标实时监听，标记已读后自动更新）
+  final ValueNotifier<int> unread = ValueNotifier<int>(0);
+
   Future<({List<AppNotification> items, int total, int unread})> mine({
     int page = 1,
     int pageSize = 20,
@@ -158,20 +163,31 @@ class NotificationService {
       'page': page,
       'pageSize': pageSize,
     }) as Map<String, dynamic>;
+    final unread = (raw['unread'] as num?)?.toInt() ?? 0;
+    this.unread.value = unread;
     return (
       items: (raw['items'] as List? ?? [])
           .map((e) => AppNotification.fromJson(e as Map<String, dynamic>))
           .toList(),
       total: (raw['total'] as num?)?.toInt() ?? 0,
-      unread: (raw['unread'] as num?)?.toInt() ?? 0,
+      unread: unread,
     );
   }
 
   Future<int> unreadCount() async {
     final raw = await ApiClient.instance.get('/notifications/unread-count') as Map<String, dynamic>;
-    return (raw['count'] as num?)?.toInt() ?? 0;
+    final count = (raw['count'] as num?)?.toInt() ?? 0;
+    unread.value = count;
+    return count;
   }
 
-  Future<void> read(int id) => ApiClient.instance.post('/notifications/$id/read');
-  Future<void> readAll() => ApiClient.instance.post('/notifications/read-all');
+  Future<void> read(int id) async {
+    await ApiClient.instance.post('/notifications/$id/read');
+    await unreadCount();
+  }
+
+  Future<void> readAll() async {
+    await ApiClient.instance.post('/notifications/read-all');
+    unread.value = 0;
+  }
 }

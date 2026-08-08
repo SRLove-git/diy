@@ -2097,6 +2097,8 @@ class _VideoPublishScreenState extends State<VideoPublishScreen> {
       };
       final video = await VideoService.instance.create(body);
       if (!mounted) return;
+      // 收起键盘后再进入详情页，避免键盘与页面上下分离
+      FocusManager.instance.primaryFocus?.unfocus();
       showLiveSnack(context, '发布成功');
       LiveRoutes.pushId(context, RoutePaths.videoDetail, video.id);
     } on ApiException catch (e) {

@@ -1067,6 +1067,7 @@ class GroupSettingsScreen extends StatefulWidget {
 
 class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
   List<GroupMember> _members = [];
+  String _groupName = '';
   bool _loading = true;
   String? _error;
   bool _busy = false;
@@ -1086,10 +1087,17 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
       _error = null;
     });
     try {
-      final members = await GroupService.instance.members(widget.groupId);
+      final results = await Future.wait([
+        GroupService.instance.members(widget.groupId),
+        GroupService.instance.mine(),
+      ]);
+      final members = results[0] as List<GroupMember>;
+      final groups = (results[1] as Page<GroupItem>).items;
+      final group = groups.where((g) => g.id == widget.groupId).firstOrNull;
       if (mounted) {
         setState(() {
           _members = members;
+          _groupName = group?.name ?? '';
           _isOwner = members.any(
             (m) =>
                 m.role == 'owner' &&
@@ -1289,7 +1297,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
       resizeToAvoidBottomInset: false,
       child: Column(
         children: [
-          const LiveAppBar(title: '群设置'),
+          const LiveAppBar(title: '群聊设置'),
           Expanded(
             child: _loading
                 ? const LoadingView()
@@ -1298,114 +1306,194 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                     : ListView(
                         padding: const EdgeInsets.all(18),
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: LiveColors.card,
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 46,
-                                  height: 46,
+                          // 群头像 + 群名 + 群公告（对齐设计稿）
+                          Column(
+                            children: [
+                              const SizedBox(height: 12),
+                              // 渐变圆环头像
+                              Container(
+                                width: 81,
+                                height: 81,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [Color(0xFF333333), Color(0xFF141414)],
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                padding: const EdgeInsets.all(2),
+                                child: Container(
                                   decoration: const BoxDecoration(
-                                    color: LiveColors.textPrimary,
+                                    color: Colors.white,
                                     shape: BoxShape.circle,
                                   ),
-                                  alignment: Alignment.center,
-                                  child: const Text(
-                                    '群',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
+                                  padding: const EdgeInsets.all(2),
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [Color(0xFFA18CD1), Color(0xFFFBC2EB)],
+                                      ),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: const Text(
+                                      '群',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '群名称',
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                          color: LiveColors.textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      const Text(
-                                        '群公告：每周三拼豆主题日，欢迎分享作品 🎨',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 11.6,
-                                          color: LiveColors.textTertiary,
-                                        ),
-                                      ),
-                                    ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _groupName.isEmpty ? '手作同好会' : _groupName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: LiveColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                '群公告：每周三拼豆主题日，欢迎分享作品 🎨',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: LiveColors.textTertiary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          // 群成员标题 + 管理
+                          Row(
+                            children: [
+                              Text(
+                                '群成员 ${_members.length}',
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: LiveColors.textPrimary,
+                                ),
+                              ),
+                              const Spacer(),
+                              InkWell(
+                                onTap: _addMembers,
+                                child: const Text(
+                                  '管理 ›',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: LiveColors.textSecondary,
                                   ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          // 成员横向网格
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 10,
+                            children: [
+                              for (final m in _members)
+                                _GroupMemberCell(
+                                  member: m,
+                                  isOwner: m.role == 'owner',
+                                  isAdmin: m.role == 'admin',
+                                  onLongPress: m.role == 'owner'
+                                      ? null
+                                      : () => _kick(m),
+                                ),
+                              _GroupMemberAdd(onTap: _addMembers),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          // 设置卡片
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 18),
+                            decoration: BoxDecoration(
+                              color: LiveColors.card,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              children: [
+                                _GroupOption(
+                                  label: '修改群名称',
+                                  onTap: _rename,
+                                ),
+                                const Divider(height: 1, color: LiveColors.divider),
+                                _GroupOption(
+                                  label: '群公告',
+                                  onTap: () => showLiveSnack(context, '群公告编辑敬请期待'),
+                                ),
+                                const Divider(height: 1, color: LiveColors.divider),
+                                _GroupSwitchOption(
+                                  label: '消息免打扰',
+                                  value: _muted,
+                                  onChanged: (v) => setState(() => _muted = v),
+                                ),
+                                const Divider(height: 1, color: LiveColors.divider),
+                                _GroupSwitchOption(
+                                  label: '置顶聊天',
+                                  value: _pinned,
+                                  onChanged: (v) => setState(() => _pinned = v),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          _GroupOption(
-                            label: '修改群名称',
-                            onTap: _rename,
-                          ),
-                          _GroupOption(
-                            label: '群公告',
-                            value: '每周三拼豆主题日',
-                            onTap: () =>
-                                showLiveSnack(context, '群公告编辑敬请期待'),
-                          ),
-                          _GroupSwitchOption(
-                            label: '消息免打扰',
-                            value: _muted,
-                            onChanged: (v) => setState(() => _muted = v),
-                          ),
-                          _GroupSwitchOption(
-                            label: '置顶聊天',
-                            value: _pinned,
-                            onChanged: (v) => setState(() => _pinned = v),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              const Text('群成员', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-                              const SizedBox(width: 8),
-                              Text('${_members.length} 人',
-                                  style: const TextStyle(fontSize: 13, color: LiveColors.textTertiary)),
-                              const Spacer(),
-                              TextButton(
-                                onPressed: _addMembers,
-                                child: const Text('邀请',
-                                    style: TextStyle(fontSize: 13, color: LiveColors.brand)),
+                          const SizedBox(height: 14),
+                          // 退出 / 解散卡片（浅红底红字）
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 19),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF7F7),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: InkWell(
+                              onTap: _busy
+                                  ? null
+                                  : _isOwner
+                                      ? _dissolve
+                                      : _leaveOrDissolve,
+                              child: Center(
+                                child: _busy
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: LiveColors.danger,
+                                        ),
+                                      )
+                                    : Text(
+                                        _isOwner ? '解散群聊' : '退出群聊',
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: LiveColors.danger,
+                                        ),
+                                      ),
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          ..._members.map(
-                            (m) => _MemberRow(
-                              member: m,
-                              isOwner: m.role == 'owner',
-                              onKick: m.role == 'owner' ? null : () => _kick(m),
                             ),
                           ),
-                          const SizedBox(height: 18),
-                          PrimaryButton(
-                            label: _isOwner ? '解散群聊' : '退出群聊',
-                            textColor: LiveColors.danger,
-                            loading: _busy,
-                            onTap: _busy
-                                ? null
-                                : _isOwner
-                                    ? _dissolve
-                                    : _leaveOrDissolve,
+                          const SizedBox(height: 10),
+                          const Center(
+                            child: Text(
+                              '群主可解散群聊',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: LiveColors.textTertiary,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -1416,39 +1504,136 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
   }
 }
 
-class _MemberRow extends StatelessWidget {
-  const _MemberRow({required this.member, required this.isOwner, this.onKick});
+/// 群成员横向单元（对齐设计稿：渐变圆头像 + 名字 + 角色标签，长按移出）。
+class _GroupMemberCell extends StatelessWidget {
+  const _GroupMemberCell({
+    required this.member,
+    required this.isOwner,
+    required this.isAdmin,
+    this.onLongPress,
+  });
 
   final GroupMember member;
   final bool isOwner;
-  final VoidCallback? onKick;
+  final bool isAdmin;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Avatar(url: member.avatar, name: member.nickname, size: 42),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              member.nickname,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: LiveColors.textPrimary),
-            ),
-          ),
-          if (isOwner)
-            const TagChip(label: '群主')
-          else if (onKick != null)
-            InkWell(
-              onTap: onKick,
-              child: const Padding(
-                padding: EdgeInsets.all(6),
-                child: Text('移出',
-                    style: TextStyle(fontSize: 12, color: LiveColors.danger)),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onLongPress: onLongPress,
+      child: SizedBox(
+        width: 67,
+        child: Column(
+          children: [
+            Container(
+              width: 45,
+              height: 45,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF36D1DC), Color(0xFF5B86E5)],
+                ),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                member.nickname.isEmpty ? '友' : member.nickname.characters.first,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
               ),
             ),
-        ],
+            const SizedBox(height: 6),
+            Text(
+              member.nickname,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11, color: LiveColors.textPrimary),
+            ),
+            const SizedBox(height: 3),
+            if (isOwner)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [Color(0xFF333333), Color(0xFF141414)],
+                  ),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Text(
+                  '群主',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              )
+            else if (isAdmin)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: LiveColors.card,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Text(
+                  '管理员',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: LiveColors.textSecondary,
+                  ),
+                ),
+              )
+            else
+              const SizedBox(height: 18),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 群成员末尾「+」添加入口（对齐设计稿 margin_wrapper240）。
+class _GroupMemberAdd extends StatelessWidget {
+  const _GroupMemberAdd({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 67,
+        child: Column(
+          children: [
+            Container(
+              width: 45,
+              height: 45,
+              decoration: BoxDecoration(
+                color: LiveColors.card,
+                shape: BoxShape.circle,
+                border: Border.all(color: LiveColors.divider),
+              ),
+              alignment: Alignment.center,
+              child: const Icon(Icons.add, size: 20, color: LiveColors.textPrimary),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              '添加',
+              style: TextStyle(fontSize: 11, color: LiveColors.textSecondary),
+            ),
+            const SizedBox(height: 18),
+          ],
+        ),
       ),
     );
   }
@@ -1465,22 +1650,17 @@ class _GroupOption extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: LiveColors.card,
-          borderRadius: BorderRadius.circular(14),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 15),
         child: Row(
           children: [
             Text(
               label,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: LiveColors.textPrimary),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: LiveColors.textPrimary),
             ),
             const Spacer(),
             if (value != null)
-              Text(value!, style: const TextStyle(fontSize: 12, color: LiveColors.textTertiary)),
+              Text(value!, style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary)),
             const Icon(Icons.chevron_right, size: 18, color: LiveColors.textTertiary),
           ],
         ),
@@ -1502,24 +1682,19 @@ class _GroupSwitchOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: LiveColors.card,
-        borderRadius: BorderRadius.circular(14),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: LiveColors.textPrimary),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: LiveColors.textPrimary),
           ),
           const Spacer(),
           Switch(
             value: value,
             onChanged: onChanged,
-            activeTrackColor: LiveColors.textPrimary,
+            activeTrackColor: const Color(0xFF141414),
           ),
         ],
       ),

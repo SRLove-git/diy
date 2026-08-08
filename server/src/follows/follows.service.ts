@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { Follow } from './follow.entity';
+import { Notification } from '../notifications/notification.entity';
 
 /** 关注关系查询结果 */
 export interface FollowStatus {
@@ -39,6 +40,8 @@ export class FollowsService {
   constructor(
     @InjectRepository(Follow)
     private readonly follows: Repository<Follow>,
+    @InjectRepository(Notification)
+    private readonly notifications: Repository<Notification>,
     private readonly users: UsersService,
   ) {}
 
@@ -185,6 +188,25 @@ export class FollowsService {
     if (following) {
       try {
         await this.follows.insert({ followerId: meId, followeeId: targetId });
+        // 关注成功后通知对方（自己不能关注自己，前面已拦截）
+        try {
+          const me = await this.users.findById(meId);
+          const nickname = me?.nickname ?? `用户 #${meId}`;
+          const notification = this.notifications.create({
+            title: `${nickname} 关注了你`,
+            content: '快去 TA 的主页看看吧',
+            targetType: 'user',
+            targetUserIds: String(targetId),
+            actionType: 'user',
+            actionId: meId,
+            channels: 'push',
+            sent: true,
+            sentAt: new Date(),
+          });
+          await this.notifications.save(notification);
+        } catch {
+          // 通知失败不阻断关注
+        }
       } catch {
         // 已关注：唯一约束兜底，忽略重复插入
       }

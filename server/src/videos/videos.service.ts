@@ -22,6 +22,7 @@ import {
   CreateVideoDto,
   UpdateVideoStatusDto,
 } from './video.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 /** 作者简要信息 + 粉丝数（嵌入列表响应，避免 N+1） */
 export interface VideoAuthor {
@@ -82,7 +83,33 @@ export class VideosService {
     private readonly users: Repository<User>,
     private readonly mixer: AudioMixService,
     private readonly feedCache: FeedCacheService,
+    private readonly notifications: NotificationsService,
   ) {}
+
+  /** 发送短视频互动通知（失败不影响主流程），跳过自己给自己发 */
+  private async notifyInteraction(params: {
+    actorId: number;
+    ownerId: number;
+    title: string;
+    content: string;
+    actionType: 'post' | 'video' | 'user';
+    actionId: number;
+  }): Promise<void> {
+    const { actorId, ownerId, title, content, actionType, actionId } = params;
+    if (actorId === ownerId) return;
+    try {
+      await this.notifications.createAndSend({
+        title,
+        content,
+        targetType: 'user',
+        targetUserIds: String(ownerId),
+        actionType,
+        actionId,
+      });
+    } catch {
+      // 通知失败不阻断点赞/评论等主操作
+    }
+  }
 
   // ──── Helpers ────
 
@@ -553,6 +580,18 @@ export class VideosService {
     }
     await this.likes.save(this.likes.create({ userId, videoId }));
     await this.videos.increment({ id: videoId }, 'likeCount', 1);
+    if (video.userId !== userId) {
+      const author = (await this.resolveAuthors([userId])).get(userId);
+      const nickname = author?.nickname ?? `用户 #${userId}`;
+      await this.notifyInteraction({
+        actorId: userId,
+        ownerId: video.userId,
+        title: `${nickname} 赞了你的作品`,
+        content: `「${video.title || video.content || '作品'}」获赞 +1`,
+        actionType: 'video',
+        actionId: videoId,
+      });
+    }
     return { liked: true };
   }
 
@@ -661,6 +700,25 @@ export class VideosService {
 
     const authorIds = replyToId == null ? [userId] : [userId, replyToId];
     const authors = await this.resolveAuthors(authorIds);
+    const nickname = authors.get(userId)?.nickname ?? `用户 #${userId}`;
+    await this.notifyInteraction({
+      actorId: userId,
+      ownerId: video.userId,
+      title: `${nickname} 评论了你`,
+      content: `「${dto.content}」`,
+      actionType: 'video',
+      actionId: videoId,
+    });
+    if (replyToId != null && replyToId !== userId) {
+      await this.notifyInteraction({
+        actorId: userId,
+        ownerId: replyToId,
+        title: `${nickname} 回复了你`,
+        content: `「${dto.content}」`,
+        actionType: 'video',
+        actionId: videoId,
+      });
+    }
     return {
       ...saved,
       author: authors.get(userId) ?? this.fallbackAuthor(userId),

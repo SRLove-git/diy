@@ -71,6 +71,23 @@ String fmtTime(DateTime? t, {bool withYear = false}) {
   return withYear ? '${d.year}-$md $hm' : '$md $hm';
 }
 
+/// 通知列表相对时间：刚刚 / X 分钟前 / X 小时前 / 昨天 / MM-DD（跨年带年份）。
+String fmtRelTime(DateTime? t) {
+  if (t == null) return '';
+  final now = DateTime.now();
+  final d = t.toLocal();
+  final diff = now.difference(d);
+  if (diff.isNegative) return fmtTime(d, withYear: true);
+  if (diff.inMinutes < 1) return '刚刚';
+  if (diff.inHours < 1) return '${diff.inMinutes} 分钟前';
+  if (diff.inHours < 24) return '${diff.inHours} 小时前';
+  final today = DateTime(now.year, now.month, now.day);
+  final day = DateTime(d.year, d.month, d.day);
+  if (day == today.subtract(const Duration(days: 1))) return '昨天';
+  final md = '${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  return d.year == now.year ? md : '${d.year}-$md';
+}
+
 String fmtCount(int n) {
   if (n >= 10000) return '${(n / 10000).toStringAsFixed(1)}w';
   if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';

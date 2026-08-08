@@ -48,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
           if (snap.hasError) {
             return Column(
               children: [
-                _TopBar(unread: 0),
+                const _TopBar(),
                 Expanded(
                   child: ErrorView(
                     message: snap.error is ApiException
@@ -63,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
           if (!snap.hasData) {
             return Column(
               children: [
-                _TopBar(unread: 0),
+                const _TopBar(),
                 const Expanded(child: LoadingView()),
               ],
             );
@@ -74,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ListView(
               padding: const EdgeInsets.only(bottom: 16),
               children: [
-                _TopBar(unread: data.unread),
+                const _TopBar(),
                 // 「拼豆」板块：入口卡（预约 / 到店 / 会员套餐）
                 _SectionHeader(
                   title: '拼豆',
@@ -136,9 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
 /// 顶部：手作星球 + 搜索 + 通知铃铛（角标）
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.unread});
-
-  final int unread;
+  const _TopBar();
 
   @override
   Widget build(BuildContext context) {
@@ -165,24 +163,29 @@ class _TopBar extends StatelessWidget {
               clipBehavior: Clip.none,
               children: [
                 const Icon(Icons.notifications_none, color: LiveColors.textPrimary, size: 24),
-                if (unread > 0)
-                  Positioned(
-                    right: -2,
-                    top: -2,
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
-                      constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
-                      decoration: const BoxDecoration(
-                        color: LiveColors.danger,
-                        shape: BoxShape.circle,
+                ValueListenableBuilder<int>(
+                  valueListenable: NotificationService.instance.unread,
+                  builder: (context, unread, _) {
+                    if (unread <= 0) return const SizedBox.shrink();
+                    return Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
+                        decoration: const BoxDecoration(
+                          color: LiveColors.danger,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          unread > 99 ? '99+' : '$unread',
+                          style: const TextStyle(color: Colors.white, fontSize: 8),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                      child: Text(
-                        unread > 99 ? '99+' : '$unread',
-                        style: const TextStyle(color: Colors.white, fontSize: 8),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
+                    );
+                  },
+                ),
               ],
             ),
             onPressed: () => LiveRoutes.push(context, RoutePaths.notifications),

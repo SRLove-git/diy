@@ -24,6 +24,14 @@ export class Notification {
   @Column({ type: 'enum', enum: ['all', 'role', 'user'], default: 'all' })
   targetType: NotificationTarget;
 
+  /** 点击通知后跳转的动作类型：post=作品 / video=短视频 / user=用户主页 */
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  actionType: 'post' | 'video' | 'user' | null;
+
+  /** 跳转目标 ID（与 actionType 配套） */
+  @Column({ type: 'int', nullable: true })
+  actionId: number | null;
+
   /** 当 targetType=role 时指定角色 */
   @Column({ type: 'enum', enum: ['user', 'admin'], nullable: true })
   targetRole: 'user' | 'admin' | null;

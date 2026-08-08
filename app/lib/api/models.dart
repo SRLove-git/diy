@@ -750,6 +750,8 @@ class AppNotification {
     this.createdAt,
     this.sentAt,
     this.read = false,
+    this.actionType,
+    this.actionId,
   });
 
   final int id;
@@ -759,6 +761,9 @@ class AppNotification {
   final DateTime? createdAt;
   final DateTime? sentAt;
   final bool read;
+  /// 点击跳转类型：post / video / user
+  final String? actionType;
+  final int? actionId;
 
   factory AppNotification.fromJson(Map<String, dynamic> json) => AppNotification(
         id: (json['id'] as num?)?.toInt() ?? 0,
@@ -772,6 +777,8 @@ class AppNotification {
             ? null
             : DateTime.tryParse(json['sentAt'].toString()),
         read: json['read'] as bool? ?? false,
+        actionType: json['actionType'] as String?,
+        actionId: (json['actionId'] as num?)?.toInt(),
       );
 }
 

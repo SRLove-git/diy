@@ -31,9 +31,13 @@ export class NotificationsService {
     targetRole?: 'user' | 'admin';
     targetUserIds?: string;
     channels?: string;
+    actionType?: 'post' | 'video' | 'user';
+    actionId?: number;
   }): Promise<Notification> {
     const notification = this.notificationRepo.create({
       ...dto,
+      actionType: dto.actionType ?? null,
+      actionId: dto.actionId ?? null,
       channels: dto.channels || 'push',
       sent: true,
       sentAt: new Date(),
@@ -120,6 +124,8 @@ export class NotificationsService {
         channel: n.channels,
         createdAt: n.createdAt,
         sentAt: n.sentAt,
+        actionType: n.actionType ?? null,
+        actionId: n.actionId ?? null,
         read: readSet.has(n.id),
       })),
       total,

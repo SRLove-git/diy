@@ -154,12 +154,6 @@ final GoRouter appRouter = GoRouter(
     ),
     // ===== 用户 =====
     GoRoute(
-      path: RoutePaths.userDetail,
-      builder: (_, s) => LiveHost(
-        child: UserProfileScreen(userId: _id(s, 'id')),
-      ),
-    ),
-    GoRoute(
       path: RoutePaths.userFollows,
       builder: (_, s) {
         final m = s.extra as Map;
@@ -171,26 +165,30 @@ final GoRouter appRouter = GoRouter(
         );
       },
     ),
-    // ===== 帖子 =====
     GoRoute(
-      path: RoutePaths.postDetail,
-      builder: (_, s) =>
-          LiveHost(child: PostDetailScreen(postId: _id(s, 'id'))),
+      path: RoutePaths.userDetail,
+      builder: (_, s) => LiveHost(
+        child: UserProfileScreen(userId: _id(s, 'id')),
+      ),
     ),
+    // ===== 帖子 =====
     GoRoute(
       path: RoutePaths.postPublish,
       builder: (_, __) => LiveHost(child: const PostPublishScreen()),
     ),
     GoRoute(
       path: RoutePaths.postPublishSuccess,
-      builder: (_, s) => LiveHost(child: PostPublishSuccessScreen(post: s.extra as Post)),
+      builder: (_, s) => LiveHost(
+        child: PostPublishSuccessScreen(post: s.extra as Post),
+        resizeToAvoidBottomInset: false,
+      ),
+    ),
+    GoRoute(
+      path: RoutePaths.postDetail,
+      builder: (_, s) =>
+          LiveHost(child: PostDetailScreen(postId: _id(s, 'id'))),
     ),
     // ===== 视频 =====
-    GoRoute(
-      path: RoutePaths.videoDetail,
-      builder: (_, s) =>
-          LiveHost(child: VideoDetailScreen(videoId: _id(s, 'id'))),
-    ),
     GoRoute(
       path: RoutePaths.videoSearch,
       builder: (_, __) => LiveHost(
@@ -220,6 +218,11 @@ final GoRouter appRouter = GoRouter(
       path: RoutePaths.videoLandscape,
       builder: (_, s) =>
           LiveHost(child: VideoLandscapePage(video: s.extra as Video)),
+    ),
+    GoRoute(
+      path: RoutePaths.videoDetail,
+      builder: (_, s) =>
+          LiveHost(child: VideoDetailScreen(videoId: _id(s, 'id'))),
     ),
     // ===== 聊天 =====
     GoRoute(
@@ -285,11 +288,6 @@ final GoRouter appRouter = GoRouter(
       builder: (_, __) => LiveHost(child: const StoreListScreen()),
     ),
     GoRoute(
-      path: RoutePaths.storeDetail,
-      builder: (_, s) =>
-          LiveHost(child: StoreDetailScreen(storeId: _id(s, 'id'))),
-    ),
-    GoRoute(
       path: RoutePaths.storeSearch,
       builder: (_, __) => LiveHost(child: const StoreSearchScreen()),
     ),
@@ -311,6 +309,11 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: RoutePaths.storeDetail,
+      builder: (_, s) =>
+          LiveHost(child: StoreDetailScreen(storeId: _id(s, 'id'))),
+    ),
+    GoRoute(
       path: RoutePaths.appointmentConfirm,
       builder: (_, s) {
         final m = s.extra as Map;
@@ -330,12 +333,6 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
-      path: RoutePaths.appointmentDetail,
-      builder: (_, s) => LiveHost(
-        child: AppointmentDetailScreen(appointmentId: _id(s, 'id')),
-      ),
-    ),
-    GoRoute(
       path: RoutePaths.appointmentSuccess,
       builder: (_, s) => LiveHost(
         child: AppointmentSuccessScreen(appointment: s.extra as Appointment),
@@ -350,6 +347,12 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: RoutePaths.appointmentMy,
       builder: (_, __) => LiveHost(child: const MyAppointmentsScreen()),
+    ),
+    GoRoute(
+      path: RoutePaths.appointmentDetail,
+      builder: (_, s) => LiveHost(
+        child: AppointmentDetailScreen(appointmentId: _id(s, 'id')),
+      ),
     ),
     // ===== 会员 =====
     GoRoute(

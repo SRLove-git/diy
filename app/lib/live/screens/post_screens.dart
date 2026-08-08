@@ -637,6 +637,8 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
       };
       final post = await CommunityService.instance.create(body);
       if (!mounted) return;
+      // 收起键盘后再进入成功页，避免键盘与页面上下分离
+      FocusManager.instance.primaryFocus?.unfocus();
       LiveRoutes.push(context, RoutePaths.postPublishSuccess, extra: post);
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -782,6 +784,7 @@ class PostPublishSuccessScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LivePage(
+      resizeToAvoidBottomInset: false,
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
