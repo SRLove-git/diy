@@ -1,0 +1,108 @@
+[
+ {
+  "name": "community-light",
+  "batches": [
+   "batches/community-light_0.json",
+   "batches/community-light_1.json"
+  ]
+ },
+ {
+  "name": "community-dark",
+  "batches": [
+   "batches/community-dark_0.json",
+   "batches/community-dark_1.json"
+  ]
+ },
+ {
+  "name": "reels-light",
+  "batches": [
+   "batches/reels-light_0.json",
+   "batches/reels-light_1.json"
+  ]
+ },
+ {
+  "name": "reels-dark",
+  "batches": [
+   "batches/reels-dark_0.json",
+   "batches/reels-dark_1.json"
+  ]
+ },
+ {
+  "name": "chat-list-light",
+  "batches": [
+   "batches/chat-list-light_0.json",
+   "batches/chat-list-light_1.json"
+  ]
+ },
+ {
+  "name": "chat-list-dark",
+  "batches": [
+   "batches/chat-list-dark_0.json",
+   "batches/chat-list-dark_1.json"
+  ]
+ },
+ {
+  "name": "chat-single-light",
+  "batches": [
+   "batches/chat-single-light_0.json"
+  ]
+ },
+ {
+  "name": "chat-single-dark",
+  "batches": [
+   "batches/chat-single-dark_0.json"
+  ]
+ },
+ {
+  "name": "chat-group-light",
+  "batches": [
+   "batches/chat-group-light_0.json"
+  ]
+ },
+ {
+  "name": "profile-mine-light",
+  "batches": [
+   "batches/profile-mine-light_0.json",
+   "batches/profile-mine-light_1.json"
+  ]
+ },
+ {
+  "name": "profile-mine-dark",
+  "batches": [
+   "batches/profile-mine-dark_0.json",
+   "batches/profile-mine-dark_1.json"
+  ]
+ },
+ {
+  "name": "profile-other-light",
+  "batches": [
+   "batches/profile-other-light_0.json",
+   "batches/profile-other-light_1.json"
+  ]
+ },
+ {
+  "name": "profile-other-dark",
+  "batches": [
+   "batches/profile-other-dark_0.json",
+   "batches/profile-other-dark_1.json"
+  ]
+ },
+ {
+  "name": "tokens",
+  "batches": [
+   "batches/tokens_0.json"
+  ]
+ },
+ {
+  "name": "states",
+  "batches": [
+   "batches/states_0.json"
+  ]
+ },
+ {
+  "name": "motion",
+  "batches": [
+   "batches/motion_0.json"
+  ]
+ }
+]

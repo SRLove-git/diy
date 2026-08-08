@@ -1,0 +1,1577 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+:root{
+  --bg:#FFFFFF; --surface:#F7F7F8; --ink:#141414; --sec:#8E8E93; --ter:#C7C7CC; --line:#EFEFEF;
+  --grad:linear-gradient(135deg,#FFC83D 0%,#FF8A00 28%,#E4405F 62%,#962FBF 100%);
+  --gradsoft:linear-gradient(135deg,#FFF3DC 0%,#FFE3EC 100%);
+  --ok:#34C759; --warn:#FF9500; --danger:#FF3B30;
+  --font:-apple-system,"PingFang SC","Noto Sans SC","Helvetica Neue",sans-serif;
+}
+html,body{width:0;height:0;background:#FFFFFF;font-family:var(--font);color:var(--ink);font-size:15px;line-height:1.4;}
+.screen{position:absolute;width:390px;height:844px;background:#FFFFFF;overflow:hidden;color:var(--ink);}
+
+/* ---------- status bar ---------- */
+.status{height:62px;display:flex;align-items:center;justify-content:space-between;padding:0 28px 0 32px;}
+.status .time{font-size:16px;font-weight:600;letter-spacing:-0.2px;}
+.sicons{display:flex;align-items:center;gap:7px;}
+.sig{width:18px;height:11px;display:flex;gap:2px;align-items:flex-end;}
+.sig i{display:block;width:3px;background:var(--ink);border-radius:1px;}
+.sig i:nth-child(1){height:4px}.sig i:nth-child(2){height:6px}.sig i:nth-child(3){height:8px}.sig i:nth-child(4){height:11px}
+.sig.w i{background:#fff;}
+.wifi{width:16px;height:11px;border:1.6px solid var(--ink);border-bottom:none;border-radius:8px 8px 0 0;position:relative;}
+.wifi:after{content:"";position:absolute;left:6px;bottom:-2px;width:2px;height:3px;background:var(--ink);border-radius:1px;}
+.batt{width:24px;height:12px;border:1.5px solid var(--ink);border-radius:4px;padding:2px;position:relative;}
+.batt:after{content:"";display:block;width:11px;height:6px;background:var(--ink);border-radius:1.5px;}
+.batt:before{content:"";position:absolute;right:-3px;top:3px;width:2px;height:4px;background:var(--ink);border-radius:0 1px 1px 0;}
+
+/* ---------- nav header ---------- */
+.nav{position:relative;height:44px;display:flex;align-items:center;padding:0 8px;}
+.nav .back{width:40px;height:40px;display:flex;align-items:center;justify-content:center;}
+.nav .title{position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;}
+.nav .right{position:absolute;right:12px;display:flex;align-items:center;gap:16px;font-size:14px;font-weight:600;}
+.nav .rightact{position:absolute;right:16px;font-size:14px;font-weight:600;color:var(--ink);}
+
+/* ---------- icons (pure CSS) ---------- */
+.ic{display:inline-block;position:relative;width:22px;height:22px;color:var(--ink);flex:none;}
+.ic.ic-lg{width:26px;height:26px;}
+.ic.ic-sm{width:18px;height:18px;}
+.ic .bd{position:absolute;background:currentColor;}
+.ic .ln{position:absolute;border:1.8px solid currentColor;}
+.home .roof{position:absolute;top:3px;left:2px;width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:8px solid currentColor;}
+.home .base{position:absolute;top:9px;left:4px;width:14px;height:10px;background:currentColor;border-radius:2px;}
+.srch .c{position:absolute;top:2px;left:2px;width:12px;height:12px;border:2px solid currentColor;border-radius:50%;}
+.srch .h{position:absolute;top:15px;left:13px;width:8px;height:2px;background:currentColor;border-radius:1px;transform:rotate(45deg);}
+.hrt .l{position:absolute;top:3px;left:2px;width:9px;height:9px;background:currentColor;border-radius:50%;}
+.hrt .r{position:absolute;top:3px;left:11px;width:9px;height:9px;background:currentColor;border-radius:50%;}
+.hrt .b{position:absolute;top:8px;left:6.5px;width:9px;height:9px;background:currentColor;border-radius:2px;transform:rotate(45deg);}
+.cmt .c{position:absolute;top:3px;left:3px;width:16px;height:13px;border:2px solid currentColor;border-radius:7px;}
+.cmt .t{position:absolute;top:13px;left:7px;width:6px;height:6px;background:currentColor;transform:rotate(45deg);}
+.bmk .b{position:absolute;top:2px;left:4px;width:13px;height:15px;border:2px solid currentColor;border-radius:3px;}
+.bmk .v{position:absolute;top:13px;left:7px;width:0;height:0;border-left:4.5px solid transparent;border-right:4.5px solid transparent;border-top:5px solid currentColor;}
+.shr .p{position:absolute;top:8px;left:2px;width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-right:11px solid currentColor;}
+.shr .l{position:absolute;top:16px;left:2px;width:14px;height:2px;background:currentColor;transform:rotate(-45deg);transform-origin:left top;}
+.usr .h{position:absolute;top:1px;left:6px;width:10px;height:10px;background:currentColor;border-radius:50%;}
+.usr .b{position:absolute;top:12px;left:2px;width:18px;height:10px;background:currentColor;border-radius:9px 9px 0 0;}
+.bl .b{position:absolute;top:2px;left:3px;width:15px;height:15px;border:2px solid currentColor;border-radius:8px 8px 4px 4px;}
+.bl .t{position:absolute;top:0;left:6px;width:10px;height:2px;background:currentColor;border-radius:1px;}
+.bl .s{position:absolute;top:17px;left:9px;width:4px;height:2px;background:currentColor;}
+.pl .v{position:absolute;top:3px;left:10px;width:2px;height:16px;background:currentColor;border-radius:1px;}
+.pl .h{position:absolute;top:10px;left:3px;width:16px;height:2px;background:currentColor;border-radius:1px;}
+.bk .c{position:absolute;top:5px;left:8px;width:9px;height:9px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);}
+.cr .c{position:absolute;top:5px;left:6px;width:9px;height:9px;border-top:2px solid currentColor;border-right:2px solid currentColor;transform:rotate(45deg);}
+.py{border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:11px solid currentColor;position:absolute;top:4px;left:7px;}
+.pa .l{position:absolute;top:4px;left:6px;width:3px;height:14px;background:currentColor;border-radius:1.5px;}
+.pa .r{position:absolute;top:4px;left:13px;width:3px;height:14px;background:currentColor;border-radius:1.5px;}
+.cam .b{position:absolute;top:4px;left:2px;width:18px;height:14px;border:2px solid currentColor;border-radius:5px;}
+.cam .l{position:absolute;top:8px;left:8px;width:6px;height:6px;border:2px solid currentColor;border-radius:50%;}
+.mc .b{position:absolute;top:1px;left:6px;width:10px;height:14px;border:2px solid currentColor;border-radius:6px;}
+.mc .s{position:absolute;top:16px;left:10px;width:2px;height:5px;background:currentColor;}
+.mc .f{position:absolute;top:15px;left:4px;width:14px;height:2px;background:currentColor;border-radius:1px;}
+.pin{position:absolute;top:4px;left:4px;width:14px;height:14px;background:currentColor;border-radius:50% 50% 50% 0;transform:rotate(-45deg);}
+.pin:after{content:"";position:absolute;top:4px;left:4px;width:4px;height:4px;background:#fff;border-radius:50%;}
+.clk .c{position:absolute;top:3px;left:3px;width:16px;height:16px;border:2px solid currentColor;border-radius:50%;}
+.clk .h{position:absolute;top:5px;left:10px;width:2px;height:5px;background:currentColor;border-radius:1px;}
+.clk .m{position:absolute;top:8px;left:10px;width:2px;height:4px;background:currentColor;border-radius:1px;transform:rotate(90deg);transform-origin:1px 1px;}
+.cal .b{position:absolute;top:4px;left:3px;width:16px;height:14px;border:2px solid currentColor;border-radius:4px;}
+.cal .l{position:absolute;top:1px;left:6px;width:2px;height:4px;background:currentColor;border-radius:1px;}
+.cal .r{position:absolute;top:1px;left:13px;width:2px;height:4px;background:currentColor;border-radius:1px;}
+.wal .b{position:absolute;top:4px;left:2px;width:18px;height:14px;border:2px solid currentColor;border-radius:5px;}
+.wal .s{position:absolute;top:8px;left:10px;width:8px;height:5px;background:currentColor;border-radius:2px;}
+.eye{position:absolute;top:6px;left:2px;width:18px;height:11px;border:2px solid currentColor;border-radius:9px;}
+.eye:after{content:"";position:absolute;top:2.5px;left:5.5px;width:5px;height:5px;background:currentColor;border-radius:50%;}
+.dots i{position:absolute;top:9px;width:4px;height:4px;background:currentColor;border-radius:50%;}
+.dots i:nth-child(1){left:4px}.dots i:nth-child(2){left:9px}.dots i:nth-child(3){left:14px}
+.pen{position:absolute;top:11px;left:3px;width:13px;height:4px;background:currentColor;border-radius:1.5px;transform:rotate(-45deg);}
+.pen:after{content:"";position:absolute;top:-4px;right:-1px;width:0;height:0;border-left:3px solid transparent;border-right:3px solid transparent;border-bottom:5px solid currentColor;}
+.mus .n{position:absolute;top:10px;left:2px;width:8px;height:8px;background:currentColor;border-radius:50%;}
+.mus .s{position:absolute;top:2px;left:7px;width:2px;height:11px;background:currentColor;border-radius:1px;}
+.mus .f{position:absolute;top:2px;left:9px;width:8px;height:2px;background:currentColor;border-radius:1px;}
+.flt .f{position:absolute;top:2px;left:2px;width:18px;height:14px;border:2px solid currentColor;border-radius:4px;}
+.flt .s{position:absolute;top:14px;left:9px;width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid currentColor;}
+.grd i{position:absolute;width:9px;height:9px;background:currentColor;border-radius:2px;}
+.grd i:nth-child(1){top:2px;left:2px}.grd i:nth-child(2){top:2px;left:13px}.grd i:nth-child(3){top:13px;left:2px}.grd i:nth-child(4){top:13px;left:13px}
+.lst i{position:absolute;left:4px;width:14px;height:2px;background:currentColor;border-radius:1px;}
+.lst i:nth-child(1){top:5px}.lst i:nth-child(2){top:10px}.lst i:nth-child(3){top:15px}
+.flm{position:absolute;top:3px;left:6px;width:10px;height:14px;background:currentColor;border-radius:6px 6px 4px 4px;}
+.dmd{position:absolute;top:6px;left:6px;width:10px;height:10px;background:currentColor;border-radius:2px;transform:rotate(45deg);}
+.gft .b{position:absolute;top:10px;left:3px;width:16px;height:9px;background:currentColor;border-radius:2px;}
+.gft .t{position:absolute;top:5px;left:5px;width:12px;height:4px;background:currentColor;border-radius:1px;}
+.gft .r{position:absolute;top:5px;left:11px;width:2px;height:14px;background:currentColor;border-radius:1px;}
+.lock .b{position:absolute;top:9px;left:4px;width:14px;height:12px;border:2px solid currentColor;border-radius:4px;}
+.lock .h{position:absolute;top:2px;left:7px;width:8px;height:7px;border:2px solid currentColor;border-bottom:none;border-radius:4px 4px 0 0;}
+.cmp .c{position:absolute;top:2px;left:2px;width:18px;height:18px;border:2px solid currentColor;border-radius:50%;}
+.cmp .n{position:absolute;top:5px;left:10px;width:0;height:0;border-left:3px solid transparent;border-right:3px solid transparent;border-bottom:6px solid currentColor;}
+.cmp .s{position:absolute;top:12px;left:10px;width:0;height:0;border-left:3px solid transparent;border-right:3px solid transparent;border-top:6px solid currentColor;}
+.reel .b{position:absolute;top:3px;left:2px;width:18px;height:15px;border:2px solid currentColor;border-radius:4px;}
+.reel .s{position:absolute;top:8.5px;left:8px;width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:7px solid currentColor;}
+.msg .b{position:absolute;top:3px;left:3px;width:16px;height:13px;border:2px solid currentColor;border-radius:7px;}
+.msg .d{position:absolute;width:2px;height:2px;background:currentColor;border-radius:50%;top:9.5px;}
+.msg .d:nth-child(2){left:8px}.msg .d:nth-child(3){left:12px}.msg .d:nth-child(4){left:16px}
+.out{position:absolute;top:2px;left:2px;width:15px;height:15px;border:2px solid currentColor;border-radius:50%;}
+.out .a{position:absolute;top:9px;left:9px;width:8px;height:2px;background:currentColor;border-radius:1px;}
+.out .t{position:absolute;top:8px;left:15px;width:0;height:0;border-top:3px solid transparent;border-bottom:3px solid transparent;border-left:5px solid currentColor;}
+.phn .b{position:absolute;top:3px;left:5px;width:12px;height:17px;border:2px solid currentColor;border-radius:4px;}
+.phn .s{position:absolute;top:16px;left:9px;width:3px;height:2px;background:currentColor;border-radius:1px;}
+.playc{position:absolute;top:8px;left:10px;width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:7px solid currentColor;}
+.fire{position:absolute;top:2px;left:5px;width:12px;height:16px;background:currentColor;border-radius:7px 7px 4px 4px;}
+.fire:after{content:"";position:absolute;top:5px;left:3px;width:6px;height:7px;background:#fff;border-radius:3px 3px 2px 2px;opacity:.85;}
+.qrc .q{position:absolute;width:9px;height:9px;border:2px solid currentColor;}
+.qrc .q:nth-child(1){top:2px;left:2px}.qrc .q:nth-child(2){top:2px;right:2px}
+.qrc .q:nth-child(3){bottom:2px;left:2px}.qrc .q:nth-child(4){bottom:2px;right:2px}
+.qrc .d{position:absolute;width:6px;height:6px;background:currentColor;top:8px;left:8px;}
+.tkt .b{position:absolute;top:4px;left:2px;width:18px;height:14px;border:2px solid currentColor;border-radius:5px;}
+.tkt .d{position:absolute;top:8px;left:10px;width:2px;height:7px;background:currentColor;border-radius:1px;}
+
+/* ---------- generic ---------- */
+.content{padding:8px 16px 0;}
+.h1{font-size:22px;font-weight:700;letter-spacing:-0.4px;}
+.h2{font-size:17px;font-weight:700;letter-spacing:-0.2px;}
+.h3{font-size:15px;font-weight:600;}
+.sec{color:var(--sec);font-size:13px;}
+.ter{color:var(--ter);font-size:11px;}
+.brandtxt{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
+.row{display:flex;align-items:center;}
+.between{justify-content:space-between;}
+.gap2{gap:8px}.gap3{gap:12px}.gap4{gap:16px}.gap6{gap:24px}
+.mt1{margin-top:4px}.mt2{margin-top:8px}.mt3{margin-top:12px}.mt4{margin-top:16px}.mt6{margin-top:24px}.mt8{margin-top:32px}
+.mb2{margin-bottom:8px}.mb3{margin-bottom:12px}.mb4{margin-bottom:16px}
+.ellipsis{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.num{font-variant-numeric:tabular-nums;}
+
+/* buttons */
+.btn{height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#fff;}
+.btn-black{background:var(--ink);color:#fff;}
+.btn-grad{background:var(--grad);color:#fff;}
+.btn-ghost{background:var(--surface);color:var(--ink);}
+.btn-sm{height:36px;padding:0 14px;border-radius:18px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;}
+.btn-sm.black{background:var(--ink);color:#fff;}
+.btn-sm.grad{background:var(--grad);color:#fff;}
+.btn-sm.ghost{background:var(--surface);color:var(--ink);}
+.btn-sm.outline{border:1px solid var(--line);color:var(--ink);background:#fff;}
+.btn-block{width:100%;}
+
+/* fields */
+.field{height:52px;border-radius:14px;background:var(--surface);display:flex;align-items:center;padding:0 16px;gap:8px;font-size:15px;}
+.field .pre{font-size:15px;font-weight:600;color:var(--ink);}
+.field .ph{color:var(--ter);font-size:15px;}
+.field .sep{width:1px;height:20px;background:#DADADE;}
+.field .act{font-size:13px;font-weight:600;color:var(--ink);}
+.field.focus{outline:1.5px solid var(--ink);}
+.textarea{min-height:96px;border-radius:14px;background:var(--surface);padding:14px 16px;font-size:15px;color:var(--ink);display:block;width:100%;border:none;outline:none;font-family:var(--font);}
+.textarea .ph{color:var(--ter);}
+
+/* chips / seg */
+.chip{height:30px;padding:0 12px;border-radius:15px;background:var(--surface);font-size:13px;display:inline-flex;align-items:center;gap:5px;color:var(--ink);flex:none;}
+.chip.on{background:var(--ink);color:#fff;}
+.chip.grad{background:var(--grad);color:#fff;}
+.chip.sm{height:26px;font-size:11px;padding:0 10px;}
+.seg{height:40px;border-radius:20px;background:var(--surface);display:flex;padding:3px;}
+.seg .item{flex:1;border-radius:17px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--sec);}
+.seg .item.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+
+/* cards */
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;}
+.card-flat{background:var(--surface);border-radius:16px;}
+.card-pad{padding:16px;}
+.divider{height:1px;background:var(--line);}
+
+/* avatar */
+.av{width:40px;height:40px;border-radius:50%;flex:none;overflow:hidden;background:var(--gradsoft);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:600;}
+.av.sm{width:32px;height:32px;font-size:12px;}
+.av.lg{width:64px;height:64px;font-size:20px;}
+.av.g1{background:linear-gradient(135deg,#FFB199,#FF0844);}
+.av.g2{background:linear-gradient(135deg,#36D1DC,#5B86E5);}
+.av.g3{background:linear-gradient(135deg,#F6D365,#FDA085);}
+.av.g4{background:linear-gradient(135deg,#A18CD1,#FBC2EB);}
+.av.g5{background:linear-gradient(135deg,#43E97B,#38F9D7);}
+.av.g6{background:linear-gradient(135deg,#FA709A,#FEE140);}
+.ring{background:var(--grad);border-radius:50%;padding:2px;flex:none;}
+.ring .inner{background:#fff;border-radius:50%;padding:2px;}
+
+/* photo placeholders */
+.photo{position:relative;overflow:hidden;background:var(--gradsoft);}
+.photo p1{position:absolute;inset:0;}
+.p1{background:linear-gradient(135deg,#FFE0B2 0%,#FF9E80 100%);}
+.p2{background:linear-gradient(135deg,#B2DFDB 0%,#4DB6AC 100%);}
+.p3{background:linear-gradient(135deg,#D1C4E9 0%,#9575CD 100%);}
+.p4{background:linear-gradient(135deg,#FFCC80 0%,#FF7043 100%);}
+.p5{background:linear-gradient(135deg,#80DEEA 0%,#3F51B5 100%);}
+.p6{background:linear-gradient(135deg,#F8BBD0 0%,#E91E63 100%);}
+.p7{background:linear-gradient(135deg,#C8E6C9 0%,#388E3C 100%);}
+.p8{background:linear-gradient(135deg,#B3E5FC 0%,#0288D1 100%);}
+.p9{background:linear-gradient(135deg,#FFF9C4 0%,#FBC02D 100%);}
+.p10{background:linear-gradient(135deg,#D7CCC8 0%,#6D4C41 100%);}
+.p11{background:linear-gradient(135deg,#FCE4EC 0%,#F06292 100%);}
+.p12{background:linear-gradient(135deg,#E0F7FA 0%,#0097A7 100%);}
+.photo .tagline{position:absolute;left:10px;bottom:10px;color:#fff;font-size:11px;font-weight:600;text-shadow:0 1px 6px rgba(0,0,0,.35);}
+
+/* tab bar (floating pill) */
+.tabwrap{position:absolute;left:0;right:0;bottom:0;height:96px;padding:10px 16px 22px;z-index:9;}
+.tabpill{height:56px;border-radius:28px;background:#fff;border:1px solid var(--line);box-shadow:0 6px 24px rgba(20,20,20,.08);display:flex;padding:4px;}
+.tabitem{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:24px;color:var(--sec);font-size:10px;font-weight:600;}
+.tabitem.on{background:var(--grad);color:#fff;}
+.tabitem .ic{width:20px;height:20px;}
+
+/* misc */
+.badge{min-width:18px;height:18px;border-radius:9px;background:var(--danger);color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;padding:0 5px;}
+.badge-dot{width:8px;height:8px;border-radius:50%;background:var(--danger);}
+.tag{height:22px;padding:0 8px;border-radius:11px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;}
+.tag.grad{background:var(--grad);color:#fff;}
+.tag.gray{background:var(--surface);color:var(--sec);}
+.tag.red{background:#FFEBEE;color:#E53935;}
+.tag.green{background:#E8F5E9;color:#2E7D32;}
+.tag.blue{background:#E3F2FD;color:#1565C0;}
+.switch{width:44px;height:26px;border-radius:13px;background:var(--ink);position:relative;}
+.switch:after{content:"";position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;}
+.switch.off{background:#E4E4E8;}
+.switch.off:after{right:auto;left:3px;}
+.radio{width:20px;height:20px;border-radius:50%;border:2px solid #D1D1D6;position:relative;flex:none;}
+.radio.on{border-color:var(--ink);}
+.radio.on:after{content:"";position:absolute;top:3px;left:3px;width:10px;height:10px;border-radius:50%;background:var(--ink);}
+.stepper{display:flex;align-items:center;gap:20px;}
+.stepper .m,.stepper .p{width:36px;height:36px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;}
+.stepper .n{font-size:18px;font-weight:700;}
+.progress{height:4px;border-radius:2px;background:#F0F0F0;overflow:hidden;}
+.progress i{display:block;height:100%;background:var(--grad);border-radius:2px;}
+.price{font-size:16px;font-weight:700;}
+.price .cut{color:var(--ter);font-size:12px;font-weight:400;text-decoration:line-through;}
+.listrow{display:flex;align-items:center;gap:12px;padding:14px 0;}
+.iconbox{width:40px;height:40px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;flex:none;color:var(--ink);}
+.iconbox.grad{background:var(--grad);color:#fff;}
+.iconbox.soft{background:var(--gradsoft);color:var(--ink);}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;}
+.cell{position:relative;height:124px;overflow:hidden;}
+.cell .ov{position:absolute;right:8px;bottom:8px;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;text-shadow:0 1px 4px rgba(0,0,0,.4);z-index:2;}
+.section-title{display:flex;align-items:center;justify-content:space-between;margin:20px 0 12px;}
+.section-title .more{font-size:12px;color:var(--sec);}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:48px 0;color:var(--ter);font-size:13px;}
+</style></head><body style="width:2150px;height:6300px;">
+<div class="screen" id="01" style="left:0px;top:0px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="content">
+  <div style="text-align:center;margin:56px 0 40px;">
+    <div class="h1 brandtxt" style="font-size:36px;">手作星球</div>
+    <div class="sec" style="margin-top:10px;">发现手作 · 遇见同好</div>
+  </div>
+  <div class="field mb3"><span class="pre">+86</span><span class="sep"></span><span class="ph">请输入手机号</span></div>
+  <div class="field mb3"><span class="ph">请输入验证码</span><span style="flex:1"></span><span class="act">获取验证码</span></div>
+  <div class="btn btn-grad btn-block mt4">登录 / 注册</div>
+  <div class="row between mt4" style="padding:0 8px;">
+    <span class="sec">密码登录</span><span class="sec">忘记密码</span>
+  </div>
+</div>
+<div style="position:absolute;bottom:26px;left:0;right:0;text-align:center;color:var(--ter);font-size:11px;">登录即代表同意《用户协议》和《隐私政策》</div>
+</div>
+<div class="screen" id="02" style="left:430px;top:0px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">设置密码</div></div>
+<div class="content">
+  <div class="sec mb4" style="margin-top:8px;">设置密码后可用手机号或用户名+密码登录</div>
+  <div class="field mb3"><span class="pre">+86</span><span class="sep"></span><span class="ph">请输入手机号</span></div>
+  <div class="field mb3"><span class="ph">请输入验证码</span><span style="flex:1"></span><span class="act">获取验证码</span></div>
+  <div class="field mb3"><span class="ph">设置密码（6-32 位）</span></div>
+  <div class="field mb3"><span class="ph">确认密码</span></div>
+  <div class="field"><span class="ph">用户名（选填，字母/数字/下划线）</span></div>
+  <div class="btn btn-black btn-block mt6">保存</div>
+</div>
+</div>
+<div class="screen" id="03" style="left:860px;top:0px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav">
+  <div class="title" style="font-size:20px;"><span class="brandtxt" style="font-weight:800;">手作星球</span></div>
+  <div class="right" style="gap:18px;"><i class="ic srch "></i><i class="ic bl "></i><span class="badge" style="position:absolute;top:2px;right:6px;">3</span></div>
+</div>
+<div class="content">
+  <div class="section-title" style="margin-top:12px;">
+    <div class="row gap2"><span class="h1">拼豆</span><span class="tag grad">人气手作</span></div>
+    <span class="more">查看全部 ›</span>
+  </div>
+  <div class="row gap3">
+    <div class="card card-pad" style="flex:1;display:flex;flex-direction:column;gap:8px;height:110px;">
+      <div class="iconbox grad" style="width:36px;height:36px;border-radius:11px;"><i class="ic pin ic-sm"></i></div>
+      <div><div class="h3">预约</div><div class="ter" style="margin-top:2px;">附近门店 / 活动</div></div>
+    </div>
+    <div class="card card-pad" style="flex:1;display:flex;flex-direction:column;gap:8px;height:110px;">
+      <div class="iconbox grad" style="width:36px;height:36px;border-radius:11px;"><i class="ic qrc ic-sm"></i></div>
+      <div><div class="h3">到店</div><div class="ter" style="margin-top:2px;">核销 · 上钟</div></div>
+    </div>
+    <div class="card card-pad" style="flex:1;display:flex;flex-direction:column;gap:8px;height:110px;">
+      <div class="iconbox grad" style="width:36px;height:36px;border-radius:11px;"><i class="ic dmd ic-sm"></i></div>
+      <div><div class="h3">会员套餐</div><div class="ter" style="margin-top:2px;">权益 · 优惠</div></div>
+    </div>
+  </div>
+  <div class="section-title">
+    <span class="h2">敬请期待</span><span class="more">更多精彩即将上线</span>
+  </div>
+  <div class="row gap3">
+    <div class="card-flat" style="flex:1;height:96px;border:1.5px dashed var(--line);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--sec);">
+      <i class="ic reel "></i><span style="font-size:12px;">直播专区</span><span class="ter" style="font-size:10px;">敬请期待</span>
+    </div>
+    <div class="card-flat" style="flex:1;height:96px;border:1.5px dashed var(--line);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--sec);">
+      <i class="ic gft "></i><span style="font-size:12px;">手作商城</span><span class="ter" style="font-size:10px;">敬请期待</span>
+    </div>
+  </div>
+  <div class="section-title"><span class="h2">活动推荐</span><span class="more">查看全部 ›</span></div>
+  <div class="row gap3" style="overflow:hidden;">
+    <div class="photo p1" style="width:196px;height:120px;border-radius:16px;flex:none;">
+      <div class="tagline"># 七夕主题拼豆派对</div>
+    </div>
+    <div class="photo p6" style="width:196px;height:120px;border-radius:16px;flex:none;">
+      <div class="tagline"># 新手体验课</div>
+    </div>
+  </div>
+</div>
+<div class="tabwrap"><div class="tabpill"><div class="tabitem on"><i class="ic home "></i><span>主页</span></div><div class="tabitem"><i class="ic cmp "></i><span>社区</span></div><div class="tabitem"><i class="ic reel "></i><span>Reels</span></div><div class="tabitem"><i class="ic msg "></i><span>聊天</span></div><div class="tabitem"><i class="ic usr "></i><span>个人</span></div></div></div>
+</div>
+<div class="screen" id="04" style="left:1290px;top:0px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">附近门店</div></div>
+<div class="content" style="padding:4px 16px 8px;">
+  <div class="row gap2">
+    <div class="chip on">全部分类</div><div class="chip">可预约</div><div class="chip">会员价</div>
+    <div style="flex:1"></div><i class="ic flt ic-sm"></i>
+  </div>
+</div>
+<div class="photo p5" style="position:absolute;top:106px;left:0;right:0;height:388px;background:#EAF2E6;">
+  <div style="position:absolute;left:60px;top:30px;width:140px;height:18px;background:#fff;border-radius:4px;transform:rotate(12deg);"></div>
+  <div style="position:absolute;left:220px;top:120px;width:150px;height:16px;background:#fff;border-radius:4px;transform:rotate(-8deg);"></div>
+  <div style="position:absolute;left:40px;top:200px;width:120px;height:14px;background:#fff;border-radius:4px;transform:rotate(6deg);"></div>
+  <div style="position:absolute;left:250px;top:280px;width:130px;height:14px;background:#fff;border-radius:4px;transform:rotate(10deg);"></div>
+  <div style="position:absolute;left:0;top:340px;width:390px;height:48px;background:#B3E0F7;"></div>
+  <div style="position:absolute;left:16px;top:28px;width:64px;height:46px;border-radius:10px;background:#CDE8BE;"></div>
+  <div style="position:absolute;right:18px;top:150px;width:70px;height:50px;border-radius:10px;background:#CDE8BE;"></div>
+  <div style="position:absolute;left:150px;top:180px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid var(--danger);"></div>
+  <div style="position:absolute;left:120px;top:160px;background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.12);padding:4px 10px;font-size:12px;font-weight:700;">¥39.9</div>
+  <div style="position:absolute;left:288px;top:96px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid var(--ink);"></div>
+  <div style="position:absolute;left:250px;top:76px;background:#141414;color:#fff;border-radius:12px;padding:4px 10px;font-size:12px;font-weight:700;">¥29.9 会员</div>
+  <div style="position:absolute;right:16px;bottom:56px;width:44px;height:44px;border-radius:50%;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.14);display:flex;align-items:center;justify-content:center;"><i class="ic lst ic-sm"></i></div>
+</div>
+<div style="position:absolute;left:16px;right:16px;top:470px;background:#fff;border-radius:20px;box-shadow:0 8px 30px rgba(20,20,20,.10);padding:16px;z-index:3;">
+  <div class="row between mb2">
+    <span class="h3">拾光手作馆 · 万象城店</span><span class="price" style="font-size:15px;">¥39.9 <span class="cut">¥59</span></span>
+  </div>
+  <div class="row gap2 mb2"><span class="ter">★★★★★ 4.9</span><span class="ter">·</span><span class="ter">距您 1.2km</span><span class="ter">·</span><span class="ter">09:00-21:00</span></div>
+  <div class="row gap2"><span class="tag blue">有会员价</span><span class="tag gray">可预约</span></div>
+  <div class="btn btn-black btn-sm" style="margin-top:12px;height:44px;border-radius:14px;">立即预约</div>
+</div>
+</div>
+<div class="screen" id="05" style="left:1720px;top:0px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">门店详情</div></div>
+<div class="content" style="padding:4px 16px 0;">
+  <div class="photo p3" style="width:358px;height:150px;border-radius:20px;">
+    <div style="position:absolute;right:10px;top:10px;background:rgba(255,255,255,.9);border-radius:12px;padding:3px 10px;font-size:12px;font-weight:600;">距您 1.2km</div>
+  </div>
+  <div class="row between mt3">
+    <div><div class="h2">拾光手作馆 · 万象城店</div>
+      <div class="row gap2 mt1"><span class="ter">★★★★★ 4.9</span><span class="ter">·</span><span class="ter">09:00-21:00</span></div>
+      <div class="ter mt1">上海市静安区南京西路 1266 号</div>
+    </div>
+  </div>
+  <div class="row gap2 mt2"><span class="tag blue">会员 ¥29.9</span><span class="tag gray">门市 ¥39.9</span><span class="tag red">热销</span></div>
+  <div class="section-title" style="margin-top:18px;"><span class="h2">选择日期</span></div>
+  <div class="row gap2">
+    <div class="card-flat" style="width:52px;height:64px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span class="ter" style="font-size:10px;">周四</span><span class="h3">06</span><span class="ter" style="font-size:10px;">8月</span></div>
+    <div class="card-flat" style="width:52px;height:64px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:var(--ink);color:#fff;"><span style="font-size:10px;color:rgba(255,255,255,.7);">周五</span><span class="h3">07</span><span style="font-size:10px;color:rgba(255,255,255,.7);">8月</span></div>
+    <div class="card-flat" style="width:52px;height:64px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span class="ter" style="font-size:10px;">周六</span><span class="h3">08</span><span class="ter" style="font-size:10px;">8月</span></div>
+    <div class="card-flat" style="width:52px;height:64px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span class="ter" style="font-size:10px;">周日</span><span class="h3">09</span><span class="ter" style="font-size:10px;">8月</span></div>
+    <div class="card-flat" style="width:52px;height:64px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span class="ter" style="font-size:10px;">周一</span><span class="h3">10</span><span class="ter" style="font-size:10px;">8月</span></div>
+  </div>
+  <div class="section-title" style="margin-top:16px;"><span class="h2">选择时段</span><span class="more">今日余位充足</span></div>
+  <div class="row gap2" style="flex-wrap:wrap;">
+    <div class="chip" style="height:34px;">10:00-11:30</div>
+    <div class="chip" style="height:34px;">13:00-14:30</div>
+    <div class="chip on" style="height:34px;">15:00-16:30</div>
+    <div class="chip" style="height:34px;">17:00-18:30</div>
+    <div class="chip" style="height:34px;opacity:.45;">19:00-20:30 满</div>
+    <div class="chip" style="height:34px;opacity:.45;">20:00-21:30 满</div>
+  </div>
+  <div class="section-title" style="margin-top:16px;"><span class="h2">到店人数</span></div>
+  <div class="card-flat card-pad row between">
+    <span class="sec">2 人位 · 最多 6 人</span>
+    <div class="stepper"><span class="m">−</span><span class="n">2</span><span class="p">+</span></div>
+  </div>
+  <div class="section-title" style="margin-top:16px;"><span class="h2">选择桌位</span></div>
+  <div class="grid3" style="gap:8px;grid-template-columns:repeat(4,1fr);">
+    <div style="height:44px;border-radius:12px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">A1</div>
+    <div style="height:44px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">A2</div>
+    <div style="height:44px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">A3</div>
+    <div style="height:44px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">A4</div>
+    <div style="height:44px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">B1</div>
+    <div style="height:44px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">B2</div>
+    <div style="height:44px;border-radius:12px;background:#F0F0F0;color:var(--ter);display:flex;align-items:center;justify-content:center;font-size:13px;">B3 满</div>
+    <div style="height:44px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">B4</div>
+  </div>
+</div>
+<div style="position:absolute;left:16px;right:16px;bottom:20px;">
+  <div class="row between mb2"><span class="sec">会员价 ¥29.9 / 人 × 2</span><span class="price">¥59.8</span></div>
+  <div class="btn btn-grad btn-block">确认预约</div>
+</div>
+</div>
+<div class="screen" id="06" style="left:0px;top:900px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">确认预约</div></div>
+<div class="content">
+  <div class="card card-pad mb4">
+    <div class="row between mb2"><span class="sec">门店</span><span class="h3">拾光手作馆 · 万象城店</span></div>
+    <div class="row between mb2"><span class="sec">日期</span><span class="h3">08 月 07 日（周五）</span></div>
+    <div class="row between mb2"><span class="sec">时段</span><span class="h3">15:00 - 16:30</span></div>
+    <div class="row between mb2"><span class="sec">桌位</span><span class="h3">A1（2 人）</span></div>
+    <div class="divider"></div>
+    <div class="row between mt2"><span class="sec">备注</span><span class="sec" style="color:var(--ter);">无</span></div>
+  </div>
+  <div class="section-title" style="margin-top:0;"><span class="h2">优惠券</span><span class="more">可用 3 张 ›</span></div>
+  <div class="row gap3">
+    <div style="width:170px;height:66px;border-radius:14px;border:1.5px solid var(--line);display:flex;overflow:hidden;">
+      <div style="width:64px;background:var(--grad);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:700;">¥10</span></div>
+      <div style="flex:1;padding:8px 10px;"><div style="font-size:12px;font-weight:600;">满 39 可用</div><div class="ter" style="font-size:10px;">08-20 到期</div></div>
+    </div>
+    <div style="width:170px;height:66px;border-radius:14px;border:1.5px dashed var(--line);display:flex;align-items:center;justify-content:center;color:var(--sec);font-size:12px;">不使用</div>
+  </div>
+  <div class="section-title" style="margin-top:16px;"><span class="h2">支付方式</span></div>
+  <div class="card card-pad">
+    <div class="row between mb3"><div class="row gap3"><span class="iconbox grad" style="width:34px;height:34px;border-radius:10px;"><i class="ic msg ic-sm"></i></span><span class="h3">微信支付</span></div><span class="radio on"></span></div>
+    <div class="divider"></div>
+    <div class="row between mt3"><div class="row gap3"><span class="iconbox" style="width:34px;height:34px;border-radius:10px;"><i class="ic wal ic-sm"></i></span><span class="h3">支付宝</span></div><span class="radio"></span></div>
+  </div>
+  <div class="card-flat card-pad mt4">
+    <div class="row between mb2"><span class="sec">原价</span><span class="sec">¥79.8</span></div>
+    <div class="row between mb2"><span class="sec">会员优惠</span><span class="sec" style="color:var(--ok);">-¥20.0</span></div>
+    <div class="row between mb2"><span class="sec">优惠券</span><span class="sec" style="color:var(--ok);">-¥10.0</span></div>
+    <div class="divider"></div>
+    <div class="row between mt2"><span class="h3">应付金额</span><span class="price" style="font-size:20px;">¥49.8</span></div>
+  </div>
+</div>
+<div style="position:absolute;left:16px;right:16px;bottom:20px;"><div class="btn btn-black btn-block">确认支付 ¥49.8</div></div>
+</div>
+<div class="screen" id="07" style="left:430px;top:900px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">我的预约</div></div>
+<div class="content">
+  <div class="seg mb4"><span class="item on">全部</span><span class="item">待核销</span><span class="item">服务中</span><span class="item">已完成</span></div>
+  <div class="card card-pad mb3">
+      <div class="row between mb2"><span class="h3">拾光手作馆 · 万象城店</span><span class="tag red">待核销</span></div>
+      <div class="sec mb1">08-07 周五 15:00-16:30 · A1 · 2人</div>
+      <div class="ter mb2">预约码 830219</div>
+      <div class="divider"></div>
+      <div class="row between mt2"></div>
+    </div>
+  <div class="card-flat card-pad mb3" style="border:1px dashed var(--line);">
+    <div class="row between mb2"><span class="h3" style="font-size:22px;letter-spacing:3px;">8 3 0 2 1 9</span><span class="tag grad">到店核销</span></div>
+    <div class="sec">出示预约码，店员扫码或输入验证码开始体验</div>
+  </div>
+  <div class="card card-pad mb3">
+      <div class="row between mb2"><span class="h3">拾光手作馆 · 万象城店</span><span class="tag green">服务中</span></div>
+      <div class="sec mb1">08-06 今天 14:20 上钟</div>
+      <div class="ter mb2">已体验 45 分钟</div>
+      <div class="divider"></div>
+      <div class="row between mt2"></div>
+    </div>
+  <div class="card-flat card-pad mb3" style="background:#F6F6F8;">
+    <div class="row between mb2"><span class="h3">计时中</span><span class="num" style="font-size:22px;font-weight:700;">00:45:12</span></div>
+    <div class="progress mb2"><i style="width:62%;"></i></div>
+    <div class="row gap3"><div class="btn btn-black btn-sm" style="flex:1;height:42px;">下钟结束</div></div>
+  </div>
+  <div class="card card-pad mb3">
+      <div class="row between mb2"><span class="h3">七夕主题拼豆派对 · 活动场次</span><span class="tag gray">已完成</span></div>
+      <div class="sec mb1">08-01 周六 14:00-16:00 · 余座 8/20</div>
+      <div class="ter mb2">已完成 · 支付 ¥0（会员免费）</div>
+      <div class="divider"></div>
+      <div class="row between mt2"></div>
+    </div>
+</div>
+</div>
+<div class="screen" id="08" style="left:860px;top:900px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">到店体验</div></div>
+<div class="content">
+  <div style="background:var(--grad);border-radius:24px;padding:24px 20px;color:#fff;">
+    <div class="row between mb2"><span style="font-size:13px;opacity:.85;">拾光手作馆 · 万象城店</span><span class="tag" style="background:rgba(255,255,255,.22);color:#fff;">待核销</span></div>
+    <div style="font-size:32px;font-weight:700;letter-spacing:6px;margin:10px 0 2px;">830219</div>
+    <div style="font-size:12px;opacity:.8;">08-07 周五 15:00-16:30 · A1 · 2 人</div>
+    <div class="row between mt4">
+      <div class="btn btn-sm" style="background:rgba(255,255,255,.92);color:var(--ink);height:44px;flex:1;">扫码核销</div>
+      <div style="width:12px;"></div>
+      <div class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;height:44px;flex:1;border:1px solid rgba(255,255,255,.4);">复制验证码</div>
+    </div>
+  </div>
+  <div class="card card-pad mt4">
+    <div class="h2 mb4" style="text-align:center;">体验流程</div>
+    <div class="row">
+      <div class="row" style="flex-direction:column;align-items:center;gap:6px;flex:1;">
+        <div style="width:34px;height:34px;border-radius:50%;background:var(--grad);color:#fff;display:flex;align-items:center;justify-content:center;"><i class="ic dmd ic-sm"></i></div>
+        <span style="font-size:11px;">预约成功</span>
+      </div>
+      <div style="flex:1;height:2px;background:var(--grad);"></div>
+      <div class="row" style="flex-direction:column;align-items:center;gap:6px;flex:1;">
+        <div style="width:34px;height:34px;border-radius:50%;background:var(--grad);color:#fff;display:flex;align-items:center;justify-content:center;"><i class="ic qrc ic-sm"></i></div>
+        <span style="font-size:11px;">到店核销</span>
+      </div>
+      <div style="flex:1;height:2px;background:var(--grad);"></div>
+      <div class="row" style="flex-direction:column;align-items:center;gap:6px;flex:1;">
+        <div style="width:34px;height:34px;border-radius:50%;background:var(--grad);color:#fff;display:flex;align-items:center;justify-content:center;"><i class="ic clk ic-sm"></i></div>
+        <span style="font-size:11px;">体验中</span>
+      </div>
+      <div style="flex:1;height:2px;background:var(--line);"></div>
+      <div class="row" style="flex-direction:column;align-items:center;gap:6px;flex:1;">
+        <div style="width:34px;height:34px;border-radius:50%;background:var(--surface);color:var(--ter);display:flex;align-items:center;justify-content:center;"><i class="ic fire ic-sm"></i></div>
+        <span style="font-size:11px;color:var(--ter);">完成</span>
+      </div>
+    </div>
+  </div>
+  <div class="section-title"><span class="h2">体验计时</span></div>
+  <div class="card card-pad">
+    <div class="row between mb3"><span class="sec">上钟时间</span><span class="num h3">14:20:05</span></div>
+    <div class="row between mb3"><span class="sec">下钟时间</span><span class="num h3">—</span></div>
+    <div class="row between mb3"><span class="sec">使用时长</span><span class="num h3">00:45:12</span></div>
+    <div class="divider"></div>
+    <div class="row between mt3">
+      <span class="sec">即将完成</span>
+      <div class="btn btn-black btn-sm" style="height:40px;">下钟 · 结束体验</div>
+    </div>
+  </div>
+</div>
+</div>
+<div class="screen" id="09" style="left:1290px;top:900px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">会员中心</div></div>
+<div class="content">
+  <div style="background:var(--grad);border-radius:24px;padding:22px 20px;color:#fff;position:relative;overflow:hidden;">
+    <div class="row between">
+      <div><div style="font-size:13px;opacity:.85;">手作会员 · 年卡</div>
+        <div style="font-size:26px;font-weight:700;margin-top:4px;">M-2026-0088</div></div>
+      <div style="text-align:right;"><div style="font-size:11px;opacity:.8;">有效期至</div><div style="font-size:15px;font-weight:600;">2027-08-06</div></div>
+    </div>
+    <div class="row gap2 mt4">
+      <div class="tag" style="background:rgba(255,255,255,.22);color:#fff;">有效</div>
+      <div class="tag" style="background:rgba(255,255,255,.22);color:#fff;">剩余 365 天</div>
+    </div>
+  </div>
+  <div class="section-title"><span class="h2">会员权益</span></div>
+  <div class="card card-pad" style="padding:4px 16px;">
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="iconbox soft"><i class="ic wal ic-sm"></i></div>
+      <div style="flex:1;"><div class="h3">会员专属价</div><div class="ter" style="margin-top:2px;">预约与到店享会员价，最高省 ¥20/次</div></div>
+      <i class="ic cr ic-sm"></i>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="iconbox soft"><i class="ic gft ic-sm"></i></div>
+      <div style="flex:1;"><div class="h3">专属活动</div><div class="ter" style="margin-top:2px;">会员限定活动与双倍积分</div></div>
+      <i class="ic cr ic-sm"></i>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="iconbox soft"><i class="ic tkt ic-sm"></i></div>
+      <div style="flex:1;"><div class="h3">每月优惠券</div><div class="ter" style="margin-top:2px;">每月自动发放专属优惠券</div></div>
+      <i class="ic cr ic-sm"></i>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="iconbox soft"><i class="ic fire ic-sm"></i></div>
+      <div style="flex:1;"><div class="h3">生日礼遇</div><div class="ter" style="margin-top:2px;">生日当月免费体验一次</div></div>
+      <i class="ic cr ic-sm"></i>
+    </div>
+  </div>
+  <div class="section-title"><span class="h2">开通 / 续费</span><span class="more">当前：年卡</span></div>
+  <div class="row gap3">
+    <div class="card card-pad" style="flex:1;display:flex;flex-direction:column;gap:8px;">
+      <div class="sec">月卡</div><div class="price">¥39 <span class="cut">¥49</span></div>
+      <div class="ter">30 天</div>
+      <div class="btn btn-sm outline">开通</div>
+    </div>
+    <div class="card card-pad" style="flex:1;display:flex;flex-direction:column;gap:8px;border-color:transparent;background:var(--gradsoft);">
+      <div class="row between"><span class="sec">季卡</span><span class="tag grad" style="height:18px;font-size:10px;">推荐</span></div>
+      <div class="price">¥99 <span class="cut">¥129</span></div>
+      <div class="ter">90 天</div>
+      <div class="btn btn-sm grad">开通</div>
+    </div>
+    <div class="card card-pad" style="flex:1;display:flex;flex-direction:column;gap:8px;">
+      <div class="sec">年卡</div><div class="price">¥299 <span class="cut">¥399</span></div>
+      <div class="ter">365 天</div>
+      <div class="btn btn-sm black">续费</div>
+    </div>
+  </div>
+  <div class="ter" style="text-align:center;margin-top:20px;">会员权益与规则详见《会员服务协议》</div>
+</div>
+</div>
+<div class="screen" id="10" style="left:1720px;top:900px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">我的卡包</div></div>
+<div class="content">
+  <div class="seg mb4"><span class="item on">可用 3</span><span class="item">已使用</span><span class="item">已过期</span></div>
+  <div class="row mb3" style="height:84px;border-radius:16px;border:1px solid var(--line);overflow:hidden;">
+      <div style="width:92px;background:var(--grad);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;">
+        <div style="font-size:26px;font-weight:700;">¥10</div><div style="font-size:11px;">优惠券</div>
+        <div style="position:absolute;right:-6px;top:-6px;width:12px;height:12px;border-radius:50%;background:#fff;"></div>
+        <div style="position:absolute;right:-6px;bottom:-6px;width:12px;height:12px;border-radius:50%;background:#fff;"></div>
+      </div>
+      <div style="flex:1;padding:12px 14px;">
+        <div style="font-size:14px;font-weight:600;">新人立减券</div>
+        <div class="ter" style="font-size:11px;margin-top:3px;">满 39 元可用 · 08-20 到期</div>
+      </div>
+      <div style="display:flex;align-items:center;padding-right:14px;">
+        <div class="btn btn-sm black" style="height:30px;font-size:12px;">去使用</div>
+      </div>
+    </div>
+  <div class="row mb3" style="height:84px;border-radius:16px;border:1px solid var(--line);overflow:hidden;">
+      <div style="width:92px;background:var(--grad);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;">
+        <div style="font-size:26px;font-weight:700;">¥20</div><div style="font-size:11px;">优惠券</div>
+        <div style="position:absolute;right:-6px;top:-6px;width:12px;height:12px;border-radius:50%;background:#fff;"></div>
+        <div style="position:absolute;right:-6px;bottom:-6px;width:12px;height:12px;border-radius:50%;background:#fff;"></div>
+      </div>
+      <div style="flex:1;padding:12px 14px;">
+        <div style="font-size:14px;font-weight:600;">会员专属券</div>
+        <div class="ter" style="font-size:11px;margin-top:3px;">满 79 元可用 · 08-31 到期</div>
+      </div>
+      <div style="display:flex;align-items:center;padding-right:14px;">
+        <div class="btn btn-sm black" style="height:30px;font-size:12px;">去使用</div>
+      </div>
+    </div>
+  <div class="row mb3" style="height:84px;border-radius:16px;border:1px solid var(--line);overflow:hidden;">
+      <div style="width:92px;background:var(--grad);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;">
+        <div style="font-size:26px;font-weight:700;">¥50</div><div style="font-size:11px;">优惠券</div>
+        <div style="position:absolute;right:-6px;top:-6px;width:12px;height:12px;border-radius:50%;background:#fff;"></div>
+        <div style="position:absolute;right:-6px;bottom:-6px;width:12px;height:12px;border-radius:50%;background:#fff;"></div>
+      </div>
+      <div style="flex:1;padding:12px 14px;">
+        <div style="font-size:14px;font-weight:600;">周年庆大额券</div>
+        <div class="ter" style="font-size:11px;margin-top:3px;">满 199 元可用 · 09-01 到期</div>
+      </div>
+      <div style="display:flex;align-items:center;padding-right:14px;">
+        <div class="btn btn-sm black" style="height:30px;font-size:12px;">去使用</div>
+      </div>
+    </div>
+  <div class="section-title"><span class="h2">会员专属体验</span><span class="more">每月 1 次 ›</span></div>
+  <div class="card card-pad">
+    <div class="row between mb2">
+      <div><div class="h3">创意拼豆体验</div><div class="ter" style="margin-top:2px;">60 分钟 · 含材料包</div></div>
+      <div style="text-align:right;"><div class="price">¥0 <span class="cut">¥39</span></div><div class="ter">剩余 1 次</div></div>
+    </div>
+    <div class="divider" style="margin:10px 0;"></div>
+    <div class="row between">
+      <div><div class="h3">亲子手作工坊</div><div class="ter" style="margin-top:2px;">90 分钟 · 2 人</div></div>
+      <div style="text-align:right;"><div class="price">¥19.9 <span class="cut">¥59</span></div><div class="ter">剩余 1 次</div></div>
+    </div>
+  </div>
+  <div class="btn btn-ghost btn-block mt4">领取更多优惠券</div>
+</div>
+</div>
+<div class="screen" id="11" style="left:0px;top:1800px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">活动专区</div></div>
+<div class="content">
+  <div class="photo p9" style="height:140px;border-radius:20px;margin-bottom:16px;">
+    <div style="position:absolute;left:16px;bottom:16px;color:#4A3A00;">
+      <div style="font-size:20px;font-weight:700;">夏日手作嘉年华</div>
+      <div style="font-size:12px;margin-top:4px;">8 月限定 · 会员免费入场</div>
+    </div>
+  </div>
+  <div class="card mb3">
+      <div class="photo p1" style="height:120px;">
+        <div class="tag grad" style="position:absolute;left:10px;top:10px;">限会员</div>
+        <div class="tagline">七夕主题拼豆派对</div>
+      </div>
+      <div class="card-pad">
+        <div class="row between mb2"><span class="h3">七夕主题拼豆派对</span><span style="font-size:15px;font-weight:700;">会员免费</span></div>
+        <div class="sec mb1">08-10 周六 14:00 · 静安万象城 3F</div>
+        <div class="row between mb3"><span class="ter">剩余名额 12/40</span><span class="tag gray">可预约</span></div>
+        <div class="row gap2" style="flex-wrap:wrap;"><div class="chip sm on">14:00-16:00</div><div class="chip sm">16:30-18:30</div><div class="chip sm">19:00-21:00</div></div>
+      </div>
+    </div>
+  <div class="card mb3">
+      <div class="photo p3" style="height:120px;">
+        <div class="tag grad" style="position:absolute;left:10px;top:10px;">人气</div>
+        <div class="tagline">新手入门体验课</div>
+      </div>
+      <div class="card-pad">
+        <div class="row between mb2"><span class="h3">新手入门体验课</span><span style="font-size:15px;font-weight:700;">¥29.9</span></div>
+        <div class="sec mb1">08-15 周六 10:00 · 静安 · 拾光手作馆</div>
+        <div class="row between mb3"><span class="ter">剩余名额 8/20</span><span class="tag gray">可预约</span></div>
+        
+      </div>
+    </div>
+  <div class="card mb3">
+      <div class="photo p6" style="height:120px;">
+        <div class="tag grad" style="position:absolute;left:10px;top:10px;">双倍积分</div>
+        <div class="tagline">亲子手作工坊</div>
+      </div>
+      <div class="card-pad">
+        <div class="row between mb2"><span class="h3">亲子手作工坊</span><span style="font-size:15px;font-weight:700;">¥59</span></div>
+        <div class="sec mb1">08-22 周六 14:00 · 徐汇 · 手作星球旗舰店</div>
+        <div class="row between mb3"><span class="ter">剩余名额 16/30</span><span class="tag gray">可预约</span></div>
+        
+      </div>
+    </div>
+</div>
+</div>
+<div class="screen" id="12" style="left:430px;top:1800px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav">
+  <div class="title" style="font-size:20px;"><span class="brandtxt" style="font-weight:800;">社区</span></div>
+  <div class="right" style="gap:18px;"><i class="ic srch "></i><i class="ic pl "></i></div>
+</div>
+<div class="content">
+  <div class="seg mb4"><span class="item">关注</span><span class="item on">最新</span><span class="item">热门</span></div>
+  <div class="card card-pad mb3">
+      <div class="row between mb3">
+        <div class="row gap2"><div class="ring"><div class="inner"><div class="av sm g1">小</div></div></div>
+          <div><div class="h3" style="font-size:14px;">小豆子</div><div class="ter">12 分钟前</div></div></div>
+        <span class="tag gray">关注</span>
+      </div>
+      <div class="grid3" style="grid-template-columns:repeat(2,1fr);gap:2px;border-radius:14px;overflow:hidden;"><div class="photo p" style="height:150px;"></div><div class="photo 2" style="height:150px;"></div></div>
+      <div class="row between mt3">
+        <div class="row gap4"><i class="ic hrt "></i><span style="font-size:13px;">2.3k</span><i class="ic cmt "></i><span style="font-size:13px;">86</span><i class="ic bmk "></i></div>
+        <i class="ic shr "></i>
+      </div>
+      <div class="mt2" style="font-size:13px;"><b>小豆子</b> 今天终于完成了 2000 颗拼豆的星空图！过程很治愈，附上成品和过程～</div>
+      <div class="row gap2 mt2"><span class="tag grad" style="height:20px;font-size:10px;">#芙宁娜的后花园</span><span class="ter" style="font-size:12px;">#拼豆 #手作 #手工</span></div>
+    </div>
+  <div class="card card-pad mb3">
+      <div class="row between mb3">
+        <div class="row gap2"><div class="ring"><div class="inner"><div class="av sm g2">手</div></div></div>
+          <div><div class="h3" style="font-size:14px;">手作小白</div><div class="ter">1 小时前</div></div></div>
+        <span class="tag gray">同城</span>
+      </div>
+      <div class="grid3" style="grid-template-columns:repeat(2,1fr);gap:2px;border-radius:14px;overflow:hidden;"><div class="photo p" style="height:150px;"></div><div class="photo 3" style="height:150px;"></div></div>
+      <div class="row between mt3">
+        <div class="row gap4"><i class="ic hrt "></i><span style="font-size:13px;">2.3k</span><i class="ic cmt "></i><span style="font-size:13px;">86</span><i class="ic bmk "></i></div>
+        <i class="ic shr "></i>
+      </div>
+      <div class="mt2" style="font-size:13px;"><b>手作小白</b> 第一次做奶油胶手机壳，姐妹们帮我看看配色怎么样</div>
+      <div class="row gap2 mt2"><span class="tag grad" style="height:20px;font-size:10px;">#奶油胶研究所</span><span class="ter" style="font-size:12px;">#拼豆 #手作 #手工</span></div>
+    </div>
+</div>
+<div class="tabwrap"><div class="tabpill"><div class="tabitem"><i class="ic home "></i><span>主页</span></div><div class="tabitem on"><i class="ic cmp "></i><span>社区</span></div><div class="tabitem"><i class="ic reel "></i><span>Reels</span></div><div class="tabitem"><i class="ic msg "></i><span>聊天</span></div><div class="tabitem"><i class="ic usr "></i><span>个人</span></div></div></div>
+</div>
+<div class="screen" id="13" style="left:860px;top:1800px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">作品详情</div><div class="rightact"><i class="ic dots "></i></div></div>
+<div class="photo p5" style="height:300px;border-radius:0 0 20px 20px;">
+  <div class="tagline">作品 · 星空拼豆 2000 颗</div>
+</div>
+<div class="content">
+  <div class="row between mt3 mb3">
+    <div class="row gap4">
+      <div class="row gap1"><i class="ic hrt "></i><span class="sec">2.3k</span></div>
+      <div class="row gap1"><i class="ic cmt "></i><span class="sec">86</span></div>
+      <div class="row gap1"><i class="ic bmk "></i><span class="sec">412</span></div>
+    </div>
+    <i class="ic shr "></i>
+  </div>
+  <div style="font-size:14px;line-height:1.6;"><b>小豆子</b> 今天终于完成了 2000 颗拼豆的星空图！过程很治愈，附上成品和过程～ #拼豆 #手作 #星空</div>
+  <div class="row gap2 mt2"><span class="ter" style="font-size:12px;">📍 上海市 · 拾光手作馆</span><span class="ter" style="font-size:12px;">· 08-06 14:32</span></div>
+  <div class="section-title"><span class="h2">评论 86</span><span class="more">只看楼主</span></div>
+  <div class="row gap2 mb4">
+    <div class="av sm g4">柠</div>
+    <div style="flex:1;"><div style="font-size:13px;"><b>柠檬精</b> <span class="sec">· 2 小时前</span></div>
+      <div style="font-size:13px;margin-top:2px;">这也太好看了吧！求教程！</div></div>
+    <div class="row gap1"><i class="ic hrt ic-sm"></i><span class="ter">32</span></div>
+  </div>
+  <div class="row gap2 mb4">
+    <div class="av sm g6">阿</div>
+    <div style="flex:1;"><div style="font-size:13px;"><b>阿周</b> <span class="sec">· 1 小时前</span></div>
+      <div style="font-size:13px;margin-top:2px;">回复 @小豆子：蹲一个材料包链接～</div></div>
+    <div class="row gap1"><i class="ic hrt ic-sm"></i><span class="ter">12</span></div>
+  </div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:68px;border-top:1px solid var(--line);background:#fff;display:flex;align-items:center;padding:0 16px;gap:12px;">
+  <div class="field" style="flex:1;height:42px;border-radius:21px;"><span class="ph" style="font-size:13px;">说点什么…</span></div>
+  <div class="btn btn-black btn-sm" style="height:38px;">发送</div>
+</div>
+</div>
+<div class="screen" id="14" style="left:1290px;top:1800px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">发布作品</div><div class="right"><span class="btn btn-sm grad" style="height:32px;">发布</span></div></div>
+<div class="content">
+  <div class="row gap2 mb4">
+    <div style="width:106px;height:106px;border-radius:16px;border:1.5px dashed var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--sec);"><i class="ic cam "></i><span style="font-size:11px;">拍摄 / 相册</span></div>
+    <div class="photo p2" style="width:106px;height:106px;border-radius:16px;"><div class="tagline">1</div></div>
+    <div class="photo p1" style="width:106px;height:106px;border-radius:16px;"><div class="tagline">2</div></div>
+  </div>
+  <div class="textarea mb3"><span class="ph">分享你的手作故事…（最多 5000 字）</span></div>
+  <div class="card-flat card-pad mb3">
+    <div class="row between"><span class="h3">添加标签</span><span class="sec">+</span></div>
+    <div class="row gap2 mt3"><div class="chip">#拼豆</div><div class="chip">#手作日常</div><div class="chip">#手工DIY</div></div>
+  </div>
+  <div class="card-flat card-pad mb3">
+    <div class="row between"><div class="row gap3"><i class="ic pin ic-sm"></i><span class="h3">添加位置</span></div><span class="sec">上海市 · 拾光手作馆</span></div>
+  </div>
+  <div class="card-flat card-pad">
+    <div class="row between"><div class="row gap3"><i class="ic flt ic-sm"></i><span class="h3">选择频道</span></div><span class="tag gray">#芙宁娜的后花园</span></div>
+    <div class="row gap2 mt3"><div class="chip sm on">#芙宁娜的后花园</div><div class="chip sm">#奶油胶研究所</div><div class="chip sm">#拼豆星球</div></div>
+  </div>
+</div>
+</div>
+<div class="screen" id="15" style="left:1720px;top:1800px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">小豆子</div><div class="rightact"><i class="ic dots "></i></div></div>
+<div class="content">
+  <div class="row gap4" style="padding:8px 0 16px;">
+    <div class="ring"><div class="inner"><div class="av lg g1">豆</div></div></div>
+    <div style="flex:1;display:flex;">
+      <div style="flex:1;text-align:center;"><div class="h2">32</div><div class="ter">作品</div></div>
+      <div style="flex:1;text-align:center;"><div class="h2">1.2k</div><div class="ter">粉丝</div></div>
+      <div style="flex:1;text-align:center;"><div class="h2">86</div><div class="ter">关注</div></div>
+    </div>
+  </div>
+  <div class="h3">小豆子</div>
+  <div class="sec mt1">拼豆手作爱好者 | 治愈系手工</div>
+  <div class="ter mt1">📍 上海 · 拾光手作馆常客</div>
+  <div class="row gap3 mt4">
+    <div class="btn btn-black btn-sm" style="flex:1;height:44px;border-radius:14px;">关注</div>
+    <div class="btn btn-ghost btn-sm" style="flex:1;height:44px;border-radius:14px;">私信</div>
+  </div>
+  <div class="section-title" style="margin-top:16px;"><span class="h2">作品 32</span><span class="more">TA 的更多 ›</span></div>
+  <div class="grid3">
+    <div class="photo p5 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 2.3k</div></div>
+    <div class="photo p1 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 1.1k</div></div>
+    <div class="photo p3 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 860</div></div>
+    <div class="photo p9 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 620</div></div>
+    <div class="photo p7 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 412</div></div>
+    <div class="photo p11 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 398</div></div>
+  </div>
+</div>
+</div>
+<div class="screen" id="16" style="left:0px;top:2700px;">
+<div class="photo p10" style="position:absolute;inset:0;background:linear-gradient(160deg,#2B2B33 0%,#1A1A22 60%,#3D2B45 100%);">
+  <div style="position:absolute;inset:0;background:radial-gradient(circle at 70% 30%,rgba(255,255,255,.14),transparent 45%);"></div>
+  <div class="status" style="color:#fff;">
+    <span class="time" style="color:#fff;">9:41</span>
+    <div class="sicons">
+      <div class="sig w"><i></i><i></i><i></i><i></i></div>
+      <div class="wifi" style="border-color:#fff;"></div>
+      <div class="batt" style="border-color:#fff;"></div>
+    </div>
+  </div>
+  <div class="nav">
+    <div class="title" style="color:#fff;font-size:16px;"><span style="opacity:.6;">关注</span><span style="margin:0 10px;font-weight:700;">推荐</span><span style="opacity:.6;">本地</span></div>
+    <div class="right" style="color:#fff;"><i class="ic srch ic-sm"></i></div>
+  </div>
+  <div style="position:absolute;left:16px;bottom:120px;color:#fff;max-width:280px;">
+    <div class="row gap2 mb2">
+      <div class="ring"><div class="inner"><div class="av sm g2">周</div></div></div>
+      <b style="font-size:15px;">@手作阿周</b>
+    </div>
+    <div style="font-size:13px;line-height:1.6;">3 分钟学会渐变拼豆，新手也能轻松上手 🎨 #拼豆 #手工</div>
+    <div class="row gap2 mt2" style="font-size:12px;opacity:.75;">♪ 夏日小夜曲 - 手作星球</div>
+  </div>
+  <div style="position:absolute;right:12px;bottom:180px;display:flex;flex-direction:column;align-items:center;gap:22px;color:#fff;">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><div class="ring"><div class="inner"><div class="av sm g5">周</div></div></div><span style="font-size:10px;">关注</span></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><i class="ic hrt ic-lg"></i><b style="font-size:12px;">12.5w</b></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><i class="ic cmt ic-lg"></i><b style="font-size:12px;">3.2k</b></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><i class="ic bmk ic-lg"></i><b style="font-size:12px;">9.8k</b></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><i class="ic shr ic-lg"></i><b style="font-size:12px;">分享</b></div>
+    <i class="ic dots ic-lg"></i>
+  </div>
+  <div class="tabwrap">
+    <div class="tabpill" style="background:rgba(20,20,22,.7);border-color:rgba(255,255,255,.16);box-shadow:none;">
+      <div class="tabitem" style="color:rgba(255,255,255,.65);"><i class="ic home "></i><span>主页</span></div>
+      <div class="tabitem" style="color:rgba(255,255,255,.65);"><i class="ic cmp "></i><span>社区</span></div>
+      <div class="tabitem on" style="color:#fff;"><i class="ic reel "></i><span>Reels</span></div>
+      <div class="tabitem" style="color:rgba(255,255,255,.65);"><i class="ic msg "></i><span>聊天</span></div>
+      <div class="tabitem" style="color:rgba(255,255,255,.65);"><i class="ic usr "></i><span>个人</span></div>
+    </div>
+  </div>
+</div>
+</div>
+<div class="screen" id="17" style="left:430px;top:2700px;">
+<div class="photo p12" style="height:380px;border-radius:0 0 24px 24px;">
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,.25);"></div>
+  <div style="position:absolute;left:0;top:0;right:0;" >
+    <div class="status"><span class="time" style="color:#fff;">9:41</span>
+      <div class="sicons"><div class="sig w"><i></i><i></i><i></i><i></i></div><div class="wifi" style="border-color:#fff;"></div><div class="batt" style="border-color:#fff;"></div></div>
+    </div>
+    <div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">视频详情</div><div class="rightact"><i class="ic dots "></i></div></div>
+  </div>
+  <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;color:#141414;"><i class="ic py ic-lg"></i></div>
+  <div style="position:absolute;left:16px;bottom:14px;color:#fff;font-size:13px;">@手作阿周 · 3 分钟学会渐变拼豆 #拼豆 #手工</div>
+</div>
+<div class="content">
+  <div class="row between mt3 mb3">
+    <div class="row gap4">
+      <div class="row gap1"><i class="ic hrt "></i><span class="sec">12.5w</span></div>
+      <div class="row gap1"><i class="ic cmt "></i><span class="sec">3.2k</span></div>
+      <div class="row gap1"><i class="ic bmk "></i><span class="sec">9.8k</span></div>
+    </div>
+    <i class="ic shr "></i>
+  </div>
+  <div class="section-title"><span class="h2">评论 3,286</span><span class="more">最热</span></div>
+  <div class="row gap2 mb4">
+    <div class="av sm g1">豆</div>
+    <div style="flex:1;"><div style="font-size:13px;"><b>小豆子</b> <span class="sec">· 2 小时前</span></div>
+      <div style="font-size:13px;margin-top:2px;">试了！配色绝了，交作业</div></div>
+    <div class="row gap1"><i class="ic hrt ic-sm"></i><span class="ter">1.2k</span></div>
+  </div>
+  <div class="row gap2 mb4">
+    <div class="av sm g3">果</div>
+    <div style="flex:1;"><div style="font-size:13px;"><b>果冻</b> <span class="sec">· 3 小时前</span></div>
+      <div style="font-size:13px;margin-top:2px;">请问渐变用了几种颜色？</div></div>
+    <div class="row gap1"><i class="ic hrt ic-sm"></i><span class="ter">568</span></div>
+  </div>
+  <div class="row gap2 mb4">
+    <div class="av sm g5">新</div>
+    <div style="flex:1;"><div style="font-size:13px;"><b>新手村村民</b> <span class="sec">· 昨天</span></div>
+      <div style="font-size:13px;margin-top:2px;">回复 @手作阿周：已三连，蹲更新！</div></div>
+    <div class="row gap1"><i class="ic hrt ic-sm"></i><span class="ter">342</span></div>
+  </div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:68px;border-top:1px solid var(--line);background:#fff;display:flex;align-items:center;padding:0 16px;gap:12px;">
+  <div class="field" style="flex:1;height:42px;border-radius:21px;"><span class="ph" style="font-size:13px;">说点什么…</span></div>
+  <div class="btn btn-black btn-sm" style="height:38px;">发送</div>
+</div>
+</div>
+<div class="screen" id="18" style="left:860px;top:2700px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">发布视频</div><div class="right"><span class="btn btn-sm grad" style="height:32px;">发布</span></div></div>
+<div class="content">
+  <div class="photo p10" style="height:250px;border-radius:20px;background:linear-gradient(160deg,#3D2B45,#1A1A22);">
+    <div style="position:absolute;inset:0;background:radial-gradient(circle at 60% 40%,rgba(255,255,255,.15),transparent 50%);"></div>
+    <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;color:#141414;"><i class="ic py ic-lg"></i></div>
+    <div style="position:absolute;right:12px;bottom:12px;background:rgba(0,0,0,.45);color:#fff;border-radius:10px;padding:4px 10px;font-size:12px;">00:15 / 00:15</div>
+    <div style="position:absolute;left:12px;top:12px;display:flex;gap:8px;">
+      <span class="tag" style="background:rgba(255,255,255,.22);color:#fff;">照片模式</span>
+      <span class="tag" style="background:rgba(0,0,0,.35);color:#fff;">视频模式</span>
+    </div>
+  </div>
+  <div class="card-flat card-pad mt3">
+    <div class="row between">
+      <div class="row gap3"><i class="ic mus ic-sm"></i><div><div class="h3">夏日小夜曲</div><div class="ter">手作星球 · 01:26</div></div></div>
+      <span class="chip on" style="height:28px;font-size:12px;">更换</span>
+    </div>
+    <div class="divider" style="margin:12px 0;"></div>
+    <div class="row between"><div class="row gap3"><i class="ic dmd ic-sm"></i><span class="h3">滤镜</span></div>
+      <div class="row gap2">
+        <div style="width:34px;height:34px;border-radius:50%;border:1.5px solid var(--ink);background:var(--gradsoft);"></div>
+        <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#FFE0B2,#FF9E80);"></div>
+        <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#B2DFDB,#4DB6AC);"></div>
+        <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#D1C4E9,#9575CD);"></div>
+      </div>
+    </div>
+    <div class="divider" style="margin:12px 0;"></div>
+    <div class="row between"><div class="row gap3"><i class="ic clk ic-sm"></i><span class="h3">速度</span></div>
+      <div class="row gap2"><span class="chip sm">0.5x</span><span class="chip sm on">1.0x</span><span class="chip sm">1.5x</span><span class="chip sm">2.0x</span></div>
+    </div>
+  </div>
+  <div class="textarea mt3 mb3"><span class="ph">添加视频文案…</span></div>
+  <div class="card-flat card-pad mb3"><div class="row between"><div class="row gap3"><i class="ic flt ic-sm"></i><span class="h3">话题标签</span></div><span class="sec">+ 添加</span></div>
+    <div class="row gap2 mt3"><div class="chip sm">#拼豆</div><div class="chip sm">#手工</div></div></div>
+  <div class="card-flat card-pad"><div class="row between"><div class="row gap3"><i class="ic pin ic-sm"></i><span class="h3">位置</span></div><span class="sec">上海 · 拾光手作馆</span></div></div>
+</div>
+</div>
+<div class="screen" id="19" style="left:1290px;top:2700px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">选择音乐</div></div>
+<div class="content">
+  <div class="field mb4"><i class="ic srch ic-sm"></i><span class="ph">搜索歌名 / 歌手</span></div>
+  <div class="section-title" style="margin-top:0;"><span class="h2">热门推荐</span></div>
+  <div class="card card-pad" style="padding:4px 16px;">
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="av sm g1">夏</div>
+      <div style="flex:1;"><div class="row gap2"><span class="h3" style="font-size:14px;">夏日小夜曲</span><span class="tag red" style="height:16px;font-size:9px;">热</span></div>
+        <div class="ter" style="margin-top:2px;">手作星球</div></div>
+      <span class="ter num">01:26</span>
+      <span class="btn btn-sm ghost" style="height:28px;font-size:12px;">使用</span>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="av sm g2">手</div>
+      <div style="flex:1;"><div class="row gap2"><span class="h3" style="font-size:14px;">手作进行曲</span><span class="tag red" style="height:16px;font-size:9px;">热</span></div>
+        <div class="ter" style="margin-top:2px;">拼豆乐队</div></div>
+      <span class="ter num">02:03</span>
+      <span class="btn btn-sm ghost" style="height:28px;font-size:12px;">使用</span>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="av sm g3">治</div>
+      <div style="flex:1;"><div class="row gap2"><span class="h3" style="font-size:14px;">治愈系咖啡店</span><span class="tag red" style="height:16px;font-size:9px;">热</span></div>
+        <div class="ter" style="margin-top:2px;">Lo-fi 研究所</div></div>
+      <span class="ter num">01:45</span>
+      <span class="btn btn-sm ghost" style="height:28px;font-size:12px;">使用</span>
+    </div>
+  </div>
+  <div class="section-title"><span class="h2">全部曲库</span><span class="more">共 128 首</span></div>
+  <div class="card card-pad" style="padding:4px 16px;">
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="av sm g4">心</div>
+      <div style="flex:1;"><div class="row gap2"><span class="h3" style="font-size:14px;">心动信号</span></div>
+        <div class="ter" style="margin-top:2px;">小满</div></div>
+      <span class="ter num">00:58</span>
+      <span class="btn btn-sm ghost" style="height:28px;font-size:12px;">使用</span>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="av sm g5">深</div>
+      <div style="flex:1;"><div class="row gap2"><span class="h3" style="font-size:14px;">深夜手作台</span></div>
+        <div class="ter" style="margin-top:2px;">银河漫游</div></div>
+      <span class="ter num">01:12</span>
+      <span class="btn btn-sm ghost" style="height:28px;font-size:12px;">使用</span>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="av sm g6">奶</div>
+      <div style="flex:1;"><div class="row gap2"><span class="h3" style="font-size:14px;">奶油胶之歌</span></div>
+        <div class="ter" style="margin-top:2px;">草莓布丁</div></div>
+      <span class="ter num">00:47</span>
+      <span class="btn btn-sm ghost" style="height:28px;font-size:12px;">使用</span>
+    </div>
+  </div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:72px;border-top:1px solid var(--line);background:#fff;display:flex;align-items:center;padding:0 16px;gap:12px;">
+  <div class="row gap3" style="flex:1;"><i class="ic mus "></i><div><div class="h3" style="font-size:14px;">夏日小夜曲</div><div class="ter" style="font-size:11px;">手作星球</div></div></div>
+  <div class="btn btn-grad btn-sm" style="height:38px;">使用配乐</div>
+</div>
+</div>
+<div class="screen" id="20" style="left:1720px;top:2700px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav">
+  <div class="title" style="font-size:20px;font-weight:800;">聊天</div>
+  <div class="right"><i class="ic pl ic-sm"></i></div>
+</div>
+<div class="content">
+  <div class="field mb4"><i class="ic srch ic-sm"></i><span class="ph">搜索</span></div>
+  <div class="card-flat card-pad" style="padding:4px 16px;">
+    <div class="row gap3" style="padding:13px 0;">
+      <div class="ring"><div class="inner"><div class="av g1">小</div></div></div>
+      <div style="flex:1;min-width:0;">
+        <div class="row between"><div class="row gap2"><span class="tag gray" style="height:16px;font-size:9px;">置顶</span><span class="h3" style="font-size:15px;">小豆子</span></div><span class="ter">14:20</span></div>
+        <div class="row between mt1"><span class="sec ellipsis" style="max-width:230px;">[图片] 看我新做的星空拼豆！</span><span class="badge" style="min-width:20px;height:20px;">2</span></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:13px 0;">
+      <div class="ring"><div class="inner"><div class="av g2">手</div></div></div>
+      <div style="flex:1;min-width:0;">
+        <div class="row between"><div class="row gap2"><span class="tag gray" style="height:16px;font-size:9px;">置顶</span><span class="tag blue" style="height:16px;font-size:9px;">群聊</span><span class="h3" style="font-size:15px;">手作同好会</span></div><span class="ter">13:05</span></div>
+        <div class="row between mt1"><span class="sec ellipsis" style="max-width:230px;">阿周: 今晚 8 点拼豆直播，来呀</span></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:13px 0;">
+      <div class="ring"><div class="inner"><div class="av g3">果</div></div></div>
+      <div style="flex:1;min-width:0;">
+        <div class="row between"><div class="row gap2"><span class="h3" style="font-size:15px;">果冻</span></div><span class="ter">12:40</span></div>
+        <div class="row between mt1"><span class="sec ellipsis" style="max-width:230px;">语音 12″</span><span class="badge" style="min-width:20px;height:20px;">5</span></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:13px 0;">
+      <div class="ring"><div class="inner"><div class="av g4">柠</div></div></div>
+      <div style="flex:1;min-width:0;">
+        <div class="row between"><div class="row gap2"><span class="h3" style="font-size:15px;">柠檬精</span></div><span class="ter">昨天</span></div>
+        <div class="row between mt1"><span class="sec ellipsis" style="max-width:230px;">收到～明天见！</span></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:13px 0;">
+      <div class="ring"><div class="inner"><div class="av g5">拼</div></div></div>
+      <div style="flex:1;min-width:0;">
+        <div class="row between"><div class="row gap2"><span class="h3" style="font-size:15px;">拼豆研究所</span></div><span class="ter">昨天</span></div>
+        <div class="row between mt1"><span class="sec ellipsis" style="max-width:230px;">视频 00:15</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="ter" style="text-align:center;margin-top:24px;">— 已展示全部会话 —</div>
+</div>
+<div class="tabwrap"><div class="tabpill"><div class="tabitem"><i class="ic home "></i><span>主页</span></div><div class="tabitem"><i class="ic cmp "></i><span>社区</span></div><div class="tabitem"><i class="ic reel "></i><span>Reels</span></div><div class="tabitem on"><i class="ic msg "></i><span>聊天</span></div><div class="tabitem"><i class="ic usr "></i><span>个人</span></div></div></div>
+</div>
+<div class="screen" id="21" style="left:0px;top:3600px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">小豆子</div><div class="right"><span class="badge-dot" style="background:var(--ok);"></span></div></div>
+<div style="position:absolute;left:0;right:0;top:106px;bottom:74px;padding:16px;display:flex;flex-direction:column;gap:16px;background:var(--bg);">
+  <div style="text-align:center;"><span class="ter" style="font-size:11px;">今天 14:18</span></div>
+  <div class="row gap2" style="align-items:flex-end;">
+    <div class="av sm g1">豆</div>
+    <div style="max-width:250px;background:var(--surface);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:14px;">今晚要一起拼豆吗？我买了新的星空材料包</div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;">
+    <div style="max-width:250px;background:var(--ink);color:#fff;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:14px;">好啊！几点？在万象城店吗</div>
+  </div>
+  <div class="row gap2" style="align-items:flex-end;">
+    <div class="av sm g1">豆</div>
+    <div style="max-width:250px;background:var(--surface);border-radius:16px 16px 16px 4px;padding:6px;position:relative;">
+      <div class="photo p2" style="height:120px;border-radius:12px;"></div>
+      <div style="font-size:11px;color:var(--sec);padding:6px 8px 2px;">新到的配色，好看吧</div>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;">
+    <div style="max-width:250px;background:var(--ink);color:#fff;border-radius:16px 16px 4px 16px;padding:8px 14px;font-size:14px;display:flex;align-items:center;gap:8px;">
+      <i class="ic py ic-sm"></i><span>语音 12″</span>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;">
+    <div style="max-width:250px;background:var(--ink);color:#fff;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:14px;">
+      <div class="ter" style="font-size:10px;color:rgba(255,255,255,.6);margin-bottom:4px;">引用消息</div>
+      已读 14:21
+    </div>
+  </div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:74px;border-top:1px solid var(--line);background:#fff;display:flex;align-items:center;padding:0 12px;gap:10px;">
+  <div style="color:var(--sec);"><i class="ic pl "></i></div>
+  <div class="field" style="flex:1;height:42px;border-radius:21px;"><span class="ph" style="font-size:13px;">发送消息…</span></div>
+  <div style="color:var(--sec);"><i class="ic mc "></i></div>
+  <div class="btn btn-black btn-sm" style="height:38px;">发送</div>
+</div>
+</div>
+<div class="screen" id="22" style="left:430px;top:3600px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">手作同好会 (12)</div><div class="right"><div class="row" style="gap:2px;"><div class="av sm g1" style="width:22px;height:22px;font-size:9px;">小</div><div class="av sm g2" style="width:22px;height:22px;font-size:9px;">阿</div><div class="av sm g3" style="width:22px;height:22px;font-size:9px;">柠</div></div></div></div>
+<div style="position:absolute;left:0;right:0;top:106px;bottom:74px;padding:16px;display:flex;flex-direction:column;gap:16px;">
+  <div style="text-align:center;"><span class="ter" style="font-size:11px;">今天 13:04</span></div>
+  <div style="text-align:center;"><span class="tag gray" style="height:22px;font-size:11px;">小豆子 邀请 阿周 加入了群聊</span></div>
+  <div class="row gap2" style="align-items:flex-end;">
+    <div class="av sm g2">周</div>
+    <div style="max-width:250px;background:var(--surface);border-radius:16px 16px 16px 4px;padding:10px 14px;">
+      <div class="ter" style="font-size:11px;color:var(--sec);margin-bottom:4px;">@手作阿周</div>
+      <div style="font-size:14px;">今晚 8 点拼豆直播，新手友好，可以来围观！</div>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;">
+    <div style="max-width:250px;background:var(--grad);color:#fff;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:14px;">蹲！顺便求个材料包链接</div>
+  </div>
+  <div class="row gap2" style="align-items:flex-end;">
+    <div class="av sm g4">柠</div>
+    <div style="max-width:250px;background:var(--surface);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:14px;">已三连，坐等开播 🎬</div>
+  </div>
+  <div style="text-align:center;"><span class="tag gray" style="height:22px;font-size:11px;">12 人已读</span></div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:74px;border-top:1px solid var(--line);background:#fff;display:flex;align-items:center;padding:0 12px;gap:10px;">
+  <div style="color:var(--sec);"><i class="ic pl "></i></div>
+  <div class="field" style="flex:1;height:42px;border-radius:21px;"><span class="ph" style="font-size:13px;">@ 提及成员…</span></div>
+  <div style="color:var(--sec);"><i class="ic mc "></i></div>
+  <div class="btn btn-grad btn-sm" style="height:38px;">发送</div>
+</div>
+</div>
+<div class="screen" id="23" style="left:860px;top:3600px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">群聊设置</div><div class="rightact"><i class="ic dots "></i></div></div>
+<div class="content">
+  <div style="display:flex;flex-direction:column;align-items:center;padding:18px 0 6px;">
+    <div class="ring"><div class="inner"><div class="av g2" style="width:64px;height:64px;font-size:20px;">群</div></div></div>
+    <div class="h2 mt2">手作同好会</div>
+    <div class="ter mt1">群公告：每周三拼豆主题日，欢迎分享作品 🎨</div>
+  </div>
+  <div class="section-title"><span class="h2">群成员 12</span><span class="more">管理 ›</span></div>
+  <div class="row gap3" style="overflow:hidden;padding-bottom:8px;">
+    <div class="row" style="flex-direction:column;align-items:center;gap:6px;width:60px;flex:none;">
+      <div class="ring"><div class="inner"><div class="av sm g1">小</div></div></div>
+      <div class="row gap1"><span style="font-size:11px;">小豆子</span></div>
+      <span class="tag grad" style="height:16px;font-size:9px;">群主</span>
+    </div>
+    <div class="row" style="flex-direction:column;align-items:center;gap:6px;width:60px;flex:none;">
+      <div class="ring"><div class="inner"><div class="av sm g2">阿</div></div></div>
+      <div class="row gap1"><span style="font-size:11px;">阿周</span></div>
+      <span class="tag gray" style="height:16px;font-size:9px;">管理员</span>
+    </div>
+    <div class="row" style="flex-direction:column;align-items:center;gap:6px;width:60px;flex:none;">
+      <div class="ring"><div class="inner"><div class="av sm g3">果</div></div></div>
+      <div class="row gap1"><span style="font-size:11px;">果冻</span></div>
+      <span style="height:16px;"></span>
+    </div>
+    <div class="row" style="flex-direction:column;align-items:center;gap:6px;width:60px;flex:none;">
+      <div class="ring"><div class="inner"><div class="av sm g4">柠</div></div></div>
+      <div class="row gap1"><span style="font-size:11px;">柠檬精</span></div>
+      <span style="height:16px;"></span>
+    </div>
+    <div class="row" style="flex-direction:column;align-items:center;gap:6px;width:60px;flex:none;">
+      <div class="ring"><div class="inner"><div class="av sm g5">新</div></div></div>
+      <div class="row gap1"><span style="font-size:11px;">新手村</span></div>
+      <span style="height:16px;"></span>
+    </div>
+    <div style="width:52px;height:52px;border-radius:50%;border:1.5px dashed var(--line);display:flex;align-items:center;justify-content:center;color:var(--sec);margin-top:2px;"><i class="ic pl ic-sm"></i></div>
+  </div>
+  <div class="card-flat card-pad" style="padding:4px 16px;">
+    <div class="row between" style="padding:13px 0;"><span class="h3">修改群名称</span><span class="cr" style="color:var(--ter);"></span></div>
+    <div class="divider"></div>
+    <div class="row between" style="padding:13px 0;"><span class="h3">群公告</span><span class="cr" style="color:var(--ter);"></span></div>
+    <div class="divider"></div>
+    <div class="row between" style="padding:13px 0;"><span class="h3">消息免打扰</span><span class="switch"></span></div>
+    <div class="divider"></div>
+    <div class="row between" style="padding:13px 0;"><span class="h3">置顶聊天</span><span class="switch off"></span></div>
+  </div>
+  <div class="card-flat card-pad mt4" style="background:#FFF7F7;border:1px solid #FFE3E3;">
+    <div class="row between" style="padding:8px 0;"><span class="h3" style="color:var(--danger);">退出群聊</span></div>
+  </div>
+  <div class="ter" style="text-align:center;margin-top:14px;font-size:11px;">群主可解散群聊</div>
+</div>
+</div>
+<div class="screen" id="24" style="left:1290px;top:3600px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">添加好友</div></div>
+<div class="content">
+  <div class="seg mb4"><span class="item on">手机号搜索</span><span class="item">我的关注</span></div>
+  <div class="field mb4"><i class="ic srch ic-sm"></i><span class="ph">输入对方手机号</span><span style="flex:1"></span><span class="act">搜索</span></div>
+  <div class="card card-pad">
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="av g4">柠</div>
+      <div style="flex:1;"><div class="h3" style="font-size:14px;">柠檬精</div><div class="ter">138****2211 · 上海</div></div>
+      <div class="btn btn-sm black">添加</div>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="av g2">手</div>
+      <div style="flex:1;"><div class="h3" style="font-size:14px;">手作阿周</div><div class="ter">已互相关注 · 上海</div></div>
+      <div class="btn btn-sm ghost">已添加</div>
+    </div>
+  </div>
+  <div class="section-title"><span class="h2">发起群聊</span><span class="more">勾选好友 ›</span></div>
+  <div class="card card-pad" style="padding:4px 16px;">
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="av g1">小</div>
+      <div style="flex:1;"><div class="h3" style="font-size:14px;">小豆子</div><div class="ter">已选择</div></div>
+      <span class="radio on"></span>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="av g2">手</div>
+      <div style="flex:1;"><div class="h3" style="font-size:14px;">手作阿周</div><div class="ter">已选择</div></div>
+      <span class="radio on"></span>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="av g3">果</div>
+      <div style="flex:1;"><div class="h3" style="font-size:14px;">果冻</div><div class="ter">未选择</div></div>
+      <span class="radio"></span>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="av g5">新</div>
+      <div style="flex:1;"><div class="h3" style="font-size:14px;">新手村村民</div><div class="ter">未选择</div></div>
+      <span class="radio"></span>
+    </div>
+  </div>
+  <div class="btn btn-black btn-block mt4">创建群聊（2 人）</div>
+</div>
+</div>
+<div class="screen" id="25" style="left:1720px;top:3600px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav">
+  <div class="title" style="font-size:20px;font-weight:800;">我的</div>
+  <div class="right"><i class="ic out ic-sm"></i></div>
+</div>
+<div class="content">
+  <div class="row gap4" style="padding:8px 0 16px;">
+    <div class="ring"><div class="inner"><div class="av lg g1">我</div></div></div>
+    <div style="flex:1;display:flex;">
+      <div style="flex:1;text-align:center;"><div class="h2">32</div><div class="ter">作品</div></div>
+      <div style="flex:1;text-align:center;"><div class="h2">86</div><div class="ter">粉丝</div></div>
+      <div style="flex:1;text-align:center;"><div class="h2">1.2k</div><div class="ter">获赞</div></div>
+    </div>
+  </div>
+  <div class="h3">小豆子</div>
+  <div class="sec mt1">@xiaodouzi · 拼豆手作爱好者</div>
+  <div class="ter mt1">手作星球 2026 年 6 月入驻 · 上海</div>
+  <div class="row gap3 mt4">
+    <div class="btn btn-black btn-sm" style="flex:1;height:44px;border-radius:14px;">编辑资料</div>
+    <div class="btn btn-ghost btn-sm" style="flex:1;height:44px;border-radius:14px;">分享主页</div>
+  </div>
+  <div class="card-flat card-pad mt4" style="padding:4px 16px;">
+    <div class="row gap3" style="padding:13px 0;"><div class="iconbox soft"><i class="ic tkt ic-sm"></i></div><div style="flex:1;"><div class="h3" style="font-size:14px;">我的卡包</div><div class="ter">优惠券 · 会员体验</div></div><span class="cr ic-sm" style="color:var(--ter);"></span></div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:13px 0;"><div class="iconbox soft"><i class="ic dmd ic-sm"></i></div><div style="flex:1;"><div class="h3" style="font-size:14px;">点赞与收藏</div><div class="ter">我喜欢的作品</div></div><span class="cr ic-sm" style="color:var(--ter);"></span></div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:13px 0;"><div class="iconbox soft"><i class="ic eye "></i></div><div style="flex:1;"><div class="h3" style="font-size:14px;">观看历史</div><div class="ter">作品 · 视频浏览记录</div></div><span class="cr ic-sm" style="color:var(--ter);"></span></div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:13px 0;"><div class="iconbox soft"><i class="ic wal ic-sm"></i></div><div style="flex:1;"><div class="h3" style="font-size:14px;">我的订单</div><div class="ter">预约 · 体验记录</div></div><span class="cr ic-sm" style="color:var(--ter);"></span></div>
+  </div>
+  <div class="section-title" style="margin-top:16px;"><span class="h2">我的作品</span><span class="more">全部 ›</span></div>
+  <div class="grid3">
+    <div class="photo p5 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 2.3k</div></div>
+    <div class="photo p1 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 1.1k</div></div>
+    <div class="photo p3 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 860</div></div>
+    <div class="photo p9 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 620</div></div>
+    <div class="photo p7 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 412</div></div>
+    <div class="photo p11 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 398</div></div>
+  </div>
+</div>
+<div class="tabwrap"><div class="tabpill"><div class="tabitem"><i class="ic home "></i><span>主页</span></div><div class="tabitem"><i class="ic cmp "></i><span>社区</span></div><div class="tabitem"><i class="ic reel "></i><span>Reels</span></div><div class="tabitem"><i class="ic msg "></i><span>聊天</span></div><div class="tabitem on"><i class="ic usr "></i><span>个人</span></div></div></div>
+</div>
+<div class="screen" id="26" style="left:0px;top:4500px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">编辑资料</div><div class="right"><span class="btn btn-sm black" style="height:32px;">保存</span></div></div>
+<div class="content">
+  <div style="display:flex;justify-content:center;padding:12px 0 20px;">
+    <div style="position:relative;">
+      <div class="ring"><div class="inner"><div class="av g1" style="width:80px;height:80px;font-size:26px;">我</div></div></div>
+      <div style="position:absolute;right:-2px;bottom:-2px;width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid #fff;"><i class="ic cam ic-sm"></i></div>
+    </div>
+  </div>
+  <div class="field mb3"><span class="pre">昵称</span><span class="ph" style="margin-left:8px;">小豆子</span></div>
+  <div class="field mb3"><span class="pre">用户名</span><span class="ph" style="margin-left:8px;">xiaodouzi</span></div>
+  <div class="ter" style="margin:-4px 4px 12px;">用户名一年内只能修改一次，设置后可用于用户名+密码登录</div>
+  <div class="textarea mb3" style="min-height:80px;"><span class="ph">简介：拼豆手作爱好者，治愈系手工</span></div>
+  <div class="card-flat card-pad mb3">
+    <div class="row between mb3"><span class="h3">性别</span><span class="sec">女</span></div>
+    <div class="divider"></div>
+    <div class="row between mt3 mb3"><span class="h3">生日</span><span class="sec">1999-08-06</span></div>
+    <div class="divider"></div>
+    <div class="row between mt3"><span class="h3">所在地</span><span class="sec">上海市</span></div>
+  </div>
+  <div class="btn btn-ghost btn-block" style="color:var(--danger);">退出登录</div>
+</div>
+</div>
+<div class="screen" id="27" style="left:430px;top:4500px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">我的内容</div></div>
+<div class="content">
+  <div class="seg mb4"><span class="item on">作品</span><span class="item">视频</span><span class="item">点赞</span><span class="item">收藏</span><span class="item">历史</span></div>
+  <div class="grid3">
+    <div class="photo p5 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 2.3k</div></div>
+    <div class="photo p1 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 1.1k</div></div>
+    <div class="photo p3 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 860</div></div>
+    <div class="photo p9 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 620</div></div>
+    <div class="photo p7 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 412</div></div>
+    <div class="photo p11 cell"><div class="ov"><i class="ic hrt ic-sm"></i> 398</div></div>
+    <div class="photo p2 cell"><div class="ov"><i class="ic py ic-sm"></i> 3.6w</div></div>
+    <div class="photo p6 cell"><div class="ov"><i class="ic py ic-sm"></i> 2.1w</div></div>
+    <div class="photo p4 cell"><div class="ov"><i class="ic py ic-sm"></i> 1.4w</div></div>
+  </div>
+  <div class="ter" style="text-align:center;margin-top:20px;">共 32 个作品 · 3 个视频</div>
+</div>
+</div>
+<div class="screen" id="28" style="left:860px;top:4500px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">我的订单</div></div>
+<div class="content">
+  <div class="seg mb4" style="overflow:hidden;"><span class="item on">全部</span><span class="item">待核销</span><span class="item">服务中</span><span class="item">已完成</span><span class="item">已取消</span></div>
+  <div class="card card-pad mb3">
+      <div class="row between mb2"><span class="h3">拾光手作馆 · 万象城店</span><span class="tag red">待核销</span></div>
+      <div class="sec mb1">08-07 周五 15:00-16:30 · A1 · 2 人</div>
+      <div class="ter mb2">预约码 830219 · 微信支付</div>
+      <div class="divider"></div>
+      <div class="row between mt2">
+        <span class="price" style="font-size:14px;">¥49.8</span>
+        <div class="row gap2"><span class="btn btn-sm ghost" style="height:30px;font-size:12px;">详情</span><span class="btn btn-sm black" style="height:30px;font-size:12px;">查看码</span></div>
+      </div>
+    </div>
+  <div class="card card-pad mb3">
+      <div class="row between mb2"><span class="h3">拾光手作馆 · 万象城店</span><span class="tag green">服务中</span></div>
+      <div class="sec mb1">08-06 今天 14:20-15:05 · A1 · 2 人</div>
+      <div class="ter mb2">已体验 45 分钟</div>
+      <div class="divider"></div>
+      <div class="row between mt2">
+        <span class="price" style="font-size:14px;">¥49.8</span>
+        <div class="row gap2"><span class="btn btn-sm ghost" style="height:30px;font-size:12px;">详情</span><span class="btn btn-sm black" style="height:30px;font-size:12px;">查看码</span></div>
+      </div>
+    </div>
+  <div class="card card-pad mb3">
+      <div class="row between mb2"><span class="h3">七夕主题拼豆派对</span><span class="tag gray">已完成</span></div>
+      <div class="sec mb1">08-01 周六 14:00-16:00 · 活动场次</div>
+      <div class="ter mb2">会员免费 · 已核销</div>
+      <div class="divider"></div>
+      <div class="row between mt2">
+        <span class="price" style="font-size:14px;">¥0.00</span>
+        <div class="row gap2"><span class="btn btn-sm ghost" style="height:30px;font-size:12px;">详情</span><span class="btn btn-sm black" style="height:30px;font-size:12px;">查看码</span></div>
+      </div>
+    </div>
+  <div class="card card-pad mb3">
+      <div class="row between mb2"><span class="h3">拾光手作馆 · 大悦城店</span><span class="tag gray">已完成</span></div>
+      <div class="sec mb1">07-20 周日 10:00-11:30 · B2 · 1 人</div>
+      <div class="ter mb2">已完成 · 支付宝</div>
+      <div class="divider"></div>
+      <div class="row between mt2">
+        <span class="price" style="font-size:14px;">¥39.9</span>
+        <div class="row gap2"><span class="btn btn-sm ghost" style="height:30px;font-size:12px;">详情</span><span class="btn btn-sm black" style="height:30px;font-size:12px;">查看码</span></div>
+      </div>
+    </div>
+  <div class="card card-pad mb3">
+      <div class="row between mb2"><span class="h3">新手入门体验课</span><span class="tag gray">已取消</span></div>
+      <div class="sec mb1">07-12 周六 10:00 · 活动场次</div>
+      <div class="ter mb2">用户取消 · 已退款</div>
+      <div class="divider"></div>
+      <div class="row between mt2">
+        <span class="price" style="font-size:14px;">¥29.9</span>
+        <div class="row gap2"><span class="btn btn-sm ghost" style="height:30px;font-size:12px;">详情</span><span class="btn btn-sm black" style="height:30px;font-size:12px;">查看码</span></div>
+      </div>
+    </div>
+</div>
+</div>
+<div class="screen" id="29" style="left:1290px;top:4500px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">通知</div><div class="right"><span class="sec" style="font-size:13px;">全部已读</span></div></div>
+<div class="content">
+  <div class="row gap3 mb2"><span class="h2">互动</span><span class="badge">3</span></div>
+  <div class="card card-pad" style="padding:4px 16px;">
+    <div style="position:relative;padding:14px 0;">
+      <div class="row gap3">
+        <div class="iconbox soft"><i class="ic hrt ic-sm"></i></div>
+        <div style="flex:1;min-width:0;">
+          <div class="row between"><span class="h3" style="font-size:14px;">小豆子 赞了你的作品</span><span class="ter">刚刚</span></div>
+          <div class="sec mt1" style="font-size:13px;">「星空拼豆 2000 颗」获赞 +1</div>
+        </div>
+      </div>
+      <span class="badge-dot" style="position:absolute;top:16px;right:16px;"></span>
+    </div>
+    <div class="divider"></div>
+    <div style="position:relative;padding:14px 0;">
+      <div class="row gap3">
+        <div class="iconbox soft"><i class="ic cmt ic-sm"></i></div>
+        <div style="flex:1;min-width:0;">
+          <div class="row between"><span class="h3" style="font-size:14px;">果冻 评论了你</span><span class="ter">8 分钟前</span></div>
+          <div class="sec mt1" style="font-size:13px;">「配色太绝了！求教程」</div>
+        </div>
+      </div>
+      <span class="badge-dot" style="position:absolute;top:16px;right:16px;"></span>
+    </div>
+    <div class="divider"></div>
+    <div style="position:relative;padding:14px 0;">
+      <div class="row gap3">
+        <div class="iconbox soft"><i class="ic usr ic-sm"></i></div>
+        <div style="flex:1;min-width:0;">
+          <div class="row between"><span class="h3" style="font-size:14px;">手作阿周 关注了你</span><span class="ter">1 小时前</span></div>
+          <div class="sec mt1" style="font-size:13px;">快去 TA 的主页看看吧</div>
+        </div>
+      </div>
+      <span class="badge-dot" style="position:absolute;top:16px;right:16px;"></span>
+    </div>
+    <div class="divider"></div>
+    <div style="position:relative;padding:14px 0;">
+      <div class="row gap3">
+        <div class="iconbox soft"><i class="ic bmk ic-sm"></i></div>
+        <div style="flex:1;min-width:0;">
+          <div class="row between"><span class="h3" style="font-size:14px;">柠檬精 收藏了你的作品</span><span class="ter">2 小时前</span></div>
+          <div class="sec mt1" style="font-size:13px;">「渐变拼豆教程」被收藏</div>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+  <div class="section-title"><span class="h2">系统消息</span></div>
+  <div class="card card-pad" style="padding:4px 16px;">
+    <div style="position:relative;padding:14px 0;">
+      <div class="row gap3">
+        <div class="iconbox soft"><i class="ic gft ic-sm"></i></div>
+        <div style="flex:1;min-width:0;">
+          <div class="row between"><span class="h3" style="font-size:14px;">会员权益已到账</span><span class="ter">昨天</span></div>
+          <div class="sec mt1" style="font-size:13px;">您的 8 月会员优惠券已发放至卡包</div>
+        </div>
+      </div>
+      
+    </div>
+    <div class="divider"></div>
+    <div style="position:relative;padding:14px 0;">
+      <div class="row gap3">
+        <div class="iconbox soft"><i class="ic clk ic-sm"></i></div>
+        <div style="flex:1;min-width:0;">
+          <div class="row between"><span class="h3" style="font-size:14px;">预约即将开始</span><span class="ter">昨天</span></div>
+          <div class="sec mt1" style="font-size:13px;">明天 15:00 拾光手作馆体验即将开始</div>
+        </div>
+      </div>
+      
+    </div>
+    <div class="divider"></div>
+    <div style="position:relative;padding:14px 0;">
+      <div class="row gap3">
+        <div class="iconbox soft"><i class="ic dmd ic-sm"></i></div>
+        <div style="flex:1;min-width:0;">
+          <div class="row between"><span class="h3" style="font-size:14px;">作品审核通过</span><span class="ter">08-04</span></div>
+          <div class="sec mt1" style="font-size:13px;">您的作品已通过审核并展示在社区</div>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+</div>
+<div class="screen" id="30" style="left:1720px;top:4500px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">设置</div></div>
+<div class="content">
+  <div class="h2 mb2">账号与安全</div>
+  <div class="card card-pad" style="padding:4px 16px;">
+    <div class="row between" style="padding:14px 0;">
+      <div><div class="h3" style="font-size:14px;">手机号</div><div class="ter" style="font-size:11px;margin-top:2px;">138****2211 已绑定</div></div>
+      
+    </div>
+    <div class="divider"></div>
+    <div class="row between" style="padding:14px 0;">
+      <div><div class="h3" style="font-size:14px;">用户名</div><div class="ter" style="font-size:11px;margin-top:2px;">xiaodouzi · 已设置</div></div>
+      
+    </div>
+    <div class="divider"></div>
+    <div class="row between" style="padding:14px 0;">
+      <div><div class="h3" style="font-size:14px;">登录密码</div><div class="ter" style="font-size:11px;margin-top:2px;">已设置 · 可用密码登录</div></div>
+      <span class="cr" style="color:var(--ter);"></span>
+    </div>
+    <div class="divider"></div>
+    <div class="row between" style="padding:14px 0;">
+      <div><div class="h3" style="font-size:14px;">登录设备</div><div class="ter" style="font-size:11px;margin-top:2px;">2 台设备在线</div></div>
+      
+    </div>
+  </div>
+  <div class="h2 mt6 mb2">通用</div>
+  <div class="card card-pad" style="padding:4px 16px;">
+    <div class="row between" style="padding:14px 0;">
+      <div><div class="h3" style="font-size:14px;">消息通知</div><div class="ter" style="font-size:11px;margin-top:2px;">互动、系统消息提醒</div></div>
+      <span class="switch"></span>
+    </div>
+    <div class="divider"></div>
+    <div class="row between" style="padding:14px 0;">
+      <div><div class="h3" style="font-size:14px;">深色模式</div><div class="ter" style="font-size:11px;margin-top:2px;">跟随系统</div></div>
+      <span class="switch off"></span>
+    </div>
+    <div class="divider"></div>
+    <div class="row between" style="padding:14px 0;">
+      <div><div class="h3" style="font-size:14px;">隐私设置</div><div class="ter" style="font-size:11px;margin-top:2px;">谁可以评论我的作品</div></div>
+      <span class="cr" style="color:var(--ter);"></span>
+    </div>
+  </div>
+  <div class="h2 mt6 mb2">关于</div>
+  <div class="card card-pad" style="padding:4px 16px;">
+    <div class="row between" style="padding:14px 0;">
+      <div><div class="h3" style="font-size:14px;">版本</div><div class="ter" style="font-size:11px;margin-top:2px;">手作星球 v1.0.0</div></div>
+      
+    </div>
+    <div class="divider"></div>
+    <div class="row between" style="padding:14px 0;">
+      <div><div class="h3" style="font-size:14px;">用户协议</div></div>
+      <span class="cr" style="color:var(--ter);"></span>
+    </div>
+    <div class="divider"></div>
+    <div class="row between" style="padding:14px 0;">
+      <div><div class="h3" style="font-size:14px;">隐私政策</div></div>
+      <span class="cr" style="color:var(--ter);"></span>
+    </div>
+  </div>
+  <div class="btn btn-ghost btn-block mt6" style="color:var(--danger);">退出登录</div>
+</div>
+</div>
+<div class="screen" id="31" style="left:0px;top:5400px;">
+<div class="status"><span class="time">9:41</span><div class="sicons"><div class="sig"><i></i><i></i><i></i><i></i></div><div class="wifi"></div><div class="batt"></div></div></div>
+<div class="nav"><div class="back"><i class="ic bk "></i></div><div class="title">小豆子</div></div>
+<div class="content">
+  <div class="seg mb4"><span class="item">粉丝 1.2k</span><span class="item on">关注 86</span></div>
+  <div class="card card-pad" style="padding:4px 16px;">
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="ring"><div class="inner"><div class="av g2">手</div></div></div>
+      <div style="flex:1;min-width:0;"><div class="h3" style="font-size:14px;">手作阿周</div><div class="ter ellipsis">拼豆教程创作者 · 上海</div></div>
+      <div class="btn btn-sm black">已关注</div>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="ring"><div class="inner"><div class="av g3">果</div></div></div>
+      <div style="flex:1;min-width:0;"><div class="h3" style="font-size:14px;">果冻</div><div class="ter ellipsis">奶油胶爱好者</div></div>
+      <div class='btn btn-sm ghost'>互相关注</div>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="ring"><div class="inner"><div class="av g4">柠</div></div></div>
+      <div style="flex:1;min-width:0;"><div class="h3" style="font-size:14px;">柠檬精</div><div class="ter ellipsis">手工萌新 · 求带</div></div>
+      <div class='btn btn-sm black'>已关注</div>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="ring"><div class="inner"><div class="av g5">新</div></div></div>
+      <div style="flex:1;min-width:0;"><div class="h3" style="font-size:14px;">新手村村民</div><div class="ter ellipsis">每天一个手作小技巧</div></div>
+      <div class='btn btn-sm black'>已关注</div>
+    </div>
+    <div class="divider"></div>
+    <div class="row gap3" style="padding:12px 0;">
+      <div class="ring"><div class="inner"><div class="av g6">拼</div></div></div>
+      <div style="flex:1;min-width:0;"><div class="h3" style="font-size:14px;">拼豆研究所</div><div class="ter ellipsis">官方号 · 分享新品</div></div>
+      <div class='btn btn-sm outline'>关注</div>
+    </div>
+  </div>
+</div>
+</div>
+</body></html>

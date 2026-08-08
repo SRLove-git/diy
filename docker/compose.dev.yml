@@ -1,0 +1,37 @@
+# 开发环境：仅基础设施容器化，Node 服务在宿主机直接运行（热更新）
+# 用法：docker compose -f docker/compose.dev.yml up -d
+# 注意：聊天 WebSocket 与 HTTP 共用宿主 server 的 3000 端口（path /ws），
+#       该端口由宿主 Node 进程直接监听，无需在 compose 中额外暴露；
+#       在线状态依赖 Redis（chat:online:*），已包含在本编排中。
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: diy-mysql-dev
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: diy
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-dev-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: diy-redis-dev
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "6379:6379"
+    # 开启 AOF 持久化：重启/重建容器不丢失会话数据（refresh token、验证码等）
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-dev-data:/data
+
+volumes:
+  mysql-dev-data:
+  redis-dev-data:

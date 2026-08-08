@@ -1,0 +1,34 @@
+# ===== Node =====
+node_modules/
+dist/
+*.log
+.env
+.env.local
+.env.production
+
+# ===== Flutter =====
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/ios/Pods/
+**/ios/.symlinks/
+**/.cocoapods/
+**/android/.gradle/
+**/android/local.properties
+
+# ===== IDE / 系统 =====
+.idea/
+.vscode/
+.DS_Store
+*.iml
+__pycache__/
+*.pyc
+
+# ===== Docker =====
+docker/data/
+
+# ===== 运行期数据 =====
+# 聊天图片等用户上传文件（生产以 Docker 卷挂载，不入库）
+server/uploads/
+

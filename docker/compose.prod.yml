@@ -1,0 +1,87 @@
+# 生产环境：全链路容器化（MySQL + Redis + server + admin）
+# 用法：docker compose -f docker/compose.prod.yml up -d --build
+# 注意：正式部署时以环境变量/密钥管理注入 DB 密码与 JWT_SECRET
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: diy-mysql-prod
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-change-me}
+      MYSQL_DATABASE: diy
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-prod-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD:-change-me}"]
+      interval: 10s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: diy-redis-prod
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    # 开启 AOF 持久化：避免容器重启/故障切换导致所有用户 refresh token 失效而掉线重登
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-prod-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 10
+
+  server:
+    build:
+      context: ../server
+    container_name: diy-server-prod
+    restart: unless-stopped
+    # 多实例扩容：拉起多个副本（docker compose up --scale server=2）并让 nginx/网关负载均衡即可。
+    # 聊天跨实例转发已由 Redis pub/sub（chat:events）承载，无需改代码或额外端口。
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      TZ: Asia/Shanghai
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-change-me}
+      DB_NAME: diy
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-change-me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me}
+      # 首次部署置 true 由 TypeORM 自动建表，建表完成后改回 false 重启
+      DB_SYNC: ${DB_SYNC:-false}
+      # 聊天图片上传目录（挂载持久卷）
+      UPLOAD_DIR: /app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      # HTTP /api + REST 聊天 + 聊天图片静态资源
+      - "3000:3000"
+      # 聊天 WebSocket 与 HTTP 共用 3000 端口（path /ws），无需额外端口；
+      # 经 admin 反向代理时 nginx.conf 已配置 Upgrade 头
+    volumes:
+      - uploads-prod-data:/app/uploads
+
+  admin:
+    build:
+      context: ../admin
+    container_name: diy-admin-prod
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    depends_on:
+      - server
+    ports:
+      - "8080:80"
+
+volumes:
+  mysql-prod-data:
+  redis-prod-data:
+  uploads-prod-data:
