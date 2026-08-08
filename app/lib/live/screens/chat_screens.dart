@@ -77,7 +77,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
       bottomBar: const LiveTabBar(current: 3),
       child: Column(
         children: [
-          // 标题「聊天」居中对齐
+          // 标题「聊天」居中对齐，右侧保留添加好友入口
           SizedBox(
             width: double.infinity,
             height: 50,
@@ -90,6 +90,17 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
                     color: LiveColors.textPrimary,
+                  ),
+                ),
+                Positioned(
+                  right: 4,
+                  child: IconButton(
+                    icon: const Icon(Icons.person_add_alt, color: LiveColors.textPrimary),
+                    onPressed: () => LiveRoutes.push(
+                      context,
+                      const AddFriendScreen(),
+                      resizeToAvoidBottomInset: false,
+                    ),
                   ),
                 ),
               ],
@@ -1306,6 +1317,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
   final _phoneCtrl = TextEditingController();
   List<User> _results = [];
   List<FollowUser> _following = [];
+  final Set<int> _selectedGroup = {};
   String _tab = 'phone'; // phone / following
   bool _searching = false;
 
@@ -1358,67 +1370,14 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
   }
 
   Future<void> _createGroup() async {
+    if (_selectedGroup.isEmpty) {
+      showLiveSnack(context, '请至少选择 1 位好友');
+      return;
+    }
     try {
-      final list = await FollowService.instance.following();
-      if (!mounted) return;
-      if (list.isEmpty) {
-        showLiveSnack(context, '暂无可邀请的好友');
-        return;
-      }
-      final selected = <int>{};
-      final name = await showDialog<String>(
-        context: context,
-        builder: (_) => StatefulBuilder(
-          builder: (context, setState) => AlertDialog(
-            title: const Text('发起群聊'),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('勾选好友', style: TextStyle(fontSize: 13, color: LiveColors.textSecondary)),
-                  const SizedBox(height: 6),
-                  Flexible(
-                    child: ListView(
-                      shrinkWrap: true,
-                      children: list.map((u) {
-                        return CheckboxListTile(
-                          value: selected.contains(u.id),
-                          onChanged: (v) => setState(() {
-                            if (v == true) {
-                              selected.add(u.id);
-                            } else {
-                              selected.remove(u.id);
-                            }
-                          }),
-                          title: Text(u.nickname, style: const TextStyle(fontSize: 14)),
-                          dense: true,
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-              TextButton(
-                onPressed: () => Navigator.pop(context, '群聊'),
-                child: const Text('创建'),
-              ),
-            ],
-          ),
-        ),
-      );
-      if (name == null || !mounted) return;
-      if (selected.isEmpty) {
-        showLiveSnack(context, '请至少选择 1 位好友');
-        return;
-      }
       final group = await GroupService.instance.create(
-        '手作群聊（${selected.length + 1} 人）',
-        selected.toList(),
+        '手作群聊（${_selectedGroup.length + 1} 人）',
+        _selectedGroup.toList(),
       );
       if (!mounted) return;
       LiveRoutes.push(
@@ -1438,8 +1397,9 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
       child: Column(
         children: [
           const LiveAppBar(title: '添加好友'),
+          // 顶部分段器：手机号搜索 / 我的关注（对齐设计稿 25-添加好友）
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 6, 18, 8),
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 6),
             child: Container(
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
@@ -1455,7 +1415,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                     Expanded(
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
-                        height: 36,
+                        height: 38,
                         margin: const EdgeInsets.symmetric(horizontal: 1),
                         decoration: BoxDecoration(
                           color: _tab == t.$1 ? Colors.white : Colors.transparent,
@@ -1480,8 +1440,8 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                             child: Text(
                               t.$2,
                               style: TextStyle(
-                                fontSize: 12.6,
-                                fontWeight: _tab == t.$1 ? FontWeight.w700 : FontWeight.w400,
+                                fontSize: 13,
+                                fontWeight: _tab == t.$1 ? FontWeight.w600 : FontWeight.w400,
                                 color: _tab == t.$1
                                     ? LiveColors.textPrimary
                                     : LiveColors.textSecondary,
@@ -1495,102 +1455,175 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
               ),
             ),
           ),
-          if (_tab == 'phone')
+          // 手机号搜索 Tab：搜索框 + 结果卡片
+          if (_tab == 'phone') ...[
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 4, 18, 8),
+              padding: const EdgeInsets.fromLTRB(18, 4, 18, 10),
+              child: Container(
+                height: 59,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: LiveColors.inputBg,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.search, size: 20, color: LiveColors.textTertiary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _phoneCtrl,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
+                          hintText: '输入对方手机号',
+                          hintStyle: TextStyle(fontSize: 15, color: LiveColors.textTertiary),
+                          border: InputBorder.none,
+                          isDense: true,
+                        ),
+                        style: const TextStyle(fontSize: 15),
+                        onSubmitted: (_) => _search(),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: _searching ? null : _search,
+                      child: _searching
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: LiveColors.brand),
+                            )
+                          : const Text(
+                              '搜索',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: LiveColors.textPrimary,
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              child: _results.isEmpty
+                  ? const EmptyView(text: '输入手机号搜索好友', icon: Icons.person_search_outlined)
+                  : ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: LiveColors.bg,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            children: [
+                              for (var i = 0; i < _results.length; i++) ...[
+                                _SearchResultRow(
+                                  user: _results[i],
+                                  onTap: () => _openChat(_results[i]),
+                                ),
+                                if (i != _results.length - 1)
+                                  const Divider(
+                                    height: 1,
+                                    indent: 62,
+                                    color: LiveColors.divider,
+                                  ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+          // 发起群聊区块（对齐设计稿：标题 + 勾选好友列表 + 创建按钮）
+          if (_tab == 'following') ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 6, 18, 4),
               child: Row(
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _phoneCtrl,
-                      keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
-                        hintText: '输入对方手机号',
-                        prefixIcon: Icon(Icons.search, color: LiveColors.textTertiary),
-                      ),
-                      onSubmitted: (_) => _search(),
+                  const Text(
+                    '发起群聊',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: LiveColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  PrimaryButton(
-                    label: '搜索',
-                    height: 48,
-                    borderRadius: 12,
-                    loading: _searching,
-                    onTap: _searching ? null : _search,
+                  const Spacer(),
+                  Text(
+                    '勾选好友 ›',
+                    style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
                   ),
                 ],
               ),
             ),
-          Expanded(
-            child: _tab == 'phone'
-                ? (_results.isEmpty
-                    ? const EmptyView(text: '输入手机号搜索好友', icon: Icons.person_search_outlined)
-                    : ListView.separated(
-                        padding: const EdgeInsets.all(18),
-                        itemCount: _results.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1, color: LiveColors.divider),
-                        itemBuilder: (_, i) {
-                          final u = _results[i];
-                          return _FriendRow(
-                            name: u.displayName,
-                            subtitle: u.phone,
-                            avatar: u.avatar,
-                            onTap: () => _openChat(u),
-                          );
-                        },
-                      ))
-                : _following.isEmpty
-                    ? const EmptyView(text: '还没有关注任何人', icon: Icons.person_outline)
-                    : ListView.separated(
-                        padding: const EdgeInsets.all(18),
-                        itemCount: _following.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1, color: LiveColors.divider),
-                        itemBuilder: (_, i) {
-                          final u = _following[i];
-                          return _FriendRow(
-                            name: u.nickname,
-                            subtitle: '已关注',
-                            avatar: u.avatar,
-                            onTap: () => _openChat(
-                              User(
-                                id: u.id,
-                                phone: '',
-                                nickname: u.nickname,
-                                avatar: u.avatar,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 6, 18, 12),
-              child: PrimaryButton(
-                label: '发起群聊 · 勾选好友',
-                onTap: _createGroup,
+            Expanded(
+              child: _following.isEmpty
+                  ? const EmptyView(text: '还没有关注任何人', icon: Icons.person_outline)
+                  : ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: LiveColors.bg,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            children: [
+                              for (var i = 0; i < _following.length; i++) ...[
+                                _GroupMemberRow(
+                                  user: _following[i],
+                                  selected: _selectedGroup.contains(_following[i].id),
+                                  onTap: () {
+                                    setState(() {
+                                      if (!_selectedGroup.add(_following[i].id)) {
+                                        _selectedGroup.remove(_following[i].id);
+                                      }
+                                    });
+                                  },
+                                ),
+                                if (i != _following.length - 1)
+                                  const Divider(
+                                    height: 1,
+                                    indent: 62,
+                                    color: LiveColors.divider,
+                                  ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+          // 底部创建群聊按钮（对齐设计稿：黑底白字圆角 16）
+          if (_tab == 'following')
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 10, 18, 12),
+                child: PrimaryButton(
+                  label: '创建群聊（${_selectedGroup.length + 1} 人）',
+                  color: LiveColors.brand,
+                  textColor: Colors.white,
+                  borderRadius: 16,
+                  onTap: _createGroup,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
   }
 }
 
-class _FriendRow extends StatelessWidget {
-  const _FriendRow({
-    required this.name,
-    required this.subtitle,
-    required this.avatar,
-    required this.onTap,
-  });
+/// 手机号搜索结果行（对齐设计稿：头像 + 名称/副标题 + 「添加 / 已添加」按钮）。
+class _SearchResultRow extends StatelessWidget {
+  const _SearchResultRow({required this.user, required this.onTap});
 
-  final String name;
-  final String subtitle;
-  final String avatar;
+  final User user;
   final VoidCallback onTap;
 
   @override
@@ -1598,30 +1631,124 @@ class _FriendRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [
-            Avatar(url: avatar, name: name, size: 46),
+            Avatar(url: user.avatar, name: user.displayName, size: 45),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: LiveColors.textPrimary)),
-                  Text(subtitle,
-                      style: const TextStyle(fontSize: 12, color: LiveColors.textTertiary)),
+                  Text(
+                    user.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: LiveColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${user.phone} · ${user.location.isEmpty ? '未填地区' : user.location}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: LiveColors.brand,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Text(
+                '添加',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 发起群聊勾选好友行（对齐设计稿：头像 + 名称/已选状态 + 单选圈）。
+class _GroupMemberRow extends StatelessWidget {
+  const _GroupMemberRow({
+    required this.user,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final FollowUser user;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Avatar(url: user.avatar, name: user.nickname, size: 45),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.nickname,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: LiveColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    selected ? '已选择' : '未选择',
+                    style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
+                  ),
                 ],
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              width: 22,
+              height: 22,
               decoration: BoxDecoration(
-                color: LiveColors.brandLight,
-                borderRadius: BorderRadius.circular(10),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: selected ? LiveColors.brand : LiveColors.textTertiary,
+                  width: 1.5,
+                ),
               ),
-              child: const Text('发消息',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: LiveColors.brand)),
+              child: selected
+                  ? Center(
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: LiveColors.brand,
+                        ),
+                      ),
+                    )
+                  : null,
             ),
           ],
         ),
