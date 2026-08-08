@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide Page;
+import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 
@@ -1663,20 +1664,103 @@ class CaptureScreen extends StatefulWidget {
 }
 
 class _CaptureScreenState extends State<CaptureScreen> {
+  CameraController? _controller;
+  List<CameraDescription> _cameras = [];
+  int _cameraIndex = 0;
+  bool _initializing = true;
+  String? _error;
   bool _taking = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _initCamera();
+  }
+
+  Future<void> _initCamera() async {
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _error = '未检测到相机';
+            _initializing = false;
+          });
+        }
+        return;
+      }
+      _cameras = cameras;
+      final controller = CameraController(
+        cameras[0],
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+      await controller.initialize();
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+      setState(() {
+        _controller = controller;
+        _initializing = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = '相机初始化失败';
+          _initializing = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _switchCamera() async {
+    if (_cameras.length < 2 || _controller == null || _taking) return;
+    final next = (_cameraIndex + 1) % _cameras.length;
+    final old = _controller;
+    final controller = CameraController(
+      _cameras[next],
+      ResolutionPreset.high,
+      enableAudio: false,
+    );
+    try {
+      await controller.initialize();
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+      setState(() {
+        _controller = controller;
+        _cameraIndex = next;
+      });
+      await old?.dispose();
+    } catch (e) {
+      await controller.dispose();
+      if (mounted) showLiveSnack(context, '切换相机失败');
+    }
+  }
+
+  Future<void> _toggleFlash() async {
+    final c = _controller;
+    if (c == null || !c.value.isInitialized) return;
+    final next =
+        c.value.flashMode == FlashMode.off ? FlashMode.always : FlashMode.off;
+    try {
+      await c.setFlashMode(next);
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
   Future<void> _takePhoto() async {
+    final c = _controller;
+    if (c == null || !c.value.isInitialized || _taking) return;
     setState(() => _taking = true);
     try {
-      final picked = await ImagePicker().pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1280,
-      );
-      if (picked == null) return;
-      final bytes = await picked.readAsBytes();
+      final file = await c.takePicture();
+      final bytes = await file.readAsBytes();
       final url = await UploadService.instance.uploadImage(
         bytes,
-        picked.name.isEmpty ? 'capture_${DateTime.now().millisecondsSinceEpoch}.jpg' : picked.name,
+        file.name.isEmpty ? 'capture_${DateTime.now().millisecondsSinceEpoch}.jpg' : file.name,
         folder: 'post',
       );
       if (mounted) {
@@ -1692,6 +1776,12 @@ class _CaptureScreenState extends State<CaptureScreen> {
   }
 
   @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return LivePage(
       fullBleed: true,
@@ -1699,111 +1789,238 @@ class _CaptureScreenState extends State<CaptureScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // 顶部工具
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // 相机实时预览（进入页面即为相机画面，无占位页）
+          if (_controller != null && _controller!.value.isInitialized)
+            Positioned.fill(child: CameraPreview(_controller!))
+          else
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF23232B), Color(0xFF141418)],
+                ),
+              ),
+            ),
+          // 初始化中 / 失败提示
+          if (_initializing)
+            const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            )
+          else if (_error != null)
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (final t in ['美化', '特效', '倒计时', '滤镜', '直播'])
-                    InkWell(
-                      onTap: () => showLiveSnack(context, '$t 敬请期待'),
-                      child: Text(
-                        t,
-                        style: const TextStyle(fontSize: 13, color: Colors.white70),
-                      ),
-                    ),
+                  const Icon(Icons.no_photography_outlined,
+                      size: 48, color: Colors.white54),
+                  const SizedBox(height: 10),
+                  Text(
+                    _error!,
+                    style: const TextStyle(fontSize: 13, color: Colors.white70),
+                  ),
+                  const SizedBox(height: 14),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _initializing = true;
+                        _error = null;
+                      });
+                      _initCamera();
+                    },
+                    child: const Text('重试',
+                        style: TextStyle(color: Colors.white)),
+                  ),
                 ],
               ),
             ),
+          // 左上角：关闭按钮（悬浮，不占整行）
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 0, 0),
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: _NavIcon(
+                  Icons.close,
+                  onTap: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ),
           ),
-          // 取景占位
-          Center(
+          // 右侧中间：闪光灯 / 翻转 / 更多（竖排悬浮）
+          Positioned(
+            right: 14,
+            top: 200,
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.photo_camera_outlined, size: 64, color: Colors.white38),
-                const SizedBox(height: 10),
-                const Text(
-                  '相机预览',
-                  style: TextStyle(fontSize: 13, color: Colors.white54),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Text('视频', style: TextStyle(fontSize: 12, color: Colors.black)),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text('拍照', style: TextStyle(fontSize: 12, color: Colors.white70)),
-                  ],
-                ),
+                _NavIcon(Icons.flash_on, onTap: _toggleFlash),
+                const SizedBox(height: 14),
+                _NavIcon(Icons.cameraswitch, onTap: _switchCamera),
+                const SizedBox(height: 14),
+                const _NavIcon(Icons.more_horiz),
               ],
             ),
           ),
-          // 底部：最近 / 选音乐 + 快门
+          // 底部：直播/分段/视频/拍照 Tab + 最近 / 快门 / 选音乐
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 18),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    InkWell(
-                      onTap: () => LiveRoutes.push(context, const MusicPickerScreen()),
-                      child: const Column(
-                        children: [
-                          Icon(Icons.music_note, size: 20, color: Colors.white),
-                          SizedBox(height: 2),
-                          Text('选音乐', style: TextStyle(fontSize: 10, color: Colors.white70)),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Colors.black.withOpacity(0.55)],
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
+                  child: Column(
+                    children: [
+                      // 模式 Tab：视频(选中) / 拍照（居中对齐）
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          _ModeTab('视频', selected: true),
+                          SizedBox(width: 8),
+                          _ModeTab('拍照'),
                         ],
                       ),
-                    ),
-                    const Spacer(),
-                    InkWell(
-                      onTap: _taking ? null : _takePhoto,
-                      child: Container(
-                        width: 68,
-                        height: 68,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                        ),
-                        child: _taking
-                            ? const Padding(
-                                padding: EdgeInsets.all(20),
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : null,
+                      const SizedBox(height: 14),
+                      // 最近 / 快门 / 选音乐
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const _CaptureThumb(label: '最近'),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: _taking ? null : _takePhoto,
+                            child: Container(
+                              width: 82,
+                              height: 82,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 3),
+                              ),
+                              child: _taking
+                                  ? const CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
+                                  : Container(
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          const Spacer(),
+                          InkWell(
+                            onTap: () => LiveRoutes.push(context, const MusicPickerScreen()),
+                            child: const _CaptureThumb(label: '选音乐', icon: Icons.music_note),
+                          ),
+                        ],
                       ),
-                    ),
-                    const Spacer(),
-                    const Text(
-                      '最近',
-                      style: TextStyle(fontSize: 12, color: Colors.white70),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 悬浮小图标（关闭 / 闪光灯 / 翻转 / 更多）。
+class _NavIcon extends StatelessWidget {
+  const _NavIcon(this.icon, {this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withOpacity(0.45),
+      shape: CircleBorder(
+        side: BorderSide(color: Colors.white.withOpacity(0.5), width: 1),
+      ),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(9),
+          child: Icon(icon, color: Colors.white, size: 22),
+        ),
+      ),
+    );
+  }
+}
+
+/// 底部模式 Tab（视频 / 拍照），选中项加大字重并带下划线。
+class _ModeTab extends StatelessWidget {
+  const _ModeTab(this.label, {this.selected = false});
+
+  final String label;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 15),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: selected ? 15 : 13,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            width: 20,
+            height: 3,
+            decoration: BoxDecoration(
+              color: selected ? Colors.white : Colors.transparent,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 底部左侧「最近」/ 右侧「选音乐」缩略入口。
+class _CaptureThumb extends StatelessWidget {
+  const _CaptureThumb({required this.label, this.icon = Icons.image_outlined});
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.14),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: Colors.white54, size: 22),
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontSize: 9, color: Colors.white70)),
+      ],
     );
   }
 }
