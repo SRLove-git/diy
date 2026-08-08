@@ -2268,6 +2268,8 @@ class MusicPickerScreen extends StatefulWidget {
 
 class _MusicPickerScreenState extends State<MusicPickerScreen> {
   List<Music> _list = [];
+  Music? _selected;
+  final _searchCtrl = TextEditingController();
   bool _loading = true;
   String? _error;
 
@@ -2293,6 +2295,12 @@ class _MusicPickerScreenState extends State<MusicPickerScreen> {
   }
 
   @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return LivePage(
       child: Column(
@@ -2305,55 +2313,326 @@ class _MusicPickerScreenState extends State<MusicPickerScreen> {
                     ? ErrorView(message: _error!, onRetry: _load)
                     : _list.isEmpty
                         ? const EmptyView(text: '曲库暂无音乐')
-                        : ListView.separated(
-                            padding: const EdgeInsets.all(18),
-                            itemCount: _list.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1, color: LiveColors.divider),
-                            itemBuilder: (_, i) {
-                              final m = _list[i];
-                              return InkWell(
-                                onTap: () => Navigator.of(context).pop(m),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  child: Row(
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: SizedBox(
-                                          width: 44,
-                                          height: 44,
-                                          child: NetImage(url: m.cover),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(m.title,
-                                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: LiveColors.textPrimary)),
-                                            Text('${m.artist}${m.duration > 0 ? ' · ${fmtDuration(m.duration)}' : ''}',
-                                                style: const TextStyle(fontSize: 12, color: LiveColors.textTertiary)),
-                                          ],
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: LiveColors.brandLight,
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: const Text('使用',
-                                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: LiveColors.brand)),
-                                      ),
-                                    ],
-                                  ),
+                        : ListView(
+                            padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
+                            children: [
+                              // 搜索框（对齐设计稿 div.field）
+                              Container(
+                                height: 59,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: LiveColors.inputBg,
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
-                              );
-                            },
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.search, size: 20, color: LiveColors.textTertiary),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _searchCtrl,
+                                        decoration: const InputDecoration(
+                                          hintText: '搜索歌名 / 歌手',
+                                          hintStyle: TextStyle(fontSize: 15, color: LiveColors.textTertiary),
+                                          border: InputBorder.none,
+                                          isDense: true,
+                                        ),
+                                        style: const TextStyle(fontSize: 15),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              // 热门推荐
+                              const Text(
+                                '热门推荐',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: LiveColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              _MusicCard(
+                                musics: _list.take(3).toList(),
+                                hot: true,
+                                selected: _selected,
+                                onSelect: (m) => setState(() => _selected = m),
+                                onUse: (m) => Navigator.of(context).pop(m),
+                              ),
+                              const SizedBox(height: 16),
+                              // 全部曲库
+                              Row(
+                                children: [
+                                  const Text(
+                                    '全部曲库',
+                                    style: TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w700,
+                                      color: LiveColors.textPrimary,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    '共 ${_list.length} 首',
+                                    style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              _MusicCard(
+                                musics: _list.skip(3).toList(),
+                                hot: false,
+                                selected: _selected,
+                                onSelect: (m) => setState(() => _selected = m),
+                                onUse: (m) => Navigator.of(context).pop(m),
+                              ),
+                            ],
                           ),
           ),
+          // 底部使用配乐栏（对齐设计稿）
+          if (_selected != null)
+            Container(
+              height: 81,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(top: BorderSide(color: LiveColors.divider)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.music_note, size: 24, color: LiveColors.textPrimary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _selected!.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: LiveColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _selected!.artist,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => Navigator.of(context).pop(_selected),
+                    borderRadius: BorderRadius.circular(18),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: LiveColors.brand,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: const Text(
+                        '使用配乐',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
+      ),
+    );
+  }
+}
+
+/// 音乐卡片：白底圆角 16，内含多行音乐（对齐设计稿 div.card card-pad）。
+class _MusicCard extends StatelessWidget {
+  const _MusicCard({
+    required this.musics,
+    required this.hot,
+    required this.selected,
+    required this.onSelect,
+    required this.onUse,
+  });
+
+  final List<Music> musics;
+  final bool hot;
+  final Music? selected;
+  final ValueChanged<Music> onSelect;
+  final ValueChanged<Music> onUse;
+
+  @override
+  Widget build(BuildContext context) {
+    if (musics.isEmpty) {
+      return Container(
+        height: 120,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: LiveColors.card,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Text('暂无音乐', style: TextStyle(fontSize: 13, color: LiveColors.textSecondary)),
+      );
+    }
+    return Container(
+      decoration: BoxDecoration(
+        color: LiveColors.bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: LiveColors.divider),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < musics.length; i++) ...[
+            _MusicRow(
+              music: musics[i],
+              hot: hot,
+              selected: selected?.id == musics[i].id,
+              onTap: () => onSelect(musics[i]),
+              onUse: () => onUse(musics[i]),
+            ),
+            if (i != musics.length - 1)
+              const Divider(height: 1, indent: 62, color: LiveColors.divider),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 单行音乐：渐变头像 + 歌名/歌手 + 时长 + 「使用」按钮（对齐设计稿 div.row gap3）。
+class _MusicRow extends StatelessWidget {
+  const _MusicRow({
+    required this.music,
+    required this.hot,
+    required this.selected,
+    required this.onTap,
+    required this.onUse,
+  });
+
+  final Music music;
+  final bool hot;
+  final bool selected;
+  final VoidCallback onTap;
+  final VoidCallback onUse;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            // 渐变圆头像（36）
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF36D1DC), Color(0xFF5B86E5)],
+                ),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                music.title.isEmpty ? '乐' : music.title.characters.first,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          music.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: LiveColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      if (hot) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFEBEE),
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                          child: const Text(
+                            '热',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFE53935),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    music.artist,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (music.duration > 0)
+              Text(
+                fmtDuration(music.duration),
+                style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
+              ),
+            const SizedBox(width: 10),
+            GestureDetector(
+              onTap: onUse,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                decoration: BoxDecoration(
+                  color: selected ? LiveColors.brand : LiveColors.card,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Text(
+                  selected ? '已选' : '使用',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? Colors.white : LiveColors.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

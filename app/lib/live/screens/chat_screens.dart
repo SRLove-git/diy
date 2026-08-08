@@ -1991,7 +1991,6 @@ class ChatInfoScreen extends StatelessWidget {
 
   Future<void> _deleteConversation(BuildContext context) async {
     final nav = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     try {
       await ChatService.instance.deleteConversation(conversationId);
       if (context.mounted) {
@@ -1999,7 +1998,7 @@ class ChatInfoScreen extends StatelessWidget {
         nav.pop();
         // 连续 pop 后等待下一帧再提示，避免 context 处于 deactivate 过程。
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          messenger.showSnackBar(const SnackBar(content: Text('会话已删除')));
+          showLiveSnack(context, '会话已删除');
         });
       }
     } on ApiException catch (e) {
