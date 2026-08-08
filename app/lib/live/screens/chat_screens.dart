@@ -305,7 +305,10 @@ class _ChatScreenState extends State<ChatScreen> {
   double? _noKeyboardHeight;
   final _inputCtrl = TextEditingController();
   final List<ChatMessage> _messages = [];
-  bool _loading = true;
+  // 初始为 false：initState 里的首次 _loadMessages 需要能正常进入，
+  // 否则 _loadMessages 开头的 `if (_loading) return;` 会拦截首次加载，
+  // 导致历史消息永不加载、退出重进后消息消失。
+  bool _loading = false;
   bool _sending = false;
   String? _error;
   int? _nextCursor;
