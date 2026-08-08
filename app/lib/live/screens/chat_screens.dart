@@ -57,6 +57,98 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
     }
   }
 
+  /// 长按会话项：弹出操作菜单（对齐 Pixso 42-会话-长按菜单）。
+  Future<void> _showConversationMenu(_ChatListItem item, Offset globalPos) async {
+    final overlaySize = MediaQuery.of(context).size;
+    const menuW = 199.0;
+    const menuH = 150.0;
+    double left = globalPos.dx;
+    if (left + menuW > overlaySize.width) {
+      left = overlaySize.width - menuW - 12;
+    }
+    double top = globalPos.dy;
+    if (top + menuH > overlaySize.height - 60) {
+      top = overlaySize.height - menuH - 60;
+    }
+
+    final convId = item.group?.id ?? item.conv?.id ?? 0;
+    final isGroup = item.group != null;
+    final action = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(left, top, overlaySize.width - left - menuW, 0),
+      items: const [
+        PopupMenuItem<String>(
+          value: 'pin',
+          height: 45,
+          child: Text('置顶聊天', style: TextStyle(fontSize: 13, color: LiveColors.textPrimary)),
+        ),
+        PopupMenuItem<String>(
+          value: 'unread',
+          height: 45,
+          child: Text('标为未读', style: TextStyle(fontSize: 13, color: LiveColors.textPrimary)),
+        ),
+        PopupMenuItem<String>(
+          value: 'delete',
+          height: 45,
+          child: Text('删除会话', style: TextStyle(fontSize: 13, color: LiveColors.danger)),
+        ),
+      ],
+      color: LiveColors.bg,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      elevation: 4,
+    );
+    if (action == null || !mounted) return;
+
+    switch (action) {
+      case 'pin':
+        try {
+          if (isGroup) {
+            showLiveSnack(context, '群聊暂不支持置顶');
+          } else {
+            await ChatService.instance.pinConversation(convId, true);
+            if (mounted) showLiveSnack(context, '已置顶');
+            _load();
+          }
+        } on ApiException catch (e) {
+          if (mounted) showLiveSnack(context, e.message);
+        }
+      case 'unread':
+        if (mounted) showLiveSnack(context, '标为未读功能敬请期待');
+      case 'delete':
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('删除会话', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            content: Text('删除后将清空与「${item.name}」的聊天记录，确定删除吗？'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('取消', style: TextStyle(color: LiveColors.textSecondary)),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('删除', style: TextStyle(color: LiveColors.danger)),
+              ),
+            ],
+          ),
+        );
+        if (ok != true || !mounted) return;
+        try {
+          if (isGroup) {
+            await GroupService.instance.dissolve(convId);
+          } else {
+            await ChatService.instance.deleteConversation(convId);
+          }
+          if (mounted) {
+            showLiveSnack(context, '已删除');
+            _load();
+          }
+        } on ApiException catch (e) {
+          if (mounted) showLiveSnack(context, e.message);
+        }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = <_ChatListItem>[
@@ -147,6 +239,8 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                               ),
                               itemBuilder: (_, i) => _ConversationTile(
                                 item: items[i],
+                                onLongPress: (pos) =>
+                                    _showConversationMenu(items[i], pos),
                                 onTap: () {
                                   final it = items[i];
                                   if (it.group != null) {
@@ -194,10 +288,15 @@ class _ChatListItem {
 }
 
 class _ConversationTile extends StatelessWidget {
-  const _ConversationTile({required this.item, required this.onTap});
+  const _ConversationTile({
+    required this.item,
+    required this.onTap,
+    required this.onLongPress,
+  });
 
   final _ChatListItem item;
   final VoidCallback onTap;
+  final void Function(Offset globalPosition) onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -206,12 +305,15 @@ class _ConversationTile extends StatelessWidget {
             ? item.group!.memberAvatars.first
             : '')
         : item.avatar;
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          children: [
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onLongPressStart: (details) => onLongPress(details.globalPosition),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            children: [
             Stack(
               children: [
                 Avatar(url: avatar, name: item.name, size: 50),
@@ -270,6 +372,7 @@ class _ConversationTile extends StatelessWidget {
               ],
             ),
           ],
+        ),
         ),
       ),
     );
@@ -424,9 +527,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _showMessageMenu(ChatMessage msg, Offset globalPos) async {
     // 长按消息弹出操作菜单前先收起键盘，避免键盘遮挡菜单。
     FocusScope.of(context).unfocus();
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
-    if (overlay == null) return;
-    final overlaySize = overlay.size;
+    final overlaySize = MediaQuery.of(context).size;
     const menuW = 170.0;
     const menuH = 310.0;
     // 菜单位置：优先显示在气泡右侧，右侧放不下则靠左
@@ -440,29 +541,37 @@ class _ChatScreenState extends State<ChatScreen> {
       top = overlaySize.height - menuH - 40;
     }
 
-    final action = await showGeneralDialog<String>(
+    final items = <PopupMenuEntry<String>>[
+      for (final (key, label) in const [
+        ('copy', '复制'),
+        ('forward', '转发'),
+        ('favorite', '收藏'),
+        ('recall', '撤回'),
+        ('delete', '删除'),
+        ('multi', '多选'),
+      ])
+        PopupMenuItem<String>(
+          value: key,
+          height: 48,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              color: key == 'delete'
+                  ? const Color(0xFFFF5A5A)
+                  : Colors.white,
+            ),
+          ),
+        ),
+    ];
+    final action = await showMenu<String>(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: '消息操作',
-      barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 120),
-      pageBuilder: (_, __, ___) => Stack(
-        children: [
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-            ),
-          ),
-          Positioned(
-            left: left,
-            top: top,
-            child: _MessageActionMenu(
-              isMine: msg.senderId == AuthStore.instance.userId,
-              onSelect: (action) => Navigator.of(context).pop(action),
-            ),
-          ),
-        ],
-      ),
+      position: RelativeRect.fromLTRB(left, top, overlaySize.width - left - menuW, 0),
+      items: items,
+      color: const Color(0xE6141416),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      elevation: 6,
+      shadowColor: Colors.black38,
     );
     if (action == null || !mounted) return;
 
@@ -860,6 +969,7 @@ class _Bubble extends StatelessWidget {
 
     return GestureDetector(
       // 长按消息气泡呼出操作菜单（复制/转发/收藏/撤回/删除/多选）
+      behavior: HitTestBehavior.opaque,
       onLongPressStart: (details) =>
           onLongPress(details.globalPosition),
       child: Padding(
@@ -942,67 +1052,6 @@ class _Bubble extends StatelessWidget {
 
 /// 长按消息气泡操作菜单（对齐 Pixso 36-聊天-长按气泡菜单）：
 /// 深色半透明圆角面板，包含 复制 / 转发 / 收藏 / 撤回 / 删除 / 多选。
-class _MessageActionMenu extends StatelessWidget {
-  const _MessageActionMenu({
-    required this.isMine,
-    required this.onSelect,
-  });
-
-  final bool isMine;
-  final ValueChanged<String> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    const items = [
-      ('copy', '复制'),
-      ('forward', '转发'),
-      ('favorite', '收藏'),
-      ('recall', '撤回'),
-      ('delete', '删除'),
-      ('multi', '多选'),
-    ];
-    // Material 提供 InkWell 所需的材质祖先（showGeneralDialog 弹出的
-    // 浮层上方没有 Scaffold，直接使用 Material 承载菜单）。
-    return SizedBox(
-      width: 170,
-      child: Material(
-        color: const Color(0xE6141416),
-        borderRadius: BorderRadius.circular(14),
-        elevation: 6,
-        shadowColor: Colors.black38,
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final (key, label) in items)
-                InkWell(
-                  onTap: () => onSelect(key),
-                  child: Container(
-                    width: double.infinity,
-                    height: 48,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: key == 'delete'
-                            ? const Color(0xFFFF5A5A)
-                            : Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class GroupSettingsScreen extends StatefulWidget {
   const GroupSettingsScreen({super.key, required this.groupId});
 
@@ -1844,9 +1893,9 @@ class _SearchResultRow extends StatelessWidget {
                 ),
               ),
             ),
-          ],
+            ],
+          ),
         ),
-      ),
     );
   }
 }
