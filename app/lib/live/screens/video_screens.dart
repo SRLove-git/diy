@@ -189,7 +189,11 @@ class _ReelsScreenState extends State<ReelsScreen> {
                                   const Spacer(),
                                   IconButton(
                                     icon: const Icon(Icons.search, color: Colors.white, size: 26),
-                                    onPressed: () => LiveRoutes.push(context, const VideoSearchScreen()),
+                                    onPressed: () => LiveRoutes.push(
+                                      context,
+                                      const VideoSearchScreen(),
+                                      resizeToAvoidBottomInset: false,
+                                    ),
                                   ),
                                   IconButton(
                                     icon: const Icon(Icons.videocam, color: Colors.white, size: 26),
@@ -2391,6 +2395,9 @@ class _VideoSearchScreenState extends State<VideoSearchScreen> {
   @override
   Widget build(BuildContext context) {
     return LivePage(
+      // 视频搜索页：键盘弹出时页面不压缩，键盘覆盖下半部分，
+      // 避免出现与登录页相同的上下分层问题。
+      resizeToAvoidBottomInset: false,
       child: Column(
         children: [
           Padding(
