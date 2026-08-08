@@ -21,6 +21,8 @@ import {
   MarkGroupReadDto,
   RenameGroupDto,
   SendGroupMessageDto,
+  SetGroupRoleDto,
+  TransferGroupDto,
 } from './group.dto';
 import { GroupsService } from './groups.service';
 
@@ -98,6 +100,40 @@ export class GroupsController {
     );
     await this.gateway.broadcastGroupEvent(id, memberIds);
     await this.gateway.broadcastGroupRemoved(id, [removedUserId], 'kicked');
+    return { ok: true };
+  }
+
+  /** 群主设置 / 取消管理员（admin / member） */
+  @Patch(':id/members/:userId/role')
+  async setRole(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() dto: SetGroupRoleDto,
+  ) {
+    const { memberIds } = await this.groups.setRole(
+      user.id,
+      id,
+      userId,
+      dto.role,
+    );
+    await this.gateway.broadcastGroupEvent(id, memberIds);
+    return { ok: true };
+  }
+
+  /** 群主转让 */
+  @Patch(':id/owner')
+  async transfer(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: TransferGroupDto,
+  ) {
+    const { memberIds } = await this.groups.transferOwner(
+      user.id,
+      id,
+      dto.newOwnerId,
+    );
+    await this.gateway.broadcastGroupEvent(id, memberIds);
     return { ok: true };
   }
 

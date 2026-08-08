@@ -68,11 +68,11 @@ export class GroupsService {
       this.groups.create({ name: name.trim(), ownerId }),
     );
     await this.members.save(
-      this.members.create({ groupId: group.id, userId: ownerId }),
+      this.members.create({ groupId: group.id, userId: ownerId, role: 'owner' }),
     );
     for (const uid of unique) {
       await this.members.save(
-        this.members.create({ groupId: group.id, userId: uid }),
+        this.members.create({ groupId: group.id, userId: uid, role: 'member' }),
       );
     }
     return this.formatGroup(group, ownerId, users.length + 1, []);
@@ -290,7 +290,9 @@ export class GroupsService {
       throw new BadRequestException('所选成员均已在群内');
     }
     for (const uid of fresh) {
-      await this.members.save(this.members.create({ groupId, userId: uid }));
+      await this.members.save(
+        this.members.create({ groupId, userId: uid, role: 'member' }),
+      );
     }
     const memberIdsAll = [...existing, ...fresh];
     return { addedCount: fresh.length, memberIds: memberIdsAll };
@@ -313,14 +315,26 @@ export class GroupsService {
     return { memberIds: await this.groupMemberIds(groupId) };
   }
 
-  /** 群主踢人 */
-  async kickMember(ownerId: number, groupId: number, targetUserId: number) {
-    await this.assertOwner(groupId, ownerId);
-    if (targetUserId === ownerId) {
+  /** 踢人：群主可移出任意成员，管理员可移出普通成员 */
+  async kickMember(actorId: number, groupId: number, targetUserId: number) {
+    await this.assertManager(groupId, actorId);
+    if (targetUserId === actorId) {
       throw new BadRequestException('不能移出自己');
     }
-    if (!(await this.isMember(groupId, targetUserId))) {
+    const target = await this.members.findOneBy({
+      groupId,
+      userId: targetUserId,
+    });
+    if (!target) {
       throw new BadRequestException('该用户不是群成员');
+    }
+    const group = await this.groups.findOneBy({ id: groupId });
+    if (!group) throw new NotFoundException('群聊不存在');
+    if (targetUserId === group.ownerId) {
+      throw new ForbiddenException('不能移出群主');
+    }
+    if (target.role === 'admin' && group.ownerId !== actorId) {
+      throw new ForbiddenException('不能移出其他管理员');
     }
     await this.members.delete({ groupId, userId: targetUserId });
     await this.reads.delete({ groupId, userId: targetUserId });
@@ -348,11 +362,62 @@ export class GroupsService {
     return { memberIds: await this.groupMemberIds(groupId) };
   }
 
+  /** 群主设置 / 取消管理员 */
+  async setRole(
+    ownerId: number,
+    groupId: number,
+    targetUserId: number,
+    role: 'admin' | 'member',
+  ) {
+    await this.assertOwner(groupId, ownerId);
+    if (targetUserId === ownerId) {
+      throw new BadRequestException('不能修改群主的角色');
+    }
+    const member = await this.members.findOneBy({ groupId, userId: targetUserId });
+    if (!member) {
+      throw new BadRequestException('该用户不是群成员');
+    }
+    if (member.role === 'owner') {
+      throw new BadRequestException('不能修改群主的角色');
+    }
+    member.role = role;
+    await this.members.save(member);
+    return { memberIds: await this.groupMemberIds(groupId) };
+  }
+
+  /** 群主转让：原群主转为普通成员 */
+  async transferOwner(ownerId: number, groupId: number, newOwnerId: number) {
+    await this.assertOwner(groupId, ownerId);
+    if (newOwnerId === ownerId) {
+      throw new BadRequestException('不能转让给自己');
+    }
+    const target = await this.members.findOneBy({ groupId, userId: newOwnerId });
+    if (!target) {
+      throw new BadRequestException('该用户不是群成员');
+    }
+    await this.groups.update(groupId, { ownerId: newOwnerId });
+    const current = await this.members.findOneBy({ groupId, userId: ownerId });
+    if (current) {
+      current.role = 'member';
+      await this.members.save(current);
+    }
+    target.role = 'owner';
+    await this.members.save(target);
+    return { memberIds: await this.groupMemberIds(groupId) };
+  }
+
   async listMembers(groupId: number, viewerId?: number) {
     if (viewerId != null) await this.assertMember(groupId, viewerId);
     const rows = await this.members.findBy({ groupId });
     const ids = rows.map((r) => r.userId);
     if (!ids.length) return [];
+    const group = await this.groups.findOneBy({ id: groupId });
+    const roleByUser = new Map<number, string>();
+    for (const r of rows) {
+      roleByUser.set(r.userId, r.role ?? 'member');
+    }
+    // 兼容历史数据：群主行即使未写入角色也标记为 owner
+    if (group) roleByUser.set(group.ownerId, 'owner');
     const users = await this.users.find({ where: { id: In(ids) } });
     const map = new Map(users.map((u) => [u.id, u]));
     return ids
@@ -363,7 +428,7 @@ export class GroupsService {
           id: u.id,
           nickname: u.nickname,
           avatar: u.avatar,
-          role: u.role,
+          role: roleByUser.get(u.id) ?? 'member',
         };
       });
   }
@@ -393,6 +458,17 @@ export class GroupsService {
     if (!group) throw new NotFoundException('群聊不存在');
     if (group.ownerId !== userId) {
       throw new ForbiddenException('仅群主可执行该操作');
+    }
+  }
+
+  private async assertManager(groupId: number, userId: number) {
+    const group = await this.groups.findOneBy({ id: groupId });
+    if (!group) throw new NotFoundException('群聊不存在');
+    if (group.ownerId === userId) return;
+    const member = await this.members.findOneBy({ groupId, userId });
+    if (!member) throw new ForbiddenException('你不是该群成员');
+    if (member.role !== 'admin') {
+      throw new ForbiddenException('仅群主和管理员可执行该操作');
     }
   }
 

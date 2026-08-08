@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -20,6 +22,8 @@ class PostDetailScreen extends StatefulWidget {
 }
 
 class _PostDetailScreenState extends State<PostDetailScreen> {
+  /// 键盘弹出前（无键盘遮挡时）的窗口高度，用于计算画布缩放比例。
+  double? _noKeyboardHeight;
   Post? _post;
   bool _liked = false;
   bool _collected = false;
@@ -34,6 +38,15 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final mediaQuery = MediaQuery.of(context);
+    if (mediaQuery.viewInsets.bottom == 0) {
+      _noKeyboardHeight = mediaQuery.size.height;
+    }
   }
 
   @override
@@ -162,6 +175,15 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 外层 LiveHost 用 FittedBox 把 440x956 画布缩放到屏幕，
+    // 底部评论栏的 viewInsets 补偿需按缩放比例放大，才能在屏幕上
+    // 恰好把输入框顶到键盘上沿。
+    final mediaQuery = MediaQuery.of(context);
+    final canvasHeight = _noKeyboardHeight ?? mediaQuery.size.height;
+    final canvasScale = math.min(
+      mediaQuery.size.width / 440,
+      canvasHeight / 956,
+    );
     return LivePage(
       child: Column(
         children: [
@@ -264,32 +286,39 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             ),
                           ),
           ),
-          SafeArea(
-            top: false,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
-              decoration: const BoxDecoration(
-                color: LiveColors.bg,
-                border: Border(top: BorderSide(color: LiveColors.divider)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _commentCtrl,
-                      decoration: InputDecoration(
-                        hintText: '说点什么…',
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        isDense: true,
+          // 键盘弹出时评论栏跟随键盘上移（viewInsets 补偿），
+          // 页面本身不压缩，键盘覆盖页面下半部分。
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom / canvasScale,
+            ),
+            child: SafeArea(
+              top: false,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+                decoration: const BoxDecoration(
+                  color: LiveColors.bg,
+                  border: Border(top: BorderSide(color: LiveColors.divider)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _commentCtrl,
+                        decoration: InputDecoration(
+                          hintText: '说点什么…',
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          isDense: true,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: _sendingComment ? null : _sendComment,
-                    icon: const Icon(Icons.send, color: LiveColors.brand),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: _sendingComment ? null : _sendComment,
+                      icon: const Icon(Icons.send, color: LiveColors.brand),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

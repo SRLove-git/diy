@@ -106,6 +106,20 @@ class GroupService {
   Future<void> rename(int groupId, String name) =>
       ApiClient.instance.patch('/groups/$groupId', body: {'name': name});
 
+  /// 群主设置 / 取消管理员（role: admin / member）
+  Future<void> setRole(int groupId, int userId, String role) =>
+      ApiClient.instance.patch(
+        '/groups/$groupId/members/$userId/role',
+        body: {'role': role},
+      );
+
+  /// 群主转让
+  Future<void> transferOwner(int groupId, int newOwnerId) =>
+      ApiClient.instance.patch(
+        '/groups/$groupId/owner',
+        body: {'newOwnerId': newOwnerId},
+      );
+
   Future<({List<ChatMessage> items, int total, int? nextCursor})> messages(
     int groupId, {
     int cursor = 0,

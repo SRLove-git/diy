@@ -142,7 +142,11 @@ final GoRouter appRouter = GoRouter(
     // ===== 通用 =====
     GoRoute(
       path: RoutePaths.search,
-      builder: (_, __) => LiveHost(child: const SearchScreen()),
+      // 搜索页有输入框：键盘弹出时页面不压缩，键盘覆盖下半部分。
+      builder: (_, __) => LiveHost(
+        child: const SearchScreen(),
+        resizeToAvoidBottomInset: false,
+      ),
     ),
     GoRoute(
       path: RoutePaths.notifications,
@@ -174,7 +178,10 @@ final GoRouter appRouter = GoRouter(
     // ===== 帖子 =====
     GoRoute(
       path: RoutePaths.postPublish,
-      builder: (_, __) => LiveHost(child: const PostPublishScreen()),
+      builder: (_, __) => LiveHost(
+        child: const PostPublishScreen(),
+        resizeToAvoidBottomInset: false,
+      ),
     ),
     GoRoute(
       path: RoutePaths.postPublishSuccess,
@@ -185,8 +192,10 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: RoutePaths.postDetail,
-      builder: (_, s) =>
-          LiveHost(child: PostDetailScreen(postId: _id(s, 'id'))),
+      builder: (_, s) => LiveHost(
+        child: PostDetailScreen(postId: _id(s, 'id')),
+        resizeToAvoidBottomInset: false,
+      ),
     ),
     // ===== 视频 =====
     GoRoute(
@@ -204,11 +213,15 @@ final GoRouter appRouter = GoRouter(
       path: RoutePaths.videoPublish,
       builder: (_, s) => LiveHost(
         child: VideoPublishScreen(initialCover: s.extra as String),
+        resizeToAvoidBottomInset: false,
       ),
     ),
     GoRoute(
       path: RoutePaths.videoMusic,
-      builder: (_, __) => LiveHost(child: const MusicPickerScreen()),
+      builder: (_, __) => LiveHost(
+        child: const MusicPickerScreen(),
+        resizeToAvoidBottomInset: false,
+      ),
     ),
     GoRoute(
       path: RoutePaths.videoPlayer,
@@ -221,8 +234,10 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: RoutePaths.videoDetail,
-      builder: (_, s) =>
-          LiveHost(child: VideoDetailScreen(videoId: _id(s, 'id'))),
+      builder: (_, s) => LiveHost(
+        child: VideoDetailScreen(videoId: _id(s, 'id')),
+        resizeToAvoidBottomInset: false,
+      ),
     ),
     // ===== 聊天 =====
     GoRoute(
@@ -258,8 +273,19 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: RoutePaths.chatGroupSettings,
-      builder: (_, s) =>
-          LiveHost(child: GroupSettingsScreen(groupId: _id(s, 'id'))),
+      // 群设置页会弹「修改群名称」输入框：键盘弹出时页面不压缩，
+      // 键盘覆盖下半部分（与登录页一致），避免页面缩小出现上下分层。
+      builder: (_, s) => LiveHost(
+        child: GroupSettingsScreen(groupId: _id(s, 'id')),
+        resizeToAvoidBottomInset: false,
+      ),
+    ),
+    GoRoute(
+      path: RoutePaths.chatGroupManage,
+      builder: (_, s) => LiveHost(
+        child: GroupMemberManageScreen(groupId: _id(s, 'id')),
+        resizeToAvoidBottomInset: false,
+      ),
     ),
     GoRoute(
       path: RoutePaths.chatBlocks,
@@ -279,8 +305,10 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: RoutePaths.activityDetail,
-      builder: (_, s) =>
-          LiveHost(child: ActivityDetailScreen(activityId: _id(s, 'id'))),
+      builder: (_, s) => LiveHost(
+        child: ActivityDetailScreen(activityId: _id(s, 'id')),
+        resizeToAvoidBottomInset: false,
+      ),
     ),
     // ===== 门店 / 预约 =====
     GoRoute(
@@ -289,7 +317,10 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: RoutePaths.storeSearch,
-      builder: (_, __) => LiveHost(child: const StoreSearchScreen()),
+      builder: (_, __) => LiveHost(
+        child: const StoreSearchScreen(),
+        resizeToAvoidBottomInset: false,
+      ),
     ),
     GoRoute(
       path: RoutePaths.storeCheckin,
@@ -342,6 +373,7 @@ final GoRouter appRouter = GoRouter(
       path: RoutePaths.appointmentCheckinQr,
       builder: (_, s) => LiveHost(
         child: CheckinQrScreen(appointment: s.extra as Appointment),
+        resizeToAvoidBottomInset: false,
       ),
     ),
     GoRoute(

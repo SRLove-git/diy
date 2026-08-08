@@ -40,6 +40,7 @@ class RoutePaths {
   static const chatDetail = '/chat/detail';
   static const chatInfo = '/chat/info';
   static const chatGroupSettings = '/chat/group-settings/:id';
+  static const chatGroupManage = '/chat/group-manage/:id';
   static const chatBlocks = '/chat/blocks';
   static const chatAddFriend = '/chat/add-friend';
   static const activityList = '/activity/list';
@@ -69,16 +70,24 @@ class RoutePaths {
 class LiveRoutes {
   LiveRoutes._();
 
-  static void switchTab(BuildContext context, int index) =>
-      context.go(switch (index) {
-        0 => RoutePaths.home,
-        1 => RoutePaths.community,
-        2 => RoutePaths.reels,
-        3 => RoutePaths.chat,
-        _ => RoutePaths.profile,
-      });
+  static void switchTab(BuildContext context, int index) {
+    final path = switch (index) {
+      0 => RoutePaths.home,
+      1 => RoutePaths.community,
+      2 => RoutePaths.reels,
+      3 => RoutePaths.chat,
+      _ => RoutePaths.profile,
+    };
+    // 与 push 相同的防重入保护：已处于目标路径时直接跳过。
+    // 避免「外层路由 → Shell Tab」过渡期间重复压入相同 page key，
+    // 触发 '!keyReservation.contains(key)' 断言（flutter/flutter#140586）。
+    final router = GoRouter.of(context);
+    final current = router.routeInformationProvider.value.uri.path;
+    if (current == path) return;
+    context.go(path);
+  }
 
-  static void goHome(BuildContext context) => context.go(RoutePaths.home);
+  static void goHome(BuildContext context) => switchTab(context, 0);
 
   static void goLogin(BuildContext context) => context.go(RoutePaths.login);
 
@@ -115,20 +124,21 @@ class LiveRoutes {
 
   /// 先关掉当前页（如抽屉菜单），再打开目标页。
   /// 使用捕获的 NavigatorState，避免在已卸载的 context 上再取 Navigator。
-  static void pushAfterPop(
+  static Future<void> pushAfterPop(
     BuildContext context,
     String path, {
     Object? extra,
-  }) {
+  }) async {
     final nav = Navigator.of(context);
+    if (!nav.mounted) return;
     nav.pop();
-    // 等 pop 的 route 离开树后再 push，避免同步 pop+push 触发
-    // InheritedElement 依赖残留断言。
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (nav.mounted) {
-        push(nav.context, path, extra: extra);
-      }
-    });
+    // 等 pop 的弹层完全退场（showGeneralDialog 退场动画约 220ms）后再 push，
+    // 避免「新 route 与退场中的弹层同帧共享 InheritedElement」触发
+    // _dependents.isEmpty 断言。
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    if (nav.mounted) {
+      push(nav.context, path, extra: extra);
+    }
   }
 }
 

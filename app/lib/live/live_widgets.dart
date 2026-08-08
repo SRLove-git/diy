@@ -501,7 +501,14 @@ void showLiveSnack(BuildContext context, String message) {
       },
     ),
   );
-  overlay.insert(entry);
+  // 延迟一帧再插入：避免在同一帧内既移除旧 route 的 overlay entry、
+  // 又插入新的 toast entry。Overlay 的 entry 使用 GlobalKey 管理元素，
+  // 同一帧内增删会让退场中的 route 子树与新 entry 争用元素，触发
+  // InheritedElement 依赖残留断言（_dependents.isEmpty）。
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!overlay.mounted || entry.mounted) return;
+    overlay.insert(entry);
+  });
 }
 
 /// 顶部浮层提示（自动 2.2s 后消失，带淡入淡出）。

@@ -18,6 +18,10 @@ export class GroupMember {
   @Column()
   userId: number;
 
+  /** 群内角色：owner（群主）/ admin（管理员）/ member（普通成员） */
+  @Column({ type: 'enum', enum: ['owner', 'admin', 'member'], default: 'member' })
+  role: 'owner' | 'admin' | 'member';
+
   @CreateDateColumn()
   joinedAt: Date;
 }

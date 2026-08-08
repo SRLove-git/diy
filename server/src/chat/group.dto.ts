@@ -69,3 +69,16 @@ export class MarkGroupReadDto {
   @Min(0)
   lastMessageId: number;
 }
+
+/** 群主设置 / 取消管理员 */
+export class SetGroupRoleDto {
+  @IsIn(['admin', 'member'])
+  role: 'admin' | 'member';
+}
+
+/** 群主转让 */
+export class TransferGroupDto {
+  @IsInt()
+  @Min(1)
+  newOwnerId: number;
+}
