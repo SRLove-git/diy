@@ -994,6 +994,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                                   peerName: _status!.nickname,
                                                   peerAvatar: _status!.avatar,
                                                 ),
+                                                resizeToAvoidBottomInset: false,
                                               );
                                             }
                                           } on ApiException catch (e) {

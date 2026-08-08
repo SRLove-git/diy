@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart' hide Page;
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -140,6 +142,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                                     LiveRoutes.push(
                                       context,
                                       ChatScreen(groupId: it.group!.id, groupName: it.group!.name),
+                                      resizeToAvoidBottomInset: false,
                                     );
                                   } else {
                                     final c = it.conv!;
@@ -151,6 +154,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                                         peerName: c.peerNickname,
                                         peerAvatar: c.peerAvatar,
                                       ),
+                                      resizeToAvoidBottomInset: false,
                                     );
                                   }
                                 },
@@ -286,6 +290,8 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
+  /// 键盘弹出前（无键盘遮挡时）的窗口高度，用于计算画布缩放比例。
+  double? _noKeyboardHeight;
   final _inputCtrl = TextEditingController();
   final List<ChatMessage> _messages = [];
   bool _loading = true;
@@ -299,6 +305,15 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _loadMessages();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final mediaQuery = MediaQuery.of(context);
+    if (mediaQuery.viewInsets.bottom == 0) {
+      _noKeyboardHeight = mediaQuery.size.height;
+    }
   }
 
   @override
@@ -528,7 +543,19 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final me = AuthStore.instance.userId;
+    // 外层 LiveHost 用 FittedBox 把 440x956 画布缩放到屏幕，
+    // 输入栏的 viewInsets 补偿需按缩放比例放大，才能在屏幕上
+    // 恰好把输入框顶到键盘上沿。
+    final mediaQuery = MediaQuery.of(context);
+    final canvasHeight = _noKeyboardHeight ?? mediaQuery.size.height;
+    final canvasScale = math.min(
+      mediaQuery.size.width / 440,
+      canvasHeight / 956,
+    );
     return LivePage(
+      // 单聊页：键盘弹出时页面不压缩，键盘覆盖页面下半部分，
+      // 输入栏通过 viewInsets 补偿浮在键盘上方，消息列表保持原尺寸。
+      resizeToAvoidBottomInset: false,
       child: Column(
         children: [
           LiveAppBar(
@@ -582,53 +609,60 @@ class _ChatScreenState extends State<ChatScreen> {
                         },
                       ),
           ),
-          SafeArea(
-            top: false,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
-              decoration: const BoxDecoration(
-                color: LiveColors.bg,
-                border: Border(top: BorderSide(color: LiveColors.divider)),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () =>
-                        showLiveSnack(context, '语音消息敬请期待'),
-                    icon: const Icon(Icons.mic_none, color: LiveColors.textSecondary, size: 22),
-                  ),
-                  IconButton(
-                    onPressed: _showEmojiPanel,
-                    icon: const Icon(Icons.emoji_emotions_outlined, color: LiveColors.textSecondary, size: 22),
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _inputCtrl,
-                      minLines: 1,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        hintText: '发送消息…',
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        isDense: true,
+          // 键盘弹出时输入栏跟随键盘上移（viewInsets 补偿），
+          // 避免键盘盖住输入框。
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom / canvasScale,
+            ),
+            child: SafeArea(
+              top: false,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+                decoration: const BoxDecoration(
+                  color: LiveColors.bg,
+                  border: Border(top: BorderSide(color: LiveColors.divider)),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () =>
+                          showLiveSnack(context, '语音消息敬请期待'),
+                      icon: const Icon(Icons.mic_none, color: LiveColors.textSecondary, size: 22),
+                    ),
+                    IconButton(
+                      onPressed: _showEmojiPanel,
+                      icon: const Icon(Icons.emoji_emotions_outlined, color: LiveColors.textSecondary, size: 22),
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: _inputCtrl,
+                        minLines: 1,
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          hintText: '发送消息…',
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          isDense: true,
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: _showAttachPanel,
-                    icon: const Icon(Icons.add_circle_outline, color: LiveColors.textSecondary, size: 24),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: _sending ? null : _send,
-                    icon: _sending
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: LiveColors.brand),
-                          )
-                        : const Icon(Icons.send, color: LiveColors.brand),
-                  ),
-                ],
+                    IconButton(
+                      onPressed: _showAttachPanel,
+                      icon: const Icon(Icons.add_circle_outline, color: LiveColors.textSecondary, size: 24),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: _sending ? null : _send,
+                      icon: _sending
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: LiveColors.brand),
+                            )
+                          : const Icon(Icons.send, color: LiveColors.brand),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1020,6 +1054,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return LivePage(
+      resizeToAvoidBottomInset: false,
       child: Column(
         children: [
           const LiveAppBar(title: '群设置'),
@@ -1306,6 +1341,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
           peerName: u.displayName,
           peerAvatar: u.avatar,
         ),
+        resizeToAvoidBottomInset: false,
       );
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -1385,7 +1421,11 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
         selected.toList(),
       );
       if (!mounted) return;
-      LiveRoutes.push(context, ChatScreen(groupId: group.id, groupName: group.name));
+      LiveRoutes.push(
+        context,
+        ChatScreen(groupId: group.id, groupName: group.name),
+        resizeToAvoidBottomInset: false,
+      );
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
     }
@@ -1394,6 +1434,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
   @override
   Widget build(BuildContext context) {
     return LivePage(
+      resizeToAvoidBottomInset: false,
       child: Column(
         children: [
           const LiveAppBar(title: '添加好友'),

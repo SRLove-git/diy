@@ -152,39 +152,38 @@ class _LiveHostState extends State<LiveHost> {
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
-    // 当页面声明“不随键盘压缩”时，画布高度固定在键盘弹出前的高度；
-    // 否则跟随窗口高度（默认行为）。
-    final canvasHeight =
-        widget.resizeToAvoidBottomInset || _noKeyboardHeight == null
-            ? mediaQuery.size.height
-            : _noKeyboardHeight!;
-    return Scaffold(
-      backgroundColor: Colors.black,
-      resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
-      body: Center(
-        // OverflowBox 给画布提供“键盘弹出前”的完整高度约束，
-        // 使 FittedBox 不随被压缩的窗口缩放，页面保持原尺寸，
-        // 溢出部分被键盘自然覆盖。
-        child: OverflowBox(
-          minWidth: mediaQuery.size.width,
-          maxWidth: mediaQuery.size.width,
-          minHeight: canvasHeight,
-          maxHeight: canvasHeight,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440, maxHeight: 956),
-              child: FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox(
-                  width: 440,
-                  height: 956,
-                  child: ColoredBox(color: LiveColors.bg, child: widget.child),
-                ),
-              ),
-            ),
+    final canvas = Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440, maxHeight: 956),
+        child: FittedBox(
+          fit: BoxFit.contain,
+          child: SizedBox(
+            width: 440,
+            height: 956,
+            child: ColoredBox(color: LiveColors.bg, child: widget.child),
           ),
         ),
       ),
+    );
+    return Scaffold(
+      backgroundColor: Colors.black,
+      resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
+      body: widget.resizeToAvoidBottomInset
+          // 聊天等页面：跟随 Scaffold 收缩，键盘弹出时输入框被顶起。
+          ? canvas
+          // 登录等页面：画布固定在键盘弹出前的高度，键盘覆盖下半部分。
+          : Center(
+              child: OverflowBox(
+                // 画布顶部与窗口顶部对齐，底部溢出部分正好落入键盘区域，
+                // 使输入栏的 viewInsets 补偿恰好把输入框顶到键盘上沿。
+                alignment: Alignment.topCenter,
+                minWidth: mediaQuery.size.width,
+                maxWidth: mediaQuery.size.width,
+                minHeight: _noKeyboardHeight ?? mediaQuery.size.height,
+                maxHeight: _noKeyboardHeight ?? mediaQuery.size.height,
+                child: canvas,
+              ),
+            ),
     );
   }
 }
