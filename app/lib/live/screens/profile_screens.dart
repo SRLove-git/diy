@@ -107,7 +107,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   worksCount: _posts.length + _videos.length,
                                   totalLikes: _totalLikes,
                                   onEdit: () async {
-                                    await LiveRoutes.push(context, const EditProfileScreen());
+                                    await LiveRoutes.push(
+                                      context,
+                                      const EditProfileScreen(),
+                                      resizeToAvoidBottomInset: false,
+                                    );
                                     _load();
                                   },
                                   onFans: () => LiveRoutes.push(
@@ -1182,49 +1186,209 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  Future<void> _pickGender() async {
+    // 先收起键盘，避免键盘 inset 与底部弹层过渡叠加触发框架断言。
+    FocusScope.of(context).unfocus();
+    final value = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: LiveColors.bg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final g in [
+              ('secret', '保密'),
+              ('male', '男'),
+              ('female', '女'),
+            ])
+              ListTile(
+                title: Text(
+                  g.$2,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: _gender == g.$1 ? LiveColors.brand : LiveColors.textPrimary,
+                  ),
+                ),
+                onTap: () => Navigator.pop(sheetContext, g.$1),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (value != null && mounted) setState(() => _gender = value);
+  }
+
+  Future<void> _pickBirthday() async {
+    final now = DateTime.now();
+    final initial = DateTime.tryParse(_birthdayCtrl.text) ?? DateTime(2000, 1, 1);
+    // 打开日期选择器前收起键盘，避免键盘与 Overlay 过渡叠加触发框架断言。
+    FocusScope.of(context).unfocus();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(1950),
+      lastDate: now,
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _birthdayCtrl.text = '${picked.year.toString().padLeft(4, '0')}-'
+            '${picked.month.toString().padLeft(2, '0')}-'
+            '${picked.day.toString().padLeft(2, '0')}';
+      });
+    }
+  }
+
+  Future<void> _pickLocation() async {
+    // 先收起键盘，避免键盘 inset 与对话框过渡叠加触发框架断言。
+    FocusScope.of(context).unfocus();
+    final controller = TextEditingController(text: _locationCtrl.text);
+    final value = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('所在地', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: '请输入城市 / 地区'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('取消', style: TextStyle(color: LiveColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text('确定', style: TextStyle(color: LiveColors.brand)),
+          ),
+        ],
+      ),
+    );
+    if (value != null && mounted) {
+      setState(() => _locationCtrl.text = value);
+    }
+    // 延迟释放，等对话框退场动画结束后再销毁控制器。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.dispose();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return LivePage(
+      // 编辑资料页：键盘弹出时页面不压缩，键盘覆盖下半部分，
+      // 避免与登录页相同的上下分层问题。
+      resizeToAvoidBottomInset: false,
       child: Column(
         children: [
-          const LiveAppBar(title: '编辑资料'),
+          // 顶部导航：返回 + 标题「编辑资料」+ 右侧「保存」按钮（对齐设计稿 28-编辑资料）
+          LiveAppBar(
+            title: '编辑资料',
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: InkWell(
+                  onTap: _saving ? null : _save,
+                  borderRadius: BorderRadius.circular(18),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: LiveColors.brand,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: _saving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text(
+                            '保存',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            ],
+          ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
               children: [
+                // 头像：渐变环 + 头像 + 右下角相机按钮（对齐设计稿）
                 Center(
                   child: InkWell(
                     onTap: _pickAvatar,
                     child: Stack(
+                      clipBehavior: Clip.none,
                       children: [
-                        Avatar(url: _avatar, name: _nicknameCtrl.text, size: 84),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
+                        // 渐变圆环（r44 近似设计稿）
+                        Container(
+                          width: 99,
+                          height: 99,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [Color(0xFF333333), Color(0xFF141414)],
+                            ),
+                            shape: BoxShape.circle,
+                          ),
+                          padding: const EdgeInsets.all(2),
                           child: Container(
-                            padding: const EdgeInsets.all(4),
                             decoration: const BoxDecoration(
-                              color: LiveColors.brand,
+                              color: Colors.white,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.photo_camera, size: 14, color: Colors.white),
+                            padding: const EdgeInsets.all(2),
+                            child: ClipOval(
+                              child: SizedBox(
+                                width: 90,
+                                height: 90,
+                                child: Avatar(
+                                  url: _avatar,
+                                  name: _nicknameCtrl.text.isEmpty ? '我' : _nicknameCtrl.text,
+                                  size: 90,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          right: -2,
+                          bottom: -2,
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF141414),
+                              borderRadius: BorderRadius.all(Radius.circular(15)),
+                            ),
+                            child: const Icon(Icons.photo_camera, size: 18, color: Colors.white),
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 22),
-                TextField(
+                const SizedBox(height: 20),
+                // 昵称输入框（灰底圆角 14 高 59）
+                _EditField(
+                  label: '昵称',
                   controller: _nicknameCtrl,
-                  decoration: const InputDecoration(hintText: '昵称'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                // 用户名输入框
+                _EditField(
+                  label: '用户名',
                   controller: _usernameCtrl,
-                  decoration: const InputDecoration(
-                    hintText: '用户名（字母/数字/下划线）',
-                  ),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(top: 6),
@@ -1234,62 +1398,149 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: _bioCtrl,
-                  maxLines: 3,
-                  decoration: const InputDecoration(hintText: '个人简介'),
+                // 简介 textarea（灰底圆角 14 高 90）
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: LiveColors.inputBg,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: TextField(
+                    controller: _bioCtrl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      hintText: '简介：拼豆手作爱好者，治愈系手工',
+                      hintStyle: TextStyle(fontSize: 15, color: LiveColors.textTertiary),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                    style: const TextStyle(fontSize: 15),
+                  ),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _locationCtrl,
-                  decoration: const InputDecoration(hintText: '所在地'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _birthdayCtrl,
-                  decoration: const InputDecoration(hintText: '生日（YYYY-MM-DD）'),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Text('性别 ', style: TextStyle(fontSize: 14, color: LiveColors.textSecondary)),
-                    for (final g in [
-                      ('secret', '保密'),
-                      ('male', '男'),
-                      ('female', '女'),
-                    ])
-                      Padding(
-                        padding: const EdgeInsets.only(left: 14),
-                        child: InkWell(
-                          onTap: () => setState(() => _gender = g.$1),
-                          child: Row(
-                            children: [
-                              Icon(
-                                _gender == g.$1
-                                    ? Icons.radio_button_checked
-                                    : Icons.radio_button_unchecked,
-                                size: 18,
-                                color: _gender == g.$1 ? LiveColors.brand : LiveColors.textTertiary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(g.$2,
-                                  style: const TextStyle(fontSize: 14, color: LiveColors.textPrimary)),
-                            ],
-                          ),
-                        ),
+                const SizedBox(height: 16),
+                // 性别 / 生日 / 所在地 卡片（对齐设计稿）
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  decoration: BoxDecoration(
+                    color: LiveColors.card,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      _InfoRow(
+                        label: '性别',
+                        value: switch (_gender) {
+                          'male' => '男',
+                          'female' => '女',
+                          _ => '保密',
+                        },
+                        onTap: () => _pickGender(),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 26),
-                PrimaryButton(
-                  label: '保存',
-                  loading: _saving,
-                  onTap: _saving ? null : _save,
+                      const Divider(height: 1, color: LiveColors.divider),
+                      _InfoRow(
+                        label: '生日',
+                        value: _birthdayCtrl.text.isEmpty ? '未设置' : _birthdayCtrl.text,
+                        onTap: () => _pickBirthday(),
+                      ),
+                      const Divider(height: 1, color: LiveColors.divider),
+                      _InfoRow(
+                        label: '所在地',
+                        value: _locationCtrl.text.isEmpty ? '未设置' : _locationCtrl.text,
+                        onTap: () => _pickLocation(),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 编辑资料输入框：灰底圆角 14、左侧标签 + 输入框（对齐设计稿 28-编辑资料）。
+class _EditField extends StatelessWidget {
+  const _EditField({required this.label, required this.controller});
+
+  final String label;
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 59,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: LiveColors.inputBg,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: LiveColors.textPrimary,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                hintStyle: TextStyle(fontSize: 15, color: LiveColors.textTertiary),
+                border: InputBorder.none,
+                isDense: true,
+              ),
+              style: const TextStyle(fontSize: 15, color: LiveColors.textPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 性别 / 生日 / 所在地 行（左标签 + 右值 + 箭头）。
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        child: Row(
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: LiveColors.textPrimary,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right, size: 18, color: LiveColors.textTertiary),
+          ],
+        ),
       ),
     );
   }

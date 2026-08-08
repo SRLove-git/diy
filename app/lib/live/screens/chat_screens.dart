@@ -525,7 +525,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 label: '拍摄',
                 onTap: () {
                   Navigator.of(context).pop();
-                  showLiveSnack(context, '拍摄功能敬请期待');
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (context.mounted) showLiveSnack(context, '拍摄功能敬请期待');
+                  });
                 },
               ),
               _AttachItem(
@@ -533,7 +535,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 label: '文件',
                 onTap: () {
                   Navigator.of(context).pop();
-                  showLiveSnack(context, '文件功能敬请期待');
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (context.mounted) showLiveSnack(context, '文件功能敬请期待');
+                  });
                 },
               ),
               _AttachItem(
@@ -541,7 +545,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 label: '名片',
                 onTap: () {
                   Navigator.of(context).pop();
-                  showLiveSnack(context, '名片功能敬请期待');
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (context.mounted) showLiveSnack(context, '名片功能敬请期待');
+                  });
                 },
               ),
             ],
@@ -1774,12 +1780,16 @@ class ChatInfoScreen extends StatelessWidget {
 
   Future<void> _deleteConversation(BuildContext context) async {
     final nav = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       await ChatService.instance.deleteConversation(conversationId);
       if (context.mounted) {
         nav.pop();
         nav.pop();
-        showLiveSnack(context, '会话已删除');
+        // 连续 pop 后等待下一帧再提示，避免 context 处于 deactivate 过程。
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          messenger.showSnackBar(const SnackBar(content: Text('会话已删除')));
+        });
       }
     } on ApiException catch (e) {
       if (context.mounted) showLiveSnack(context, e.message);
