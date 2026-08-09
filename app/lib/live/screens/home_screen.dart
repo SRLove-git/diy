@@ -294,7 +294,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 }
 
-/// 顶部：手作星球 + 搜索 + 通知铃铛（角标）
+/// 顶部：Think Origin + 通知铃铛（角标）
 class _TopBar extends StatelessWidget {
   const _TopBar();
 
@@ -305,12 +305,11 @@ class _TopBar extends StatelessWidget {
       child: Row(
         children: [
           const Text(
-            '手作星球',
+            'Think Origin',
             style: TextStyle(
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: FontWeight.w800,
               color: LiveColors.textPrimary,
-              letterSpacing: -0.4,
             ),
           ),
           const Spacer(),
