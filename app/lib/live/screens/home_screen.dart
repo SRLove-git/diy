@@ -243,15 +243,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                   ),
                 ],
-                // 「敬请期待」板块：直播专区 / 手作商城占位
-                _SectionHeader(
-                  title: '敬请期待',
-                  trailing: '更多精彩即将上线',
-                ),
+                // 「敬请期待」模块：标题在左上角（同拼豆模块），下方为占位框
+                _SectionHeader(title: '敬请期待'),
                 Padding(
+                  // 与拼豆模块卡片同宽
                   padding: const EdgeInsets.symmetric(horizontal: 18),
-                  child: _ComingSoonRow(
-                    onTap: () => showLiveSnack(context, '敬请期待，更多精彩即将上线'),
+                  child: Container(
+                    width: double.infinity,
+                    // 高度与拼豆模块（124）一致
+                    height: 124,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: LiveColors.card,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: LiveColors.divider),
+                    ),
+                    child: const Text(
+                      '更多活动敬请期待',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: LiveColors.textTertiary,
+                      ),
+                    ),
                   ),
                 ),
                 // 「活动推荐」板块
@@ -655,42 +668,6 @@ class _HomeServiceCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           TimerCard(appointment: a, onAction: onTap),
-        ],
-      ),
-    );
-  }
-}
-
-/// 「敬请期待」占位卡（直播专区 / 手作商城）。
-class _ComingSoonRow extends StatelessWidget {
-  const _ComingSoonRow({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 108,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.asset('assets/divrowgap3.png', fit: BoxFit.fill),
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: onTap,
-                ),
-              ),
-              Expanded(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: onTap,
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
