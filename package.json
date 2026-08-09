@@ -1,0 +1,19 @@
+{
+  "name": "diy-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "手作星球 Monorepo 根：统一各子项目（app/server/admin）的构建、测试与开发脚本",
+  "scripts": {
+    "dev:server": "npm --prefix server run start:dev",
+    "build:server": "npm --prefix server run build",
+    "test:server": "npm --prefix server run test",
+    "lint:server": "npm --prefix server run lint",
+    "dev:admin": "npm --prefix admin run dev",
+    "build:admin": "npm --prefix admin run build",
+    "analyze:app": "cd app && flutter analyze",
+    "test:app": "cd app && flutter test",
+    "build:app:ios": "cd app && flutter build ios --release --dart-define=API_BASE_URL=http://192.168.10.130:3000",
+    "build": "npm run build:server && npm run build:admin",
+    "test": "npm run test:server && npm run test:app"
+  }
+}
