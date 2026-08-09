@@ -336,6 +336,47 @@ class _VoiceHoldButton extends StatelessWidget {
   }
 }
 
+/// 输入栏键盘补偿容器：只在此处订阅 viewInsets 变化并计算画布缩放，
+/// 键盘弹出动画期间仅输入栏子树重建，聊天页主体（消息列表等）不逐帧重建。
+class _KeyboardInsetBox extends StatefulWidget {
+  const _KeyboardInsetBox({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeyboardInsetBox> createState() => _KeyboardInsetBoxState();
+}
+
+class _KeyboardInsetBoxState extends State<_KeyboardInsetBox> {
+  /// 键盘弹出前（无键盘遮挡时）的窗口高度，用于计算画布缩放比例。
+  double? _noKeyboardHeight;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final mq = MediaQuery.of(context);
+    if (mq.viewInsets.bottom == 0) {
+      _noKeyboardHeight = mq.size.height;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 外层 LiveHost 用 FittedBox 把 440x956 画布缩放到屏幕，
+    // 输入栏的 viewInsets 补偿需按缩放比例放大，才能恰好把输入框顶到键盘上沿。
+    final mq = MediaQuery.of(context);
+    final canvasHeight = _noKeyboardHeight ?? mq.size.height;
+    final canvasScale = math.min(
+      mq.size.width / 440,
+      canvasHeight / 956,
+    );
+    return Padding(
+      padding: EdgeInsets.only(bottom: mq.viewInsets.bottom / canvasScale),
+      child: widget.child,
+    );
+  }
+}
+
 /// 录音浮层内的深色波形条（对齐用户设计稿：绿色面板中的竖条波形）。
 /// 录音期间定时刷新高度，模拟人声起伏动画。
 class _RecordingWaveform extends StatefulWidget {
@@ -734,8 +775,6 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  /// 键盘弹出前（无键盘遮挡时）的窗口高度，用于计算画布缩放比例。
-  double? _noKeyboardHeight;
   final _inputCtrl = TextEditingController();
   final List<ChatMessage> _messages = [];
   // 初始为 false：initState 里的首次 _loadMessages 需要能正常进入，
@@ -779,15 +818,6 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) setState(() => _groupMembers = members);
     } catch (_) {
       // 成员信息拉取失败不阻塞聊天页
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final mediaQuery = MediaQuery.of(context);
-    if (mediaQuery.viewInsets.bottom == 0) {
-      _noKeyboardHeight = mediaQuery.size.height;
     }
   }
 
@@ -1282,15 +1312,6 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final me = AuthStore.instance.userId;
-    // 外层 LiveHost 用 FittedBox 把 440x956 画布缩放到屏幕，
-    // 输入栏的 viewInsets 补偿需按缩放比例放大，才能在屏幕上
-    // 恰好把输入框顶到键盘上沿。
-    final mediaQuery = MediaQuery.of(context);
-    final canvasHeight = _noKeyboardHeight ?? mediaQuery.size.height;
-    final canvasScale = math.min(
-      mediaQuery.size.width / 440,
-      canvasHeight / 956,
-    );
     return LivePage(
       // 单聊页：键盘弹出时页面不压缩，键盘覆盖页面下半部分，
       // 输入栏通过 viewInsets 补偿浮在键盘上方，消息列表保持原尺寸。
@@ -1464,12 +1485,10 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
             ),
           ),
-          // 键盘弹出时输入栏跟随键盘上移（viewInsets 补偿），
-          // 避免键盘盖住输入框。
-          Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom / canvasScale,
-            ),
+          // 键盘弹出时输入栏跟随键盘上移（viewInsets 补偿）。
+          // 补偿逻辑隔离在 _KeyboardInsetBox 内，键盘动画期间只重建输入栏，
+          // 消息列表等主体不再逐帧重建，键盘启动更流畅。
+          _KeyboardInsetBox(
             child: SafeArea(
               top: false,
               child: Container(
