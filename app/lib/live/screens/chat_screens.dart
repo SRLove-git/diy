@@ -1,9 +1,16 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart' hide Page;
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 
+import '../../api/api_config.dart';
 import '../../api/api_client.dart';
 import '../../api/auth_store.dart';
 import '../../api/chat_services.dart';
@@ -273,8 +280,221 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                               ),
                             ),
                           ),
+                          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 录音中提示条（替换输入框显示）。
+class _RecordingChip extends StatelessWidget {
+  const _RecordingChip({required this.seconds});
+
+  final int seconds;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 47,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: LiveColors.inputBg,
+        borderRadius: BorderRadius.circular(21),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.fiber_manual_record,
+            color: LiveColors.danger,
+            size: 13,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '正在录音 ${_fmtSec(seconds)} · 点击结束并发送',
+            style: const TextStyle(fontSize: 13, color: LiveColors.textPrimary),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 语音消息内容解析：content 为 {"url": "...", "duration": 秒} JSON。
+class _VoiceData {
+  const _VoiceData({required this.url, required this.duration});
+
+  final String url;
+  final int duration;
+
+  static _VoiceData? tryParse(String content) {
+    try {
+      final map = jsonDecode(content);
+      if (map is Map<String, dynamic>) {
+        return _VoiceData(
+          url: (map['url'] as String?) ?? '',
+          duration: ((map['duration'] as num?) ?? 0).toInt(),
+        );
+      }
+    } catch (_) {
+      // 非 JSON 视为无效语音数据
+    }
+    return null;
+  }
+}
+
+String _fmtSec(int s) {
+  final m = s ~/ 60;
+  final sec = s % 60;
+  return '$m:${sec.toString().padLeft(2, '0')}';
+}
+
+/// 会话列表预览：把服务端的 voice:/image:/video:/text: 前缀转成可读文案。
+String _previewText(String raw) {
+  if (raw.startsWith('voice:')) return '[语音]';
+  if (raw.startsWith('image:')) return '[图片]';
+  if (raw.startsWith('video:')) return '[视频]';
+  if (raw.startsWith('recalled:')) return '消息已撤回';
+  if (raw.startsWith('text:')) return raw.substring(5);
+  return raw;
+}
+
+/// Pixso 居中确认弹窗（40-群聊踢人确认 / 34-居中确认）：
+/// 半透明遮罩 + 312 宽圆角白卡 + 成员头像 + 标题 + 说明 + 取消/确认按钮。
+Future<bool?> showMemberActionDialog(
+  BuildContext context, {
+  required GroupMember member,
+  required bool setAdmin,
+}) {
+  final title = setAdmin
+      ? '将「${member.nickname}」设为管理员'
+      : '将「${member.nickname}」移出群聊';
+  final message = setAdmin
+      ? '设为管理员后 TA 可协助管理群成员（添加 / 移出成员），确定设为管理员吗？'
+      : '移出后 TA 将无法查看群聊消息，其他成员仍可重新邀请';
+  final confirmLabel = setAdmin ? '设为管理员' : '移出';
+  final confirmColor = setAdmin
+      ? const Color(0xFF141414)
+      : const Color(0xFFFF3B30);
+  return showDialog<bool>(
+    context: context,
+    // 遮罩 rgba(20,20,20,.42)，与设计稿一致
+    barrierColor: const Color(0x6B141414),
+    builder: (_) => Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 39),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 312),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(22, 26, 22, 0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x38141414), // rgba(20,20,20,.22)
+                blurRadius: 64,
+                offset: Offset(0, 24),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Avatar(url: member.avatar, name: member.nickname, size: 40),
+              ),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF141414),
+                  letterSpacing: -0.2,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF8E8E93),
+                  height: 1.6,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, 22, 0, 22),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _DialogActionButton(
+                        label: '取消',
+                        backgroundColor: const Color(0xFFF7F7F8),
+                        foregroundColor: const Color(0xFF141414),
+                        onTap: () => Navigator.pop(context, false),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _DialogActionButton(
+                        label: confirmLabel,
+                        backgroundColor: confirmColor,
+                        foregroundColor: Colors.white,
+                        onTap: () => Navigator.pop(context, true),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// 设计稿弹窗按钮：高 46、圆角 15、字号 15 加粗。
+class _DialogActionButton extends StatelessWidget {
+  const _DialogActionButton({
+    required this.label,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: backgroundColor,
+      borderRadius: BorderRadius.circular(15),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: SizedBox(
+          height: 46,
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: foregroundColor,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -290,7 +510,8 @@ class _ChatListItem {
   DateTime? get lastAt => group?.lastMessageAt ?? conv?.lastMessageAt;
   int get unread => (group?.unreadCount ?? 0) + (conv?.unreadCount ?? 0);
   String get name => group?.name ?? conv?.peerNickname ?? '';
-  String get preview => group?.lastMessagePreview ?? conv?.lastMessagePreview ?? '暂无消息';
+  String get preview =>
+      _previewText(group?.lastMessagePreview ?? conv?.lastMessagePreview ?? '暂无消息');
   String get avatar => conv?.peerAvatar ?? '';
 }
 
@@ -426,12 +647,25 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _hasMore = false;
   /// 群成员（导航栏成员头像 + 标题成员数），群聊进入时拉取
   List<GroupMember> _groupMembers = [];
+  // ===== 语音消息（录音 / 播放） =====
+  final _recorder = AudioRecorder();
+  final _player = AudioPlayer();
+  StreamSubscription<void>? _playerCompleteSub;
+  bool _recording = false;
+  Timer? _recordTimer;
+  int _recordSeconds = 0;
+  String? _recordPath;
+  int? _playingMessageId;
 
   @override
   void initState() {
     super.initState();
     _loadMessages();
     if (widget.isGroup) _loadGroupMeta();
+    // 语音播放自然结束后清除播放中状态（手动停止由 _toggleVoicePlay 处理）。
+    _playerCompleteSub = _player.onPlayerComplete.listen((_) {
+      if (mounted) setState(() => _playingMessageId = null);
+    });
   }
 
   Future<void> _loadGroupMeta() async {
@@ -454,6 +688,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _recordTimer?.cancel();
+    _recorder.dispose();
+    _playerCompleteSub?.cancel();
+    _player.dispose();
     _inputCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
@@ -513,8 +751,9 @@ class _ChatScreenState extends State<ChatScreen> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollCtrl.hasClients) {
+        // 列表为反向（reverse: true），滚动偏移 0 即底部（最新消息）。
         _scrollCtrl.animateTo(
-          _scrollCtrl.position.maxScrollExtent,
+          0,
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
         );
@@ -539,6 +778,128 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) showLiveSnack(context, e.message);
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  // ===== 语音消息：录音 → 上传 → 发送 =====
+  Future<void> _toggleRecord() async {
+    if (_recording) {
+      await _stopRecordAndSend();
+    } else {
+      await _startRecord();
+    }
+  }
+
+  Future<void> _startRecord() async {
+    try {
+      final ok = await _recorder.hasPermission();
+      if (!ok) {
+        if (mounted) showLiveSnack(context, '需要麦克风权限才能发送语音');
+        return;
+      }
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      await _recorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.aacLc,
+          bitRate: 64000,
+          sampleRate: 44100,
+          numChannels: 1,
+        ),
+        path: path,
+      );
+      _recordPath = path;
+      _recordTimer?.cancel();
+      _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() => _recordSeconds++);
+      });
+      if (mounted) {
+        setState(() {
+          _recording = true;
+          _recordSeconds = 0;
+        });
+      }
+    } catch (e) {
+      if (mounted) showLiveSnack(context, '录音启动失败：$e');
+    }
+  }
+
+  Future<void> _stopRecordAndSend() async {
+    _recordTimer?.cancel();
+    final path = _recordPath;
+    final seconds = _recordSeconds;
+    if (mounted) {
+      setState(() {
+        _recording = false;
+        _recordSeconds = 0;
+      });
+    }
+    try {
+      final finalPath = await _recorder.stop();
+      final file = File(finalPath ?? path ?? '');
+      if (seconds < 1 || !await file.exists()) {
+        if (mounted && seconds < 1) showLiveSnack(context, '说话时间太短，请重试');
+        return;
+      }
+      final bytes = await file.readAsBytes();
+      final url = await UploadService.instance.uploadAudio(
+        bytes,
+        'voice_${DateTime.now().millisecondsSinceEpoch}.m4a',
+        contentType: 'audio/mp4',
+      );
+      final content = jsonEncode({'url': url, 'duration': seconds});
+      final msg = widget.isGroup
+          ? await GroupService.instance.sendMessage(
+              widget.groupId!,
+              content,
+              contentType: 'voice',
+            )
+          : await ChatService.instance.sendMessage(
+              widget.conversationId!,
+              content,
+              contentType: 'voice',
+            );
+      if (mounted) {
+        setState(() => _messages.add(msg));
+        _scrollToBottom();
+      }
+    } on ApiException catch (e) {
+      if (mounted) showLiveSnack(context, e.message);
+    } catch (e) {
+      if (mounted) showLiveSnack(context, '发送语音失败：$e');
+    } finally {
+      _recordPath = null;
+      try {
+        final f = File(path ?? '');
+        if (await f.exists()) await f.delete();
+      } catch (_) {
+        // 临时文件清理失败不影响发送
+      }
+    }
+  }
+
+  /// 点击语音气泡：播放 / 停止。
+  Future<void> _toggleVoicePlay(ChatMessage msg) async {
+    final voice = _VoiceData.tryParse(msg.content);
+    if (voice == null || voice.url.isEmpty) {
+      if (mounted) showLiveSnack(context, '语音数据无效');
+      return;
+    }
+    try {
+      if (_playingMessageId == msg.id) {
+        await _player.stop();
+        if (mounted) setState(() => _playingMessageId = null);
+        return;
+      }
+      await _player.stop();
+      await _player.play(UrlSource(ApiConfig.resolve(voice.url)));
+      if (mounted) setState(() => _playingMessageId = msg.id);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _playingMessageId = null);
+        showLiveSnack(context, '语音播放失败');
+      }
     }
   }
 
@@ -832,10 +1193,16 @@ class _ChatScreenState extends State<ChatScreen> {
                     ? const EmptyView(text: '暂无消息，说点什么吧', icon: Icons.chat_bubble_outline)
                     : ListView.builder(
                         controller: _scrollCtrl,
+                        // 聊天列表反向布局：索引 0 在底部（最新消息）。
+                        // 键盘弹出 / 输入框多行变高时，列表底部保持锚定在
+                        // 输入栏上沿，最新消息始终可见，不会被输入栏或键盘覆盖。
+                        reverse: true,
                         padding: const EdgeInsets.all(18),
                         itemCount: _messages.length + (_hasMore ? 1 : 0),
                         itemBuilder: (_, i) {
-                          if (i == 0 && _hasMore) {
+                          final total = _messages.length + (_hasMore ? 1 : 0);
+                          // 反向列表里“加载更早消息”位于顶部（最后一个索引）。
+                          if (_hasMore && i == total - 1) {
                             return Center(
                               child: TextButton(
                                 onPressed: () => _loadMessages(earlier: true),
@@ -844,7 +1211,9 @@ class _ChatScreenState extends State<ChatScreen> {
                               ),
                             );
                           }
-                          final msg = _messages[i - (_hasMore ? 1 : 0)];
+                          // 反向索引映射：列表顺序 i（0=最新）→ 数组下标 orig。
+                          final orig = _messages.length - 1 - i;
+                          final msg = _messages[orig];
                           final isMine = msg.senderId == me;
                           // 群聊：系统消息居中展示；普通消息按天插入时间分隔
                           if (msg.contentType == 'system') {
@@ -863,11 +1232,10 @@ class _ChatScreenState extends State<ChatScreen> {
                               ),
                             );
                           }
-                          final idx = i - (_hasMore ? 1 : 0);
                           final showTime = widget.isGroup &&
-                              (idx == 0 ||
+                              (orig == 0 ||
                                   !_sameDay(
-                                    _messages[idx - 1].createdAt,
+                                    _messages[orig - 1].createdAt,
                                     msg.createdAt,
                                   ));
                           return Column(
@@ -890,6 +1258,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                 isMine: isMine,
                                 isGroup: widget.isGroup,
                                 showAvatar: widget.isGroup && !isMine,
+                                isPlaying: _playingMessageId == msg.id,
+                                onVoiceTap: () => _toggleVoicePlay(msg),
                                 onLongPress: (globalPos) =>
                                     _showMessageMenu(msg, globalPos),
                               ),
@@ -919,33 +1289,46 @@ class _ChatScreenState extends State<ChatScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             IconButton(
-                              onPressed: () =>
-                                  showLiveSnack(context, '语音消息敬请期待'),
-                              icon: const Icon(Icons.mic_none, color: LiveColors.textSecondary, size: 25),
+                              onPressed: _toggleRecord,
+                              icon: Icon(
+                                _recording
+                                    ? Icons.stop_circle_outlined
+                                    : Icons.mic_none,
+                                color: _recording
+                                    ? LiveColors.danger
+                                    : LiveColors.textSecondary,
+                                size: 25,
+                              ),
                             ),
                             const SizedBox(width: 2),
                             Expanded(
-                              child: Container(
-                                constraints: const BoxConstraints(minHeight: 47),
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                decoration: BoxDecoration(
-                                  color: LiveColors.inputBg,
-                                  borderRadius: BorderRadius.circular(21),
-                                ),
-                                child: TextField(
-                                  controller: _inputCtrl,
-                                  minLines: 1,
-                                  maxLines: 4,
-                                  style: const TextStyle(fontSize: 13),
-                                  decoration: const InputDecoration(
-                                    hintText: '@ 提及成员…',
-                                    hintStyle: TextStyle(fontSize: 13, color: LiveColors.textTertiary),
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                              ),
+                              child: _recording
+                                  ? _RecordingChip(seconds: _recordSeconds)
+                                  : Container(
+                                      constraints:
+                                          const BoxConstraints(minHeight: 47),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        color: LiveColors.inputBg,
+                                        borderRadius: BorderRadius.circular(21),
+                                      ),
+                                      child: TextField(
+                                        controller: _inputCtrl,
+                                        minLines: 1,
+                                        maxLines: 4,
+                                        style: const TextStyle(fontSize: 13),
+                                        decoration: const InputDecoration(
+                                          hintText: '@ 提及成员…',
+                                          hintStyle: TextStyle(
+                                              fontSize: 13,
+                                              color: LiveColors.textTertiary),
+                                          border: InputBorder.none,
+                                          isDense: true,
+                                          contentPadding: EdgeInsets.zero,
+                                        ),
+                                      ),
+                                    ),
                             ),
                             const SizedBox(width: 4),
                             IconButton(
@@ -991,25 +1374,36 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: Row(
                           children: [
                             IconButton(
-                              onPressed: () =>
-                                  showLiveSnack(context, '语音消息敬请期待'),
-                              icon: const Icon(Icons.mic_none, color: LiveColors.textSecondary, size: 22),
+                              onPressed: _toggleRecord,
+                              icon: Icon(
+                                _recording
+                                    ? Icons.stop_circle_outlined
+                                    : Icons.mic_none,
+                                color: _recording
+                                    ? LiveColors.danger
+                                    : LiveColors.textSecondary,
+                                size: 22,
+                              ),
                             ),
                             IconButton(
                               onPressed: _showEmojiPanel,
                               icon: const Icon(Icons.emoji_emotions_outlined, color: LiveColors.textSecondary, size: 22),
                             ),
                             Expanded(
-                              child: TextField(
-                                controller: _inputCtrl,
-                                minLines: 1,
-                                maxLines: 4,
-                                decoration: InputDecoration(
-                                  hintText: '发送消息…',
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                  isDense: true,
-                                ),
-                              ),
+                              child: _recording
+                                  ? _RecordingChip(seconds: _recordSeconds)
+                                  : TextField(
+                                      controller: _inputCtrl,
+                                      minLines: 1,
+                                      maxLines: 4,
+                                      decoration: InputDecoration(
+                                        hintText: '发送消息…',
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                                horizontal: 14, vertical: 10),
+                                        isDense: true,
+                                      ),
+                                    ),
                             ),
                             IconButton(
                               onPressed: _showAttachPanel,
@@ -1045,6 +1439,8 @@ class _Bubble extends StatelessWidget {
     required this.isGroup,
     required this.showAvatar,
     required this.onLongPress,
+    this.isPlaying = false,
+    this.onVoiceTap,
   });
 
   final ChatMessage message;
@@ -1052,6 +1448,8 @@ class _Bubble extends StatelessWidget {
   final bool isGroup;
   final bool showAvatar;
   final void Function(Offset globalPosition) onLongPress;
+  final bool isPlaying;
+  final VoidCallback? onVoiceTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1080,13 +1478,27 @@ class _Bubble extends StatelessWidget {
         ),
       );
     } else if (isVoice) {
-      bubbleContent = Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.graphic_eq, size: 18, color: textColor),
-          const SizedBox(width: 6),
-          Text('语音消息', style: TextStyle(fontSize: 13, color: textColor)),
-        ],
+      final voice = _VoiceData.tryParse(message.content);
+      bubbleContent = GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onVoiceTap,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isPlaying ? Icons.graphic_eq : Icons.mic,
+              size: 18,
+              color: textColor,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isPlaying
+                  ? '播放中…'
+                  : '语音 ${voice?.duration ?? 0}″',
+              style: TextStyle(fontSize: 13, color: textColor),
+            ),
+          ],
+        ),
       );
     } else if (isVideo) {
       bubbleContent = const Row(
@@ -1376,18 +1788,12 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
   }
 
   Future<void> _kick(GroupMember m) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('移出群聊'),
-        content: Text('确定将 ${m.nickname} 移出群聊吗？'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('移出')),
-        ],
-      ),
+    final ok = await showMemberActionDialog(
+      context,
+      member: m,
+      setAdmin: false,
     );
-    if (ok != true) return;
+    if (ok != true || !mounted) return;
     setState(() => _busy = true);
     try {
       await GroupService.instance.kick(widget.groupId, m.userId);
@@ -1399,6 +1805,122 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
       if (mounted) showLiveSnack(context, e.message);
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _setRole(GroupMember m, String role) async {
+    if (!_isOwner || m.role == 'owner') return;
+    if (role == 'admin') {
+      final ok = await showMemberActionDialog(
+        context,
+        member: m,
+        setAdmin: true,
+      );
+      if (ok != true || !mounted) return;
+    }
+    setState(() => _busy = true);
+    try {
+      await GroupService.instance.setRole(widget.groupId, m.userId, role);
+      if (mounted) {
+        showLiveSnack(
+          context,
+          role == 'admin' ? '已设为管理员' : '已取消管理员',
+        );
+        _load();
+      }
+    } on ApiException catch (e) {
+      if (mounted) showLiveSnack(context, e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// 群聊设置页长按成员：设为管理员 / 取消管理员 / 移出群聊（对齐 Pixso）。
+  Future<void> _showMemberMenu(GroupMember m) async {
+    if (!_canManage ||
+        m.role == 'owner' ||
+        m.userId == AuthStore.instance.userId) {
+      return;
+    }
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => SafeArea(
+        child: Container(
+          decoration: const BoxDecoration(
+            color: LiveColors.bg,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 14),
+              Text(
+                m.nickname,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: LiveColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Divider(height: 1, color: LiveColors.divider),
+              if (_isOwner && m.role != 'admin')
+                ListTile(
+                  leading: const Icon(
+                    Icons.admin_panel_settings_outlined,
+                    color: LiveColors.textPrimary,
+                  ),
+                  title: const Text(
+                    '设为管理员',
+                    style: TextStyle(fontSize: 15, color: LiveColors.textPrimary),
+                  ),
+                  onTap: () => Navigator.pop(sheetContext, 'set_admin'),
+                ),
+              if (_isOwner && m.role == 'admin')
+                ListTile(
+                  leading: const Icon(
+                    Icons.person_outline,
+                    color: LiveColors.textPrimary,
+                  ),
+                  title: const Text(
+                    '取消管理员',
+                    style: TextStyle(fontSize: 15, color: LiveColors.textPrimary),
+                  ),
+                  onTap: () => Navigator.pop(sheetContext, 'unset_admin'),
+                ),
+              ListTile(
+                leading: const Icon(
+                  Icons.person_remove_outlined,
+                  color: LiveColors.danger,
+                ),
+                title: const Text(
+                  '移出群聊',
+                  style: TextStyle(fontSize: 15, color: LiveColors.danger),
+                ),
+                onTap: () => Navigator.pop(sheetContext, 'kick'),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || action == null) return;
+    // 等弹层完全退场后再执行后续操作（可能弹确认框），
+    // 避免退出中的 route 与新 route 同帧共享 InheritedElement。
+    await Future<void>.delayed(const Duration(milliseconds: 320));
+    if (!mounted) return;
+    switch (action) {
+      case 'set_admin':
+        await _setRole(m, 'admin');
+        break;
+      case 'unset_admin':
+        await _setRole(m, 'member');
+        break;
+      case 'kick':
+        await _kick(m);
+        break;
     }
   }
 
@@ -1677,24 +2199,30 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          // 成员横向网格
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 10,
-                            children: [
-                              for (final m in _members)
-                                _GroupMemberCell(
-                                  member: m,
-                                  isOwner: m.role == 'owner',
-                                  isAdmin: m.role == 'admin',
-                                  onLongPress: (_canManage &&
-                                          m.role != 'owner' &&
-                                          m.userId != AuthStore.instance.userId)
-                                      ? () => _kick(m)
-                                      : null,
-                                ),
-                              _GroupMemberAdd(onTap: _addMembers),
-                            ],
+                          // 成员横向单行（对齐 Pixso：固定宽度单元 + 末尾添加按钮）
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                for (var i = 0; i < _members.length; i++) ...[
+                                  if (i > 0) const SizedBox(width: 8),
+                                  _GroupMemberCell(
+                                    member: _members[i],
+                                    isOwner: _members[i].role == 'owner',
+                                    isAdmin: _members[i].role == 'admin',
+                                    onLongPress:
+                                        (_canManage &&
+                                                _members[i].role != 'owner' &&
+                                                _members[i].userId !=
+                                                    AuthStore.instance.userId)
+                                            ? () => _showMemberMenu(_members[i])
+                                            : null,
+                                  ),
+                                ],
+                                const SizedBox(width: 8),
+                                _GroupMemberAdd(onTap: _addMembers),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 20),
                           // 设置卡片
@@ -2109,22 +2637,10 @@ class _GroupMemberManageScreenState extends State<GroupMemberManageScreen> {
   }
 
   Future<void> _kick(GroupMember m) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('移出群聊'),
-        content: Text('确定将 ${m.nickname} 移出群聊吗？移出后 TA 将无法查看群聊消息。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('移出'),
-          ),
-        ],
-      ),
+    final ok = await showMemberActionDialog(
+      context,
+      member: m,
+      setAdmin: false,
     );
     if (ok != true || !mounted) return;
     setState(() => _busy = true);
@@ -2273,6 +2789,14 @@ class _GroupMemberManageScreenState extends State<GroupMemberManageScreen> {
 
   Future<void> _setRole(GroupMember m, String role) async {
     if (!_isOwner || m.role == 'owner') return;
+    if (role == 'admin') {
+      final ok = await showMemberActionDialog(
+        context,
+        member: m,
+        setAdmin: true,
+      );
+      if (ok != true || !mounted) return;
+    }
     setState(() => _busy = true);
     try {
       await GroupService.instance.setRole(widget.groupId, m.userId, role);

@@ -276,4 +276,16 @@ class UploadService {
     );
     return (data as Map<String, dynamic>)['url'] as String;
   }
+
+  /// 上传聊天语音，返回相对 url（服务端 /api/uploads/audio）。
+  Future<String> uploadAudio(List<int> bytes, String filename, {String? contentType}) async {
+    final data = await ApiClient.instance.upload(
+      '/uploads/audio',
+      field: 'file',
+      bytes: bytes,
+      filename: filename,
+      contentType: contentType,
+    );
+    return (data as Map<String, dynamic>)['url'] as String;
+  }
 }
