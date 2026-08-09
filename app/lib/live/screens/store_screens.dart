@@ -985,8 +985,9 @@ class TableSelectScreen extends StatefulWidget {
 }
 
 class _TableSelectScreenState extends State<TableSelectScreen> {
-  List<TableAvailability> _tables = [];
-  TableAvailability? _table;
+  List<StoreTable> _tables = [];
+  Map<int, TableAvailability> _avail = {};
+  StoreTable? _table;
   int _people = 2;
   bool _loading = true;
   String? _error;
@@ -1003,11 +1004,19 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
       _error = null;
     });
     try {
-      final tables = await AppointmentService.instance.availability(
+      final avail = await AppointmentService.instance.availability(
         storeId: widget.store.id,
         date: widget.date,
       );
-      if (mounted) setState(() => _tables = tables);
+      if (mounted) {
+        setState(() {
+          _avail = {for (final a in avail) a.id: a};
+          _tables = avail
+              .map((a) =>
+                  StoreTable(id: a.id, name: a.name, capacity: a.capacity))
+              .toList();
+        });
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {
@@ -1015,11 +1024,13 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
     }
   }
 
-  bool _isAvailable(TableAvailability t) {
+  bool _isAvailable(StoreTable t) {
+    final w = _avail[t.id];
+    if (w == null) return false;
     if (widget.bookingType == 'all_day') {
-      return t.bookedWindows.isEmpty;
+      return w.bookedWindows.isEmpty;
     }
-    return t.isFree(widget.startTime, widget.endTime);
+    return w.isFree(widget.startTime, widget.endTime);
   }
 
   /// 单人价格（含时长；实际以服务端会员价计算为准，此处为预览）
