@@ -101,8 +101,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     await LiveRoutes.push(context, RoutePaths.profileEdit);
                                     _load();
                                   },
-                                  onShare: () =>
-                                      showLiveSnack(context, '已复制主页分享链接（模拟）'),
+                                  onOrders: () => LiveRoutes.push(
+                                    context,
+                                    RoutePaths.appointmentMy,
+                                  ),
                                 ),
                                 const SizedBox(height: 18),
                                 // ── 社区内容（帖子/笔记/视频）前期暂不开放，Tab 与内容网格先隐藏 ──
@@ -235,12 +237,12 @@ class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({
     required this.user,
     required this.onEdit,
-    required this.onShare,
+    required this.onOrders,
   });
 
   final User user;
   final VoidCallback onEdit;
-  final VoidCallback onShare;
+  final VoidCallback onOrders;
 
   @override
   Widget build(BuildContext context) {
@@ -290,9 +292,9 @@ class _ProfileHeader extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: PrimaryButton(
-                label: '分享主页',
+                label: '我的预约',
                 height: 54,
-                onTap: onShare,
+                onTap: onOrders,
               ),
             ),
           ],

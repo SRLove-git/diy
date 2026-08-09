@@ -3,6 +3,7 @@ import http from './http'
 export interface Membership {
   id: number
   userId: number
+  userName?: string
   memberNo: string
   levelName: string
   expireAt: string

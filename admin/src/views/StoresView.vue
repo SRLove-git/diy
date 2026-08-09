@@ -4,7 +4,6 @@ import {
   storeApi,
   type Store,
   type StoreTable,
-  type TimeSlot,
   type StorePackage,
 } from '../api/stores'
 
@@ -25,11 +24,11 @@ const currentStore = ref<Store>()
 const newTable = ref({ name: '', capacity: 2, enabled: true })
 const tableDrafts = ref<Record<number, { name: string; capacity: number; enabled: boolean }>>({})
 
-// 时段管理
-const showSlots = ref(false)
-const slots = ref<TimeSlot[]>([])
-const newSlot = ref({ startTime: '', endTime: '', enabled: true })
-const slotDrafts = ref<Record<number, { startTime: string; endTime: string; enabled: boolean }>>({})
+// 时段管理（预约已改为按时长，时段不再使用，先隐藏）
+// const showSlots = ref(false)
+// const slots = ref<TimeSlot[]>([])
+// const newSlot = ref({ startTime: '', endTime: '', enabled: true })
+// const slotDrafts = ref<Record<number, { startTime: string; endTime: string; enabled: boolean }>>({})
 
 // 时长套餐管理
 const showPackages = ref(false)
@@ -174,60 +173,60 @@ async function removeTable(t: StoreTable) {
   }
 }
 
-// ===== 时段管理 =====
-function openSlotManager(s: Store) {
-  currentStore.value = s
-  slots.value = s.slots ?? []
-  newSlot.value = { startTime: '', endTime: '', enabled: true }
-  slotDrafts.value = {}
-  showSlots.value = true
-}
-
-async function addSlot() {
-  if (!newSlot.value.startTime || !newSlot.value.endTime) return
-  try {
-    const { data } = await storeApi.addSlot(currentStore.value!.id, newSlot.value)
-    slots.value.push(data)
-    newSlot.value = { startTime: '', endTime: '', enabled: true }
-  } catch (e: any) {
-    alert(e?.response?.data?.message ?? '添加失败')
-  }
-}
-
-function editSlot(t: TimeSlot) {
-  slotDrafts.value[t.id] = {
-    startTime: t.startTime,
-    endTime: t.endTime,
-    enabled: t.enabled,
-  }
-}
-
-async function saveSlot(t: TimeSlot) {
-  const draft = slotDrafts.value[t.id]
-  if (!draft) return
-  try {
-    const { data } = await storeApi.updateSlot(t.id, draft)
-    const idx = slots.value.findIndex((x) => x.id === t.id)
-    if (idx >= 0) slots.value[idx] = data
-    delete slotDrafts.value[t.id]
-  } catch (e: any) {
-    alert(e?.response?.data?.message ?? '保存失败')
-  }
-}
-
-function cancelSlotEdit(id: number) {
-  delete slotDrafts.value[id]
-}
-
-async function removeSlot(t: TimeSlot) {
-  if (!confirm(`确认删除时段 ${t.startTime}-${t.endTime}？`)) return
-  try {
-    await storeApi.removeSlot(t.id)
-    slots.value = slots.value.filter((x) => x.id !== t.id)
-  } catch (e: any) {
-    alert(e?.response?.data?.message ?? '删除失败')
-  }
-}
+// ===== 时段管理（预约已改为按时长，时段不再使用，先隐藏） =====
+// function openSlotManager(s: Store) {
+//   currentStore.value = s
+//   slots.value = s.slots ?? []
+//   newSlot.value = { startTime: '', endTime: '', enabled: true }
+//   slotDrafts.value = {}
+//   showSlots.value = true
+// }
+//
+// async function addSlot() {
+//   if (!newSlot.value.startTime || !newSlot.value.endTime) return
+//   try {
+//     const { data } = await storeApi.addSlot(currentStore.value!.id, newSlot.value)
+//     slots.value.push(data)
+//     newSlot.value = { startTime: '', endTime: '', enabled: true }
+//   } catch (e: any) {
+//     alert(e?.response?.data?.message ?? '添加失败')
+//   }
+// }
+//
+// function editSlot(t: TimeSlot) {
+//   slotDrafts.value[t.id] = {
+//     startTime: t.startTime,
+//     endTime: t.endTime,
+//     enabled: t.enabled,
+//   }
+// }
+//
+// async function saveSlot(t: TimeSlot) {
+//   const draft = slotDrafts.value[t.id]
+//   if (!draft) return
+//   try {
+//     const { data } = await storeApi.updateSlot(t.id, draft)
+//     const idx = slots.value.findIndex((x) => x.id === t.id)
+//     if (idx >= 0) slots.value[idx] = data
+//     delete slotDrafts.value[t.id]
+//   } catch (e: any) {
+//     alert(e?.response?.data?.message ?? '保存失败')
+//   }
+// }
+//
+// function cancelSlotEdit(id: number) {
+//   delete slotDrafts.value[id]
+// }
+//
+// async function removeSlot(t: TimeSlot) {
+//   if (!confirm(`确认删除时段 ${t.startTime}-${t.endTime}？`)) return
+//   try {
+//     await storeApi.removeSlot(t.id)
+//     slots.value = slots.value.filter((x) => x.id !== t.id)
+//   } catch (e: any) {
+//     alert(e?.response?.data?.message ?? '删除失败')
+//   }
+// }
 
 // ===== 时长套餐管理 =====
 function openPackageManager(s: Store) {
@@ -305,7 +304,7 @@ onMounted(load)
       <thead>
         <tr>
           <th>ID</th><th>名称</th><th>地址</th><th>电话</th><th>营业时间</th>
-          <th>评分</th><th>桌位</th><th>时段</th><th>套餐</th><th>状态</th><th>操作</th>
+          <th>评分</th><th>桌位</th><th>套餐</th><th>状态</th><th>操作</th>
         </tr>
       </thead>
       <tbody>
@@ -317,7 +316,6 @@ onMounted(load)
           <td>{{ s.businessHours }}</td>
           <td>{{ s.rating }}</td>
           <td>{{ s.tables?.length ?? 0 }}</td>
-          <td>{{ s.slots?.length ?? 0 }}</td>
           <td>{{ s.packages?.length ?? 0 }}</td>
           <td>
             <span class="tag" :class="s.enabled ? 'tag-on' : 'tag-off'">
@@ -327,7 +325,6 @@ onMounted(load)
           <td class="ops">
             <button @click="openEdit(s)">编辑</button>
             <button @click="openTableManager(s)">桌位</button>
-            <button @click="openSlotManager(s)">时段</button>
             <button @click="openPackageManager(s)">套餐</button>
             <button :class="s.enabled ? '' : 'primary'" @click="toggleStore(s)">
               {{ s.enabled ? '停用' : '启用' }}
@@ -412,8 +409,8 @@ onMounted(load)
       </div>
     </div>
 
-    <!-- 时段管理 -->
-    <div v-if="showSlots" class="mask">
+    <!-- 时段管理（预约已改为按时长，时段不再使用，先隐藏） -->
+    <!-- <div v-if="showSlots" class="mask">
       <div class="dialog wide">
         <h3>时段配置 · {{ currentStore?.name }}</h3>
         <table class="grid">
@@ -456,7 +453,7 @@ onMounted(load)
           <button class="primary" @click="showSlots = false">完成</button>
         </div>
       </div>
-    </div>
+    </div> -->
 
     <!-- 时长套餐管理 -->
     <div v-if="showPackages" class="mask">

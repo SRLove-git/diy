@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import jsQR from 'jsqr'
 import { appointmentApi, type Appointment } from '../api/appointments'
 import { storeApi, type Store } from '../api/stores'
 
@@ -10,11 +11,29 @@ const error = ref('')
 const statusFilter = ref('')
 const storeFilter = ref('')
 const dateFilter = ref('')
+const keywordFilter = ref('')
+const codeFilter = ref('')
 const page = ref(1)
 const pageSize = 20
 const stores = ref<Store[]>([])
 const operatingId = ref<number | null>(null)
 const cancelTarget = ref<Appointment | null>(null)
+const checkinCode = ref('')
+const checkinBusy = ref(false)
+const checkinResult = ref<Appointment | null>(null)
+const showCheckinModal = ref(false)
+const checkinError = ref('')
+// 扫码核销
+const showScanModal = ref(false)
+const scanError = ref('')
+const scanning = ref(false)
+const scanVideoEl = ref<HTMLVideoElement | null>(null)
+let scanStream: MediaStream | null = null
+let scanTimer: number | undefined
+// 动态时间：服务中订单时长每秒走动；列表每 30 秒静默自动刷新
+const now = ref(Date.now())
+let nowTimer: number | undefined
+let refreshTimer: number | undefined
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize) || 1)
 
@@ -52,19 +71,27 @@ async function loadStores() {
   }
 }
 
-async function load() {
-  loading.value = true
-  error.value = ''
+async function fetchOrders(silent = false) {
   try {
     const params: any = { page: page.value, limit: pageSize }
     if (statusFilter.value) params.status = statusFilter.value
     if (storeFilter.value) params.storeId = storeFilter.value
     if (dateFilter.value) params.date = dateFilter.value
+    if (keywordFilter.value.trim()) params.keyword = keywordFilter.value.trim()
+    if (codeFilter.value.trim()) params.code = codeFilter.value.trim()
     const data = await appointmentApi.list(params)
     orders.value = data[0]
     total.value = data[1]
   } catch (e: any) {
-    error.value = e?.response?.data?.message ?? '加载失败'
+    if (!silent) error.value = e?.response?.data?.message ?? '加载失败'
+  }
+}
+
+async function load() {
+  loading.value = true
+  error.value = ''
+  try {
+    await fetchOrders()
   } finally {
     loading.value = false
   }
@@ -86,7 +113,7 @@ async function operate(
   action: 'checkin' | 'clockin' | 'clockout',
 ) {
   const prompts = {
-    checkin: `确认核销预约码 ${order.code}？核销后订单将进入已核销状态。`,
+    checkin: `确认核销预约码 ${order.code}？核销即上钟，订单将进入服务中并开始计时。`,
     clockin: `确认预约码 ${order.code} 开始上钟？`,
     clockout: `确认预约码 ${order.code} 下钟？`,
   }
@@ -102,6 +129,109 @@ async function operate(
     alert(e?.response?.data?.message ?? '操作失败')
   } finally {
     operatingId.value = null
+  }
+}
+
+/** 输入核销码核销（核销即上钟，结束时间固定为预约时段） */
+function openCheckinModal() {
+  checkinCode.value = ''
+  checkinError.value = ''
+  checkinResult.value = null
+  showCheckinModal.value = true
+}
+
+/** 打开扫码弹窗并启动摄像头 */
+function openScanModal() {
+  showScanModal.value = true
+  scanError.value = ''
+  scanning.value = false
+  nextTick(startScanner)
+}
+
+async function startScanner() {
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+      audio: false,
+    })
+    const video = scanVideoEl.value
+    if (!video) {
+      stopScanner()
+      return
+    }
+    video.srcObject = scanStream
+    await video.play()
+    scanning.value = true
+    scanTimer = window.setInterval(scanFrame, 200)
+  } catch {
+    scanError.value = '无法打开摄像头，请检查浏览器权限，或使用手动输入核销码'
+  }
+}
+
+function scanFrame() {
+  const video = scanVideoEl.value
+  if (!video || video.readyState < 2) return
+  const canvas = document.createElement('canvas')
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) return
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  const result = jsQR(img.data, img.width, img.height)
+  // App 端预约码二维码内容就是 6 位核销码
+  if (result && /^\d{6}$/.test(result.data)) {
+    stopScanner()
+    showScanModal.value = false
+    openCheckinModal()
+    checkinCode.value = result.data
+  }
+}
+
+function stopScanner() {
+  if (scanTimer) {
+    clearInterval(scanTimer)
+    scanTimer = undefined
+  }
+  if (scanStream) {
+    scanStream.getTracks().forEach((t) => t.stop())
+    scanStream = null
+  }
+  if (scanVideoEl.value) scanVideoEl.value.srcObject = null
+}
+
+function closeScanModal() {
+  stopScanner()
+  showScanModal.value = false
+}
+
+function closeCheckinModal() {
+  showCheckinModal.value = false
+  checkinResult.value = null
+}
+
+function resetCheckin() {
+  checkinCode.value = ''
+  checkinError.value = ''
+  checkinResult.value = null
+}
+
+async function checkInByCode() {
+  const code = checkinCode.value.trim()
+  if (!/^\d{6}$/.test(code)) {
+    checkinError.value = '请输入 6 位数字核销码'
+    return
+  }
+  checkinBusy.value = true
+  checkinError.value = ''
+  try {
+    const result = await appointmentApi.checkInByCode(code)
+    checkinResult.value = result
+    await load()
+  } catch (e: any) {
+    checkinError.value = e?.response?.data?.message ?? '核销失败'
+  } finally {
+    checkinBusy.value = false
   }
 }
 
@@ -147,7 +277,7 @@ function formatDuration(s: string | null, e: string | null): string {
 
 function durationEnd(o: Appointment): string | null {
   // 服务中：显示到当前时刻的已用时长；已完成/已下钟：显示实际下钟时间
-  return o.status === 'in_service' ? new Date().toISOString() : o.serviceEndTime
+  return o.status === 'in_service' ? new Date(now.value).toISOString() : o.serviceEndTime
 }
 
 function bookingLabel(o: Appointment): string {
@@ -158,14 +288,38 @@ function bookingLabel(o: Appointment): string {
   return '按小时'
 }
 
-function fmtAmount(v: number | undefined): string {
-  const value = Number(v ?? 0)
-  return Number.isInteger(value) ? String(value) : value.toFixed(2)
+function tableLabel(o: Appointment): string {
+  if (o.tables && o.tables.length) {
+    return o.tables.map((t) => t.name).join(' + ')
+  }
+  return o.tableName || '-'
 }
+
+// 线下支付，金额/支付列已隐藏，格式化函数一并注释
+// function fmtAmount(v: number | undefined): string {
+//   const value = Number(v ?? 0)
+//   return Number.isInteger(value) ? String(value) : value.toFixed(2)
+// }
 
 onMounted(() => {
   loadStores()
   load()
+  // 有服务中订单时每秒走动一次计时
+  nowTimer = window.setInterval(() => {
+    if (orders.value.some((o) => o.status === 'in_service')) {
+      now.value = Date.now()
+    }
+  }, 1000)
+  // 每 30 秒静默刷新列表，状态与时间自动更新
+  refreshTimer = window.setInterval(() => {
+    fetchOrders(true)
+  }, 30000)
+})
+
+onUnmounted(() => {
+  if (nowTimer) clearInterval(nowTimer)
+  if (refreshTimer) clearInterval(refreshTimer)
+  stopScanner()
 })
 </script>
 
@@ -184,8 +338,30 @@ onMounted(() => {
           <option v-for="s in stores" :key="s.id" :value="s.id">{{ s.name }}</option>
         </select>
         <input v-model="dateFilter" type="date" @change="applyFilters" />
+        <input
+          v-model="keywordFilter"
+          placeholder="搜索用户（用户名/邮箱/昵称）"
+          @keyup.enter="applyFilters"
+        />
+        <input
+          v-model="codeFilter"
+          class="code-search"
+          placeholder="核销码"
+          maxlength="6"
+          @keyup.enter="applyFilters"
+        />
+        <button
+          class="btn btn-success checkin-entry"
+          @click="openCheckinModal"
+        >
+          核销码核销
+        </button>
+        <button class="btn btn-success scan-entry" @click="openScanModal">
+          扫码核销
+        </button>
         <button class="btn" @click="applyFilters">查询</button>
         <button class="btn" @click="load">刷新</button>
+        <span class="muted auto-hint">自动刷新 30s</span>
       </div>
     </div>
 
@@ -203,7 +379,8 @@ onMounted(() => {
           <th>日期</th>
           <th>时段</th>
           <th>人数</th>
-          <th>金额/支付</th>
+          <!-- 线下支付，金额/支付列先隐藏 -->
+          <!-- <th>金额/支付</th> -->
           <th>备注</th>
           <th>状态</th>
           <th>核销</th>
@@ -227,7 +404,7 @@ onMounted(() => {
             <span v-if="o.type === 'activity'" class="tag" style="color: #e8633a; border-color: #f3c6b6">
               活动
             </span>
-            <span v-else>{{ o.tableName || '-' }}</span>
+            <span v-else>{{ tableLabel(o) }}</span>
           </td>
           <td>{{ o.date }}</td>
           <td>
@@ -235,14 +412,15 @@ onMounted(() => {
             <span v-if="o.type !== 'activity'" class="muted">（{{ bookingLabel(o) }}）</span>
           </td>
           <td>{{ o.peopleCount }} 人</td>
-          <td>
+          <!-- 线下支付，金额/支付列先隐藏 -->
+          <!-- <td>
             <span :style="{ color: o.payStatus === 'paid' ? '#2e9e5b' : '#e6a23c' }">
               {{ o.payStatus === 'paid' ? '已支付' : '待支付' }} ¥{{ fmtAmount(o.amount) }}
             </span>
             <span v-if="o.payMethod" class="muted">
               （{{ o.payMethod === 'alipay' ? '支付宝' : '微信' }}）
             </span>
-          </td>
+          </td> -->
           <td class="note-cell">
             <span v-if="o.note" :title="o.note" class="note">{{ o.note }}</span>
             <span v-else class="muted">-</span>
@@ -305,7 +483,83 @@ onMounted(() => {
       <button class="btn btn-sm" :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
     </div>
 
-    <!-- 取消确认弹窗 -->
+    <!-- 扫码核销弹窗 -->
+    <div v-if="showScanModal" class="modal-overlay" @click.self="closeScanModal">
+      <div class="modal scan-modal">
+        <h3>扫码核销</h3>
+        <p class="modal-desc">将摄像头对准顾客出示的预约码二维码，识别后自动核销并开始计时。</p>
+        <div class="scan-box">
+          <video ref="scanVideoEl" autoplay playsinline muted></video>
+          <div v-if="scanError" class="scan-error">{{ scanError }}</div>
+          <div v-else-if="scanning" class="scan-tip">正在识别二维码…</div>
+        </div>
+        <div class="scan-manual">
+          <span class="muted">无法扫码？</span>
+          <button class="btn btn-sm" @click="closeScanModal(); openCheckinModal()">
+            手动输入核销码
+          </button>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-sm" @click="closeScanModal">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 核销码核销弹窗：输入核销码 → 核销成功展示订单信息 -->
+    <div v-if="showCheckinModal" class="modal-overlay" @click.self="closeCheckinModal">
+      <div class="modal checkin-modal">
+        <template v-if="checkinResult === null">
+          <h3>核销码核销</h3>
+          <p class="modal-desc">
+            输入顾客出示的 6 位核销码，核销即上钟开始计时，结束时间固定为预约时段。
+          </p>
+          <input
+            v-model="checkinCode"
+            class="checkin-input"
+            type="text"
+            maxlength="6"
+            placeholder="请输入核销码"
+            autofocus
+            @keyup.enter="checkInByCode"
+          />
+          <p v-if="checkinError" class="checkin-error">{{ checkinError }}</p>
+          <div class="modal-actions">
+            <button class="btn btn-sm" @click="closeCheckinModal">取消</button>
+            <button
+              class="btn btn-sm btn-success"
+              :disabled="checkinBusy || checkinCode.trim().length !== 6"
+              @click="checkInByCode"
+            >
+              {{ checkinBusy ? '核销中…' : '立即核销' }}
+            </button>
+          </div>
+        </template>
+        <template v-else>
+          <h3>核销成功</h3>
+          <div class="result-info">
+            <p><span class="muted">预约码</span> <code>{{ checkinResult.code }}</code></p>
+            <p><span class="muted">门店</span> {{ checkinResult.storeName }}</p>
+            <p>
+              <span class="muted">桌位 / 人数</span>
+              {{ tableLabel(checkinResult) }} · {{ checkinResult.peopleCount }} 人
+            </p>
+            <p>
+              <span class="muted">时间</span>
+              {{ checkinResult.date }} {{ checkinResult.startTime }}-{{ checkinResult.endTime }}
+            </p>
+            <p>
+              <span class="muted">状态</span>
+              <span class="tag" style="color: #2e9e5b; border-color: #2e9e5b">服务中（已开始计时）</span>
+            </p>
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-sm" @click="resetCheckin">继续核销</button>
+            <button class="btn btn-sm btn-success" @click="closeCheckinModal">完成</button>
+          </div>
+        </template>
+      </div>
+    </div>
+
     <div v-if="cancelTarget !== null" class="modal-overlay" @click.self="cancelCancel">
       <div class="modal">
         <h3>取消预约</h3>
@@ -331,6 +585,25 @@ onMounted(() => {
   border: 1px solid #eceae6;
   border-radius: 8px;
   font-size: 13px;
+}
+.filters .auto-hint {
+  align-self: center;
+  font-size: 12px;
+}
+.filters .code-search {
+  width: 90px;
+  letter-spacing: 1px;
+}
+.filters .checkin-entry {
+  padding: 9px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(46, 158, 91, 0.35);
+}
+.filters .scan-entry {
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 600;
 }
 .state { text-align: center; padding: 40px; color: #8a8a8a; }
 .error { color: #d9453e; }
@@ -420,6 +693,73 @@ onMounted(() => {
 }
 .modal h3 { margin: 0 0 16px; font-size: 16px; }
 .modal-desc { margin: 0 0 8px; font-size: 13px; color: #555; }
+.checkin-modal .checkin-input {
+  width: 100%;
+  height: 56px;
+  margin: 12px 0 4px;
+  border: 2px solid #2e9e5b;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 10px;
+  outline: none;
+}
+.checkin-modal .checkin-input:focus {
+  box-shadow: 0 0 0 3px rgba(46, 158, 91, 0.18);
+}
+.checkin-modal .checkin-error {
+  margin: 6px 0 0;
+  color: #d9453e;
+  font-size: 13px;
+}
+.scan-modal .scan-box {
+  position: relative;
+  margin: 12px 0 10px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #141414;
+  aspect-ratio: 1;
+}
+.scan-modal .scan-box video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.scan-modal .scan-tip,
+.scan-modal .scan-error {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px;
+  text-align: center;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+}
+.scan-modal .scan-error {
+  top: 0;
+  bottom: auto;
+  color: #ffb4ab;
+}
+.scan-modal .scan-manual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.result-info p {
+  display: flex;
+  gap: 12px;
+  margin: 6px 0;
+  font-size: 13px;
+}
+.result-info .muted {
+  width: 76px;
+  flex: none;
+}
 .modal-actions {
   display: flex;
   justify-content: flex-end;

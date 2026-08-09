@@ -72,6 +72,15 @@ export class Appointment {
   @Column({ length: 50 })
   tableName: string;
 
+  /** 预约桌位明细（一单多桌）：[{id,name,capacity,people}]；旧单桌数据为 null（用 tableId/tableName） */
+  @Column({ type: 'json', nullable: true })
+  tables: Array<{
+    id: number;
+    name: string;
+    capacity: number;
+    people: number;
+  }> | null;
+
   @Column({ type: 'int', nullable: true })
   slotId: number | null;
 

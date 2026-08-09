@@ -395,8 +395,9 @@ final GoRouter appRouter = GoRouter(
         packageId: (m['packageId'] as int?) ?? null,
         packagePrice: (m['packagePrice'] as num?)?.toDouble(),
         session: m['session'] as ActivitySession?,
-        table: m['table'] as StoreTable?,
-            note: (m['note'] as String?) ?? '',
+        tableIds: ((m['tableIds'] as List?) ?? const <int>[]).cast<int>(),
+        tableLabel: (m['tableLabel'] as String?) ?? '',
+        note: (m['note'] as String?) ?? '',
           ),
         );
       },

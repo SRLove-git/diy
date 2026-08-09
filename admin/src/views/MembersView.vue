@@ -370,7 +370,7 @@ onMounted(loadAll)
             <input
               v-model="keyword"
               type="text"
-              placeholder="用户ID / 会员编号"
+              placeholder="用户名 / 用户ID / 会员编号"
               @keyup.enter="doMemberSearch"
             />
             <button class="btn" @click="doMemberSearch">搜索</button>
@@ -382,7 +382,7 @@ onMounted(loadAll)
           <thead>
             <tr>
               <th>ID</th>
-              <th>用户ID</th>
+              <th>用户名</th>
               <th>会员编号</th>
               <th>等级</th>
               <th>有效期至</th>
@@ -394,7 +394,7 @@ onMounted(loadAll)
           <tbody>
             <tr v-for="item in members" :key="item.id">
               <td>{{ item.id }}</td>
-              <td>{{ item.userId }}</td>
+              <td>{{ item.userName || `用户 #${item.userId}` }}</td>
               <td><code>{{ item.memberNo }}</code></td>
               <td>{{ item.levelName }}</td>
               <td>{{ formatTime(item.expireAt) }}</td>
@@ -552,7 +552,7 @@ onMounted(loadAll)
         <h3>删除会员记录</h3>
         <p class="modal-desc">
           确认删除会员编号 {{ deleteTarget.memberNo }}（用户ID
-          {{ deleteTarget.userId }}）？删除后该用户会员资格立即失效，操作不可恢复。
+          {{ deleteTarget.userName || `用户 #${deleteTarget.userId}` }}）？删除后该用户会员资格立即失效，操作不可恢复。
         </p>
         <div class="modal-actions">
           <button class="btn btn-sm" @click="cancelDeleteMember">取消</button>

@@ -13,6 +13,7 @@ export interface Appointment {
   storeName: string
   tableId: number | null
   tableName: string
+  tables?: Array<{ id: number; name: string; capacity: number; people: number }>
   slotId: number | null
   activityId?: number | null
   activitySessionId?: number | null
@@ -61,6 +62,12 @@ export const appointmentApi = {
   /** 管理端按订单核销 */
   adminCheckIn: (id: number) =>
     http.post<Appointment>(`/admin/appointments/${id}/checkin`),
+
+  /** 管理端输入核销码核销（核销即上钟） */
+  checkInByCode: (code: string) =>
+    http
+      .post<Appointment>('/admin/appointments/checkin-code', { code })
+      .then((r) => r.data),
 
   /** 管理端取消预约（店员代操作） */
   adminCancel: (id: number) =>

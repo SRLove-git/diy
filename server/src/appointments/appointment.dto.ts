@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsIn,
   IsInt,
   IsOptional,
@@ -44,6 +45,13 @@ export class CreateAppointmentDto {
   @IsOptional()
   @IsInt()
   tableId?: number;
+
+  /** 多桌预约：桌位 ID 列表（不传时用 tableId 单桌） */
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  tableIds?: number[];
 
   @IsOptional()
   @IsInt()

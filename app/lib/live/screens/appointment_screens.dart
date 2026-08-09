@@ -146,7 +146,8 @@ class AppointmentConfirmScreen extends StatefulWidget {
     this.packageId,
     this.packagePrice,
     this.session,
-    this.table,
+    this.tableIds = const <int>[],
+    this.tableLabel = '',
     this.note = '',
   });
 
@@ -163,7 +164,8 @@ class AppointmentConfirmScreen extends StatefulWidget {
   final int? packageId;
   final double? packagePrice;
   final ActivitySession? session;
-  final StoreTable? table;
+  final List<int> tableIds;
+  final String tableLabel;
   final String note;
 
   @override
@@ -256,7 +258,7 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
         body['activitySessionId'] = widget.session!.id;
       } else {
         body['storeId'] = widget.store!.id;
-        body['tableId'] = widget.table!.id;
+        body['tableIds'] = widget.tableIds;
         body['bookingType'] = widget.bookingType;
         body['date'] = widget.date;
         if (widget.bookingType != 'all_day') {
@@ -301,7 +303,8 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
                     _InfoRow(label: '预约方式', value: _bookingLabel),
                     _InfoRow(
                       label: '桌位',
-                      value: '${widget.table?.name ?? '-'}（${widget.peopleCount} 人）',
+                      value:
+                          '${widget.tableLabel.isEmpty ? '-' : widget.tableLabel}（${widget.peopleCount} 人）',
                     ),
                     _InfoRow(label: '付款方式', value: '到店核销后付款'),
                   ]
@@ -1089,7 +1092,7 @@ class _AppointmentCard extends StatelessWidget {
     final week = date == null
         ? ''
         : '周${'一二三四五六日'[date.weekday - 1]}';
-    final table = a.tableName.isNotEmpty ? ' · ${a.tableName}' : '';
+    final table = a.tableLabel.isNotEmpty ? ' · ${a.tableLabel}' : '';
     return '${a.date} $week ${a.startTime}-${a.endTime}$table'
         '${_durationLabel(a)} · ${a.peopleCount} 人';
   }
@@ -1426,7 +1429,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                     _DetailRow('预约项目', a.title),
                     _DetailRow('预约时间', '${a.date} ${a.startTime}-${a.endTime}'),
                     _DetailRow('人数', '${a.peopleCount} 人'),
-                    if (a.tableName.isNotEmpty) _DetailRow('桌位', a.tableName),
+                    if (a.tableLabel.isNotEmpty) _DetailRow('桌位', a.tableLabel),
                     // ── 线上支付（暂不接入）：支付方式 / 支付状态 / 优惠券，先注释 ──
                     // _DetailRow('支付方式', a.payMethod == 'wechat' ? '微信支付' : a.payMethod == 'alipay' ? '支付宝' : a.payMethod),
                     // _DetailRow('支付状态', a.payStatus == 'paid' ? '已支付' : '未支付'),
@@ -1931,7 +1934,7 @@ class _ServiceEndScreenState extends State<ServiceEndScreen> {
                       _DetailRow('门店', a.title),
                       _DetailRow(
                         '桌位 / 人数',
-                        '${a.tableName.isEmpty ? '--' : a.tableName} · ${a.peopleCount} 人',
+                        '${a.tableLabel.isEmpty ? '--' : a.tableLabel} · ${a.peopleCount} 人',
                       ),
                       _DetailRow('上钟时间', _fmtTime(a.serviceStartTime)),
                       _DetailRow('下钟时间', _fmtTime(a.serviceEndTime)),
@@ -2149,16 +2152,17 @@ class _CheckinFlowScreenState extends State<CheckinFlowScreen> {
             children: [
               LiveAppBar(
                 title: '到店核销',
-                actions: [
-                  TextButton(
-                    onPressed: () => LiveRoutes.push(context, RoutePaths.loginVerify),
-                    child: const Text(
-                      '输入核销码',
-                      style: TextStyle(fontSize: 13, color: LiveColors.textPrimary),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
+                // 输入核销码入口暂不开放，先隐藏
+                // actions: [
+                //   TextButton(
+                //     onPressed: () => LiveRoutes.push(context, RoutePaths.loginVerify),
+                //     child: const Text(
+                //       '输入核销码',
+                //       style: TextStyle(fontSize: 13, color: LiveColors.textPrimary),
+                //     ),
+                //   ),
+                //   const SizedBox(width: 8),
+                // ],
               ),
               Expanded(
                 child: ListView(
@@ -2207,8 +2211,8 @@ class _ExperienceCard extends StatelessWidget {
     final week = date == null
         ? ''
         : '周${'一二三四五六日'[date.weekday - 1]}';
-    final table = appointment.tableName.isNotEmpty
-        ? ' · ${appointment.tableName}'
+    final table = appointment.tableLabel.isNotEmpty
+        ? ' · ${appointment.tableLabel}'
         : '';
     final info =
         '${appointment.date} $week ${appointment.startTime}-${appointment.endTime}$table · ${appointment.peopleCount} 人';

@@ -430,34 +430,112 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// 三入口卡（预约 / 到店 / 会员套餐），使用设计稿资源图 + 三等分点击区。
+/// 三入口卡（预约 / 到店 / 会员套餐），Flutter 原生卡片，对齐设计稿
+/// （白卡 + 深色图标盒 + 标题/描述），替换原黑色资源图。
 class _EntryCardsRow extends StatelessWidget {
   const _EntryCardsRow({required this.onTap});
 
   final void Function(String key) onTap;
 
-  static const _keys = ['appoint', 'checkin', 'member'];
+  static const _entries = [
+    (
+      key: 'appoint',
+      icon: Icons.pin_drop_outlined,
+      title: '预约',
+      desc: '附近门店 / 活动',
+    ),
+    (
+      key: 'checkin',
+      icon: Icons.qr_code_scanner,
+      title: '到店',
+      desc: '核销 · 上钟',
+    ),
+    (
+      key: 'member',
+      icon: Icons.card_membership,
+      title: '会员套餐',
+      desc: '权益 · 优惠',
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 124,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.asset('assets/divrowgap30.png', fit: BoxFit.fill),
-          Row(
-            children: [
-              for (final key in _keys)
-                Expanded(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => onTap(key),
-                  ),
-                ),
-            ],
+    return Row(
+      children: [
+        for (var i = 0; i < _entries.length; i++) ...[
+          if (i > 0) const SizedBox(width: 10),
+          Expanded(
+            child: _EntryCard(
+              entry: _entries[i],
+              onTap: () => onTap(_entries[i].key),
+            ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// 单张入口卡：深色图标盒 + 标题 + 描述。
+class _EntryCard extends StatelessWidget {
+  const _EntryCard({required this.entry, required this.onTap});
+
+  final ({
+    String key,
+    IconData icon,
+    String title,
+    String desc,
+  }) entry;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        height: 124,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: LiveColors.divider),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF333333), Color(0xFF141414)],
+                ),
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(entry.icon, size: 19, color: Colors.white),
+            ),
+            const Spacer(),
+            Text(
+              entry.title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: LiveColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              entry.desc,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 10.5,
+                color: LiveColors.textTertiary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -479,7 +557,7 @@ class _HomeOrderCard extends StatelessWidget {
     final week = date == null
         ? ''
         : '周${'一二三四五六日'[date.weekday - 1]}';
-    final table = a.tableName.isNotEmpty ? ' · ${a.tableName}' : '';
+    final table = a.tableLabel.isNotEmpty ? ' · ${a.tableLabel}' : '';
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),

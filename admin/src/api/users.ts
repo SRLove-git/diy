@@ -21,4 +21,8 @@ export const userApi = {
   deleteWorks(id: number): Promise<{ posts: number; videos: number }> {
     return http.delete(`/admin/users/${id}/works`).then(r => r.data)
   },
+  /** 删除用户（含作品、互动、关注、会员、预约、聊天等全部关联数据） */
+  remove(id: number): Promise<{ posts: number; videos: number }> {
+    return http.delete(`/admin/users/${id}`).then(r => r.data)
+  },
 }

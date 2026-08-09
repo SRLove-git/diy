@@ -10,8 +10,8 @@ const search = ref('')
 const page = ref(1)
 const pageSize = 20
 const banTarget = ref<User | null>(null)
-const worksTarget = ref<User | null>(null)
-const deletingWorks = ref(false)
+const deleteTarget = ref<User | null>(null)
+const deleting = ref(false)
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize) || 1)
 
@@ -61,28 +61,26 @@ async function confirmBan() {
   }
 }
 
-function openDeleteWorks(user: User) {
-  worksTarget.value = user
+function openDeleteUser(user: User) {
+  deleteTarget.value = user
 }
 
-function cancelDeleteWorks() {
-  worksTarget.value = null
+function cancelDeleteUser() {
+  deleteTarget.value = null
 }
 
-async function confirmDeleteWorks() {
-  if (!worksTarget.value) return
-  deletingWorks.value = true
+async function confirmDeleteUser() {
+  if (!deleteTarget.value) return
+  deleting.value = true
   try {
-    const result = await userApi.deleteWorks(worksTarget.value.id)
-    worksTarget.value = null
-    alert(
-      `已删除该用户的全部作品：社区作品 ${result.posts} 个、短视频/照片 ${result.videos} 个`,
-    )
+    await userApi.remove(deleteTarget.value.id)
+    deleteTarget.value = null
+    alert('用户已删除')
     await load()
   } catch (e: any) {
     alert(e?.response?.data?.message ?? '操作失败')
   } finally {
-    deletingWorks.value = false
+    deleting.value = false
   }
 }
 
@@ -168,10 +166,10 @@ onMounted(load)
               {{ u.isBanned ? '解封' : '封禁' }}
             </button>
             <button
-              class="btn btn-sm btn-works"
-              @click="openDeleteWorks(u)"
+              class="btn btn-sm btn-danger"
+              @click="openDeleteUser(u)"
             >
-              删除作品
+              删除用户
             </button>
           </td>
         </tr>
@@ -204,24 +202,24 @@ onMounted(load)
       </div>
     </div>
 
-    <!-- 删除作品确认弹窗 -->
-    <div v-if="worksTarget !== null" class="modal-overlay" @click.self="cancelDeleteWorks">
+    <!-- 删除用户确认弹窗 -->
+    <div v-if="deleteTarget !== null" class="modal-overlay" @click.self="cancelDeleteUser">
       <div class="modal">
-        <h3>删除用户作品</h3>
+        <h3>删除用户</h3>
         <p class="modal-desc">
-          确认删除该用户发布的全部作品（社区帖子 + 短视频/照片）？删除后不可恢复，其点赞、评论与收藏记录将一并清除。
+          确认删除该用户账号？其作品、互动、关注、会员、预约、聊天等全部关联数据将一并删除，且不可恢复。
         </p>
         <p class="modal-user">
-          {{ worksTarget.nickname || worksTarget.username || `用户 #${worksTarget.id}` }}
+          {{ deleteTarget.nickname || deleteTarget.username || `用户 #${deleteTarget.id}` }}
         </p>
         <div class="modal-actions">
-          <button class="btn btn-sm" @click="cancelDeleteWorks">取消</button>
+          <button class="btn btn-sm" @click="cancelDeleteUser">取消</button>
           <button
             class="btn btn-sm btn-danger"
-            :disabled="deletingWorks"
-            @click="confirmDeleteWorks"
+            :disabled="deleting"
+            @click="confirmDeleteUser"
           >
-            {{ deletingWorks ? '删除中…' : '确认删除' }}
+            {{ deleting ? '删除中…' : '确认删除' }}
           </button>
         </div>
       </div>

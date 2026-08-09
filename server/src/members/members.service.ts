@@ -221,19 +221,39 @@ export class MembersService implements OnModuleInit {
     });
   }
 
-  listMemberships(page = 1, keyword?: string) {
-    const where = keyword
-      ? [
-          { userId: Number(keyword) || 0 },
-          { memberNo: Like(`%${keyword}%`) },
-        ]
-      : {};
-    return this.memberships.findAndCount({
-      where,
+  /** 管理端：会员列表（分页，可按用户ID/用户名/邮箱/昵称/会员编号搜索），附带用户显示名 */
+  async listMemberships(page = 1, keyword?: string) {
+    const kw = (keyword ?? '').trim();
+    const where: any[] = [];
+    if (kw) {
+      where.push({ userId: Number(kw) || 0 }, { memberNo: Like(`%${kw}%`) });
+      const matched = await this.users.findByKeyword(kw);
+      if (matched.length) {
+        where.push({ userId: In(matched.map((u) => u.id)) });
+      }
+    }
+    const [items, total] = await this.memberships.findAndCount({
+      where: where.length ? where : {},
       order: { updatedAt: 'DESC' },
       skip: (page - 1) * 20,
       take: 20,
     });
+    const userMap = new Map(
+      (await this.users.findByIds(items.map((i) => i.userId))).map((u) => [
+        u.id,
+        u,
+      ]),
+    );
+    return [
+      items.map((i) => {
+        const u = userMap.get(i.userId);
+        return {
+          ...i,
+          userName: u?.username || u?.nickname || `用户 #${i.userId}`,
+        };
+      }),
+      total,
+    ];
   }
 
   /** 后台开通/编辑会员 */

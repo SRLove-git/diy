@@ -987,7 +987,7 @@ class TableSelectScreen extends StatefulWidget {
 class _TableSelectScreenState extends State<TableSelectScreen> {
   List<StoreTable> _tables = [];
   Map<int, TableAvailability> _avail = {};
-  StoreTable? _table;
+  final Set<int> _selected = {};
   int _people = 2;
   bool _loading = true;
   String? _error;
@@ -1016,6 +1016,7 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                   StoreTable(id: a.id, name: a.name, capacity: a.capacity))
               .toList();
         });
+        _autoSelect();
       }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -1054,6 +1055,58 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
       'all_day' => '全天不限时',
       _ => '${widget.durationHours} 小时',
     };
+  }
+
+  List<StoreTable> get _selectedTables =>
+      _tables.where((t) => _selected.contains(t.id)).toList();
+
+  int get _selectedCapacity =>
+      _selectedTables.fold(0, (s, t) => s + t.capacity);
+
+  bool get _capacityOk => _selectedCapacity >= _people;
+
+  /// 自动推荐最优桌位组合（锁定推荐，不可手动多加桌）：
+  /// 先选「不大于剩余人数」的最大桌，剩余人数用「最小可容纳的桌」补齐。
+  /// 例：5 人 → 4人桌+单人桌；无单人桌 → 4人桌+2人桌；无 2 人桌 → 4人桌+4人桌。
+  void _autoSelect() {
+    final available = _tables.where((t) => _isAvailable(t)).toList();
+    if (available.isEmpty) {
+      setState(_selected.clear);
+      return;
+    }
+    final rest = [...available];
+    final picked = <StoreTable>[];
+    var remaining = _people;
+    while (remaining > 0 && picked.length < 3) {
+      // 先选「不大于剩余人数」的最大桌
+      final smaller = rest
+          .where((t) => t.capacity <= remaining)
+          .toList()
+        ..sort((a, b) => b.capacity - a.capacity);
+      if (smaller.isNotEmpty) {
+        final t = smaller.first;
+        picked.add(t);
+        rest.remove(t);
+        remaining -= t.capacity;
+        continue;
+      }
+      // 没有更小的桌了：用「最小可容纳剩余人数」的桌补齐（如无单人桌用双人桌，无双人桌用 4 人桌）
+      final cover = rest
+          .where((t) => t.capacity >= remaining)
+          .toList()
+        ..sort((a, b) => a.capacity - b.capacity);
+      if (cover.isEmpty) break;
+      final t = cover.first;
+      picked.add(t);
+      rest.remove(t);
+      remaining = 0;
+    }
+    setState(() {
+      _selected.clear();
+      if (remaining <= 0) {
+        _selected.addAll(picked.map((t) => t.id));
+      }
+    });
   }
 
   @override
@@ -1098,7 +1151,19 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                             ),
                           ),
                           const SizedBox(height: 18),
-                          const Text('选择桌位', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                          Row(
+                            children: [
+                              const Text('选择桌位', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                              const Spacer(),
+                              const Text(
+                                '自动推荐最优组合',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: LiveColors.textTertiary,
+                                ),
+                              ),
+                            ],
+                          ),
                           const SizedBox(height: 10),
                           if (_tables.isEmpty)
                             const EmptyView(text: '该门店暂无可用桌位')
@@ -1110,15 +1175,44 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                                 crossAxisCount: 4,
                                 mainAxisSpacing: 10,
                                 crossAxisSpacing: 10,
-                                childAspectRatio: 0.95,
+                                childAspectRatio: 0.9,
                               ),
                               itemCount: _tables.length,
                               itemBuilder: (_, i) {
                                 final t = _tables[i];
-                                final sel = _table?.id == t.id;
+                                final sel = _selected.contains(t.id);
                                 final free = _isAvailable(t);
                                 return InkWell(
-                                  onTap: free ? () => setState(() => _table = t) : null,
+                                  // 系统按人数自动推荐；可点选切换同规格桌位（如 4人桌1 ↔ 4人桌2），
+                                  // 但不能换成其他规格组合（避免多选/少选）。
+                                  onTap: free
+                                      ? () {
+                                          if (sel) {
+                                            showLiveSnack(
+                                              context,
+                                              '该桌已在推荐组合中',
+                                            );
+                                            return;
+                                          }
+                                          final same = _selectedTables
+                                              .where(
+                                                (s) =>
+                                                    s.capacity == t.capacity,
+                                              )
+                                              .toList();
+                                          if (same.isEmpty) {
+                                            showLiveSnack(
+                                              context,
+                                              '请保持推荐规格（可切换同规格桌位编号）',
+                                            );
+                                            return;
+                                          }
+                                          setState(() {
+                                            _selected.remove(same.first.id);
+                                            _selected.add(t.id);
+                                          });
+                                        }
+                                      : null,
                                   borderRadius: BorderRadius.circular(12),
                                   child: Container(
                                     decoration: BoxDecoration(
@@ -1148,7 +1242,8 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                                         Text(
                                           free ? '${t.capacity}人' : '满',
                                           style: TextStyle(
-                                            fontSize: 10.6,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
                                             color: sel
                                                 ? Colors.white70
                                                 : free
@@ -1162,6 +1257,17 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                                 );
                               },
                             ),
+                          if (_selected.isEmpty && _tables.isNotEmpty) ...[
+                            const SizedBox(height: 14),
+                            const Text(
+                              '当前时段没有合适的桌位组合，请调整时段或联系门店',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: LiveColors.textTertiary,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 18),
                           const Text('到店人数', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                           const SizedBox(height: 10),
@@ -1171,7 +1277,10 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                               _RoundBtn(
                                 icon: Icons.remove,
                                 onTap: _people > 1
-                                    ? () => setState(() => _people--)
+                                    ? () {
+                                        setState(() => _people--);
+                                        _autoSelect();
+                                      }
                                     : null,
                               ),
                               Padding(
@@ -1188,11 +1297,48 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                               _RoundBtn(
                                 icon: Icons.add,
                                 onTap: _people < 8
-                                    ? () => setState(() => _people++)
+                                    ? () {
+                                        setState(() => _people++);
+                                        _autoSelect();
+                                      }
                                     : null,
                               ),
                             ],
                           ),
+                          if (_selected.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: _capacityOk
+                                    ? LiveColors.brandLight
+                                    : const Color(0xFFFFF3F0),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '推荐桌位：${_selectedTables.map((t) => t.name).join(' + ')} · 可容纳 $_selectedCapacity 人',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: LiveColors.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                  if (!_capacityOk)
+                                    const Text(
+                                      '容量不足，请再选桌位',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: LiveColors.danger,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 22),
                           Row(
                             children: [
@@ -1218,7 +1364,7 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                             label: '确认预约',
                             color: Colors.black,
                             textColor: Colors.white,
-                            onTap: _table == null
+                            onTap: _selected.isEmpty || !_capacityOk
                                 ? null
                                 : () => LiveRoutes.push(
                                     context,
@@ -1234,7 +1380,10 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                                       'packageName': widget.package?.name ?? '',
                                       'packageId': widget.package?.id,
                                       'packagePrice': widget.package?.price,
-                                      'table': _table!,
+                                      'tableIds': _selected.toList(),
+                                      'tableLabel': _selectedTables
+                                          .map((t) => t.name)
+                                          .join(' + '),
                                       'peopleCount': _people,
                                     },
                                   ),

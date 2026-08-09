@@ -147,6 +147,20 @@ export class UsersService {
     ];
   }
 
+  /** 管理端：按用户名/邮箱/昵称模糊搜索用户（订单按用户筛选用） */
+  async findByKeyword(keyword: string): Promise<User[]> {
+    const kw = (keyword ?? '').trim();
+    if (!kw) return [];
+    return this.users.find({
+      where: [
+        { username: Like(`%${kw}%`) },
+        { email: Like(`%${kw}%`) },
+        { nickname: Like(`%${kw}%`) },
+      ],
+      take: 200,
+    });
+  }
+
   findById(id: number): Promise<User | null> {
     return this.users.findOneBy({ id });
   }

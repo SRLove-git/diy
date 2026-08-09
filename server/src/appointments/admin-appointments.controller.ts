@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   DefaultValuePipe,
@@ -9,7 +10,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { AuthUser } from '../auth/current-user.decorator';
 import { AdminGuard } from '../stores/admin.guard';
+import { CheckInDto } from './appointment.dto';
 import { AppointmentsService } from './appointments.service';
 
 /** 管理端：预约订单管理（需 admin 角色） */
@@ -24,11 +28,13 @@ export class AdminAppointmentsController {
     @Query('status') status?: string,
     @Query('storeId') storeId?: string,
     @Query('date') date?: string,
+    @Query('keyword') keyword?: string,
+    @Query('code') code?: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
   ) {
     return this.appointments.adminFindAll(
-      { status, storeId, date },
+      { status, storeId, date, keyword, code },
       page,
       limit,
     );
@@ -36,9 +42,17 @@ export class AdminAppointmentsController {
 
   /** 核销（店员代操作） */
   @Post(':id/checkin')
-  checkIn(@Param('id', ParseIntPipe) id: number) {
-    // 管理端核销暂按 ID 直接操作（店员身份通过 admin guard 验证）
-    return this.appointments.adminCheckIn(id);
+  checkIn(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.appointments.adminCheckIn(id, user.id);
+  }
+
+  /** 输入核销码核销（店员代操作）：核销即上钟 */
+  @Post('checkin-code')
+  checkInByCode(@Body() dto: CheckInDto, @CurrentUser() user: AuthUser) {
+    return this.appointments.checkIn(dto.code, user.id);
   }
 
   /** 取消预约（店员代操作） */

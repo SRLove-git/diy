@@ -358,6 +358,7 @@ class Appointment {
     this.tableId,
     required this.tableName,
     this.slotId,
+    this.tables = const [],
     this.activityId,
     this.activitySessionId,
     required this.activityName,
@@ -391,6 +392,7 @@ class Appointment {
   final int? tableId;
   final String tableName;
   final int? slotId;
+  final List<TableSeat> tables;
   final int? activityId;
   final int? activitySessionId;
   final String activityName;
@@ -414,6 +416,14 @@ class Appointment {
 
   String get title =>
       type == 'activity' && activityName.isNotEmpty ? activityName : storeName;
+
+  /// 桌位展示名：一单多桌时用 "4人桌1 + 单人桌1"，旧单桌用 tableName。
+  String get tableLabel {
+    if (tables.isNotEmpty) {
+      return tables.map((t) => t.name).join(' + ');
+    }
+    return tableName;
+  }
 
   String get statusLabel => switch (status) {
         'booked' => '待核销',
@@ -461,6 +471,10 @@ class Appointment {
       tableId: (json['tableId'] as num?)?.toInt(),
       tableName: json['tableName'] as String? ?? '',
       slotId: (json['slotId'] as num?)?.toInt(),
+      tables: (json['tables'] as List?)
+              ?.map((e) => TableSeat.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
       activityId: (json['activityId'] as num?)?.toInt(),
       activitySessionId: (json['activitySessionId'] as num?)?.toInt(),
       activityName: json['activityName'] as String? ?? '',
@@ -497,6 +511,28 @@ class PostMedia {
         url: json['url'] as String? ?? '',
         aspectRatio: (json['aspectRatio'] as num?)?.toDouble(),
         duration: (json['duration'] as num?)?.toDouble(),
+      );
+}
+
+/// 预约桌位明细（一单多桌）：桌位 + 容纳人数 + 该桌分配人数。
+class TableSeat {
+  const TableSeat({
+    required this.id,
+    required this.name,
+    required this.capacity,
+    required this.people,
+  });
+
+  final int id;
+  final String name;
+  final int capacity;
+  final int people;
+
+  factory TableSeat.fromJson(Map<String, dynamic> json) => TableSeat(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        name: json['name'] as String? ?? '',
+        capacity: (json['capacity'] as num?)?.toInt() ?? 1,
+        people: (json['people'] as num?)?.toInt() ?? 0,
       );
 }
 
