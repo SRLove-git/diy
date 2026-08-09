@@ -11,6 +11,125 @@ import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
 
+/// 34-取消预约确认弹窗（对齐 Pixso 34-居中确认）：
+/// 遮罩 + 312 宽圆角白卡 + 标题 + 说明 + 再想想 / 确认取消。
+Future<bool?> showCancelAppointmentDialog(BuildContext context) {
+  return showDialog<bool>(
+    context: context,
+    barrierColor: const Color(0x6B141414),
+    builder: (_) => Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 39),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 312),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(22, 26, 22, 0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x38141414),
+                blurRadius: 64,
+                offset: Offset(0, 24),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '取消预约',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF141414),
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                '取消后该时段名额将释放，优惠券会自动退回卡包，确定取消吗？',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF8E8E93),
+                  height: 1.6,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, 22, 0, 22),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _DialogActionBtn(
+                        label: '再想想',
+                        backgroundColor: const Color(0xFFF7F7F8),
+                        foregroundColor: const Color(0xFF141414),
+                        onTap: () => Navigator.pop(context, false),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _DialogActionBtn(
+                        label: '确认取消',
+                        backgroundColor: const Color(0xFFFF3B30),
+                        foregroundColor: Colors.white,
+                        onTap: () => Navigator.pop(context, true),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// 弹窗按钮：高 46、圆角 15、字号 15 加粗（对齐设计稿）。
+class _DialogActionBtn extends StatelessWidget {
+  const _DialogActionBtn({
+    required this.label,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: backgroundColor,
+      borderRadius: BorderRadius.circular(15),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: SizedBox(
+          height: 46,
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: foregroundColor,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class AppointmentConfirmScreen extends StatefulWidget {
   const AppointmentConfirmScreen({
     super.key,
@@ -116,6 +235,8 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
       }
       final appointment = await AppointmentService.instance.create(body);
       if (!mounted) return;
+      // 通知首页自动刷新，新订单立即展示
+      HomeOrdersRefresh.instance.refresh(appointment);
       LiveRoutes.push(
         context,
         RoutePaths.appointmentSuccess,
@@ -438,14 +559,98 @@ class MyAppointmentsScreen extends StatefulWidget {
 class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
   late Future<List<Appointment>> _future;
   String _tab = 'all';
+  /// 已取消订单：取消后立即从列表消失（不等网络刷新）。
+  final Set<int> _removedIds = {};
+  /// 最近一次拉取的订单快照（供乐观失效刷新使用，避免依赖网络）。
+  List<Appointment>? _lastList;
+  /// 预约到点后本地立即把卡片置灰，无需网络刷新。
+  Timer? _expiryTimer;
 
   @override
   void initState() {
     super.initState();
-    _future = AppointmentService.instance.myList();
+    // 预约取消 / 核销 / 下钟后自动刷新列表，无需退出再进入
+    HomeOrdersRefresh.instance.addListener(_onOrdersChanged);
+    // 首次加载即建立乐观失效刷新（到点自动置灰，不等网络）
+    _retry();
   }
 
-  void _retry() => setState(() => _future = AppointmentService.instance.myList());
+  void _onOrdersChanged() {
+    final p = HomeOrdersRefresh.instance.pending;
+    if (p != null && p.status == 'cancelled') {
+      setState(() => _removedIds.add(p.id));
+    }
+    _retry();
+  }
+
+  Future<void> _retry() async {
+    final future = AppointmentService.instance.myList();
+    setState(() => _future = future);
+    try {
+      final list = await future;
+      if (!mounted) return;
+      _lastList = list;
+      _scheduleExpiryRefresh();
+    } catch (_) {
+      // 拉取失败静默，下次事件触发时重试
+    }
+  }
+
+  /// 乐观失效刷新：算出最近一个待核销订单的结束时间，
+  /// 到点后本地 setState 置灰（“订单已失效”），不发起网络请求。
+  void _scheduleExpiryRefresh() {
+    _expiryTimer?.cancel();
+    _expiryTimer = null;
+    final list = _lastList;
+    if (list == null) return;
+    final now = DateTime.now();
+    DateTime? earliest;
+    for (final a in list) {
+      if (a.status != 'booked' || a.isExpired(now)) continue;
+      final end = a.endDateTime;
+      if (end != null && (earliest == null || end.isBefore(earliest))) {
+        earliest = end;
+      }
+    }
+    if (earliest == null) return;
+    final delta = earliest.difference(now);
+    _expiryTimer = Timer(
+      delta.isNegative
+          ? const Duration(seconds: 1)
+          : delta + const Duration(seconds: 1),
+      () {
+        if (!mounted) return;
+        setState(() {});
+        _scheduleExpiryRefresh();
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _expiryTimer?.cancel();
+    HomeOrdersRefresh.instance.removeListener(_onOrdersChanged);
+    super.dispose();
+  }
+
+  Future<void> _cancelAppointment(Appointment a) async {
+    final ok = await showCancelAppointmentDialog(context);
+    if (ok != true || !mounted) return;
+    // 乐观更新：确认后先让订单立即从列表消失，不等接口返回
+    setState(() => _removedIds.add(a.id));
+    try {
+      final updated = await AppointmentService.instance.cancel(a.id);
+      HomeOrdersRefresh.instance.refresh(updated);
+      if (!mounted) return;
+      showLiveSnack(context, '预约已取消');
+    } on ApiException catch (e) {
+      // 失败回滚：恢复显示
+      if (mounted) {
+        setState(() => _removedIds.remove(a.id));
+        showLiveSnack(context, e.message);
+      }
+    }
+  }
 
   static const _tabs = [
     ('all', '全部'),
@@ -455,13 +660,17 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
   ];
 
   List<Appointment> _filter(List<Appointment> list) {
-    if (_tab == 'all') return list;
+    // 已取消的订单不再展示（取消后直接消失）
+    final visible = list
+        .where((a) => a.status != 'cancelled' && !_removedIds.contains(a.id))
+        .toList();
+    if (_tab == 'all') return visible;
     if (_tab == 'in_service') {
-      return list
+      return visible
           .where((a) => a.status == 'checked_in' || a.status == 'in_service')
           .toList();
     }
-    return list.where((a) => a.status == _tab).toList();
+    return visible.where((a) => a.status == _tab).toList();
   }
 
   void _again(Appointment a) {
@@ -518,17 +727,22 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                             final a = list[i];
                             return _AppointmentCard(
                               appointment: a,
+                              onCancel: a.status == 'booked'
+                                  ? () => _cancelAppointment(a)
+                                  : null,
                               onTap: () => LiveRoutes.pushId(
                                 context,
                                 RoutePaths.appointmentDetail,
                                 a.id,
                               ),
                               onAction: switch (a.status) {
-                                'booked' => () => LiveRoutes.push(
-                                      context,
-                                      RoutePaths.appointmentCheckinQr,
-                                      extra: a,
-                                    ),
+                                'booked' => a.isExpired()
+                                    ? () {}
+                                    : () => LiveRoutes.push(
+                                          context,
+                                          RoutePaths.appointmentCheckinQr,
+                                          extra: a,
+                                        ),
                                 'checked_in' => () => LiveRoutes.push(
                                       context,
                                       RoutePaths.appointmentCheckinQr,
@@ -536,7 +750,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                                     ),
                                 'in_service' => () => LiveRoutes.push(
                                       context,
-                                      RoutePaths.appointmentCheckinQr,
+                                      RoutePaths.appointmentServiceEnd,
                                       extra: a,
                                     ),
                                 _ => () => _again(a),
@@ -560,32 +774,39 @@ class _AppointmentCard extends StatelessWidget {
     required this.appointment,
     required this.onTap,
     required this.onAction,
+    this.onCancel,
   });
 
   final Appointment appointment;
   final VoidCallback onTap;
   final VoidCallback onAction;
+  final VoidCallback? onCancel;
 
   @override
   Widget build(BuildContext context) {
     final a = appointment;
+    final expired = a.status == 'booked' && a.isExpired();
     // 状态标签配色（对齐设计稿 tag.red / tag.green / tag.blue / tag.gray）
-    final (tagBg, tagFg) = switch (a.status) {
-      'booked' => (const Color(0xFFFFEBEE), const Color(0xFFE53935)),
-      'checked_in' => (const Color(0xFFE3F2FD), const Color(0xFF1565C0)),
-      'in_service' => (const Color(0xFFE8F5E9), const Color(0xFF2E7D32)),
-      'completed' => (const Color(0xFFF7F7F8), const Color(0xFF8E8E93)),
-      _ => (const Color(0xFFF7F7F8), const Color(0xFF8E8E93)),
-    };
+    final (tagBg, tagFg) = expired
+        ? (const Color(0xFFECECEF), LiveColors.textSecondary)
+        : switch (a.status) {
+            'booked' => (const Color(0xFFFFEBEE), const Color(0xFFE53935)),
+            'checked_in' => (const Color(0xFFE3F2FD), const Color(0xFF1565C0)),
+            'in_service' => (const Color(0xFFE8F5E9), const Color(0xFF2E7D32)),
+            'completed' => (const Color(0xFFF7F7F8), const Color(0xFF8E8E93)),
+            _ => (const Color(0xFFF7F7F8), const Color(0xFF8E8E93)),
+          };
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: expired ? LiveColors.card : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: LiveColors.divider),
+          border: Border.all(
+            color: expired ? const Color(0xFFE4E4E8) : LiveColors.divider,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -597,23 +818,31 @@ class _AppointmentCard extends StatelessWidget {
                     a.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: LiveColors.textPrimary,
+                      color: expired
+                          ? LiveColors.textTertiary
+                          : LiveColors.textPrimary,
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                _StatusTag(label: a.statusLabel, bg: tagBg, fg: tagFg),
+                _StatusTag(
+                  label: expired ? '订单已失效' : a.statusLabel,
+                  bg: tagBg,
+                  fg: tagFg,
+                ),
               ],
             ),
             const SizedBox(height: 4),
             Text(
               _infoLine(a),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: LiveColors.textSecondary,
+                color: expired
+                    ? LiveColors.textTertiary
+                    : LiveColors.textSecondary,
               ),
             ),
             if (a.status == 'booked' || a.status == 'checked_in') ...[
@@ -626,7 +855,41 @@ class _AppointmentCard extends StatelessWidget {
                 ),
               ),
             ],
-            if (a.status == 'booked') ...[
+            if (a.status == 'booked' && expired) ...[
+              const SizedBox(height: 12),
+              // 失效卡：置灰提示，不可再核销
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFECECEF),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE4E4E8), width: 1),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '订单已失效',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: LiveColors.textSecondary,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '已超过预约时间，无法再核销',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: LiveColors.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (a.status == 'booked' && !expired) ...[
               const SizedBox(height: 12),
               // 到店核销卡：大号预约码 + 到店核销标签（点击进入核销）
               InkWell(
@@ -694,10 +957,29 @@ class _AppointmentCard extends StatelessWidget {
                 ),
               ),
             ],
+            if (a.status == 'booked') ...[
+              if (onCancel != null) ...[
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: onCancel,
+                    child: const Text(
+                      '取消预约',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: LiveColors.danger,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
             if (a.status == 'in_service') ...[
               const SizedBox(height: 12),
               // 计时卡：实时计时（每秒刷新）+ 进度 + 下钟结束
-              _TimerCard(appointment: a, onAction: onAction),
+              TimerCard(appointment: a, onAction: onAction),
             ],
             if (a.status == 'completed' || a.status == 'cancelled') ...[
               const SizedBox(height: 2),
@@ -815,18 +1097,18 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-/// 服务中计时卡：每秒刷新已用时长，实时计时。
-class _TimerCard extends StatefulWidget {
-  const _TimerCard({required this.appointment, required this.onAction});
+/// 服务中计时卡：每秒刷新已用时长，实时计时（首页 / 我的预约共用）。
+class TimerCard extends StatefulWidget {
+  const TimerCard({super.key, required this.appointment, required this.onAction});
 
   final Appointment appointment;
   final VoidCallback onAction;
 
   @override
-  State<_TimerCard> createState() => _TimerCardState();
+  State<TimerCard> createState() => _TimerCardState();
 }
 
-class _TimerCardState extends State<_TimerCard> {
+class _TimerCardState extends State<TimerCard> {
   Timer? _timer;
 
   @override
@@ -951,21 +1233,13 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       });
 
   Future<void> _cancel() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('取消预约'),
-        content: const Text('确定要取消该预约吗？'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('再想想')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('确定取消')),
-        ],
-      ),
-    );
+    final ok = await showCancelAppointmentDialog(context);
     if (ok != true) return;
     setState(() => _acting = true);
     try {
-      await AppointmentService.instance.cancel(widget.appointmentId);
+      final updated =
+          await AppointmentService.instance.cancel(widget.appointmentId);
+      HomeOrdersRefresh.instance.refresh(updated);
       if (mounted) {
         showLiveSnack(context, '预约已取消');
         _reload();
@@ -997,6 +1271,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
             );
           }
           final a = snap.data!;
+          final expired = a.status == 'booked' && a.isExpired();
           return Column(
             children: [
               const LiveAppBar(title: '预约详情'),
@@ -1024,8 +1299,14 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text(a.statusLabel,
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: LiveColors.brand)),
+                          Text(expired ? '订单已失效' : a.statusLabel,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: expired
+                                    ? LiveColors.textSecondary
+                                    : LiveColors.brand,
+                              )),
                         ],
                       ),
                     ),
@@ -1070,11 +1351,13 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                             child: PrimaryButton(
                               label: '扫码核销',
                               height: 42,
-                              onTap: () => LiveRoutes.push(
-                                context,
-                                RoutePaths.appointmentCheckinQr,
-                                extra: a,
-                              ),
+                              onTap: expired
+                                  ? null
+                                  : () => LiveRoutes.push(
+                                        context,
+                                        RoutePaths.appointmentCheckinQr,
+                                        extra: a,
+                                      ),
                             ),
                           ),
                         ],
@@ -1425,6 +1708,296 @@ class CheckinQrScreen extends StatelessWidget {
   }
 }
 
+/// 72-体验结束：下钟后展示上/下钟时间、使用时长与评价（对齐 Pixso 72）。
+class ServiceEndScreen extends StatefulWidget {
+  const ServiceEndScreen({super.key, required this.appointment});
+
+  final Appointment appointment;
+
+  @override
+  State<ServiceEndScreen> createState() => _ServiceEndScreenState();
+}
+
+class _ServiceEndScreenState extends State<ServiceEndScreen> {
+  Appointment? _result;
+  String? _error;
+  int _stars = 5;
+
+  @override
+  void initState() {
+    super.initState();
+    _clockOut();
+  }
+
+  Future<void> _clockOut() async {
+    try {
+      final updated =
+          await AppointmentService.instance.clockOut(widget.appointment.id);
+      // 通知首页自动刷新：服务中订单移除、计时停止
+      HomeOrdersRefresh.instance.refresh(updated);
+      if (mounted) setState(() => _result = updated);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    }
+  }
+
+  String _fmtTime(DateTime? t) {
+    if (t == null) return '--';
+    final h = t.hour.toString().padLeft(2, '0');
+    final m = t.minute.toString().padLeft(2, '0');
+    final s = t.second.toString().padLeft(2, '0');
+    return '$h:$m:$s';
+  }
+
+  String _duration() {
+    final a = _result ?? widget.appointment;
+    final start = a.serviceStartTime;
+    if (start == null) return '--';
+    final end = a.serviceEndTime ?? DateTime.now();
+    var sec = end.difference(start).inSeconds;
+    if (sec < 0) sec = 0;
+    return '${sec ~/ 60} 分钟 ${sec % 60} 秒';
+  }
+
+  void _again() {
+    final a = widget.appointment;
+    if (a.type == 'activity' && a.activityId != null) {
+      LiveRoutes.pushId(context, RoutePaths.activityDetail, a.activityId!);
+    } else if (a.storeId != null) {
+      LiveRoutes.pushId(context, RoutePaths.storeDetail, a.storeId!);
+    } else {
+      LiveRoutes.push(context, RoutePaths.storeList);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final a = _result ?? widget.appointment;
+    return LivePage(
+      child: Column(
+        children: [
+          const LiveAppBar(title: '体验结束'),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(18),
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 92,
+                  height: 92,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF141414),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check,
+                    size: 44,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  '体验结束',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: LiveColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  '已为您记录本次体验时长，欢迎再次光临',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: LiveColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                // 时长统计卡
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: LiveColors.divider),
+                  ),
+                  child: Column(
+                    children: [
+                      _DetailRow('门店', a.title),
+                      _DetailRow(
+                        '桌位 / 人数',
+                        '${a.tableName.isEmpty ? '--' : a.tableName} · ${a.peopleCount} 人',
+                      ),
+                      _DetailRow('上钟时间', _fmtTime(a.serviceStartTime)),
+                      _DetailRow('下钟时间', _fmtTime(a.serviceEndTime)),
+                      const Divider(height: 20, color: LiveColors.divider),
+                      Row(
+                        children: [
+                          const Text(
+                            '使用时长',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: LiveColors.textPrimary,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            _duration(),
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: LiveColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 评价卡
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: LiveColors.divider),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '本次体验如何？',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: LiveColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          for (var i = 1; i <= 5; i++)
+                            GestureDetector(
+                              onTap: () => setState(() => _stars = i),
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 10),
+                                child: Icon(
+                                  i <= _stars
+                                      ? Icons.star
+                                      : Icons.star_border,
+                                  size: 30,
+                                  color: i <= _stars
+                                      ? const Color(0xFFFFB300)
+                                      : LiveColors.textTertiary,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: 50,
+                  child: Material(
+                    color: const Color(0xFFF7F7F8),
+                    borderRadius: BorderRadius.circular(16),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () =>
+                          showLiveSnack(context, '评价已提交，感谢您的反馈'),
+                      child: const Center(
+                        child: Text(
+                          '提交评价',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: LiveColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 50,
+                        child: Material(
+                          color: const Color(0xFF141414),
+                          borderRadius: BorderRadius.circular(16),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: _again,
+                            child: const Center(
+                              child: Text(
+                                '再次预约',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SizedBox(
+                        height: 50,
+                        child: Material(
+                          color: const Color(0xFFF7F7F8),
+                          borderRadius: BorderRadius.circular(16),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () => LiveRoutes.switchTab(context, 0),
+                            child: const Center(
+                              child: Text(
+                                '返回首页',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: LiveColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: LiveColors.danger,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// 首页「到店」入口：当前预约的到店体验页（对齐 08-到店核销-体验）。
 class CheckinFlowScreen extends StatefulWidget {
   const CheckinFlowScreen({super.key});
@@ -1465,7 +2038,10 @@ class _CheckinFlowScreenState extends State<CheckinFlowScreen> {
           }
           final list = snap.data!;
           final active = list
-              .where((a) => a.status == 'booked' || a.status == 'checked_in' || a.status == 'in_service')
+              .where((a) =>
+                  (a.status == 'booked' && !a.isExpired()) ||
+                  a.status == 'checked_in' ||
+                  a.status == 'in_service')
               .toList();
           return Column(
             children: [
@@ -1642,6 +2218,8 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
     try {
       final a = await AppointmentService.instance.checkIn(_codeCtrl.text.trim());
       if (!mounted) return;
+      // 通知首页自动刷新：待核销 → 服务中（实时计时）立即更新
+      HomeOrdersRefresh.instance.refresh(a);
       showLiveSnack(context, '核销成功，开始体验');
       setState(() => _found = a);
     } on ApiException catch (e) {

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'api_client.dart';
 import 'models.dart';
 
@@ -132,6 +134,13 @@ class AppointmentService {
 
   Future<Appointment> checkIn(String code) async {
     final data = await ApiClient.instance.post('/appointments/checkin', body: {'code': code})
+        as Map<String, dynamic>;
+    return Appointment.fromJson(data);
+  }
+
+  /// 下钟（结束服务）：返回完成后的预约（含下钟时间）。
+  Future<Appointment> clockOut(int id) async {
+    final data = await ApiClient.instance.post('/appointments/$id/clockout')
         as Map<String, dynamic>;
     return Appointment.fromJson(data);
   }
@@ -287,5 +296,23 @@ class UploadService {
       contentType: contentType,
     );
     return (data as Map<String, dynamic>)['url'] as String;
+  }
+}
+
+/// 首页订单刷新通知：预约成功 / 下钟结束后触发，
+/// 首页自动重新拉取订单，无需手动刷新。
+class HomeOrdersRefresh extends ChangeNotifier {
+  HomeOrdersRefresh._();
+
+  static final HomeOrdersRefresh instance = HomeOrdersRefresh._();
+
+  Appointment? _pending;
+
+  /// 最近一次变更的订单（乐观更新用，首页可立即展示）。
+  Appointment? get pending => _pending;
+
+  void refresh([Appointment? appointment]) {
+    _pending = appointment;
+    notifyListeners();
   }
 }

@@ -15,6 +15,7 @@ import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { Activity } from '../activities/activity.entity';
 import { ActivitySession } from '../activities/activity-session.entity';
+import { ChatGateway } from '../chat/chat.gateway';
 import { Coupon, UserCoupon } from '../members/coupon.entity';
 import { Membership } from '../members/membership.entity';
 import { Store } from '../stores/store.entity';
@@ -46,9 +47,21 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     @InjectRepository(Membership)
     private readonly memberships: Repository<Membership>,
     private readonly users: UsersService,
+    private readonly gateway: ChatGateway,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
+
+  /** 预约状态变更后推送给用户端（msgpack 安全：Date 转 ISO 字符串） */
+  private broadcastAppointment(appt: Appointment): void {
+    this.gateway.sendAppointment(appt.userId, {
+      ...appt,
+      checkInTime: appt.checkInTime?.toISOString() ?? null,
+      serviceStartTime: appt.serviceStartTime?.toISOString() ?? null,
+      serviceEndTime: appt.serviceEndTime?.toISOString() ?? null,
+      createdAt: appt.createdAt?.toISOString() ?? null,
+    });
+  }
 
   /** 启动后周期兜底：预约时段到点后自动下钟（未在读操作中即时结束的预约） */
   onModuleInit() {
@@ -539,7 +552,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('仅待核销状态的预约可取消');
     }
     appt.status = 'cancelled';
-    return this.appointments.save(appt);
+    const saved = await this.appointments.save(appt);
+    this.broadcastAppointment(saved);
+    return saved;
   }
 
   /** 扫码/输码核销：顾客到店核销即上钟，状态 booked → in_service（上钟时间以扫码时刻为准） */
@@ -570,7 +585,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     appt.checkInTime = now;
     appt.serviceStartTime = now;
     if (operatorId) appt.checkedInBy = operatorId;
-    return this.appointments.save(appt);
+    const saved = await this.appointments.save(appt);
+    this.broadcastAppointment(saved);
+    return saved;
   }
 
   /** 上钟：checked_in → in_service（兼容路径：历史数据/管理端核销后单独上钟） */
@@ -589,7 +606,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
 
     appt.status = 'in_service';
     appt.serviceStartTime = new Date();
-    return this.appointments.save(appt);
+    const saved = await this.appointments.save(appt);
+    this.broadcastAppointment(saved);
+    return saved;
   }
 
   /** 下钟：状态 in_service → completed，记录结束时间 */
@@ -607,7 +626,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
 
     appt.status = 'completed';
     appt.serviceEndTime = new Date();
-    return this.appointments.save(appt);
+    const saved = await this.appointments.save(appt);
+    this.broadcastAppointment(saved);
+    return saved;
   }
 
   /** 按预约码查询（运营/核销用） */
@@ -663,7 +684,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('仅待核销或已核销状态的预约可取消');
     }
     appt.status = 'cancelled';
-    return this.appointments.save(appt);
+    const saved = await this.appointments.save(appt);
+    this.broadcastAppointment(saved);
+    return saved;
   }
 
   /** 管理端核销（按 ID，管理员/店员代操作） */
@@ -686,7 +709,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     this.assertCheckInTime(appt);
     appt.status = 'checked_in';
     appt.checkInTime = new Date();
-    return this.appointments.save(appt);
+    const saved = await this.appointments.save(appt);
+    this.broadcastAppointment(saved);
+    return saved;
   }
 
   /** 管理端上钟 */
@@ -698,7 +723,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     }
     appt.status = 'in_service';
     appt.serviceStartTime = new Date();
-    return this.appointments.save(appt);
+    const saved = await this.appointments.save(appt);
+    this.broadcastAppointment(saved);
+    return saved;
   }
 
   /** 管理端下钟 */
@@ -710,7 +737,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     }
     appt.status = 'completed';
     appt.serviceEndTime = new Date();
-    return this.appointments.save(appt);
+    const saved = await this.appointments.save(appt);
+    this.broadcastAppointment(saved);
+    return saved;
   }
 
   /** 查询某门店某日某时段的桌位可用性（按人数过滤后，available=false 表示已被约） */

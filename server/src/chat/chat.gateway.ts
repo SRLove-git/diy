@@ -605,6 +605,22 @@ export class ChatGateway
     });
   }
 
+  /** 预约状态变更推送（核销 / 上钟 / 下钟等）：客户端实时刷新首页订单 */
+  sendAppointment(userId: number, appointment: unknown): void {
+    // 该事件只发给本应用客户端，直接以 JSON 文本发送（与聊天 msgpack 分开）
+    const data = Buffer.from(
+      JSON.stringify({ type: 'appointment', appointment }),
+    );
+    const set = this.clients.get(userId);
+    if (!set) return;
+    for (const client of set) {
+      if (client.readyState !== WebSocket.OPEN) continue;
+      client.send(data, (err) => {
+        if (err) console.warn('[ChatGateway] appointment send error:', err.message);
+      });
+    }
+  }
+
   private sendToUser(userId: number, payload: unknown): void {
     const set = this.clients.get(userId);
     if (!set) return;

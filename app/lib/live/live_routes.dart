@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 
 import '../api/auth_store.dart';
@@ -54,6 +55,7 @@ class RoutePaths {
   static const appointmentDetail = '/appointment/:id';
   static const appointmentSuccess = '/appointment/success';
   static const appointmentCheckinQr = '/appointment/checkin-qr';
+  static const appointmentServiceEnd = '/appointment/service-end';
   static const appointmentMy = '/appointment/my';
   static const memberCenter = '/member/center';
   static const memberCoupons = '/member/coupons';
@@ -90,7 +92,31 @@ class LiveRoutes {
     return true;
   }
 
-  static void switchTab(BuildContext context, int index) {
+  /// 避开 build 阶段：只有在正处于 build/layout 帧内时才等当前帧结束，
+  /// 正常点击等场景（idle 阶段）立即执行，保证跳转瞬时响应。
+  /// 避免在 build 阶段同步导航与页面过渡叠加，触发
+  /// '!keyReservation.contains(key)' 断言（flutter/flutter#140586）。
+  static Future<void> _afterFrame() {
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      return Future<void>.value();
+    }
+    return WidgetsBinding.instance.endOfFrame;
+  }
+
+  /// 在非 build 帧内立即执行 action，否则等当前帧结束再执行。
+  static void afterBuildFrame(VoidCallback action) {
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      action();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => action());
+    }
+  }
+
+  static Future<void> switchTab(BuildContext context, int index) async {
     final path = switch (index) {
       0 => RoutePaths.home,
       1 => RoutePaths.community,
@@ -113,12 +139,19 @@ class LiveRoutes {
       // 拿不到当前路径（如根 Navigator context / 弹层 context）时不拦截，
       // 避免 pushAfterPop 等以 Navigator 上下文导航的调用被误伤。
     }
+    // 不能在 build 阶段跳转：等当前帧结束（并稍作延迟）后再执行 go()。
+    await _afterFrame();
+    if (!context.mounted) return;
     context.go(path);
   }
 
-  static void goHome(BuildContext context) => switchTab(context, 0);
+  static Future<void> goHome(BuildContext context) => switchTab(context, 0);
 
-  static void goLogin(BuildContext context) => context.go(RoutePaths.login);
+  static Future<void> goLogin(BuildContext context) async {
+    await _afterFrame();
+    if (!context.mounted) return;
+    context.go(RoutePaths.login);
+  }
 
   /// 打开目标页（顶层路由，覆盖 Tab 壳）。
   /// 泛型 T 用于接收 pop 返回值（如选音乐）。
@@ -126,23 +159,39 @@ class LiveRoutes {
     BuildContext context,
     String path, {
     Object? extra,
-  }) {
-    if (!_allowNavigation(path)) return Future<T?>.value();
+  }) async {
+    if (!_allowNavigation(path)) return null;
     // go_router 的 page key 由完整路径生成：同路径重复入栈会触发
     // '!keyReservation.contains(key)' 断言。连续点击同一入口时直接跳过，
     // 避免向同一 Navigator 压入两个相同 key 的页面。
     try {
       final current = GoRouterState.of(context).uri.path;
-      if (current == path) return Future<T?>.value();
+      if (current == path) return null;
     } catch (_) {
       // 拿不到当前路径时不拦截，保证 pushAfterPop（根 Navigator 上下文）正常导航。
     }
+    // 不能在 build 阶段跳转：等当前帧结束（并稍作延迟）后再执行 push()。
+    await _afterFrame();
+    if (!context.mounted) return null;
     return context.push<T>(path, extra: extra);
   }
 
   /// 替换当前页（登录流程用）。
-  static void replace(BuildContext context, String path, {Object? extra}) {
+  static Future<void> replace(
+    BuildContext context,
+    String path, {
+    Object? extra,
+  }) async {
     if (!_allowNavigation(path)) return;
+    try {
+      final current = GoRouterState.of(context).uri.path;
+      if (current == path) return;
+    } catch (_) {
+      // 拿不到当前路径时不拦截。
+    }
+    // 不能在 build 阶段跳转：等当前帧结束（并稍作延迟）后再执行替换。
+    await _afterFrame();
+    if (!context.mounted) return;
     context.pushReplacement(path, extra: extra);
   }
 
@@ -215,17 +264,15 @@ class _LiveHostState extends State<LiveHost> {
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
-    final canvas = Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 440, maxHeight: 956),
-        child: FittedBox(
-          fit: BoxFit.contain,
-          child: SizedBox(
-            width: 440,
-            height: 956,
-            child: ColoredBox(color: LiveColors.bg, child: widget.child),
-          ),
-        ),
+    // 440x956 设计画布等比缩放到整个可用区域：小屏自动缩小，
+    // 大屏（平板 / 桌面 / 浏览器窗口）自动放大铺满，始终居中，
+    // 保持宽高比不拉伸变形。
+    final canvas = FittedBox(
+      fit: BoxFit.contain,
+      child: SizedBox(
+        width: 440,
+        height: 956,
+        child: ColoredBox(color: LiveColors.bg, child: widget.child),
       ),
     );
     return Scaffold(

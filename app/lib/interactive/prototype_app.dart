@@ -14,6 +14,13 @@ class PrototypeApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: LiveTheme.data,
       routerConfig: appRouter,
+      builder: (context, child) => MediaQuery.withClampedTextScaling(
+        // 固定设计稿字号：整体界面已按屏幕缩放，
+        // 禁止系统字体缩放改变布局导致文字溢出、按钮变形。
+        minScaleFactor: 1.0,
+        maxScaleFactor: 1.0,
+        child: child!,
+      ),
     );
   }
 }

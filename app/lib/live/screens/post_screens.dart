@@ -1798,6 +1798,13 @@ class _PhotoPickerSheetState extends State<PhotoPickerSheet> {
       final paths = await PhotoManager.getAssetPathList(
         type: RequestType.image,
         onlyAll: true,
+        // 按创建时间倒序（从现在到以前），保证相册第一张是最新的照片。
+        // 不传该条件时各平台默认排序不一致（Android 常为旧图在前）。
+        filterOption: FilterOptionGroup(
+          orders: const [
+            OrderOption(type: OrderOptionType.createDate, asc: false),
+          ],
+        ),
       );
       if (mounted) _path = paths.isNotEmpty ? paths.first : null;
       await _loadMore(reset: true);

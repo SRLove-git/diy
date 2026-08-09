@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../api/auth_store.dart';
 import '../api/models.dart';
+import '../api/services.dart';
 import 'live_routes.dart';
 import 'live_theme.dart';
 import 'live_widgets.dart';
@@ -101,7 +102,16 @@ final GoRouter appRouter = GoRouter(
                   return;
                 }
                 _lastTabTap = now;
-                navigationShell.goBranch(i, initialLocation: false);
+                // 不能在 build 阶段同步 goBranch：正常点击立即切换，
+                // 仅在 build 帧内时延迟到帧末，避免与页面过渡叠加触发重复 page key 断言。
+                LiveRoutes.afterBuildFrame(() {
+                  if (!context.mounted) return;
+                  navigationShell.goBranch(i, initialLocation: false);
+                  // 切回首页时刷新订单，感知店员后台核销（事件驱动，非轮询）
+                  if (i == 0) {
+                    HomeOrdersRefresh.instance.refresh();
+                  }
+                });
               },
             ),
           ],
@@ -384,6 +394,13 @@ final GoRouter appRouter = GoRouter(
       path: RoutePaths.appointmentCheckinQr,
       builder: (_, s) => LiveHost(
         child: CheckinQrScreen(appointment: s.extra as Appointment),
+        resizeToAvoidBottomInset: false,
+      ),
+    ),
+    GoRoute(
+      path: RoutePaths.appointmentServiceEnd,
+      builder: (_, s) => LiveHost(
+        child: ServiceEndScreen(appointment: s.extra as Appointment),
         resizeToAvoidBottomInset: false,
       ),
     ),

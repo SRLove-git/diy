@@ -582,6 +582,8 @@ class _TopToastState extends State<_TopToast>
                 style: const TextStyle(
                   fontSize: 13,
                   color: Colors.white,
+                  // 显式去掉下划线，避免继承到祖先的 underline 装饰
+                  decoration: TextDecoration.none,
                 ),
               ),
             ),

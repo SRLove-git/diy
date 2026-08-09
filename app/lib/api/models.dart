@@ -327,6 +327,28 @@ class Appointment {
         _ => status,
       };
 
+  /// 预约结束时间（date + endTime）。
+  DateTime? get endDateTime {
+    final d = DateTime.tryParse(date);
+    if (d == null) return null;
+    final t = endTime.split(':');
+    if (t.length < 2) return null;
+    return DateTime(
+      d.year,
+      d.month,
+      d.day,
+      int.tryParse(t[0]) ?? 0,
+      int.tryParse(t[1]) ?? 0,
+    );
+  }
+
+  /// 待核销订单是否已超过预约结束时间（订单已失效）。
+  bool isExpired([DateTime? now]) {
+    if (status != 'booked') return false;
+    final end = endDateTime;
+    return end != null && !end.isAfter(now ?? DateTime.now());
+  }
+
   factory Appointment.fromJson(Map<String, dynamic> json) {
     DateTime? dt(dynamic v) =>
         v == null ? null : DateTime.tryParse(v.toString());

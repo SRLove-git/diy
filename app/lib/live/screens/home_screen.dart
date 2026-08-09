@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../api/api_client.dart';
@@ -7,6 +9,7 @@ import '../../api/services.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
+import 'appointment_screens.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.root = false});
@@ -17,16 +20,43 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late Future<({List<Activity> activities, int unread})> _future;
+  /// 已拉取的订单列表（独立状态，支持后台轮询实时更新）。
+  List<Appointment> _orders = [];
+  /// 乐观更新的订单（预约成功 / 下钟结束后立即合入展示，不等网络刷新）。
+  final Map<int, Appointment> _pendingOrders = {};
+  bool _loadingOrders = false;
+  /// 预约到点后自动刷新，让已失效订单从首页消失（保留在“我的预约”中）。
+  Timer? _expiryTimer;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    WidgetsBinding.instance.addObserver(this);
+    _future = _loadBase();
+    _loadOrders();
+    // 预约成功 / 核销 / 下钟结束后自动刷新订单，无需手动下拉
+    HomeOrdersRefresh.instance.addListener(_onOrdersChanged);
   }
 
-  Future<({List<Activity> activities, int unread})> _load() async {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 从后台回到前台时刷新订单，感知店员后台核销
+    if (state == AppLifecycleState.resumed && ( _orders.isNotEmpty || _pendingOrders.isNotEmpty)) {
+      _loadOrders();
+    }
+  }
+
+  void _onOrdersChanged() {
+    final p = HomeOrdersRefresh.instance.pending;
+    if (p != null) {
+      setState(() => _pendingOrders[p.id] = p);
+    }
+    _loadOrders();
+  }
+
+  Future<({List<Activity> activities, int unread})> _loadBase() async {
     final results = await Future.wait([
       ActivityService.instance.list(),
       NotificationService.instance.unreadCount().catchError((_) => 0),
@@ -37,7 +67,67 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _retry() => setState(() => _future = _load());
+  Future<void> _loadOrders() async {
+    if (_loadingOrders) return;
+    _loadingOrders = true;
+    try {
+      final orders = await AppointmentService.instance.myList();
+      if (!mounted) return;
+      setState(() {
+        _orders = orders;
+        // 校准：拉取结果已包含乐观更新的订单后移除本地缓存
+        final fetched = orders.map((o) => o.id).toSet();
+        _pendingOrders.removeWhere((id, _) => fetched.contains(id));
+      });
+      _scheduleExpiryRefresh();
+    } catch (_) {
+      // 刷新失败静默，下次事件触发时重试
+    } finally {
+      _loadingOrders = false;
+    }
+  }
+
+  /// 预约到点后自动刷新一次，让已失效订单实时从首页消失。
+  void _scheduleExpiryRefresh() {
+    _expiryTimer?.cancel();
+    _expiryTimer = null;
+    final now = DateTime.now();
+    DateTime? earliest;
+    for (final o in [..._orders, ..._pendingOrders.values]) {
+      if (o.status != 'booked' || o.isExpired(now)) continue;
+      final end = o.endDateTime;
+      if (end != null && (earliest == null || end.isBefore(earliest))) {
+        earliest = end;
+      }
+    }
+    if (earliest == null) return;
+    final delta = earliest.difference(now);
+    _expiryTimer = Timer(
+      delta.isNegative
+          ? const Duration(seconds: 1)
+          : delta + const Duration(seconds: 1),
+      () {
+        if (!mounted) return;
+        setState(() {});
+        _scheduleExpiryRefresh();
+      },
+    );
+  }
+
+  Future<void> _retry() async {
+    final base = _loadBase();
+    setState(() => _future = base);
+    await base;
+    await _loadOrders();
+  }
+
+  @override
+  void dispose() {
+    _expiryTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    HomeOrdersRefresh.instance.removeListener(_onOrdersChanged);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,6 +159,28 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           }
           final data = snap.data!;
+          final now = DateTime.now();
+          // 合并轮询数据与乐观更新的订单（乐观更新优先，即时展示）
+          final mergedOrders = <Appointment>[..._orders];
+          for (final p in _pendingOrders.values) {
+            mergedOrders.removeWhere((o) => o.id == p.id);
+            mergedOrders.add(p);
+          }
+          // 服务中订单（实时计时）
+          final active = mergedOrders
+              .where((a) =>
+                  a.status == 'checked_in' || a.status == 'in_service')
+              .toList();
+          // 未来可核销订单：待核销且未过期，按时间升序
+          final upcoming = mergedOrders
+              .where((a) => a.status == 'booked')
+              .where((a) => !a.isExpired(now))
+              .toList()
+            ..sort((x, y) => (x.endDateTime ?? DateTime.now())
+                .compareTo(y.endDateTime ?? DateTime.now()));
+          // 已失效订单（超过预约结束时间）不在首页展示，
+          // 仅保留在“我的预约”中；到点后由 _scheduleExpiryRefresh 触发消失。
+          final showOrders = active.isNotEmpty || upcoming.isNotEmpty;
           return RefreshIndicator(
             onRefresh: () async => _retry(),
             child: ListView(
@@ -97,6 +209,40 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                 ),
+                // 「我的订单」：服务中实时计时 + 未来可核销的待核销订单
+                if (showOrders) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                    child: Column(
+                      children: [
+                        for (final o in active)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _HomeServiceCard(
+                              appointment: o,
+                              onTap: () => LiveRoutes.push(
+                                context,
+                                RoutePaths.appointmentServiceEnd,
+                                extra: o,
+                              ),
+                            ),
+                          ),
+                        for (final o in upcoming)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _HomeOrderCard(
+                              appointment: o,
+                              onTap: () => LiveRoutes.push(
+                                context,
+                                RoutePaths.appointmentCheckinQr,
+                                extra: o,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
                 // 「敬请期待」板块：直播专区 / 手作商城占位
                 _SectionHeader(
                   title: '敬请期待',
@@ -296,6 +442,219 @@ class _EntryCardsRow extends StatelessWidget {
                 ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 首页“我的订单”卡：待核销预约（门店 + 时间 + 预约码 + 到店核销）；
+/// 超过预约结束时间的订单置灰并标注“订单已失效”。
+class _HomeOrderCard extends StatelessWidget {
+  const _HomeOrderCard({required this.appointment, this.onTap});
+
+  final Appointment appointment;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = appointment;
+    final expired = a.status == 'booked' && a.isExpired();
+    final date = DateTime.tryParse(a.date);
+    final week = date == null
+        ? ''
+        : '周${'一二三四五六日'[date.weekday - 1]}';
+    final table = a.tableName.isNotEmpty ? ' · ${a.tableName}' : '';
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: expired ? LiveColors.card : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: expired ? const Color(0xFFE4E4E8) : LiveColors.divider,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    a.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: expired
+                          ? LiveColors.textTertiary
+                          : LiveColors.textPrimary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  height: 22,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: expired
+                        ? const Color(0xFFECECEF)
+                        : const Color(0xFFFFEBEE),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Center(
+                    child: Text(
+                      expired ? '订单已失效' : '待核销',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: expired
+                            ? LiveColors.textSecondary
+                            : const Color(0xFFE53935),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${a.date} $week ${a.startTime}-${a.endTime}$table · ${a.peopleCount} 人',
+              style: TextStyle(
+                fontSize: 13,
+                color: expired
+                    ? LiveColors.textTertiary
+                    : LiveColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '预约码 ${a.code}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: LiveColors.textTertiary,
+                    ),
+                  ),
+                ),
+                if (expired)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE4E4E8),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Text(
+                      '订单已失效',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: LiveColors.textSecondary,
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF141414),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Text(
+                      '到店核销',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 首页“服务中”卡：门店 + 服务中标签 + 实时计时卡（下钟进入体验页）。
+class _HomeServiceCard extends StatelessWidget {
+  const _HomeServiceCard({required this.appointment, required this.onTap});
+
+  final Appointment appointment;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = appointment;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: LiveColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  a.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: LiveColors.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                height: 22,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Center(
+                  child: Text(
+                    '服务中',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2E7D32),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${a.date} ${a.startTime} 上钟',
+            style: const TextStyle(
+              fontSize: 13,
+              color: LiveColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          TimerCard(appointment: a, onAction: onTap),
         ],
       ),
     );

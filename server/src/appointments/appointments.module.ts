@@ -8,6 +8,7 @@ import { Store } from '../stores/store.entity';
 import { StoreTable } from '../stores/store-table.entity';
 import { TimeSlot } from '../stores/time-slot.entity';
 import { UsersModule } from '../users/users.module';
+import { ChatModule } from '../chat/chat.module';
 import { AdminAppointmentsController } from './admin-appointments.controller';
 import { Appointment } from './appointment.entity';
 import { AppointmentsController } from './appointments.controller';
@@ -27,6 +28,7 @@ import { AppointmentsService } from './appointments.service';
       UserCoupon,
     ]),
     UsersModule,
+    ChatModule,
   ],
   controllers: [AppointmentsController, AdminAppointmentsController],
   providers: [AppointmentsService],
