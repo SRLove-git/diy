@@ -287,34 +287,118 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
   }
 }
 
-/// 录音中提示条（替换输入框显示）。
-class _RecordingChip extends StatelessWidget {
-  const _RecordingChip({required this.seconds});
+/// 语音模式「按住 说话」按钮（对齐 Pixso 63：浅灰胶囊 + 麦克风图标）。
+class _VoiceHoldButton extends StatelessWidget {
+  const _VoiceHoldButton({
+    required this.onStart,
+    required this.onMove,
+    required this.onEnd,
+    required this.onCancel,
+  });
 
-  final int seconds;
+  final VoidCallback onStart;
+  final ValueChanged<Offset> onMove;
+  final VoidCallback onEnd;
+  final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 47,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: LiveColors.inputBg,
-        borderRadius: BorderRadius.circular(21),
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (_) => onStart(),
+      onPointerMove: (e) => onMove(e.delta),
+      onPointerUp: (_) => onEnd(),
+      onPointerCancel: (_) => onCancel(),
+      child: Container(
+        height: 47,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F7F8),
+          borderRadius: BorderRadius.circular(21),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.mic_none, size: 18, color: Color(0xFF141414)),
+            SizedBox(width: 8),
+            Text(
+              '按住 说话',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF141414),
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+/// 录音浮层内的深色波形条（对齐用户设计稿：绿色面板中的竖条波形）。
+/// 录音期间定时刷新高度，模拟人声起伏动画。
+class _RecordingWaveform extends StatefulWidget {
+  const _RecordingWaveform();
+
+  @override
+  State<_RecordingWaveform> createState() => _RecordingWaveformState();
+}
+
+class _RecordingWaveformState extends State<_RecordingWaveform> {
+  static const int _barCount = 13;
+  static const double _maxHeight = 38;
+  static const double _minHeight = 8;
+  final math.Random _random = math.Random();
+  Timer? _timer;
+  late List<double> _heights;
+
+  double _nextHeight() {
+    // 模拟人声节奏：大多数柱子落在中等高度区间，偶尔偏高或偏低。
+    return _minHeight + (_maxHeight - _minHeight) * _random.nextDouble();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _heights = List.generate(_barCount, (_) => _nextHeight());
+    _timer = Timer.periodic(const Duration(milliseconds: 160), (_) {
+      if (mounted) {
+        setState(() {
+          _heights = List.generate(_barCount, (_) => _nextHeight());
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 固定高度区域，柱子在其中起伏，绿色面板尺寸保持稳定。
+    return SizedBox(
+      height: _maxHeight,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.fiber_manual_record,
-            color: LiveColors.danger,
-            size: 13,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            '正在录音 ${_fmtSec(seconds)} · 点击结束并发送',
-            style: const TextStyle(fontSize: 13, color: LiveColors.textPrimary),
-          ),
+          for (var i = 0; i < _heights.length; i++) ...[
+            if (i > 0) const SizedBox(width: 3),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              curve: Curves.easeInOut,
+              width: 4,
+              height: _heights[i],
+              decoration: BoxDecoration(
+                color: const Color(0xFF141414),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -342,12 +426,6 @@ class _VoiceData {
     }
     return null;
   }
-}
-
-String _fmtSec(int s) {
-  final m = s ~/ 60;
-  final sec = s % 60;
-  return '$m:${sec.toString().padLeft(2, '0')}';
 }
 
 /// 会话列表预览：把服务端的 voice:/image:/video:/text: 前缀转成可读文案。
@@ -652,6 +730,9 @@ class _ChatScreenState extends State<ChatScreen> {
   final _player = AudioPlayer();
   StreamSubscription<void>? _playerCompleteSub;
   bool _recording = false;
+  bool _voiceMode = false;
+  bool _willCancel = false;
+  double _dragDy = 0;
   Timer? _recordTimer;
   int _recordSeconds = 0;
   String? _recordPath;
@@ -781,15 +862,14 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // ===== 语音消息：录音 → 上传 → 发送 =====
-  Future<void> _toggleRecord() async {
-    if (_recording) {
-      await _stopRecordAndSend();
-    } else {
-      await _startRecord();
-    }
+  // ===== 语音消息：按住说话（对齐 Pixso 63-语音长按）=====
+  /// 麦克风按钮：文本模式 ↔ 语音模式（按住说话）切换。
+  void _toggleVoiceMode() {
+    FocusScope.of(context).unfocus();
+    setState(() => _voiceMode = !_voiceMode);
   }
 
+  /// 按下「按住 说话」：开始录音。
   Future<void> _startRecord() async {
     try {
       final ok = await _recorder.hasPermission();
@@ -818,22 +898,49 @@ class _ChatScreenState extends State<ChatScreen> {
         setState(() {
           _recording = true;
           _recordSeconds = 0;
+          _willCancel = false;
         });
       }
+      _dragDy = 0;
     } catch (e) {
       if (mounted) showLiveSnack(context, '录音启动失败：$e');
     }
   }
 
-  Future<void> _stopRecordAndSend() async {
+  /// 按住期间上滑累计超过阈值 → 标记为取消（松开发送改为松开取消）。
+  void _updateRecordDrag(Offset delta) {
+    _dragDy += delta.dy;
+    final willCancel = _dragDy < -60;
+    if (willCancel != _willCancel && mounted) {
+      setState(() => _willCancel = willCancel);
+    }
+  }
+
+  /// 松开手指：send=true 上传并发送，否则丢弃。
+  Future<void> _finishRecord({required bool send}) async {
     _recordTimer?.cancel();
     final path = _recordPath;
     final seconds = _recordSeconds;
     if (mounted) {
       setState(() {
         _recording = false;
+        _willCancel = false;
         _recordSeconds = 0;
       });
+    }
+    _dragDy = 0;
+    if (path == null) {
+      // 录音未真正启动（如权限被拒），本次抬手直接忽略。
+      try {
+        await _recorder.stop();
+      } catch (_) {
+        // 未在录音，忽略
+      }
+      return;
+    }
+    if (!send) {
+      await _discardRecord(path);
+      return;
     }
     try {
       final finalPath = await _recorder.stop();
@@ -876,6 +983,22 @@ class _ChatScreenState extends State<ChatScreen> {
       } catch (_) {
         // 临时文件清理失败不影响发送
       }
+    }
+  }
+
+  /// 取消录音：停止并删除临时文件。
+  Future<void> _discardRecord(String? path) async {
+    try {
+      await _recorder.stop();
+    } catch (_) {
+      // 录音可能尚未真正启动
+    }
+    _recordPath = null;
+    try {
+      final f = File(path ?? '');
+      if (await f.exists()) await f.delete();
+    } catch (_) {
+      // 临时文件清理失败不影响
     }
   }
 
@@ -1187,11 +1310,14 @@ class _ChatScreenState extends State<ChatScreen> {
                   ],
           ),
           Expanded(
-            child: _error != null && _messages.isEmpty
-                ? ErrorView(message: _error!, onRetry: _loadMessages)
-                : _messages.isEmpty
-                    ? const EmptyView(text: '暂无消息，说点什么吧', icon: Icons.chat_bubble_outline)
-                    : ListView.builder(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: _error != null && _messages.isEmpty
+                      ? ErrorView(message: _error!, onRetry: _loadMessages)
+                      : _messages.isEmpty
+                          ? const EmptyView(text: '暂无消息，说点什么吧', icon: Icons.chat_bubble_outline)
+                          : ListView.builder(
                         controller: _scrollCtrl,
                         // 聊天列表反向布局：索引 0 在底部（最新消息）。
                         // 键盘弹出 / 输入框多行变高时，列表底部保持锚定在
@@ -1265,8 +1391,49 @@ class _ChatScreenState extends State<ChatScreen> {
                               ),
                             ],
                           );
-                        },
+                          },
+                        ),
+                ),
+                // 按住说话录音浮层（对齐用户设计稿：压暗消息区 + 居中绿色圆角面板 + 提示文字）
+                if (_recording)
+                  Positioned.fill(
+                    child: Container(
+                      color: const Color(0xBF141414),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 290,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 22,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFAAEA7A),
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: const Center(
+                                child: _RecordingWaveform(),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _willCancel ? '松开 取消' : '松开发送 · 上滑取消',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: _willCancel
+                                    ? const Color(0xFFFF3B30)
+                                    : Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                    ),
+                  ),
+              ],
+            ),
           ),
           // 键盘弹出时输入栏跟随键盘上移（viewInsets 补偿），
           // 避免键盘盖住输入框。
@@ -1289,21 +1456,38 @@ class _ChatScreenState extends State<ChatScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             IconButton(
-                              onPressed: _toggleRecord,
-                              icon: Icon(
-                                _recording
-                                    ? Icons.stop_circle_outlined
-                                    : Icons.mic_none,
-                                color: _recording
-                                    ? LiveColors.danger
-                                    : LiveColors.textSecondary,
-                                size: 25,
-                              ),
+                              onPressed: _toggleVoiceMode,
+                              icon: _voiceMode
+                                  ? Container(
+                                      width: 34,
+                                      height: 34,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF141414),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.mic,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.mic_none,
+                                      color: LiveColors.textSecondary,
+                                      size: 25,
+                                    ),
                             ),
                             const SizedBox(width: 2),
                             Expanded(
-                              child: _recording
-                                  ? _RecordingChip(seconds: _recordSeconds)
+                              child: _voiceMode
+                                  ? _VoiceHoldButton(
+                                      onStart: _startRecord,
+                                      onMove: _updateRecordDrag,
+                                      onEnd: () =>
+                                          _finishRecord(send: !_willCancel),
+                                      onCancel: () =>
+                                          _finishRecord(send: false),
+                                    )
                                   : Container(
                                       constraints:
                                           const BoxConstraints(minHeight: 47),
@@ -1335,37 +1519,44 @@ class _ChatScreenState extends State<ChatScreen> {
                               onPressed: _showEmojiPanel,
                               icon: const Icon(Icons.emoji_emotions_outlined, color: LiveColors.textSecondary, size: 25),
                             ),
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: _sending ? null : _send,
-                              child: Container(
-                                width: 62,
-                                height: 43,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [Color(0xFF333333), Color(0xFF141414)],
+                            if (!_voiceMode) ...[
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: _sending ? null : _send,
+                                child: Container(
+                                  width: 62,
+                                  height: 43,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Color(0xFF333333),
+                                        Color(0xFF141414),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(18),
                                   ),
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                                child: _sending
-                                    ? const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                      )
-                                    : const Text(
-                                        '发送',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white,
+                                  child: _sending
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white),
+                                        )
+                                      : const Text(
+                                          '发送',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
+                                          ),
                                         ),
-                                      ),
+                                ),
                               ),
-                            ),
+                            ],
                           ],
                         ),
                       )
@@ -1374,24 +1565,37 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: Row(
                           children: [
                             IconButton(
-                              onPressed: _toggleRecord,
-                              icon: Icon(
-                                _recording
-                                    ? Icons.stop_circle_outlined
-                                    : Icons.mic_none,
-                                color: _recording
-                                    ? LiveColors.danger
-                                    : LiveColors.textSecondary,
-                                size: 22,
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: _showEmojiPanel,
-                              icon: const Icon(Icons.emoji_emotions_outlined, color: LiveColors.textSecondary, size: 22),
+                              onPressed: _toggleVoiceMode,
+                              icon: _voiceMode
+                                  ? Container(
+                                      width: 34,
+                                      height: 34,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF141414),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.mic,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.mic_none,
+                                      color: LiveColors.textSecondary,
+                                      size: 22,
+                                    ),
                             ),
                             Expanded(
-                              child: _recording
-                                  ? _RecordingChip(seconds: _recordSeconds)
+                              child: _voiceMode
+                                  ? _VoiceHoldButton(
+                                      onStart: _startRecord,
+                                      onMove: _updateRecordDrag,
+                                      onEnd: () =>
+                                          _finishRecord(send: !_willCancel),
+                                      onCancel: () =>
+                                          _finishRecord(send: false),
+                                    )
                                   : TextField(
                                       controller: _inputCtrl,
                                       minLines: 1,
@@ -1406,27 +1610,38 @@ class _ChatScreenState extends State<ChatScreen> {
                                     ),
                             ),
                             IconButton(
+                              onPressed: _showEmojiPanel,
+                              icon: const Icon(Icons.emoji_emotions_outlined, color: LiveColors.textSecondary, size: 22),
+                            ),
+                            IconButton(
                               onPressed: _showAttachPanel,
                               icon: const Icon(Icons.add_circle_outline, color: LiveColors.textSecondary, size: 24),
                             ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              onPressed: _sending ? null : _send,
-                              icon: _sending
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: LiveColors.brand),
-                                    )
-                                  : const Icon(Icons.send, color: LiveColors.brand),
-                            ),
+                            if (!_voiceMode) ...[
+                              const SizedBox(width: 8),
+                              IconButton(
+                                onPressed: _sending ? null : _send,
+                                icon: _sending
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: LiveColors.brand),
+                                      )
+                                    : const Icon(
+                                        Icons.send,
+                                        color: LiveColors.brand,
+                                      ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
               ),
             ),
-          ),
-        ],
+            ),
+          ],
       ),
     );
   }
