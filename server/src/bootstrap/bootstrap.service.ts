@@ -1,19 +1,21 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { hashPassword } from '../auth/password.util';
 import { MusicService } from '../music/music.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
 import { VideosService } from '../videos/videos.service';
 
-/** 开发环境预置的演示作者（避免与真实注册手机号冲突） */
+/** 开发环境预置的演示作者（避免与真实注册用户名冲突） */
 interface DemoAuthor {
-  phone: string;
+  username: string;
+  email: string;
   nickname: string;
   avatar: string;
 }
 
 /** 开发环境预置的演示短视频 */
 interface DemoVideo {
-  authorPhone: string;
+  authorUsername: string;
   title: string;
   cover: string;
   videoUrl: string;
@@ -25,17 +27,20 @@ interface DemoVideo {
 /** 演示作者 */
 const DEMO_AUTHORS: DemoAuthor[] = [
   {
-    phone: '13900000001',
+    username: 'zhuzhu',
+    email: 'demo.zhu@example.com',
     nickname: '珠珠',
     avatar: 'https://i.pravatar.cc/150?img=33',
   },
   {
-    phone: '13900000002',
+    username: 'pindou_xiaoj',
+    email: 'demo.pindou@example.com',
     nickname: '拼豆小匠',
     avatar: 'https://i.pravatar.cc/150?img=12',
   },
   {
-    phone: '13900000003',
+    username: 'chuanchuan',
+    email: 'demo.chuan@example.com',
     nickname: '串串',
     avatar: 'https://i.pravatar.cc/150?img=45',
   },
@@ -44,7 +49,7 @@ const DEMO_AUTHORS: DemoAuthor[] = [
 /** 演示短视频（封面走 picsum 占位服务；视频流为 assets/demo 下的真实 mp4） */
 const DEMO_VIDEOS: DemoVideo[] = [
   {
-    authorPhone: '13900000001',
+    authorUsername: 'zhuzhu',
     title:
       '拼豆新手第一课：镊子怎么夹才稳？摆豆不歪的 3 个小技巧，小白 10 分钟上手。',
     cover: 'https://picsum.photos/seed/diyseed1/720/1280',
@@ -54,7 +59,7 @@ const DEMO_VIDEOS: DemoVideo[] = [
     tags: ['拼豆', '新手教程', '摆豆技巧'],
   },
   {
-    authorPhone: '13900000002',
+    authorUsername: 'pindou_xiaoj',
     title: '串珠手链 12 颗菩提 + 绿松石，闺蜜戴出去被问了一路在哪买的！',
     cover: 'https://picsum.photos/seed/diyseed2/720/1280',
     videoUrl: '/assets/demo/demo-02.mp4',
@@ -63,7 +68,7 @@ const DEMO_VIDEOS: DemoVideo[] = [
     tags: ['串珠', '手链', '闺蜜礼物'],
   },
   {
-    authorPhone: '13900000003',
+    authorUsername: 'chuanchuan',
     title: '拼豆定型翻车现场：温度太高豆子直接化成一滩…下次记得先垫烫纸！',
     cover: 'https://picsum.photos/seed/diyseed3/720/1280',
     videoUrl: '/assets/demo/demo-03.mp4',
@@ -72,7 +77,7 @@ const DEMO_VIDEOS: DemoVideo[] = [
     tags: ['拼豆', '定型', '翻车现场'],
   },
   {
-    authorPhone: '13900000001',
+    authorUsername: 'zhuzhu',
     title: '第一次做立体拼豆，从图纸到成品全程 9:16 卡点，看得停不下来。',
     cover: 'https://picsum.photos/seed/diyseed4/720/1280',
     videoUrl: '/assets/demo/demo-04.mp4',
@@ -81,7 +86,7 @@ const DEMO_VIDEOS: DemoVideo[] = [
     tags: ['立体拼豆', '卡点', '手作'],
   },
   {
-    authorPhone: '13900000002',
+    authorUsername: 'pindou_xiaoj',
     title: '拼豆像素图怎么设计？用手机画图软件 3 分钟搞定图纸，附配色思路。',
     cover: 'https://picsum.photos/seed/diyseed5/720/1280',
     videoUrl: '/assets/demo/demo-05.mp4',
@@ -90,7 +95,7 @@ const DEMO_VIDEOS: DemoVideo[] = [
     tags: ['拼豆', '图纸设计', '教程'],
   },
   {
-    authorPhone: '13900000003',
+    authorUsername: 'chuanchuan',
     title: '串珠耳饰新手避坑：选珠、穿线、收尾三件套，别再买错材料啦！',
     cover: 'https://picsum.photos/seed/diyseed6/720/1280',
     videoUrl: '/assets/demo/demo-06.mp4',
@@ -129,7 +134,9 @@ const DEMO_MUSIC: DemoMusic[] = [
 @Injectable()
 export class BootstrapService implements OnApplicationBootstrap {
   private readonly logger = new Logger(BootstrapService.name);
-  private readonly ADMIN_PHONE = '13800000000';
+  private readonly ADMIN_USERNAME = 'admin';
+  private readonly ADMIN_EMAIL = 'admin@example.com';
+  private readonly ADMIN_PASSWORD = 'admin123456';
 
   constructor(
     private readonly users: UsersService,
@@ -147,17 +154,39 @@ export class BootstrapService implements OnApplicationBootstrap {
   }
 
   private async ensureAdmin() {
-    const admin = await this.users.findByPhone(this.ADMIN_PHONE);
+    let admin = await this.users.findByUsername(this.ADMIN_USERNAME);
     if (!admin) {
-      await this.users.create({
-        phone: this.ADMIN_PHONE,
+      // 兼容旧版手机号体系遗留的管理员：补全用户名/邮箱/密码，避免重复建号
+      admin = await this.users.findLegacyAdmin();
+      if (admin) {
+        await this.users.updateProfile(admin.id, {
+          username: this.ADMIN_USERNAME,
+        });
+        this.logger.log(
+          `已将旧管理员迁移为 ${this.ADMIN_USERNAME}（密码 ${this.ADMIN_PASSWORD}）`,
+        );
+      }
+    }
+    if (!admin) {
+      admin = await this.users.create({
+        username: this.ADMIN_USERNAME,
+        email: this.ADMIN_EMAIL,
+        passwordHash: await hashPassword(this.ADMIN_PASSWORD),
         role: 'admin',
         nickname: '管理员',
       });
-      this.logger.log(`已创建开发管理员账号：${this.ADMIN_PHONE}（admin）`);
+      this.logger.log(
+        `已创建开发管理员账号：${this.ADMIN_USERNAME} / ${this.ADMIN_PASSWORD}（admin）`,
+      );
     } else if (admin.role !== 'admin') {
       await this.users.setRole(admin.id, 'admin');
-      this.logger.log(`已将 ${this.ADMIN_PHONE} 角色更新为 admin`);
+      this.logger.log(`已将 ${this.ADMIN_USERNAME} 角色更新为 admin`);
+    }
+    if (!admin.passwordHash) {
+      await this.users.setPasswordHash(
+        admin.id,
+        await hashPassword(this.ADMIN_PASSWORD),
+      );
     }
   }
 
@@ -166,18 +195,18 @@ export class BootstrapService implements OnApplicationBootstrap {
     const count = await this.videos.countVideos();
     if (count === 0) {
       // 创建/复用演示作者并补齐昵称头像
-      const authorByPhone = new Map<string, number>();
+      const authorByUsername = new Map<string, number>();
       for (const a of DEMO_AUTHORS) {
-        const user = await this.users.findByPhoneOrCreate(a.phone);
+        const user = await this.users.findByUsernameOrCreate(a);
         await this.users.updateProfile(user.id, {
           nickname: a.nickname,
           avatar: a.avatar,
         });
-        authorByPhone.set(a.phone, user.id);
+        authorByUsername.set(a.username, user.id);
       }
 
       for (const v of DEMO_VIDEOS) {
-        const userId = authorByPhone.get(v.authorPhone);
+        const userId = authorByUsername.get(v.authorUsername);
         if (!userId) continue;
         await this.videos.create(userId, {
           title: v.title,

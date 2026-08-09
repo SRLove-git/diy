@@ -20,7 +20,7 @@ import { Coupon, UserCoupon } from '../members/coupon.entity';
 import { Membership } from '../members/membership.entity';
 import { Store } from '../stores/store.entity';
 import { StoreTable } from '../stores/store-table.entity';
-import { TimeSlot } from '../stores/time-slot.entity';
+import { StorePackage } from '../stores/store-package.entity';
 import { UsersService } from '../users/users.service';
 import { Appointment } from './appointment.entity';
 import { CreateAppointmentDto } from './appointment.dto';
@@ -38,8 +38,8 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     private readonly stores: Repository<Store>,
     @InjectRepository(StoreTable)
     private readonly tables: Repository<StoreTable>,
-    @InjectRepository(TimeSlot)
-    private readonly slots: Repository<TimeSlot>,
+    @InjectRepository(StorePackage)
+    private readonly packages: Repository<StorePackage>,
     @InjectRepository(Activity)
     private readonly activities: Repository<Activity>,
     @InjectRepository(ActivitySession)
@@ -82,24 +82,45 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     if (this.autoClockoutTimer) clearInterval(this.autoClockoutTimer);
   }
 
-  /** 预约时段开始时刻（date + startTime，本地时区） */
-  private scheduledStart(appt: Appointment): Date {
-    return new Date(`${appt.date}T${appt.startTime}:00`);
-  }
-
   /** 预约时段结束时刻（date + endTime，本地时区） */
   private scheduledEnd(appt: Appointment): Date {
     return new Date(`${appt.date}T${appt.endTime}:00`);
   }
 
-  /** 校验核销时间：仅可在预约时段（date + startTime ~ endTime）内核销 */
+  /** 解析营业时间 "09:00-21:00" → {start, end}，解析失败回退 09:00-22:00 */
+  private businessHoursRange(store: Store): { start: string; end: string } {
+    const m = (store.businessHours || '').match(
+      /((?:[01]\d|2[0-3]):[0-5]\d)\s*-\s*((?:[01]\d|2[0-3]):[0-5]\d)/,
+    );
+    return m
+      ? { start: m[1], end: m[2] }
+      : { start: '09:00', end: '22:00' };
+  }
+
+  private minutes(time: string): number {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+  }
+
+  private formatMinutes(mins: number): string {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  /** 按小时单价（元/人/小时）：会员且配置会员价时用会员价 */
+  private hourlyUnitPrice(
+    isMember: boolean,
+    store: Store,
+  ): number {
+    if (isMember && store.memberPrice != null) return store.memberPrice;
+    return store.price ?? 39.9;
+  }
+
+  /** 校验核销时间：仅限预约当天、预约结束前。
+   *  先到先得：可提前到店扫码开始计时；不因迟到顺延（结束时间固定为预约时段）。 */
   private assertCheckInTime(appt: Appointment): void {
     const now = new Date();
-    if (now < this.scheduledStart(appt)) {
-      throw new BadRequestException(
-        `未到预约时段（${appt.startTime}-${appt.endTime}），请于开始时间后到店核销`,
-      );
-    }
     if (now > this.scheduledEnd(appt)) {
       throw new BadRequestException(
         `预约时段（${appt.startTime}-${appt.endTime}）已结束，无法核销`,
@@ -161,21 +182,14 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     dto: CreateAppointmentDto,
     isMember: boolean,
   ): Promise<Appointment> {
-    if (dto.storeId == null || dto.tableId == null || dto.slotId == null) {
-      throw new BadRequestException('门店预约需要选择门店、桌位和时段');
+    if (dto.storeId == null || dto.tableId == null) {
+      throw new BadRequestException('门店预约需要选择门店、桌位和预约方式');
     }
     const store = await this.stores.findOneBy({
       id: dto.storeId,
       enabled: true,
     });
     if (!store) throw new NotFoundException('门店不存在');
-
-    const slot = await this.slots.findOneBy({
-      id: dto.slotId,
-      storeId: dto.storeId,
-      enabled: true,
-    });
-    if (!slot) throw new NotFoundException('时段不存在');
 
     const table = await this.tables.findOneBy({
       id: dto.tableId,
@@ -200,40 +214,117 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('不能预约过去的日期');
     }
 
-    // 价格：会员且配置了会员价时按会员价（0 元 = 会员免费），否则按门市价
-    const unitPrice = this.unitPrice(
-      isMember,
-      store.price ?? 39.9,
-      store.memberPrice,
-    );
-    const originalUnit = store.price ?? 39.9;
+    // 预约方式：按小时（1 小时起）/ 套餐 / 全天不限时
+    const bookingType = dto.bookingType ?? 'hourly';
+    const range = this.businessHoursRange(store);
+    const openMin = this.minutes(range.start);
+    const closeMin = Math.min(this.minutes(range.end), 24 * 60 - 1);
+
+    let startTime: string;
+    let endTime: string;
+    let durationHours: number;
+    let packageId: number | null = null;
+    let packageName = '';
+    let unitPrice: number; // 单人整单价格（非小时价）
+    let originalUnit: number;
+
+    if (bookingType === 'all_day') {
+      // 全天不限时：营业开始 ~ 营业结束，结束时间固定
+      startTime = range.start;
+      endTime = range.end;
+      durationHours = Math.max(
+        1,
+        Math.round((closeMin - openMin) / 60),
+      );
+      const hourly = this.hourlyUnitPrice(isMember, store);
+      unitPrice =
+        store.allDayPrice != null
+          ? store.allDayPrice
+          : this.roundMoney(hourly * durationHours);
+      originalUnit =
+        store.allDayPrice != null
+          ? store.allDayPrice
+          : this.roundMoney((store.price ?? 39.9) * durationHours);
+    } else if (bookingType === 'package') {
+      // 时长套餐：选择套餐 + 开始时间
+      if (dto.packageId == null) {
+        throw new BadRequestException('套餐预约需要选择套餐');
+      }
+      if (!dto.startTime) {
+        throw new BadRequestException('套餐预约需要选择开始时间');
+      }
+      const pkg = await this.packages.findOneBy({
+        id: dto.packageId,
+        storeId: dto.storeId,
+        enabled: true,
+      });
+      if (!pkg) throw new NotFoundException('套餐不存在');
+      packageId = pkg.id;
+      packageName = pkg.name;
+      durationHours = pkg.hours;
+      startTime = dto.startTime;
+      endTime = this.formatMinutes(this.minutes(startTime) + pkg.hours * 60);
+      unitPrice = pkg.price;
+      originalUnit = pkg.price;
+    } else {
+      // 按小时：开始时间 + 时长（1 小时起）
+      if (!dto.startTime) {
+        throw new BadRequestException('按小时预约需要选择开始时间');
+      }
+      if (dto.durationHours == null) {
+        throw new BadRequestException('按小时预约需要选择时长');
+      }
+      durationHours = dto.durationHours;
+      startTime = dto.startTime;
+      endTime = this.formatMinutes(
+        this.minutes(startTime) + durationHours * 60,
+      );
+      const hourly = this.hourlyUnitPrice(isMember, store);
+      unitPrice = this.roundMoney(hourly * durationHours);
+      originalUnit = this.roundMoney(
+        (store.price ?? 39.9) * durationHours,
+      );
+    }
+
+    // 预约时段必须落在营业时间内且不跨天
+    const startMin = this.minutes(startTime);
+    const endMin = this.minutes(endTime);
+    if (startMin < openMin || endMin > closeMin || endMin <= startMin) {
+      throw new BadRequestException(
+        `预约时段需在营业时间（${range.start}-${range.end}）内`,
+      );
+    }
+
     const amount = this.roundMoney(unitPrice * dto.peopleCount);
     const originalAmount = this.roundMoney(originalUnit * dto.peopleCount);
 
-    // 1) Redis 分布式锁：串行化同一桌位同时段的创建请求
-    const lockKey = `booking:lock:${dto.storeId}:${dto.tableId}:${dto.date}:${dto.slotId}`;
+    // 1) Redis 分布式锁：串行化同一桌位同日的创建请求
+    const lockKey = `booking:lock:${dto.storeId}:${dto.tableId}:${dto.date}`;
     const acquired = await this.redis.set(lockKey, '1', 'EX', 10, 'NX');
     if (!acquired) {
       throw new BadRequestException(
-        '该时段刚被其他用户预约，请选择其他时段或桌位',
+        '该桌位刚被其他用户预约，请选择其他时段或桌位',
       );
     }
 
     try {
       // 2) 事务：冲突校验（含 DB 组合索引兜底）+ 预约码生成 + 落库
       return await this.dataSource.transaction(async (em) => {
-        const conflict = await em.findOne(Appointment, {
+        const active = await em.find(Appointment, {
           where: {
             storeId: dto.storeId,
             tableId: dto.tableId,
             date: dto.date,
-            slotId: dto.slotId,
             status: Not(In(['cancelled', 'completed'])),
           },
         });
+        // 时间段重叠判定：existing.start < new.end && existing.end > new.start
+        const conflict = active.find(
+          (a) => a.startTime < endTime && a.endTime > startTime,
+        );
         if (conflict) {
           throw new BadRequestException(
-            '该桌位此时段已被预约，请选择其他时段或桌位',
+            `该桌位 ${conflict.startTime}-${conflict.endTime} 已被预约，请选择其他时段或桌位`,
           );
         }
 
@@ -259,10 +350,14 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
           storeName: store.name,
           tableId: table.id,
           tableName: table.name,
-          slotId: slot.id,
+          slotId: null,
+          bookingType,
+          durationHours,
+          packageId,
+          packageName,
           date: dto.date,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
+          startTime,
+          endTime,
           peopleCount: dto.peopleCount,
           code: await this.generateCode(em),
           note: dto.note ?? '',
@@ -584,6 +679,8 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     appt.status = 'in_service';
     appt.checkInTime = now;
     appt.serviceStartTime = now;
+    // 结束时间固定为预约时段（不因迟到顺延），计时剩余 = 结束时间 - 扫码时间
+    appt.serviceEndTime = this.scheduledEnd(appt);
     if (operatorId) appt.checkedInBy = operatorId;
     const saved = await this.appointments.save(appt);
     this.broadcastAppointment(saved);
@@ -606,6 +703,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
 
     appt.status = 'in_service';
     appt.serviceStartTime = new Date();
+    appt.serviceEndTime = this.scheduledEnd(appt);
     const saved = await this.appointments.save(appt);
     this.broadcastAppointment(saved);
     return saved;
@@ -638,7 +736,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     return appt;
   }
 
-  /** 管理端：预约列表（分页，可按状态/门店/日期筛选），附带用户手机号/昵称 */
+  /** 管理端：预约列表（分页，可按状态/门店/日期筛选），附带用户邮箱/昵称 */
   async adminFindAll(
     filters?: {
       status?: string;
@@ -648,7 +746,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     page = 1,
     pageSize = 20,
   ): Promise<
-    [Array<Appointment & { userPhone?: string; userNickname?: string }>, number]
+    [Array<Appointment & { userEmail?: string; userNickname?: string }>, number]
   > {
     const where: any = {};
     if (filters?.status) where.status = filters.status;
@@ -668,7 +766,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
         const user = userMap.get(i.userId);
         return {
           ...i,
-          userPhone: user?.phone,
+          userEmail: user?.email ?? undefined,
           userNickname: user?.nickname || `用户 #${i.userId}`,
         };
       }),
@@ -723,6 +821,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     }
     appt.status = 'in_service';
     appt.serviceStartTime = new Date();
+    appt.serviceEndTime = this.scheduledEnd(appt);
     const saved = await this.appointments.save(appt);
     this.broadcastAppointment(saved);
     return saved;
@@ -742,37 +841,40 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     return saved;
   }
 
-  /** 查询某门店某日某时段的桌位可用性（按人数过滤后，available=false 表示已被约） */
-  async availability(storeId: number, date: string, slotId: number) {
+  /** 查询某门店某日桌位可用性：返回每个桌位已占用时段窗口，客户端按预约时段重叠判断 */
+  async availability(storeId: number, date: string) {
     const store = await this.stores.findOneBy({ id: storeId, enabled: true });
     if (!store) throw new NotFoundException('门店不存在');
-    const slot = await this.slots.findOneBy({
-      id: slotId,
-      storeId,
-      enabled: true,
-    });
-    if (!slot) throw new NotFoundException('时段不存在');
 
     const tables = await this.tables.find({
       where: { storeId, enabled: true },
       order: { id: 'ASC' },
     });
-    // 占用桌位的预约：待核销/已核销/服务中；已完成（已下钟）与已取消不占位
     const taken = await this.appointments.find({
       where: {
         storeId,
         date,
-        slotId,
         status: Not(In(['cancelled', 'completed'])),
       },
+      select: {
+        tableId: true,
+        startTime: true,
+        endTime: true,
+        status: true,
+      },
     });
-    const takenTableIds = new Set(taken.map((t) => t.tableId));
 
     return tables.map((t) => ({
       id: t.id,
       name: t.name,
       capacity: t.capacity,
-      available: !takenTableIds.has(t.id),
+      bookedWindows: taken
+        .filter((a) => a.tableId === t.id)
+        .map((a) => ({
+          startTime: a.startTime,
+          endTime: a.endTime,
+          status: a.status,
+        })),
     }));
   }
 

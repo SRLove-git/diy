@@ -35,12 +35,15 @@ void main() {
   test('User 解析', () {
     final u = User.fromJson({
       'id': 32,
-      'phone': '13800000001',
+      'username': 'test_user',
+      'email': 'test@example.com',
       'nickname': '测试用户',
       'avatar': 'https://x/a.png',
       'role': 'user',
     });
     expect(u.id, 32);
+    expect(u.username, 'test_user');
+    expect(u.email, 'test@example.com');
     expect(u.displayName, '测试用户');
   });
 

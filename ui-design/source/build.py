@@ -559,69 +559,58 @@ screen("03", "03-首页", f'''
 {tabbar("home")}
 ''')
 
-# ---------------- 04 附近门店-地图 ----------------
-screen("04", "04-附近门店-地图", f'''
+# ---------------- 04 门店列表（原"附近门店-地图"，地图相关代码已注释，改为纯门店列表） ----------------
+screen("04", "04-门店列表", f'''
 {statusbar()}
-{nav("附近门店")}
+{nav("门店列表")}
 <div class="content" style="padding:4px 16px 8px;">
   <div class="field mb3" style="height:46px;border-radius:23px;">{icon("srch","ic-sm")}<span class="ph">搜索门店 / 活动</span><span style="flex:1"></span><span class="act">搜索</span></div>
   <div class="row gap2">
-    <div class="chip on">全部分类</div><div class="chip">可预约</div><div class="chip">会员价</div>
+    <div class="chip on">全部</div><div class="chip">可预约</div><div class="chip">会员价</div>
     <div style="flex:1"></div>{icon("flt","ic-sm")}
   </div>
 </div>
-<div class="photo p5" style="position:absolute;top:164px;left:0;right:0;height:330px;background:#EAF2E6;">
-  <div style="position:absolute;left:60px;top:30px;width:140px;height:18px;background:#fff;border-radius:4px;transform:rotate(12deg);"></div>
-  <div style="position:absolute;left:220px;top:120px;width:150px;height:16px;background:#fff;border-radius:4px;transform:rotate(-8deg);"></div>
-  <div style="position:absolute;left:40px;top:200px;width:120px;height:14px;background:#fff;border-radius:4px;transform:rotate(6deg);"></div>
-  <div style="position:absolute;left:250px;top:280px;width:130px;height:14px;background:#fff;border-radius:4px;transform:rotate(10deg);"></div>
-  <div style="position:absolute;left:0;top:340px;width:390px;height:48px;background:#B3E0F7;"></div>
-  <div style="position:absolute;left:16px;top:28px;width:64px;height:46px;border-radius:10px;background:#CDE8BE;"></div>
-  <div style="position:absolute;right:18px;top:150px;width:70px;height:50px;border-radius:10px;background:#CDE8BE;"></div>
-  <div style="position:absolute;left:150px;top:160px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid var(--ink);"></div>
-  <div style="position:absolute;left:120px;top:140px;background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.12);padding:4px 10px;font-size:12px;font-weight:700;">¥39.9</div>
-  <div style="position:absolute;left:288px;top:96px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid var(--ink);"></div>
-  <div style="position:absolute;left:250px;top:76px;background:#141414;color:#fff;border-radius:12px;padding:4px 10px;font-size:12px;font-weight:700;">¥29.9 会员</div>
-  <div style="position:absolute;right:16px;bottom:56px;width:44px;height:44px;border-radius:50%;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.14);display:flex;align-items:center;justify-content:center;">{icon("lst","ic-sm")}</div>
-</div>
-<div style="position:absolute;left:16px;right:16px;top:472px;background:#fff;border-radius:20px;box-shadow:0 8px 30px rgba(20,20,20,.10);padding:16px;z-index:3;">
-  <div class="row between mb2">
-    <span class="h3">拾光手作馆 · 万象城店</span><span class="price" style="font-size:15px;">¥39.9 <span class="cut">¥59</span></span>
-  </div>
-  <div class="row gap2 mb2"><span class="ter">★★★★★ 4.9</span><span class="ter">·</span><span class="ter">距您 1.2km</span><span class="ter">·</span><span class="ter">09:00-21:00</span></div>
-  <div class="row gap2"><span class="tag blue">有会员价</span><span class="tag gray">可预约</span></div>
-  <div class="btn btn-black btn-sm" style="margin-top:12px;height:44px;border-radius:14px;">立即预约</div>
-</div>
-''')
-
-# ---------------- 67 门店搜索 ----------------
-screen("67", "67-门店搜索", f'''
-{statusbar()}
-{nav("搜索门店")}
-<div class="content" style="padding:4px 16px 8px;">
-  <div class="field" style="height:46px;border-radius:23px;outline:1.5px solid var(--ink);">{icon("srch","ic-sm")}<span style="font-size:13px;color:var(--ink);">拾光手作</span><span style="flex:1"></span><span class="act">搜索</span></div>
-  <div class="row gap2 mt3"><span class="chip sm on">全部</span><span class="chip sm">可预约</span><span class="chip sm">会员价</span><span class="chip sm">距离最近</span></div>
-</div>
-<div class="photo p5" style="position:absolute;top:170px;left:0;right:0;height:112px;background:#EAF2E6;">
-  <div style="position:absolute;left:50px;top:26px;width:150px;height:14px;background:#fff;border-radius:4px;transform:rotate(10deg);"></div>
-  <div style="position:absolute;left:230px;top:62px;width:150px;height:12px;background:#fff;border-radius:4px;transform:rotate(-8deg);"></div>
-  <div style="position:absolute;left:0;top:96px;width:390px;height:16px;background:#B3E0F7;"></div>
-  <div style="position:absolute;left:60px;top:34px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid var(--ink);"></div>
-  <div style="position:absolute;left:30px;top:16px;background:#141414;color:#fff;border-radius:12px;padding:3px 9px;font-size:11px;font-weight:700;">拾光手作馆</div>
-  <div style="position:absolute;left:280px;top:66px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid var(--ink);"></div>
-  <div style="position:absolute;left:238px;top:48px;background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.12);padding:3px 9px;font-size:11px;font-weight:700;">手作星球旗舰店</div>
-</div>
-<div class="content" style="padding-top:240px;">
-  <div class="row between mb2"><span class="h2">搜索结果 3</span><span class="more">地图模式 ›</span></div>
+<div class="content" style="padding-top:14px;">
   <div class="card card-pad mb3">
     <div class="row between mb2"><span class="h3">拾光手作馆 · 万象城店</span><span class="price" style="font-size:14px;">¥39.9</span></div>
-    <div class="row gap2 mb2"><span class="ter">★★★★★ 4.9</span><span class="ter">·</span><span class="ter">1.2km</span><span class="ter">·</span><span class="ter">09:00-21:00</span></div>
+    <div class="row gap2 mb2"><span class="ter">★★★★★ 4.9</span><span class="ter">·</span><span class="ter">09:00-21:00</span></div>
     <div class="row gap2"><span class="tag blue">有会员价</span><span class="tag gray">可预约</span></div>
     <div class="row between mt3"><span class="sec" style="font-size:12px;">上海市静安区南京西路 1266 号</span><div class="btn btn-sm black">预约</div></div>
   </div>
   <div class="card card-pad mb3">
     <div class="row between mb2"><span class="h3">手作星球旗舰店</span><span class="price" style="font-size:14px;">¥49.9</span></div>
-    <div class="row gap2 mb2"><span class="ter">★★★★★ 5.0</span><span class="ter">·</span><span class="ter">3.8km</span><span class="ter">·</span><span class="ter">10:00-22:00</span></div>
+    <div class="row gap2 mb2"><span class="ter">★★★★★ 5.0</span><span class="ter">·</span><span class="ter">10:00-22:00</span></div>
+    <div class="row gap2"><span class="tag red">旗舰</span><span class="tag gray">可预约</span></div>
+    <div class="row between mt3"><span class="sec" style="font-size:12px;">徐汇区淮海中路 888 号</span><div class="btn btn-sm black">预约</div></div>
+  </div>
+  <div class="card card-pad">
+    <div class="row between mb2"><span class="h3">青藤手作小院</span><span class="price" style="font-size:14px;">¥29.9</span></div>
+    <div class="row gap2 mb2"><span class="ter">★★★★★ 4.7</span><span class="ter">·</span><span class="ter">14:00-21:00</span></div>
+    <div class="row gap2"><span class="tag blue">有会员价</span><span class="tag gray">可预约</span></div>
+    <div class="row between mt3"><span class="sec" style="font-size:12px;">长宁区愚园路 1107 号</span><div class="btn btn-sm black">预约</div></div>
+  </div>
+</div>
+''')
+
+# ---------------- 67 门店搜索（地图相关代码已注释：去掉地图条、距离最近、地图模式） ----------------
+screen("67", "67-门店搜索", f'''
+{statusbar()}
+{nav("搜索门店")}
+<div class="content" style="padding:4px 16px 8px;">
+  <div class="field" style="height:46px;border-radius:23px;outline:1.5px solid var(--ink);">{icon("srch","ic-sm")}<span style="font-size:13px;color:var(--ink);">拾光手作</span><span style="flex:1"></span><span class="act">搜索</span></div>
+  <div class="row gap2 mt3"><span class="chip sm on">全部</span><span class="chip sm">可预约</span><span class="chip sm">会员价</span></div>
+</div>
+<div class="content" style="padding-top:14px;">
+  <div class="row between mb2"><span class="h2">搜索结果 3</span></div>
+  <div class="card card-pad mb3">
+    <div class="row between mb2"><span class="h3">拾光手作馆 · 万象城店</span><span class="price" style="font-size:14px;">¥39.9</span></div>
+    <div class="row gap2 mb2"><span class="ter">★★★★★ 4.9</span><span class="ter">·</span><span class="ter">09:00-21:00</span></div>
+    <div class="row gap2"><span class="tag blue">有会员价</span><span class="tag gray">可预约</span></div>
+    <div class="row between mt3"><span class="sec" style="font-size:12px;">上海市静安区南京西路 1266 号</span><div class="btn btn-sm black">预约</div></div>
+  </div>
+  <div class="card card-pad mb3">
+    <div class="row between mb2"><span class="h3">手作星球旗舰店</span><span class="price" style="font-size:14px;">¥49.9</span></div>
+    <div class="row gap2 mb2"><span class="ter">★★★★★ 5.0</span><span class="ter">·</span><span class="ter">10:00-22:00</span></div>
     <div class="row gap2"><span class="tag red">旗舰</span><span class="tag gray">可预约</span></div>
     <div class="row between mt3"><span class="sec" style="font-size:12px;">徐汇区淮海中路 888 号</span><div class="btn btn-sm black">预约</div></div>
   </div>
@@ -635,7 +624,8 @@ screen("05", "05-门店详情-预约", f'''
 {nav("门店详情")}
 <div class="content" style="padding:4px 16px 0;">
   <div class="photo p3" style="width:358px;height:150px;border-radius:20px;">
-    <div style="position:absolute;right:10px;top:10px;background:rgba(255,255,255,.9);border-radius:12px;padding:3px 10px;font-size:12px;font-weight:600;">距您 1.2km</div>
+    <!-- 地图相关：距离角标，先注释 -->
+    <!-- <div style="position:absolute;right:10px;top:10px;background:rgba(255,255,255,.9);border-radius:12px;padding:3px 10px;font-size:12px;font-weight:600;">距您 1.2km</div> -->
   </div>
   <div class="row between mt3">
     <div><div class="h2">拾光手作馆 · 万象城店</div>

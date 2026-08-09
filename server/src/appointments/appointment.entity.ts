@@ -14,12 +14,15 @@ export type AppointmentStatus =
 /** 预约类型：门店桌位预约 / 活动场次预约 */
 export type AppointmentType = 'store' | 'activity';
 
+/** 门店预约方式：按小时（1 小时起）/ 时长套餐 / 全天不限时 */
+export type BookingType = 'hourly' | 'package' | 'all_day';
+
 /** 支付状态：预约时同步支付（演示支付），历史数据为 unpaid */
 export type PayStatus = 'unpaid' | 'paid';
 
 /** 预约单 */
 @Entity('appointments')
-@Index(['storeId', 'tableId', 'date', 'slotId']) // 防超卖：同店同桌同日期同时段冲突校验
+@Index(['storeId', 'tableId', 'date']) // 防超卖：同店同桌同日期按时间段重叠校验
 export class Appointment {
   @PrimaryGeneratedColumn()
   id: number;
@@ -31,6 +34,26 @@ export class Appointment {
     default: 'store',
   })
   type: AppointmentType;
+
+  /** 门店预约方式：hourly 按小时 / package 套餐 / all_day 全天不限时 */
+  @Column({
+    type: 'enum',
+    enum: ['hourly', 'package', 'all_day'],
+    default: 'hourly',
+  })
+  bookingType: BookingType;
+
+  /** 预约时长（小时）：hourly/package 必填，all_day 为营业时长 */
+  @Column({ type: 'int', nullable: true })
+  durationHours: number | null;
+
+  /** 套餐 ID（bookingType=package 时使用） */
+  @Column({ type: 'int', nullable: true })
+  packageId: number | null;
+
+  /** 套餐名（冗余展示） */
+  @Column({ length: 60, default: '' })
+  packageName: string;
 
   @Column()
   userId: number;

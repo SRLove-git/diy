@@ -145,6 +145,19 @@ function formatDuration(s: string | null, e: string | null): string {
   return `${h}:${m}:${sec}`
 }
 
+function durationEnd(o: Appointment): string | null {
+  // 服务中：显示到当前时刻的已用时长；已完成/已下钟：显示实际下钟时间
+  return o.status === 'in_service' ? new Date().toISOString() : o.serviceEndTime
+}
+
+function bookingLabel(o: Appointment): string {
+  if (o.type === 'activity') return '活动'
+  if (o.bookingType === 'all_day') return '全天不限时'
+  if (o.bookingType === 'package' && o.packageName) return o.packageName
+  if (o.durationHours) return `${o.durationHours} 小时`
+  return '按小时'
+}
+
 function fmtAmount(v: number | undefined): string {
   const value = Number(v ?? 0)
   return Number.isInteger(value) ? String(value) : value.toFixed(2)
@@ -206,7 +219,7 @@ onMounted(() => {
           <td>
             <div class="user-cell">
               <span class="nickname">{{ o.userNickname || `用户 #${o.userId}` }}</span>
-              <span v-if="o.userPhone" class="phone">{{ o.userPhone }}</span>
+              <span v-if="o.userEmail" class="sub">{{ o.userEmail }}</span>
             </div>
           </td>
           <td>{{ o.storeName }}</td>
@@ -217,7 +230,10 @@ onMounted(() => {
             <span v-else>{{ o.tableName || '-' }}</span>
           </td>
           <td>{{ o.date }}</td>
-          <td>{{ o.startTime }} - {{ o.endTime }}</td>
+          <td>
+            {{ o.startTime }} - {{ o.endTime }}
+            <span v-if="o.type !== 'activity'" class="muted">（{{ bookingLabel(o) }}）</span>
+          </td>
           <td>{{ o.peopleCount }} 人</td>
           <td>
             <span :style="{ color: o.payStatus === 'paid' ? '#2e9e5b' : '#e6a23c' }">
@@ -242,7 +258,7 @@ onMounted(() => {
           <td>{{ formatTime(o.checkInTime) }}</td>
           <td>{{ formatTime(o.serviceStartTime) }}</td>
           <td>{{ formatTime(o.serviceEndTime) }}</td>
-          <td>{{ formatDuration(o.serviceStartTime, o.serviceEndTime) }}</td>
+          <td>{{ formatDuration(o.serviceStartTime, durationEnd(o)) }}</td>
           <td class="actions">
             <button
               v-if="o.status === 'booked'"
@@ -342,7 +358,7 @@ onMounted(() => {
 }
 .user-cell { display: flex; flex-direction: column; }
 .nickname { font-weight: 500; }
-.phone { font-size: 11px; color: #8a8a8a; }
+.sub { font-size: 11px; color: #8a8a8a; }
 .note-cell { max-width: 120px; }
 .note {
   display: inline-block;

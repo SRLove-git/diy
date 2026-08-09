@@ -64,16 +64,16 @@ final GoRouter appRouter = GoRouter(
           LiveHost(child: const LoginScreen(), resizeToAvoidBottomInset: false),
     ),
     GoRoute(
-      path: RoutePaths.loginPassword,
+      path: RoutePaths.loginRegister,
       builder: (_, __) => LiveHost(
-        child: const PasswordLoginScreen(),
+        child: const RegisterScreen(),
         resizeToAvoidBottomInset: false,
       ),
     ),
     GoRoute(
-      path: RoutePaths.loginSetPassword,
+      path: RoutePaths.loginForgot,
       builder: (_, __) => LiveHost(
-        child: const SetPasswordScreen(),
+        child: const ForgotPasswordScreen(),
         resizeToAvoidBottomInset: false,
       ),
     ),
@@ -355,7 +355,11 @@ final GoRouter appRouter = GoRouter(
           child: TableSelectScreen(
             store: m['store'] as Store,
             date: m['date'] as String,
-            slot: m['slot'] as TimeSlot,
+            bookingType: m['bookingType'] as String,
+            startTime: m['startTime'] as String,
+            endTime: m['endTime'] as String,
+            durationHours: m['durationHours'] as int,
+            package: m['package'] as StorePackage?,
           ),
         );
       },
@@ -372,13 +376,19 @@ final GoRouter appRouter = GoRouter(
         return LiveHost(
           child: AppointmentConfirmScreen(
             type: m['type'] as String,
-            store: m['store'] as Store?,
-            activity: m['activity'] as Activity?,
-            date: m['date'] as String,
-            peopleCount: m['peopleCount'] as int,
-            slot: m['slot'] as TimeSlot?,
-            session: m['session'] as ActivitySession?,
-            table: m['table'] as StoreTable?,
+        store: m['store'] as Store?,
+        activity: m['activity'] as Activity?,
+        date: m['date'] as String,
+        peopleCount: m['peopleCount'] as int,
+        bookingType: (m['bookingType'] as String?) ?? 'hourly',
+        startTime: (m['startTime'] as String?) ?? '',
+        endTime: (m['endTime'] as String?) ?? '',
+        durationHours: (m['durationHours'] as int?) ?? 0,
+        packageName: (m['packageName'] as String?) ?? '',
+        packageId: (m['packageId'] as int?) ?? null,
+        packagePrice: (m['packagePrice'] as num?)?.toDouble(),
+        session: m['session'] as ActivitySession?,
+        table: m['table'] as StoreTable?,
             note: (m['note'] as String?) ?? '',
           ),
         );

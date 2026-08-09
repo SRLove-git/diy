@@ -3,9 +3,12 @@ import http from './http'
 export interface Appointment {
   id: number
   userId: number
-  userPhone?: string
+  userEmail?: string
   userNickname?: string
   type?: 'store' | 'activity'
+  bookingType?: 'hourly' | 'package' | 'all_day'
+  durationHours?: number | null
+  packageName?: string
   storeId: number | null
   storeName: string
   tableId: number | null

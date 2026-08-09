@@ -2,7 +2,8 @@ import http from './http'
 
 export interface User {
   id: number
-  phone: string
+  username?: string | null
+  email?: string | null
   nickname: string
   avatar: string
   isBanned: boolean

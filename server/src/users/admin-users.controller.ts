@@ -20,14 +20,13 @@ import { UsersService } from './users.service';
 export class AdminUsersController {
   constructor(private readonly users: UsersService) {}
 
-  /** 用户列表（分页，可选手机号/昵称搜索） */
+  /** 用户列表（分页，可选用户名/邮箱/昵称搜索） */
   @Get()
   findAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('search') search?: string,
-    @Query('phone') phone?: string,
   ) {
-    return this.users.findAll(page, search ?? phone);
+    return this.users.findAll(page, search);
   }
 
   /** 封禁/解封用户 */

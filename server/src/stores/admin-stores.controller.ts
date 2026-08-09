@@ -15,9 +15,11 @@ import {
   CreateSlotDto,
   CreateStoreDto,
   CreateTableDto,
+  CreatePackageDto,
   UpdateSlotDto,
   UpdateStoreDto,
   UpdateTableDto,
+  UpdatePackageDto,
 } from './store.dto';
 import { StoresService } from './stores.service';
 
@@ -86,5 +88,26 @@ export class AdminStoresController {
   @Delete('slots/:id')
   removeSlot(@Param('id', ParseIntPipe) id: number) {
     return this.stores.removeSlot(id);
+  }
+
+  @Post(':id/packages')
+  addPackage(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreatePackageDto,
+  ) {
+    return this.stores.addPackage(id, dto);
+  }
+
+  @Patch('packages/:id')
+  updatePackage(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdatePackageDto,
+  ) {
+    return this.stores.updatePackage(id, dto);
+  }
+
+  @Delete('packages/:id')
+  removePackage(@Param('id', ParseIntPipe) id: number) {
+    return this.stores.removePackage(id);
   }
 }

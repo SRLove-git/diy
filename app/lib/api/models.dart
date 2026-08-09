@@ -9,7 +9,7 @@ num? _num(dynamic v) {
 class User {
   const User({
     required this.id,
-    required this.phone,
+    this.email,
     this.username,
     this.nickname = '',
     this.avatar = '',
@@ -22,7 +22,7 @@ class User {
   });
 
   final int id;
-  final String phone;
+  final String? email;
   final String? username;
   final String nickname;
   final String avatar;
@@ -37,7 +37,7 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) => User(
         id: (json['id'] as num?)?.toInt() ?? 0,
-        phone: json['phone'] as String? ?? '',
+        email: json['email'] as String?,
         username: json['username'] as String?,
         nickname: json['nickname'] as String? ?? '',
         avatar: json['avatar'] as String? ?? '',
@@ -132,10 +132,12 @@ class Store {
     this.images = const [],
     this.price = 0,
     this.memberPrice,
+    this.allDayPrice,
     this.businessHours = '',
     this.phone = '',
     this.tables = const [],
     this.slots = const [],
+    this.packages = const [],
   });
 
   final int id;
@@ -147,10 +149,12 @@ class Store {
   final List<String> images;
   final double price;
   final double? memberPrice;
+  final double? allDayPrice;
   final String businessHours;
   final String phone;
   final List<StoreTable> tables;
   final List<TimeSlot> slots;
+  final List<StorePackage> packages;
 
   String get cover => images.isNotEmpty ? images.first : '';
 
@@ -164,6 +168,7 @@ class Store {
         images: (json['images'] as List?)?.map((e) => e.toString()).toList() ?? const [],
         price: (json['price'] as num?)?.toDouble() ?? 0,
         memberPrice: (json['memberPrice'] as num?)?.toDouble(),
+        allDayPrice: (json['allDayPrice'] as num?)?.toDouble(),
         businessHours: json['businessHours'] as String? ?? '',
         phone: json['phone'] as String? ?? '',
         tables: (json['tables'] as List?)
@@ -174,7 +179,93 @@ class Store {
                 ?.map((e) => TimeSlot.fromJson(e as Map<String, dynamic>))
                 .toList() ??
             const [],
+        packages: (json['packages'] as List?)
+                ?.map((e) => StorePackage.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            const [],
       );
+}
+
+/// 门店时长套餐（如 5 小时 / 6 小时）。
+class StorePackage {
+  const StorePackage({
+    required this.id,
+    required this.name,
+    required this.hours,
+    required this.price,
+    this.enabled = true,
+  });
+
+  final int id;
+  final String name;
+  final int hours;
+  final double price;
+  final bool enabled;
+
+  factory StorePackage.fromJson(Map<String, dynamic> json) => StorePackage(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        name: json['name'] as String? ?? '',
+        hours: (json['hours'] as num?)?.toInt() ?? 0,
+        price: (json['price'] as num?)?.toDouble() ?? 0,
+        enabled: json['enabled'] as bool? ?? true,
+      );
+}
+
+/// 桌位可用性：某日某桌的已占用时段窗口。
+class TableAvailability {
+  const TableAvailability({
+    required this.id,
+    required this.name,
+    required this.capacity,
+    this.bookedWindows = const [],
+  });
+
+  final int id;
+  final String name;
+  final int capacity;
+  final List<BookedWindow> bookedWindows;
+
+  /// 指定时段 [start, end) 与该桌已占用窗口是否无重叠。
+  bool isFree(String start, String end) =>
+      bookedWindows.every((w) {
+        final ws = _tm(w.startTime);
+        final we = _tm(w.endTime);
+        return ws >= _tm(end) || we <= _tm(start);
+      });
+
+  factory TableAvailability.fromJson(Map<String, dynamic> json) =>
+      TableAvailability(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        name: json['name'] as String? ?? '',
+        capacity: (json['capacity'] as num?)?.toInt() ?? 1,
+        bookedWindows: (json['bookedWindows'] as List?)
+                ?.map((e) => BookedWindow.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            const [],
+      );
+}
+
+class BookedWindow {
+  const BookedWindow({
+    required this.startTime,
+    required this.endTime,
+    this.status = 'booked',
+  });
+
+  final String startTime;
+  final String endTime;
+  final String status;
+
+  factory BookedWindow.fromJson(Map<String, dynamic> json) => BookedWindow(
+        startTime: json['startTime'] as String? ?? '',
+        endTime: json['endTime'] as String? ?? '',
+        status: json['status'] as String? ?? 'booked',
+      );
+}
+
+int _tm(String time) {
+  final p = time.split(':');
+  return (int.tryParse(p[0]) ?? 0) * 60 + (int.tryParse(p[1]) ?? 0);
 }
 
 class ActivitySession {
@@ -258,6 +349,9 @@ class Appointment {
   const Appointment({
     required this.id,
     required this.type,
+    this.bookingType = 'hourly',
+    this.durationHours,
+    this.packageName = '',
     required this.userId,
     this.storeId,
     required this.storeName,
@@ -288,6 +382,9 @@ class Appointment {
 
   final int id;
   final String type;
+  final String bookingType;
+  final int? durationHours;
+  final String packageName;
   final int userId;
   final int? storeId;
   final String storeName;
@@ -355,6 +452,9 @@ class Appointment {
     return Appointment(
       id: (json['id'] as num?)?.toInt() ?? 0,
       type: json['type'] as String? ?? 'store',
+      bookingType: json['bookingType'] as String? ?? 'hourly',
+      durationHours: (json['durationHours'] as num?)?.toInt(),
+      packageName: json['packageName'] as String? ?? '',
       userId: (json['userId'] as num?)?.toInt() ?? 0,
       storeId: (json['storeId'] as num?)?.toInt(),
       storeName: json['storeName'] as String? ?? '',

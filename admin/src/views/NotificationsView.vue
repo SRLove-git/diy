@@ -173,7 +173,7 @@ function formatTime(t: string) {
 }
 
 function channelLabel(ch: string) {
-  const map: Record<string, string> = { push: '推送', sms: '短信', email: '邮件' }
+  const map: Record<string, string> = { push: '推送', email: '邮件' }
   return ch.split(',').map((c) => map[c.trim()] || c).join('、')
 }
 
@@ -328,7 +328,6 @@ onMounted(() => {
           <label>发送渠道</label>
           <div class="channels">
             <label class="cb"><input type="checkbox" value="push" v-model="sendForm.channels" /> 推送</label>
-            <label class="cb"><input type="checkbox" value="sms" v-model="sendForm.channels" /> 短信</label>
             <label class="cb"><input type="checkbox" value="email" v-model="sendForm.channels" /> 邮件</label>
           </div>
         </div>

@@ -8,10 +8,11 @@ import { StoreTable } from './store-table.entity';
 import { StoresController } from './stores.controller';
 import { StoresService } from './stores.service';
 import { TimeSlot } from './time-slot.entity';
+import { StorePackage } from './store-package.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Store, StoreTable, TimeSlot]),
+    TypeOrmModule.forFeature([Store, StoreTable, TimeSlot, StorePackage]),
     UsersModule,
   ],
   controllers: [StoresController, AdminStoresController],

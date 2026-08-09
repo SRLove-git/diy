@@ -11,11 +11,11 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  /** 手机号：账号主键（对齐方案书 §4.2，微信登录二期绑定） */
-  @Column({ unique: true, length: 20 })
-  phone: string;
+  /** 邮箱：注册时绑定（唯一，未绑定为 null） */
+  @Column({ type: 'varchar', unique: true, length: 255, nullable: true })
+  email: string | null;
 
-  /** 用户名：支持用户名+密码登录，null 表示未设置 */
+  /** 用户名：账号主键，注册必填（唯一），支持用户名+密码登录 */
   @Column({ type: 'varchar', unique: true, length: 30, nullable: true })
   username: string | null;
 

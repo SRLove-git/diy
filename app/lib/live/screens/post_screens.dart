@@ -1229,7 +1229,7 @@ class _ActionItem extends StatelessWidget {
   }
 }
 
-/// 社区搜索：作品关键词 / 用户手机号
+/// 社区搜索：作品关键词 / 用户用户名
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
 
@@ -1261,7 +1261,7 @@ class _SearchScreenState extends State<SearchScreen> {
     });
     try {
       if (_tab == 'user') {
-        final users = await UserService.instance.searchByPhone(q);
+        final users = await UserService.instance.searchByUsername(q);
         if (mounted) setState(() => _users = users);
       } else {
         final posts = await CommunityService.instance.latest(q: q);
@@ -1344,7 +1344,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           )
                         : _tab == 'user'
                         ? _users.isEmpty
-                            ? const EmptyView(text: '输入手机号搜索用户')
+                            ? const EmptyView(text: '输入用户名搜索用户')
                             : ListView.separated(
                                 padding: const EdgeInsets.all(18),
                                 itemCount: _users.length,
@@ -1698,7 +1698,7 @@ class _UserRow extends StatelessWidget {
                 children: [
                   Text(user.displayName,
                       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: LiveColors.textPrimary)),
-                  Text(user.phone,
+                  Text('@${user.username ?? ''}',
                       style: const TextStyle(fontSize: 12, color: LiveColors.textTertiary)),
                 ],
               ),

@@ -9,9 +9,11 @@ export interface Store {
   phone: string
   price: number
   memberPrice?: number | null
+  allDayPrice?: number | null
   enabled: boolean
   tables?: StoreTable[]
   slots?: TimeSlot[]
+  packages?: StorePackage[]
 }
 
 export interface StoreTable {
@@ -26,6 +28,15 @@ export interface TimeSlot {
   startTime: string
   endTime: string
   enabled: boolean
+}
+
+export interface StorePackage {
+  id: number
+  name: string
+  hours: number
+  price: number
+  enabled: boolean
+  sortOrder?: number
 }
 
 export const storeApi = {
@@ -44,4 +55,10 @@ export const storeApi = {
   updateSlot: (id: number, d: Partial<TimeSlot>) =>
     http.patch<TimeSlot>(`/admin/stores/slots/${id}`, d),
   removeSlot: (id: number) => http.delete(`/admin/stores/slots/${id}`),
+  addPackage: (storeId: number, d: Partial<StorePackage>) =>
+    http.post<StorePackage>(`/admin/stores/${storeId}/packages`, d),
+  updatePackage: (id: number, d: Partial<StorePackage>) =>
+    http.patch<StorePackage>(`/admin/stores/packages/${id}`, d),
+  removePackage: (id: number) =>
+    http.delete(`/admin/stores/packages/${id}`),
 }

@@ -3,11 +3,10 @@ import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import {
   LoginDto,
-  PasswordLoginDto,
   RefreshDto,
-  SendCodeDto,
-  SetPasswordDto,
-  UsernameLoginDto,
+  RegisterDto,
+  ResetPasswordDto,
+  SendEmailCodeDto,
 } from './auth.dto';
 import { CurrentUser } from './current-user.decorator';
 import type { AuthUser } from './current-user.decorator';
@@ -20,39 +19,28 @@ export class AuthController {
     private readonly users: UsersService,
   ) {}
 
-  /** 发送短信验证码（防刷：60 秒/手机号） */
-  @Post('sms-code')
-  sendSmsCode(@Body() dto: SendCodeDto, @Ip() ip: string) {
-    return this.auth.sendSmsCode(dto.phone, ip);
+  /** 发送邮箱验证码（防刷：60 秒/邮箱，每小时/IP 上限） */
+  @Post('email-code')
+  sendEmailCode(@Body() dto: SendEmailCodeDto, @Ip() ip: string) {
+    return this.auth.sendEmailCode(dto.email, ip);
   }
 
-  /** 验证码登录（未注册自动注册） */
+  /** 注册：用户名 + 密码 + 邮箱绑定（需邮箱验证码） */
+  @Post('register')
+  register(@Body() dto: RegisterDto) {
+    return this.auth.register(dto);
+  }
+
+  /** 用户名 / 邮箱 + 密码登录 */
   @Post('login')
   login(@Body() dto: LoginDto) {
-    return this.auth.login(dto.phone, dto.code);
+    return this.auth.login(dto.account, dto.password);
   }
 
-  /** 密码登录（需先用验证码设置过密码） */
-  @Post('password-login')
-  passwordLogin(@Body() dto: PasswordLoginDto) {
-    return this.auth.passwordLogin(dto.phone, dto.password);
-  }
-
-  /** 用户名 + 密码登录 */
-  @Post('username-login')
-  usernameLogin(@Body() dto: UsernameLoginDto) {
-    return this.auth.usernameLogin(dto.username, dto.password);
-  }
-
-  /** 设置/重置密码（短信验证码校验） */
-  @Post('set-password')
-  setPassword(@Body() dto: SetPasswordDto) {
-    return this.auth.setPassword(
-      dto.phone,
-      dto.code,
-      dto.password,
-      dto.username,
-    );
+  /** 忘记密码：邮箱验证码校验 + 写入新密码 */
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.auth.resetPassword(dto.email, dto.emailCode, dto.password);
   }
 
   /** 刷新令牌（轮换制） */

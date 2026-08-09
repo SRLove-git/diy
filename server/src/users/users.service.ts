@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type Redis from 'ioredis';
-import { In, Like, Repository } from 'typeorm';
+import { In, IsNull, Like, Repository } from 'typeorm';
 import { FORCE_OFFLINE_TTL, kickKey } from '../auth/session-keys';
 import { publishKickEvent } from '../chat/chat-events';
 import { REDIS_CLIENT } from '../redis/redis.module';
@@ -80,57 +80,71 @@ export class UsersService {
     private readonly groupMessageDeletions: Repository<GroupMessageDeletion>,
   ) {}
 
-  findByPhone(phone: string): Promise<User | null> {
-    return this.users.findOneBy({ phone });
-  }
-
-  /** 按手机号搜索用户（添加好友用）：精确匹配，排除自己与被封禁账号 */
-  async searchByPhone(
-    phone: string,
-  ): Promise<
-    Array<{ id: number; nickname: string; avatar: string; phoneMasked: string }>
-  > {
-    const keyword = (phone ?? '').trim();
-    if (!keyword) return [];
-    const user = await this.users.findOneBy({
-      phone: keyword,
-      isBanned: false,
-    });
-    if (!user) return [];
-    const masked = `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}`;
-    return [
-      {
-        id: user.id,
-        nickname: user.nickname || `用户 #${user.id}`,
-        avatar: user.avatar,
-        phoneMasked: masked,
-      },
-    ];
+  findByEmail(email: string): Promise<User | null> {
+    return this.users.findOneBy({ email });
   }
 
   findByUsername(username: string): Promise<User | null> {
     return this.users.findOneBy({ username });
   }
 
-  /** 按手机号查用户，不存在则创建（并发下靠唯一约束兜底） */
-  async findByPhoneOrCreate(phone: string): Promise<User> {
-    return (await this.findByPhoneOrCreateWithFlag(phone)).user;
+  /** 旧版手机号体系遗留的管理员（无用户名），迁移时补全用户名用 */
+  findLegacyAdmin(): Promise<User | null> {
+    return this.users.findOne({
+      where: { role: 'admin', username: IsNull() },
+      order: { id: 'ASC' },
+    });
   }
 
-  /** 按手机号查用户，不存在则创建（并发下靠唯一约束兜底），返回是否新建。
-   *  供验证码登录区分「老用户登录」与「新用户自动注册」。 */
-  async findByPhoneOrCreateWithFlag(
-    phone: string,
-  ): Promise<{ user: User; created: boolean }> {
-    const existing = await this.findByPhone(phone);
-    if (existing) return { user: existing, created: false };
+  /** 按用户名或邮箱查找（登录用），两者均可登录 */
+  async findByUsernameOrEmail(account: string): Promise<User | null> {
+    const keyword = (account ?? '').trim();
+    if (!keyword) return null;
+    return this.users.findOne({
+      where: [{ username: keyword }, { email: keyword.toLowerCase() }],
+    });
+  }
+
+  /** 按用户名查用户，不存在则创建（预置演示作者用，并发下靠唯一约束兜底） */
+  async findByUsernameOrCreate(data: {
+    username: string;
+    email: string;
+    nickname: string;
+    avatar: string;
+  }): Promise<User> {
+    const existing = await this.findByUsername(data.username);
+    if (existing) return existing;
     try {
-      return { user: await this.create({ phone }), created: true };
+      return await this.create(data);
     } catch {
-      const again = await this.findByPhone(phone);
-      if (again) return { user: again, created: false };
+      const again = await this.findByUsername(data.username);
+      if (again) return again;
       throw new Error('用户创建失败');
     }
+  }
+
+  /** 按用户名搜索用户（添加好友/社区找人用）：精确匹配，排除被封禁账号 */
+  async searchByUsername(
+    username: string,
+  ): Promise<
+    Array<{ id: number; nickname: string; avatar: string; username: string; email: string }>
+  > {
+    const keyword = (username ?? '').trim();
+    if (!keyword) return [];
+    const user = await this.users.findOneBy({
+      username: keyword,
+      isBanned: false,
+    });
+    if (!user) return [];
+    return [
+      {
+        id: user.id,
+        nickname: user.nickname || `用户 #${user.id}`,
+        avatar: user.avatar,
+        username: user.username ?? '',
+        email: user.email ?? '',
+      },
+    ];
   }
 
   findById(id: number): Promise<User | null> {
@@ -234,7 +248,7 @@ export class UsersService {
     return this.users.update({ id }, { role });
   }
 
-  /** 管理端：用户列表（分页，可选手机号/昵称搜索） */
+  /** 管理端：用户列表（分页，可选用户名/邮箱/昵称搜索） */
   async findAll(
     page = 1,
     search?: string,
@@ -242,7 +256,11 @@ export class UsersService {
   ): Promise<[User[], number]> {
     const keyword = (search ?? '').trim();
     const where: any = keyword
-      ? [{ phone: Like(`%${keyword}%`) }, { nickname: Like(`%${keyword}%`) }]
+      ? [
+          { username: Like(`%${keyword}%`) },
+          { email: Like(`%${keyword}%`) },
+          { nickname: Like(`%${keyword}%`) },
+        ]
       : {};
     return this.users.findAndCount({
       where,

@@ -4,13 +4,16 @@ import { Repository } from 'typeorm';
 import { Store } from './store.entity';
 import { StoreTable } from './store-table.entity';
 import { TimeSlot } from './time-slot.entity';
+import { StorePackage } from './store-package.entity';
 import {
   CreateSlotDto,
   CreateStoreDto,
   CreateTableDto,
+  CreatePackageDto,
   UpdateSlotDto,
   UpdateStoreDto,
   UpdateTableDto,
+  UpdatePackageDto,
 } from './store.dto';
 
 @Injectable()
@@ -21,6 +24,8 @@ export class StoresService {
     private readonly tables: Repository<StoreTable>,
     @InjectRepository(TimeSlot)
     private readonly slots: Repository<TimeSlot>,
+    @InjectRepository(StorePackage)
+    private readonly packages: Repository<StorePackage>,
   ) {}
 
   // ===== 客户端（只读，仅 enabled） =====
@@ -33,11 +38,14 @@ export class StoresService {
   async detail(id: number): Promise<Store | null> {
     const store = await this.stores.findOne({
       where: { id, enabled: true },
-      relations: { tables: true, slots: true },
+      relations: { tables: true, slots: true, packages: true },
     });
     if (!store) return null;
     store.tables = store.tables.filter((t) => t.enabled);
     store.slots = store.slots.filter((s) => s.enabled);
+    store.packages = (store.packages ?? [])
+      .filter((p) => p.enabled)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.hours - b.hours);
     return store;
   }
 
@@ -45,7 +53,7 @@ export class StoresService {
 
   adminList(): Promise<Store[]> {
     return this.stores.find({
-      relations: { tables: true, slots: true },
+      relations: { tables: true, slots: true, packages: true },
       order: { id: 'DESC' },
     });
   }
@@ -53,7 +61,7 @@ export class StoresService {
   async adminDetail(id: number): Promise<Store> {
     const store = await this.stores.findOne({
       where: { id },
-      relations: { tables: true, slots: true },
+      relations: { tables: true, slots: true, packages: true },
     });
     if (!store) throw new NotFoundException('门店不存在');
     return store;
@@ -110,5 +118,37 @@ export class StoresService {
     const slot = await this.slots.findOneBy({ id });
     if (!slot) throw new NotFoundException('时段不存在');
     await this.slots.remove(slot);
+  }
+
+  // ===== 时长套餐 =====
+
+  async addPackage(
+    storeId: number,
+    dto: CreatePackageDto,
+  ): Promise<StorePackage> {
+    await this.adminDetail(storeId);
+    return this.packages.save(
+      this.packages.create({
+        ...dto,
+        storeId,
+        sortOrder: dto.sortOrder ?? 0,
+      }),
+    );
+  }
+
+  async updatePackage(
+    id: number,
+    dto: UpdatePackageDto,
+  ): Promise<StorePackage> {
+    const pkg = await this.packages.findOneBy({ id });
+    if (!pkg) throw new NotFoundException('套餐不存在');
+    Object.assign(pkg, dto);
+    return this.packages.save(pkg);
+  }
+
+  async removePackage(id: number) {
+    const pkg = await this.packages.findOneBy({ id });
+    if (!pkg) throw new NotFoundException('套餐不存在');
+    await this.packages.remove(pkg);
   }
 }

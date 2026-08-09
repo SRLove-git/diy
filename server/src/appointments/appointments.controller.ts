@@ -33,14 +33,13 @@ export class AppointmentsController {
     return this.appointments.myList(user.id);
   }
 
-  /** 桌位可用性（预约选桌位前查询） */
+  /** 桌位可用性（预约选桌位前查询，返回每桌已占用时段） */
   @Get('availability')
   availability(
     @Query('storeId', ParseIntPipe) storeId: number,
     @Query('date') date: string,
-    @Query('slotId', ParseIntPipe) slotId: number,
   ) {
-    return this.appointments.availability(storeId, date, slotId);
+    return this.appointments.availability(storeId, date);
   }
 
   /** 活动场次列表（含剩余名额，预约选场次前查询） */

@@ -11,8 +11,8 @@ class RoutePaths {
 
   static const splash = '/splash';
   static const login = '/login';
-  static const loginPassword = '/login/password';
-  static const loginSetPassword = '/login/set-password';
+  static const loginRegister = '/login/register';
+  static const loginForgot = '/login/forgot';
   static const loginVerify = '/login/verify';
 
   // 底部 5 Tab（StatefulShellRoute 分支）

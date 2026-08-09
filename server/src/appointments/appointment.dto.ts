@@ -1,6 +1,6 @@
 import {
-  IsInt,
   IsIn,
+  IsInt,
   IsOptional,
   IsString,
   Matches,
@@ -13,6 +13,29 @@ export class CreateAppointmentDto {
   @IsOptional()
   @IsIn(['store', 'activity'])
   type?: 'store' | 'activity';
+
+  /** 门店预约方式：hourly 按小时 / package 套餐 / all_day 全天不限时 */
+  @IsOptional()
+  @IsIn(['hourly', 'package', 'all_day'])
+  bookingType?: 'hourly' | 'package' | 'all_day';
+
+  /** 开始时间 HH:mm（hourly/package 必填，all_day 由营业时间决定） */
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, {
+    message: '开始时间格式为 HH:mm',
+  })
+  startTime?: string;
+
+  /** 预约时长（小时），hourly 必填且 ≥1 */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  durationHours?: number;
+
+  /** 套餐 ID（bookingType=package 时必填） */
+  @IsOptional()
+  @IsInt()
+  packageId?: number;
 
   @IsOptional()
   @IsInt()

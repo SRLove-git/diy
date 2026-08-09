@@ -40,7 +40,7 @@ export class Notification {
   @Column({ type: 'text', nullable: true })
   targetUserIds: string;
 
-  /** 发送渠道：push=推送 / sms=短信 / email=邮件，多选用逗号分隔 */
+  /** 发送渠道：push=推送 / email=邮件，多选用逗号分隔 */
   @Column({ default: 'push' })
   channels: string;
 

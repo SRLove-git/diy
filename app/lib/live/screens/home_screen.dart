@@ -536,7 +536,8 @@ class _HomeOrderCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '${a.date} $week ${a.startTime}-${a.endTime}$table · ${a.peopleCount} 人',
+              '${a.date} $week ${a.startTime}-${a.endTime}$table'
+              '${_durationLabel(a)} · ${a.peopleCount} 人',
               style: TextStyle(
                 fontSize: 13,
                 color: expired
@@ -660,7 +661,7 @@ class _HomeServiceCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${a.date} ${a.startTime} 上钟',
+            '${a.date} ${a.startTime} 上钟${_durationLabel(a)}',
             style: const TextStyle(
               fontSize: 13,
               color: LiveColors.textSecondary,
@@ -672,6 +673,19 @@ class _HomeServiceCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 预约时长描述（与预约卡片一致）。
+String _durationLabel(Appointment a) {
+  if (a.type == 'activity') return '';
+  if (a.bookingType == 'all_day') return ' · 全天不限时';
+  if (a.bookingType == 'package' && a.packageName.isNotEmpty) {
+    return ' · ${a.packageName}';
+  }
+  if (a.durationHours != null && a.durationHours! > 0) {
+    return ' · ${a.durationHours} 小时';
+  }
+  return '';
 }
 
 /// 活动推荐：两列 221×135 活动卡（实时数据）。

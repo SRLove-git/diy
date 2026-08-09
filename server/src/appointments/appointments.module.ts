@@ -7,6 +7,7 @@ import { Membership } from '../members/membership.entity';
 import { Store } from '../stores/store.entity';
 import { StoreTable } from '../stores/store-table.entity';
 import { TimeSlot } from '../stores/time-slot.entity';
+import { StorePackage } from '../stores/store-package.entity';
 import { UsersModule } from '../users/users.module';
 import { ChatModule } from '../chat/chat.module';
 import { AdminAppointmentsController } from './admin-appointments.controller';
@@ -21,6 +22,7 @@ import { AppointmentsService } from './appointments.service';
       Store,
       StoreTable,
       TimeSlot,
+      StorePackage,
       Activity,
       ActivitySession,
       Membership,

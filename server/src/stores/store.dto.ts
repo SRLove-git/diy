@@ -53,6 +53,12 @@ export class CreateStoreDto {
   @Min(0)
   memberPrice?: number;
 
+  /** 全天不限时价格（元/人）；不填时按营业时长 × 小时单价计算 */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  allDayPrice?: number;
+
   @IsOptional()
   @IsString()
   @MaxLength(50)
@@ -98,3 +104,26 @@ export class CreateSlotDto {
 }
 
 export class UpdateSlotDto extends PartialType(CreateSlotDto) {}
+
+export class CreatePackageDto {
+  @IsString()
+  @MaxLength(50)
+  name: string;
+
+  @IsInt()
+  @Min(1)
+  hours: number;
+
+  @IsNumber()
+  @Min(0)
+  price: number;
+
+  @IsOptional()
+  enabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  sortOrder?: number;
+}
+
+export class UpdatePackageDto extends PartialType(CreatePackageDto) {}

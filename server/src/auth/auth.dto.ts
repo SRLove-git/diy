@@ -1,5 +1,7 @@
+import { Transform } from 'class-transformer';
 import {
   IsDateString,
+  IsEmail,
   IsIn,
   IsOptional,
   IsString,
@@ -7,45 +9,58 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
 
-/** 中国大陆手机号 */
-export class SendCodeDto {
-  @Matches(/^1[3-9]\d{9}$/, { message: '手机号格式不正确' })
-  phone: string;
+const trim = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? value.trim() : value;
+
+const lowerTrim = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? value.trim().toLowerCase() : value;
+
+/** 发送邮箱验证码 */
+export class SendEmailCodeDto {
+  @Transform(lowerTrim)
+  @IsEmail({}, { message: '邮箱格式不正确' })
+  email: string;
 }
 
-export class LoginDto extends SendCodeDto {
+/** 注册：用户名 + 密码 + 邮箱绑定（需邮箱验证码） */
+export class RegisterDto extends SendEmailCodeDto {
+  @Transform(trim)
+  @IsString()
+  @MinLength(2, { message: '用户名至少 2 位' })
+  @MaxLength(30, { message: '用户名最多 30 位' })
+  @Matches(/^[a-zA-Z0-9_]+$/, {
+    message: '用户名仅支持字母、数字和下划线',
+  })
+  username: string;
+
+  @IsString()
+  @MinLength(6, { message: '密码至少 6 位' })
+  @MaxLength(32, { message: '密码最多 32 位' })
+  password: string;
+
   @Matches(/^\d{6}$/, { message: '验证码为 6 位数字' })
-  code: string;
+  emailCode: string;
 }
 
-/** 密码登录 */
-export class PasswordLoginDto extends SendCodeDto {
+/** 用户名 / 邮箱 + 密码登录 */
+export class LoginDto {
+  @Transform(trim)
+  @IsString()
+  @MinLength(2, { message: '用户名或邮箱至少 2 位' })
+  @MaxLength(255, { message: '用户名或邮箱过长' })
+  account: string;
+
   @IsString()
   @MinLength(6, { message: '密码至少 6 位' })
   @MaxLength(32, { message: '密码最多 32 位' })
   password: string;
 }
 
-/** 设置/重置密码（需短信验证码） */
-export class SetPasswordDto extends PasswordLoginDto {
+/** 忘记密码：邮箱验证码校验 + 写入新密码 */
+export class ResetPasswordDto extends SendEmailCodeDto {
   @Matches(/^\d{6}$/, { message: '验证码为 6 位数字' })
-  code: string;
-
-  @IsOptional()
-  @IsString()
-  @MinLength(2, { message: '用户名至少 2 位' })
-  @MaxLength(30, { message: '用户名最多 30 位' })
-  username?: string;
-}
-
-/** 用户名 + 密码登录 */
-export class UsernameLoginDto {
-  @IsString()
-  @MinLength(2, { message: '用户名至少 2 位' })
-  @MaxLength(30, { message: '用户名最多 30 位' })
-  username: string;
+  emailCode: string;
 
   @IsString()
   @MinLength(6, { message: '密码至少 6 位' })
@@ -66,9 +81,7 @@ export class UpdateProfileDto {
 
   /** 用户名：2-30 位字母/数字/下划线，用于用户名+密码登录 */
   @IsOptional()
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trim)
   @IsString()
   @MaxLength(30, { message: '用户名最多 30 位' })
   @Matches(/^[a-zA-Z0-9_]*$/, { message: '用户名仅支持字母、数字和下划线' })

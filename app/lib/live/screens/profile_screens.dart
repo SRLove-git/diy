@@ -297,9 +297,7 @@ class _ProfileHeader extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          user.bio.isEmpty
-              ? '@${user.phone}'
-              : '@${user.phone} · ${user.bio}',
+          '@${user.username ?? ''}${user.bio.isEmpty ? '' : ' · ${user.bio}'}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 14, color: LiveColors.textSecondary),
@@ -1977,11 +1975,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         .catchError((_) {});
   }
 
-  String _maskPhone(String phone) {
-    if (phone.length < 7) return phone.isEmpty ? '未绑定' : phone;
-    return '${phone.substring(0, 3)}****${phone.substring(phone.length - 4)}';
-  }
-
   Future<void> _logout() async {
     // 对齐 Pixso 39-弹窗-退出登录确认：
     // 遮罩 + 居中白色圆角 22 对话框 + 灰底取消 / 红底退出登录。
@@ -2049,7 +2042,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final phone = _user?.phone ?? '';
+    final email = _user?.email ?? '';
     final username = _user?.username;
     return LivePage(
       child: Column(
@@ -2064,8 +2057,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _SettingsCard(
                   children: [
                     _SettingsInfoRow(
-                      title: '手机号',
-                      subtitle: '${_maskPhone(phone)} 已绑定',
+                      title: '邮箱',
+                      subtitle: email.isEmpty ? '未绑定' : '$email 已绑定',
                     ),
                     const Divider(height: 1, color: LiveColors.divider),
                     _SettingsInfoRow(
@@ -2081,7 +2074,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       chevron: true,
                       onTap: () => LiveRoutes.push(
                         context,
-                        RoutePaths.loginSetPassword,
+                        RoutePaths.loginForgot,
                       ),
                     ),
                     const Divider(height: 1, color: LiveColors.divider),

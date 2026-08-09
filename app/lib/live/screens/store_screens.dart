@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+// import 'dart:math' as math; // 地图相关：距离计算用，先注释
 
 import 'package:flutter/material.dart';
 
@@ -37,14 +37,14 @@ class _StoreListScreenState extends State<StoreListScreen> {
           if (snap.hasError) {
             return Column(
               children: [
-                const LiveAppBar(title: '附近门店'),
+                const LiveAppBar(title: '门店列表'),
                 Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
               ],
             );
           }
           if (!snap.hasData) {
             return const Column(
-              children: [LiveAppBar(title: '附近门店'), Expanded(child: LoadingView())],
+              children: [LiveAppBar(title: '门店列表'), Expanded(child: LoadingView())],
             );
           }
           final stores = snap.data!;
@@ -58,7 +58,7 @@ class _StoreListScreenState extends State<StoreListScreen> {
           return Column(
             children: [
               LiveAppBar(
-                title: '附近门店',
+                title: '门店列表',
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.search, color: LiveColors.textPrimary),
@@ -101,6 +101,33 @@ class _StoreListScreenState extends State<StoreListScreen> {
   }
 }
 
+/// 门店封面：有图显示图片；无图不渲染封面区，避免出现大块占位
+/// （原地图/封面占位视觉）。
+class _StoreCover extends StatelessWidget {
+  const _StoreCover({
+    required this.store,
+    this.height = 150,
+    this.radius = 0,
+  });
+
+  final Store store;
+  final double height;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    if (store.cover.isNotEmpty) {
+      return SizedBox(
+        height: height,
+        width: double.infinity,
+        child: NetImage(url: store.cover, radius: radius),
+      );
+    }
+    // 无门店图时渲染空组件，不显示任何占位块
+    return const SizedBox.shrink();
+  }
+}
+
 class _StoreCard extends StatelessWidget {
   const _StoreCard({required this.store, required this.onTap});
 
@@ -129,7 +156,7 @@ class _StoreCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(height: 150, width: double.infinity, child: NetImage(url: store.cover)),
+            _StoreCover(store: store, height: 150),
             Padding(
               padding: const EdgeInsets.all(14),
               child: Column(
@@ -164,15 +191,16 @@ class _StoreCard extends StatelessWidget {
                       Text(store.businessHours,
                           style: const TextStyle(fontSize: 12, color: LiveColors.textTertiary)),
                       const SizedBox(width: 8),
-                      const Icon(Icons.place_outlined, size: 13, color: LiveColors.textTertiary),
-                      const SizedBox(width: 2),
-                      Text(
-                        _distanceKm(store.lat, store.lng),
-                        style: const TextStyle(fontSize: 12, color: LiveColors.textTertiary),
-                      ),
+                      // ── 地图相关：距离展示，先注释，页面保持纯门店列表 ──
+                      // const Icon(Icons.place_outlined, size: 13, color: LiveColors.textTertiary),
+                      // const SizedBox(width: 2),
+                      // Text(
+                      //   _distanceKm(store.lat, store.lng),
+                      //   style: const TextStyle(fontSize: 12, color: LiveColors.textTertiary),
+                      // ),
                       const Spacer(),
                       Text(
-                        '¥${store.price.toStringAsFixed(0)}/人',
+                        '¥${store.price.toStringAsFixed(0)}/时·人',
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -272,23 +300,23 @@ class _StoreFilterChips extends StatelessWidget {
   }
 }
 
-/// 门店距离（基于上海静安中心点粗略估算；无经纬度显示 --）
-String _distanceKm(double? lat, double? lng) {
-  if (lat == null || lng == null) return '--';
-  const baseLat = 31.2304;
-  const baseLng = 121.4737;
-  const r = 6371.0;
-  double rad(double d) => d * 3.141592653589793 / 180;
-  final dLat = rad(lat - baseLat);
-  final dLng = rad(lng - baseLng);
-  final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-      math.cos(rad(baseLat)) *
-          math.cos(rad(lat)) *
-          math.sin(dLng / 2) *
-          math.sin(dLng / 2);
-  final km = r * 2 * math.asin(math.sqrt(a));
-  return km < 1 ? '距您 ${(km * 1000).round()}m' : '距您 ${km.toStringAsFixed(1)}km';
-}
+// ── 地图相关：门店距离估算（基于经纬度），先注释 ──
+// String _distanceKm(double? lat, double? lng) {
+//   if (lat == null || lng == null) return '--';
+//   const baseLat = 31.2304;
+//   const baseLng = 121.4737;
+//   const r = 6371.0;
+//   double rad(double d) => d * 3.141592653589793 / 180;
+//   final dLat = rad(lat - baseLat);
+//   final dLng = rad(lng - baseLng);
+//   final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+//       math.cos(rad(baseLat)) *
+//           math.cos(rad(lat)) *
+//           math.sin(dLng / 2) *
+//           math.sin(dLng / 2);
+//   final km = r * 2 * math.asin(math.sqrt(a));
+//   return km < 1 ? '距您 ${(km * 1000).round()}m' : '距您 ${km.toStringAsFixed(1)}km';
+// }
 
 class StoreSearchScreen extends StatefulWidget {
   const StoreSearchScreen({super.key});
@@ -300,7 +328,7 @@ class StoreSearchScreen extends StatefulWidget {
 class _StoreSearchScreenState extends State<StoreSearchScreen> {
   List<Store> _all = [];
   final _query = TextEditingController();
-  String _sort = 'default'; // default / nearest
+  // String _sort = 'default'; // default / nearest（地图相关：距离排序，先注释）
   bool _loading = true;
   String? _error;
 
@@ -330,22 +358,24 @@ class _StoreSearchScreenState extends State<StoreSearchScreen> {
     var list = _all
         .where((s) => s.name.contains(q) || s.address.contains(q))
         .toList();
-    if (_sort == 'nearest') {
-      list.sort((a, b) {
-        final da = _distanceValue(a.lat, a.lng);
-        final db = _distanceValue(b.lat, b.lng);
-        return da.compareTo(db);
-      });
-    }
+    // ── 地图相关：按距离排序，先注释 ──
+    // if (_sort == 'nearest') {
+    //   list.sort((a, b) {
+    //     final da = _distanceValue(a.lat, a.lng);
+    //     final db = _distanceValue(b.lat, b.lng);
+    //     return da.compareTo(db);
+    //   });
+    // }
     return list;
   }
 
-  double _distanceValue(double? lat, double? lng) {
-    if (lat == null || lng == null) return double.infinity;
-    const baseLat = 31.2304;
-    const baseLng = 121.4737;
-    return (lat - baseLat) * (lat - baseLat) + (lng - baseLng) * (lng - baseLng);
-  }
+  // ── 地图相关：距离排序辅助函数，先注释 ──
+  // double _distanceValue(double? lat, double? lng) {
+  //   if (lat == null || lng == null) return double.infinity;
+  //   const baseLat = 31.2304;
+  //   const baseLng = 121.4737;
+  //   return (lat - baseLat) * (lat - baseLat) + (lng - baseLng) * (lng - baseLng);
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -370,49 +400,50 @@ class _StoreSearchScreenState extends State<StoreSearchScreen> {
               onChanged: (_) => setState(() {}),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 4),
-            child: Row(
-              children: [
-                for (final t in [
-                  ('default', '全部'),
-                  ('nearest', '距离最近'),
-                ])
-                  Padding(
-                    padding: const EdgeInsets.only(right: 10),
-                    child: InkWell(
-                      onTap: () => setState(() => _sort = t.$1),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _sort == t.$1 ? LiveColors.textPrimary : LiveColors.card,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          t.$2,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: _sort == t.$1 ? Colors.white : LiveColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                const Spacer(),
-                InkWell(
-                  onTap: () => LiveRoutes.replace(
-                    context,
-                    RoutePaths.storeList,
-                  ),
-                  child: const Text(
-                    '地图模式 ›',
-                    style: TextStyle(fontSize: 13, color: LiveColors.brand),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // ── 地图相关：距离最近排序 + 地图模式入口，先注释，保留纯门店列表 ──
+          // Padding(
+          //   padding: const EdgeInsets.fromLTRB(18, 0, 18, 4),
+          //   child: Row(
+          //     children: [
+          //       for (final t in [
+          //         ('default', '全部'),
+          //         ('nearest', '距离最近'),
+          //       ])
+          //         Padding(
+          //           padding: const EdgeInsets.only(right: 10),
+          //           child: InkWell(
+          //             onTap: () => setState(() => _sort = t.$1),
+          //             child: Container(
+          //               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          //               decoration: BoxDecoration(
+          //                 color: _sort == t.$1 ? LiveColors.textPrimary : LiveColors.card,
+          //                 borderRadius: BorderRadius.circular(16),
+          //               ),
+          //               child: Text(
+          //                 t.$2,
+          //                 style: TextStyle(
+          //                   fontSize: 12,
+          //                   fontWeight: FontWeight.w600,
+          //                   color: _sort == t.$1 ? Colors.white : LiveColors.textSecondary,
+          //                 ),
+          //               ),
+          //             ),
+          //           ),
+          //         ),
+          //       const Spacer(),
+          //       InkWell(
+          //         onTap: () => LiveRoutes.replace(
+          //           context,
+          //           RoutePaths.storeList,
+          //         ),
+          //         child: const Text(
+          //           '地图模式 ›',
+          //           style: TextStyle(fontSize: 13, color: LiveColors.brand),
+          //         ),
+          //       ),
+          //     ],
+          //   ),
+          // ),
           Expanded(
             child: _loading
                 ? const LoadingView()
@@ -453,7 +484,10 @@ class StoreDetailScreen extends StatefulWidget {
 class _StoreDetailScreenState extends State<StoreDetailScreen> {
   late Future<Store> _future;
   String? _date;
-  TimeSlot? _slot;
+  String _bookingType = 'hourly'; // hourly / package / all_day
+  int _hours = 1;
+  StorePackage? _package;
+  String? _startTime;
 
   @override
   void initState() {
@@ -463,7 +497,8 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
 
   void _retry() => setState(() {
         _future = StoreService.instance.detail(widget.storeId);
-        _slot = null;
+        _startTime = null;
+        _package = null;
       });
 
   List<String> _nextDates() {
@@ -503,8 +538,10 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                 child: ListView(
                   padding: const EdgeInsets.all(18),
                   children: [
-                    SizedBox(height: 180, width: double.infinity, child: NetImage(url: store.cover, radius: 16)),
-                    const SizedBox(height: 14),
+                    if (store.cover.isNotEmpty) ...[
+                      _StoreCover(store: store, height: 180, radius: 16),
+                      const SizedBox(height: 14),
+                    ],
                     Text(
                       store.name,
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
@@ -534,48 +571,137 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      '门市 ¥${store.price.toStringAsFixed(2)}'
-                      '${store.memberPrice != null && store.memberPrice! > 0 ? '　会员 ¥${store.memberPrice!.toStringAsFixed(2)}' : store.memberPrice == 0 ? '　会员免费' : ''}',
+                      '按小时 ¥${store.price.toStringAsFixed(2)}/人/小时'
+                      '${store.memberPrice != null && store.memberPrice! > 0 ? '　会员 ¥${store.memberPrice!.toStringAsFixed(2)}' : store.memberPrice == 0 ? '　会员免费' : ''}'
+                      '${store.allDayPrice != null ? '　全天 ¥${store.allDayPrice!.toStringAsFixed(2)}/人' : ''}',
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
                     ),
                     const SizedBox(height: 20),
                     const _StepTitle('1', '选择日期'),
                     _datesRow(store),
                     const SizedBox(height: 18),
-                    const _StepTitle('2', '选择时段'),
-                    if (store.slots.isEmpty)
-                      const EmptyView(text: '暂无可约时段')
-                    else
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: store.slots.map((s) {
-                          final sel = _slot?.id == s.id;
-                          return _ChoiceChip(
-                            label: s.label,
-                            selected: sel,
-                            onTap: () => setState(() => _slot = s),
-                          );
-                        }).toList(),
+                    const _StepTitle('2', '选择预约方式'),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        for (final t in [
+                          ('hourly', '按小时'),
+                          ('package', '时长套餐'),
+                          ('all_day', '全天不限时'),
+                        ])
+                          _ChoiceChip(
+                            label: t.$2,
+                            selected: _bookingType == t.$1,
+                            onTap: () => setState(() {
+                              _bookingType = t.$1;
+                              _package = null;
+                              _startTime = null;
+                            }),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    if (_bookingType == 'hourly') ...[
+                      _hoursSelector(store),
+                      const SizedBox(height: 16),
+                      Text(
+                        '开始时间（营业 ${store.businessHours}）',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: LiveColors.textPrimary,
+                        ),
                       ),
+                      const SizedBox(height: 10),
+                      _startTimeChips(store, _hours),
+                    ] else if (_bookingType == 'package') ...[
+                      if (store.packages.isEmpty)
+                        const EmptyView(text: '门店暂未配置时长套餐')
+                      else ...[
+                        Text(
+                          '选择套餐',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: LiveColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: store.packages.map((p) {
+                            return _ChoiceChip(
+                              label: '${p.name} · ¥${p.price.toStringAsFixed(0)}/人',
+                              selected: _package?.id == p.id,
+                              onTap: () => setState(() {
+                                _package = p;
+                                final opts = _startOptions(store, p.hours);
+                                _startTime = opts.isEmpty ? null : opts.first;
+                              }),
+                            );
+                          }).toList(),
+                        ),
+                        if (_package != null) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            '开始时间（营业 ${store.businessHours}）',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: LiveColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          _startTimeChips(store, _package!.hours),
+                        ],
+                      ],
+                    ] else ...[
+                      const Text(
+                        '全天不限时',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: LiveColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '营业时间（${store.businessHours}）内不限时长，到店扫码即开始计时',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: LiveColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                    if (_windowOf(store) != null) ...[
+                      const SizedBox(height: 14),
+                      _bookingSummary(store),
+                    ],
                     const SizedBox(height: 26),
                     PrimaryButton(
                       label: '下一步 · 选择桌位',
                       color: Colors.black,
                       textColor: Colors.white,
-                      onTap: _date == null || _slot == null
-                          ? null
-                          : () {
+                      onTap: _canNext(store)
+                          ? () {
+                              final w = _windowOf(store)!;
                               LiveRoutes.push(
                                 context,
                                 RoutePaths.storeTableSelect,
                                 extra: {
                                   'store': store,
                                   'date': _date!,
-                                  'slot': _slot!,
+                                  'bookingType': _bookingType,
+                                  'startTime': w.$1,
+                                  'endTime': w.$2,
+                                  'durationHours': _selectedHours(store),
+                                  'package': _package,
                                 },
                               );
-                            },
+                            }
+                          : null,
                     ),
                     const SizedBox(height: 20),
                   ],
@@ -586,6 +712,187 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
         },
       ),
     );
+  }
+
+  Widget _hoursSelector(Store store) {
+    final range = _businessHoursRange(store);
+    final maxHours = ((_minutes(range.$2) - _minutes(range.$1)) / 60).floor();
+    final maxHoursSafe = maxHours < 1 ? 1 : maxHours;
+    return Row(
+      children: [
+        const Text(
+          '时长',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: LiveColors.textPrimary,
+          ),
+        ),
+        const SizedBox(width: 12),
+        _RoundBtn(
+          icon: Icons.remove,
+          onTap: _hours > 1
+              ? () => setState(() {
+                    _hours--;
+                    final opts = _startOptions(store, _hours);
+                    _startTime = opts.isEmpty ? null : opts.first;
+                  })
+              : null,
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Text(
+            '$_hours 小时',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: LiveColors.textPrimary,
+            ),
+          ),
+        ),
+        _RoundBtn(
+          icon: Icons.add,
+          onTap: _hours < maxHoursSafe
+              ? () => setState(() {
+                    _hours++;
+                    final opts = _startOptions(store, _hours);
+                    _startTime = opts.isEmpty ? null : opts.first;
+                  })
+              : null,
+        ),
+        const Spacer(),
+        Text(
+          '1 小时起',
+          style: const TextStyle(
+            fontSize: 11,
+            color: LiveColors.textTertiary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _startTimeChips(Store store, int hours) {
+    final opts = _startOptions(store, hours);
+    if (opts.isEmpty) return const EmptyView(text: '该时长超出营业时间');
+    if (_startTime != null && !opts.contains(_startTime)) {
+      // 时长/套餐变化后同步重置为第一个可选开始时间
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _startTime = opts.first);
+      });
+    }
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: opts.map((t) {
+        final sel = _startTime == t;
+        return _ChoiceChip(
+          label: t,
+          selected: sel,
+          onTap: () => setState(() => _startTime = t),
+        );
+      }).toList(),
+    );
+  }
+
+  List<String> _startOptions(Store store, int hours) {
+    final range = _businessHoursRange(store);
+    final open = _minutes(range.$1);
+    final close = _minutes(range.$2);
+    final maxStart = close - hours * 60;
+    final list = <String>[];
+    for (var m = open; m <= maxStart; m += 60) {
+      list.add(_fmtMin(m));
+    }
+    return list;
+  }
+
+  int _selectedHours(Store store) {
+    if (_bookingType == 'package') return _package?.hours ?? 0;
+    if (_bookingType == 'all_day') {
+      final range = _businessHoursRange(store);
+      return ((_minutes(range.$2) - _minutes(range.$1)) / 60).round();
+    }
+    return _hours;
+  }
+
+  /// 当前选择的时段窗口；未选完返回 null
+  (String, String)? _windowOf(Store store) {
+    if (_date == null) return null;
+    if (_bookingType == 'all_day') return _businessHoursRange(store);
+    final start = _startTime;
+    if (start == null) return null;
+    final hours = _selectedHours(store);
+    if (hours <= 0) return null;
+    return (start, _addHours(start, hours));
+  }
+
+  bool _canNext(Store store) => _windowOf(store) != null;
+
+  Widget _bookingSummary(Store store) {
+    final w = _windowOf(store)!;
+    final hours = _selectedHours(store);
+    final unit = _previewUnitPrice(store, hours);
+    final label = switch (_bookingType) {
+      'package' => '${_package?.name ?? '套餐'} · $hours 小时',
+      'all_day' => '全天不限时',
+      _ => '$hours 小时',
+    };
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: LiveColors.brandLight,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$label · ${w.$1}-${w.$2}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: LiveColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  '到店扫码即开始计时，结束时间固定不顺延',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: LiveColors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            '¥${unit.toStringAsFixed(0)}/人',
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: LiveColors.brand,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  double _previewUnitPrice(Store store, int hours) {
+    if (_bookingType == 'package') return _package?.price ?? 0;
+    if (_bookingType == 'all_day') {
+      return store.allDayPrice ??
+          (store.price * ((_selectedHours(store) == 0 ? 1 : _selectedHours(store))));
+    }
+    final rate = store.memberPrice != null && store.memberPrice! >= 0
+        ? store.memberPrice!
+        : store.price;
+    return rate * hours;
   }
 
   Widget _datesRow(Store store) {
@@ -658,20 +965,28 @@ class TableSelectScreen extends StatefulWidget {
     super.key,
     required this.store,
     required this.date,
-    required this.slot,
+    required this.bookingType,
+    required this.startTime,
+    required this.endTime,
+    required this.durationHours,
+    this.package,
   });
 
   final Store store;
   final String date;
-  final TimeSlot slot;
+  final String bookingType; // hourly / package / all_day
+  final String startTime;
+  final String endTime;
+  final int durationHours;
+  final StorePackage? package;
 
   @override
   State<TableSelectScreen> createState() => _TableSelectScreenState();
 }
 
 class _TableSelectScreenState extends State<TableSelectScreen> {
-  List<StoreTable> _tables = [];
-  StoreTable? _table;
+  List<TableAvailability> _tables = [];
+  TableAvailability? _table;
   int _people = 2;
   bool _loading = true;
   String? _error;
@@ -691,7 +1006,6 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
       final tables = await AppointmentService.instance.availability(
         storeId: widget.store.id,
         date: widget.date,
-        slotId: widget.slot.id,
       );
       if (mounted) setState(() => _tables = tables);
     } on ApiException catch (e) {
@@ -701,10 +1015,35 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
     }
   }
 
-  double get _unitPrice =>
-      widget.store.memberPrice != null && widget.store.memberPrice! > 0
-          ? widget.store.memberPrice!
-          : widget.store.price;
+  bool _isAvailable(TableAvailability t) {
+    if (widget.bookingType == 'all_day') {
+      return t.bookedWindows.isEmpty;
+    }
+    return t.isFree(widget.startTime, widget.endTime);
+  }
+
+  /// 单人价格（含时长；实际以服务端会员价计算为准，此处为预览）
+  double get _unitPrice {
+    final store = widget.store;
+    if (widget.bookingType == 'package') {
+      return widget.package?.price ?? 0;
+    }
+    if (widget.bookingType == 'all_day') {
+      return store.allDayPrice ?? store.price * widget.durationHours;
+    }
+    final rate = store.memberPrice != null && store.memberPrice! >= 0
+        ? store.memberPrice!
+        : store.price;
+    return rate * widget.durationHours;
+  }
+
+  String get _bookingLabel {
+    return switch (widget.bookingType) {
+      'package' => '${widget.package?.name ?? '套餐'} · ${widget.durationHours} 小时',
+      'all_day' => '全天不限时',
+      _ => '${widget.durationHours} 小时',
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -731,7 +1070,8 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '${store.name} · ${widget.date} ${widget.slot.label}',
+                                  '${store.name} · ${widget.date} '
+                                  '${widget.startTime}-${widget.endTime}',
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
@@ -739,9 +1079,9 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 6),
-                                const Text(
-                                  '同店同桌同时段不重复预约',
-                                  style: TextStyle(fontSize: 11.6, color: LiveColors.textTertiary),
+                                Text(
+                                  '$_bookingLabel · 扫码即开始计时，结束时间固定不顺延',
+                                  style: const TextStyle(fontSize: 11.6, color: LiveColors.textTertiary),
                                 ),
                               ],
                             ),
@@ -750,7 +1090,7 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                           const Text('选择桌位', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                           const SizedBox(height: 10),
                           if (_tables.isEmpty)
-                            const EmptyView(text: '该时段暂无可用桌位')
+                            const EmptyView(text: '该门店暂无可用桌位')
                           else
                             GridView.builder(
                               shrinkWrap: true,
@@ -765,14 +1105,15 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                               itemBuilder: (_, i) {
                                 final t = _tables[i];
                                 final sel = _table?.id == t.id;
+                                final free = _isAvailable(t);
                                 return InkWell(
-                                  onTap: t.available ? () => setState(() => _table = t) : null,
+                                  onTap: free ? () => setState(() => _table = t) : null,
                                   borderRadius: BorderRadius.circular(12),
                                   child: Container(
                                     decoration: BoxDecoration(
                                       color: sel
                                           ? LiveColors.textPrimary
-                                          : t.available
+                                          : free
                                               ? LiveColors.card
                                               : const Color(0xFFEFEFEF),
                                       borderRadius: BorderRadius.circular(12),
@@ -787,19 +1128,19 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                                             fontWeight: FontWeight.w800,
                                             color: sel
                                                 ? Colors.white
-                                                : t.available
+                                                : free
                                                     ? LiveColors.textPrimary
                                                     : LiveColors.textTertiary,
                                           ),
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          t.available ? '${t.capacity}人' : '满',
+                                          free ? '${t.capacity}人' : '满',
                                           style: TextStyle(
                                             fontSize: 10.6,
                                             color: sel
                                                 ? Colors.white70
-                                                : t.available
+                                                : free
                                                     ? LiveColors.textTertiary
                                                     : LiveColors.textTertiary,
                                           ),
@@ -875,7 +1216,13 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                                       'type': 'store',
                                       'store': store,
                                       'date': widget.date,
-                                      'slot': widget.slot,
+                                      'bookingType': widget.bookingType,
+                                      'startTime': widget.startTime,
+                                      'endTime': widget.endTime,
+                                      'durationHours': widget.durationHours,
+                                      'packageName': widget.package?.name ?? '',
+                                      'packageId': widget.package?.id,
+                                      'packagePrice': widget.package?.price,
                                       'table': _table!,
                                       'peopleCount': _people,
                                     },
@@ -972,6 +1319,29 @@ class _ChoiceChip extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 解析营业时间 "09:00-21:00"，解析失败回退 09:00-22:00。
+(String, String) _businessHoursRange(Store store) {
+  final m = RegExp(
+    r'((?:[01]\d|2[0-3]):[0-5]\d)\s*-\s*((?:[01]\d|2[0-3]):[0-5]\d)',
+  ).firstMatch(store.businessHours);
+  return m != null ? (m.group(1)!, m.group(2)!) : ('09:00', '22:00');
+}
+
+int _minutes(String time) {
+  final parts = time.split(':');
+  return (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
+}
+
+String _fmtMin(int mins) {
+  final h = (mins ~/ 60).toString().padLeft(2, '0');
+  final m = (mins % 60).toString().padLeft(2, '0');
+  return '$h:$m';
+}
+
+String _addHours(String start, int hours) {
+  return _fmtMin(_minutes(start) + hours * 60);
 }
 
 String _msg(Object? e) =>

@@ -3695,25 +3695,25 @@ class AddFriendScreen extends StatefulWidget {
 }
 
 class _AddFriendScreenState extends State<AddFriendScreen> {
-  final _phoneCtrl = TextEditingController();
+  final _accountCtrl = TextEditingController();
   List<User> _results = [];
   List<FollowUser> _following = [];
   final Set<int> _selectedGroup = {};
-  String _tab = 'phone'; // phone / following
+  String _tab = 'username'; // username / following
   bool _searching = false;
 
   @override
   void dispose() {
-    _phoneCtrl.dispose();
+    _accountCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _search() async {
-    final phone = _phoneCtrl.text.trim();
-    if (phone.isEmpty) return;
+    final username = _accountCtrl.text.trim();
+    if (username.isEmpty) return;
     setState(() => _searching = true);
     try {
-      final users = await UserService.instance.searchByPhone(phone);
+      final users = await UserService.instance.searchByUsername(username);
       if (mounted) setState(() => _results = users);
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -3778,7 +3778,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
       child: Column(
         children: [
           const LiveAppBar(title: '添加好友'),
-          // 顶部分段器：手机号搜索 / 我的关注（对齐设计稿 25-添加好友）
+          // 顶部分段器：用户名搜索 / 我的关注（对齐设计稿 25-添加好友）
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 8, 18, 6),
             child: Container(
@@ -3790,7 +3790,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
               child: Row(
                 children: [
                   for (final t in [
-                    ('phone', '手机号搜索'),
+                    ('username', '用户名搜索'),
                     ('following', '我的关注'),
                   ])
                     Expanded(
@@ -3836,8 +3836,8 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
               ),
             ),
           ),
-          // 手机号搜索 Tab：搜索框 + 结果卡片
-          if (_tab == 'phone') ...[
+          // 用户名搜索 Tab：搜索框 + 结果卡片
+          if (_tab == 'username') ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 4, 18, 10),
               child: Container(
@@ -3853,10 +3853,9 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
-                        controller: _phoneCtrl,
-                        keyboardType: TextInputType.phone,
+                        controller: _accountCtrl,
                         decoration: const InputDecoration(
-                          hintText: '输入对方手机号',
+                          hintText: '输入对方用户名',
                           hintStyle: TextStyle(fontSize: 15, color: LiveColors.textTertiary),
                           border: InputBorder.none,
                           isDense: true,
@@ -3888,7 +3887,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
             ),
             Expanded(
               child: _results.isEmpty
-                  ? const EmptyView(text: '输入手机号搜索好友', icon: Icons.person_search_outlined)
+                  ? const EmptyView(text: '输入用户名搜索好友', icon: Icons.person_search_outlined)
                   : ListView(
                       padding: const EdgeInsets.symmetric(horizontal: 18),
                       children: [
@@ -4000,7 +3999,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
   }
 }
 
-/// 手机号搜索结果行（对齐设计稿：头像 + 名称/副标题 + 「添加 / 已添加」按钮）。
+/// 用户名搜索结果行（对齐设计稿：头像 + 名称/副标题 + 「添加 / 已添加」按钮）。
 class _SearchResultRow extends StatelessWidget {
   const _SearchResultRow({required this.user, required this.onTap});
 
@@ -4033,7 +4032,7 @@ class _SearchResultRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${user.phone} · ${user.location.isEmpty ? '未填地区' : user.location}',
+                    '@${user.username ?? ''} · ${user.location.isEmpty ? '未填地区' : user.location}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),

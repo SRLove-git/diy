@@ -106,7 +106,7 @@ onMounted(load)
         <input
           v-model="search"
           type="text"
-          placeholder="搜索手机号 / 昵称"
+          placeholder="搜索用户名 / 邮箱 / 昵称"
           @keyup.enter="doSearch"
         />
         <button class="btn" @click="doSearch">搜索</button>
@@ -123,7 +123,8 @@ onMounted(load)
         <tr>
           <th style="width:60px">ID</th>
           <th style="width:50px">头像</th>
-          <th>手机号</th>
+          <th>用户名</th>
+          <th>邮箱</th>
           <th>昵称</th>
           <th style="width:80px">角色</th>
           <th style="width:90px">状态</th>
@@ -144,7 +145,8 @@ onMounted(load)
             />
             <span v-else class="muted">-</span>
           </td>
-          <td>{{ u.phone }}</td>
+          <td>{{ u.username || '-' }}</td>
+          <td>{{ u.email || '-' }}</td>
           <td>{{ u.nickname || '-' }}</td>
           <td>
             <span class="tag" :class="u.role === 'admin' ? 'tag-role-admin' : 'tag-role-user'">
@@ -191,7 +193,7 @@ onMounted(load)
           {{ banTarget.isBanned ? '确认解封该用户？解封后该用户可正常使用平台。' : '确认封禁该用户？封禁后该用户将无法使用平台功能。' }}
         </p>
         <p class="modal-user">
-          {{ banTarget.nickname || banTarget.phone }}
+          {{ banTarget.nickname || banTarget.username || `用户 #${banTarget.id}` }}
         </p>
         <div class="modal-actions">
           <button class="btn btn-sm" @click="cancelBan">取消</button>
@@ -210,7 +212,7 @@ onMounted(load)
           确认删除该用户发布的全部作品（社区帖子 + 短视频/照片）？删除后不可恢复，其点赞、评论与收藏记录将一并清除。
         </p>
         <p class="modal-user">
-          {{ worksTarget.nickname || worksTarget.phone }}
+          {{ worksTarget.nickname || worksTarget.username || `用户 #${worksTarget.id}` }}
         </p>
         <div class="modal-actions">
           <button class="btn btn-sm" @click="cancelDeleteWorks">取消</button>

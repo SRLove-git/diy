@@ -17,10 +17,10 @@ export class UsersController {
     return this.users.findById(user.id);
   }
 
-  /** 按手机号搜索用户（添加好友） */
+  /** 按用户名搜索用户（添加好友/社区找人） */
   @Get('search')
   @UseGuards(JwtAuthGuard)
-  async search(@Query('phone') phone?: string) {
-    return this.users.searchByPhone(phone ?? '');
+  async search(@Query('username') username?: string) {
+    return this.users.searchByUsername(username ?? '');
   }
 }

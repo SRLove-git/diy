@@ -8,41 +8,13 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
-import { randomBytes, scrypt as scryptCb, timingSafeEqual } from 'crypto';
-import { promisify } from 'util';
-import type Redis from 'ioredis';
 import { randomUUID } from 'crypto';
+import type Redis from 'ioredis';
+import { EmailService } from '../email/email.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
-import { SmsService } from '../sms/sms.service';
 import { UsersService } from '../users/users.service';
+import { hashPassword, verifyPassword } from './password.util';
 import { kickKey } from './session-keys';
-
-const scrypt = promisify(scryptCb) as (
-  password: string,
-  salt: Buffer,
-  keylen: number,
-) => Promise<Buffer>;
-
-/** scrypt 哈希密码，格式：scrypt$<salt hex>:<hash hex> */
-async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16);
-  const hash = await scrypt(password, salt, 64);
-  return `scrypt$${salt.toString('hex')}:${hash.toString('hex')}`;
-}
-
-async function verifyPassword(
-  password: string,
-  stored: string,
-): Promise<boolean> {
-  const [scheme, rest] = stored.split('$');
-  if (scheme !== 'scrypt' || !rest) return false;
-  const [saltHex, hashHex] = rest.split(':');
-  if (!saltHex || !hashHex) return false;
-  const salt = Buffer.from(saltHex, 'hex');
-  const expected = Buffer.from(hashHex, 'hex');
-  const actual = await scrypt(password, salt, expected.length);
-  return expected.length === actual.length && timingSafeEqual(expected, actual);
-}
 
 export interface JwtPayload {
   sub: number;
@@ -50,12 +22,12 @@ export interface JwtPayload {
   jti?: string;
 }
 
-const SMS_CODE_TTL = 300; // 验证码 5 分钟有效
-const SMS_LIMIT_TTL = 60; // 同一手机号 60 秒限发一次
-const SMS_IP_LIMIT_TTL = 3600; // 同一 IP 每小时限发次数窗口
-const SMS_IP_LIMIT_MAX = 10; // 同一 IP 每小时最多发送 10 条
+const EMAIL_CODE_TTL = 300; // 验证码 5 分钟有效
+const EMAIL_LIMIT_TTL = 60; // 同一邮箱 60 秒限发一次
+const EMAIL_IP_LIMIT_TTL = 3600; // 同一 IP 每小时限发次数窗口
+const EMAIL_IP_LIMIT_MAX = 10; // 同一 IP 每小时最多发送 10 条
 const REFRESH_TTL = 30 * 24 * 3600; // 刷新令牌 30 天
-const MAX_ATTEMPTS = 5; // 10 分钟内最多尝试 5 次
+const MAX_ATTEMPTS = 5; // 验证码 10 分钟内最多尝试 5 次
 const PASSWORD_ATTEMPT_MAX = 5; // 密码登录 10 分钟内最多失败 5 次
 const PASSWORD_LOCK_TTL = 600; // 连续失败后锁定 10 分钟
 
@@ -66,34 +38,41 @@ export class AuthService {
     private readonly users: UsersService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
-    private readonly sms: SmsService,
+    private readonly email: EmailService,
   ) {}
 
-  /** 发送验证码（含防刷：60 秒/手机号 + 每小时/IP 上限） */
-  async sendSmsCode(phone: string, ip?: string) {
-    // 先做 IP 维度限流（有则计次），再锁手机号，避免被批量刷号
+  /** 发送邮箱验证码（含防刷：60 秒/邮箱 + 每小时/IP 上限） */
+  async sendEmailCode(email: string, ip?: string) {
+    const normalized = email.trim().toLowerCase();
+    // 先做 IP 维度限流（有则计次），再锁邮箱，避免被批量刷号
     if (ip) {
-      const ipKey = `sms:limit-ip:${ip}`;
+      const ipKey = `email:limit-ip:${ip}`;
       const ipCount = await this.redis.incr(ipKey);
-      if (ipCount === 1) await this.redis.expire(ipKey, SMS_IP_LIMIT_TTL);
-      if (ipCount > SMS_IP_LIMIT_MAX) {
+      if (ipCount === 1) await this.redis.expire(ipKey, EMAIL_IP_LIMIT_TTL);
+      if (ipCount > EMAIL_IP_LIMIT_MAX) {
         throw new BadRequestException('发送过于频繁，请稍后再试');
       }
     }
     const locked = await this.redis.set(
-      `sms:limit:${phone}`,
+      `email:limit:${normalized}`,
       '1',
       'EX',
-      SMS_LIMIT_TTL,
+      EMAIL_LIMIT_TTL,
       'NX',
     );
     if (!locked) throw new BadRequestException('发送过于频繁，请 60 秒后再试');
 
     const code = String(Math.floor(100000 + Math.random() * 900000));
-    await this.redis.set(`sms:code:${phone}`, code, 'EX', SMS_CODE_TTL);
-    await this.sms.send(
-      phone,
-      `【DIY手作工坊】您的验证码是 ${code}，5 分钟内有效。`,
+    await this.redis.set(
+      `email:code:${normalized}`,
+      code,
+      'EX',
+      EMAIL_CODE_TTL,
+    );
+    await this.email.send(
+      normalized,
+      '【DIY手作工坊】邮箱验证码',
+      `您的验证码是 ${code}，5 分钟内有效。请勿泄露给他人。`,
     );
 
     // 开发环境：返回验证码便于联调，生产环境不返回
@@ -101,49 +80,43 @@ export class AuthService {
     return isDev ? { sent: true, code } : { sent: true };
   }
 
-  /** 验证码登录（未注册自动注册） */
-  async login(phone: string, code: string) {
-    await this.verifySmsCode(phone, code);
-    const { user, created } =
-      await this.users.findByPhoneOrCreateWithFlag(phone);
-    if (user.isBanned) throw new ForbiddenException('账号已被禁用');
-    // 强制下线/封禁的旧会话标记随重新登录清除
-    await this.redis.del(kickKey(user.id));
+  /** 注册：用户名 + 密码 + 邮箱绑定（邮箱验证码校验通过后建号并自动登录） */
+  async register(dto: {
+    username: string;
+    email: string;
+    password: string;
+    emailCode: string;
+  }) {
+    const username = dto.username.trim();
+    const email = dto.email.trim().toLowerCase();
+    await this.verifyEmailCode(email, dto.emailCode);
 
+    if (await this.users.findByUsername(username)) {
+      throw new ConflictException('用户名已被占用');
+    }
+    if (await this.users.findByEmail(email)) {
+      throw new ConflictException('该邮箱已注册');
+    }
+
+    const user = await this.users.create({
+      username,
+      email,
+      passwordHash: await hashPassword(dto.password),
+      nickname: username,
+    });
     const tokens = await this.signTokens(user.id);
-    // isNewUser：首次验证码登录自动注册，客户端可据此引导完善资料
-    return { userId: user.id, isNewUser: created, ...tokens };
+    return { userId: user.id, isNewUser: true, ...tokens };
   }
 
-  /** 密码登录（需先用验证码设置过密码） */
-  async passwordLogin(phone: string, password: string) {
-    const lockKey = `pw:${phone}`;
+  /** 用户名 / 邮箱 + 密码登录 */
+  async login(account: string, password: string) {
+    const normalized = account.trim();
+    const lockKey = `acct:${normalized.toLowerCase()}`;
     await this.checkLoginLock(lockKey);
-    const user = await this.users.findByPhone(phone);
+    const user = await this.users.findByUsernameOrEmail(normalized);
     if (!user || !user.passwordHash) {
       await this.recordLoginFailure(lockKey);
-      throw new UnauthorizedException('该账号未设置密码，请先设置密码');
-    }
-    if (!(await verifyPassword(password, user.passwordHash))) {
-      await this.recordLoginFailure(lockKey);
-      throw new UnauthorizedException('手机号或密码错误');
-    }
-    await this.clearLoginFailures(lockKey);
-    if (user.isBanned) throw new ForbiddenException('账号已被禁用');
-    await this.redis.del(kickKey(user.id));
-
-    const tokens = await this.signTokens(user.id);
-    return { userId: user.id, ...tokens };
-  }
-
-  /** 用户名 + 密码登录 */
-  async usernameLogin(username: string, password: string) {
-    const lockKey = `un:${username}`;
-    await this.checkLoginLock(lockKey);
-    const user = await this.users.findByUsername(username);
-    if (!user || !user.passwordHash) {
-      await this.recordLoginFailure(lockKey);
-      throw new UnauthorizedException('用户名不存在或未设置密码');
+      throw new UnauthorizedException('用户名或密码错误');
     }
     if (!(await verifyPassword(password, user.passwordHash))) {
       await this.recordLoginFailure(lockKey);
@@ -151,35 +124,23 @@ export class AuthService {
     }
     await this.clearLoginFailures(lockKey);
     if (user.isBanned) throw new ForbiddenException('账号已被禁用');
+    // 强制下线/封禁的旧会话标记随重新登录清除
     await this.redis.del(kickKey(user.id));
 
     const tokens = await this.signTokens(user.id);
     return { userId: user.id, ...tokens };
   }
 
-  /** 设置/重置密码（找回密码 / 修改密码共用）：短信验证码校验通过后写入新密码。
-   *  仅限已注册手机号——微信式逻辑中注册由验证码登录自动完成，这里不再隐式建号。 */
-  async setPassword(
-    phone: string,
-    code: string,
-    password: string,
-    username?: string,
-  ) {
-    await this.verifySmsCode(phone, code);
-    const user = await this.users.findByPhone(phone);
+  /** 忘记密码：邮箱验证码校验通过后写入新密码 */
+  async resetPassword(email: string, code: string, password: string) {
+    const normalized = email.trim().toLowerCase();
+    await this.verifyEmailCode(normalized, code);
+    const user = await this.users.findByEmail(normalized);
     if (!user) {
-      throw new BadRequestException('该手机号未注册，请先通过验证码登录');
+      throw new BadRequestException('该邮箱未注册，请先注册账号');
     }
     if (user.isBanned) throw new ForbiddenException('账号已被禁用');
-
     await this.users.setPasswordHash(user.id, await hashPassword(password));
-    if (username) {
-      const existing = await this.users.findByUsername(username);
-      if (existing && existing.id !== user.id) {
-        throw new ConflictException('用户名已被占用');
-      }
-      await this.users.setUsername(user.id, username);
-    }
     return { sent: true };
   }
 
@@ -207,21 +168,21 @@ export class AuthService {
     await this.redis.del(`login:attempt:${key}`, `login:lock:${key}`);
   }
 
-  /** 校验短信验证码（含防爆破），校验成功后验证码即焚 */
-  private async verifySmsCode(phone: string, code: string) {
-    const attemptKey = `sms:attempt:${phone}`;
+  /** 校验邮箱验证码（含防爆破），校验成功后验证码即焚 */
+  private async verifyEmailCode(email: string, code: string) {
+    const attemptKey = `email:attempt:${email}`;
     const attempts = await this.redis.incr(attemptKey);
     if (attempts === 1) await this.redis.expire(attemptKey, 600);
     if (attempts > MAX_ATTEMPTS)
       throw new BadRequestException('尝试次数过多，请稍后再试');
 
-    const saved = await this.redis.get(`sms:code:${phone}`);
+    const saved = await this.redis.get(`email:code:${email}`);
     if (!saved || saved !== code) {
       throw new BadRequestException('验证码错误或已过期');
     }
 
     // 一次性验证码，用后即焚
-    await this.redis.del(`sms:code:${phone}`, attemptKey);
+    await this.redis.del(`email:code:${email}`, attemptKey);
   }
 
   /** 刷新令牌（轮换制：旧 refresh 立即失效） */

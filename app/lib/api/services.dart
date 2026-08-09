@@ -8,67 +8,58 @@ class AuthService {
   AuthService._();
   static final AuthService instance = AuthService._();
 
-  /// 发送短信验证码（开发环境返回 code 便于联调）
-  Future<String?> sendSmsCode(String phone) async {
-    final data = await ApiClient.instance.post('/auth/sms-code', body: {'phone': phone});
+  /// 发送邮箱验证码（开发环境返回 code 便于联调）
+  Future<String?> sendEmailCode(String email) async {
+    final data = await ApiClient.instance.post('/auth/email-code', body: {'email': email});
     return data is Map && data['code'] != null ? data['code'].toString() : null;
   }
 
-  /// 验证码登录（未注册自动注册）
-  Future<({int userId, bool isNewUser, String accessToken, String refreshToken})> login(
-    String phone,
-    String code,
-  ) async {
-    final data = await ApiClient.instance.post('/auth/login', body: {'phone': phone, 'code': code})
-        as Map<String, dynamic>;
-    return (
-      userId: (data['userId'] as num).toInt(),
-      isNewUser: data['isNewUser'] as bool? ?? false,
-      accessToken: data['accessToken'] as String,
-      refreshToken: data['refreshToken'] as String,
-    );
-  }
-
-  Future<({int userId, String accessToken, String refreshToken})> passwordLogin(
-    String phone,
-    String password,
-  ) async {
-    final data = await ApiClient.instance
-        .post('/auth/password-login', body: {'phone': phone, 'password': password})
-        as Map<String, dynamic>;
-    return (
-      userId: (data['userId'] as num).toInt(),
-      accessToken: data['accessToken'] as String,
-      refreshToken: data['refreshToken'] as String,
-    );
-  }
-
-  /// 用户名 + 密码登录
-  Future<({int userId, String accessToken, String refreshToken})> usernameLogin(
-    String username,
-    String password,
-  ) async {
-    final data = await ApiClient.instance
-        .post('/auth/username-login', body: {'username': username, 'password': password})
-        as Map<String, dynamic>;
-    return (
-      userId: (data['userId'] as num).toInt(),
-      accessToken: data['accessToken'] as String,
-      refreshToken: data['refreshToken'] as String,
-    );
-  }
-
-  Future<void> setPassword({
-    required String phone,
-    required String code,
+  /// 注册：用户名 + 密码 + 邮箱绑定（注册成功即自动登录）
+  Future<({int userId, bool isNewUser, String accessToken, String refreshToken})> register({
+    required String username,
+    required String email,
     required String password,
-    String? username,
-  }) {
-    return ApiClient.instance.post('/auth/set-password', body: {
-      'phone': phone,
-      'code': code,
+    required String emailCode,
+  }) async {
+    final data = await ApiClient.instance.post('/auth/register', body: {
+      'username': username,
+      'email': email,
       'password': password,
-      if (username != null && username.isNotEmpty) 'username': username,
+      'emailCode': emailCode,
+    }) as Map<String, dynamic>;
+    return (
+      userId: (data['userId'] as num).toInt(),
+      isNewUser: data['isNewUser'] as bool? ?? true,
+      accessToken: data['accessToken'] as String,
+      refreshToken: data['refreshToken'] as String,
+    );
+  }
+
+  /// 用户名 / 邮箱 + 密码登录
+  Future<({int userId, String accessToken, String refreshToken})> login(
+    String account,
+    String password,
+  ) async {
+    final data = await ApiClient.instance
+        .post('/auth/login', body: {'account': account, 'password': password})
+        as Map<String, dynamic>;
+    return (
+      userId: (data['userId'] as num).toInt(),
+      accessToken: data['accessToken'] as String,
+      refreshToken: data['refreshToken'] as String,
+    );
+  }
+
+  /// 忘记密码：邮箱验证码 + 新密码
+  Future<void> resetPassword({
+    required String email,
+    required String emailCode,
+    required String password,
+  }) {
+    return ApiClient.instance.post('/auth/reset-password', body: {
+      'email': email,
+      'emailCode': emailCode,
+      'password': password,
     });
   }
 
@@ -87,8 +78,9 @@ class UserService {
     return User.fromJson(data);
   }
 
-  Future<List<User>> searchByPhone(String phone) async {
-    final data = await ApiClient.instance.get('/users/search', query: {'phone': phone}) as List;
+  Future<List<User>> searchByUsername(String username) async {
+    final data =
+        await ApiClient.instance.get('/users/search', query: {'username': username}) as List;
     return data.map((e) => User.fromJson(e as Map<String, dynamic>)).toList();
   }
 }
@@ -150,18 +142,20 @@ class AppointmentService {
     return Appointment.fromJson(data);
   }
 
-  /// 门店桌位可用性（storeId + date + slotId）
-  Future<List<StoreTable>> availability({
+  /// 门店桌位可用性（storeId + date），返回每桌已占用时段窗口
+  Future<List<TableAvailability>> availability({
     required int storeId,
     required String date,
-    required int slotId,
   }) async {
-    final data = await ApiClient.instance.get('/appointments/availability', query: {
-      'storeId': storeId,
-      'date': date,
-      'slotId': slotId,
-    }) as List;
-    return data.map((e) => StoreTable.fromJson(e as Map<String, dynamic>)).toList();
+    final data = await ApiClient.instance
+        .get('/appointments/availability', query: {
+          'storeId': storeId,
+          'date': date,
+        })
+        as List;
+    return data
+        .map((e) => TableAvailability.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<ActivitySession>> activitySessions(int activityId) async {

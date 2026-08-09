@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { StoreTable } from './store-table.entity';
 import { TimeSlot } from './time-slot.entity';
+import { StorePackage } from './store-package.entity';
 
 /** decimal 列返回 number（避免字符串） */
 const decimal: ValueTransformer = {
@@ -63,6 +64,7 @@ export class Store {
   images: string[] | null;
 
   /** 预约单价（元/人/次），会员价为空时等同门市价 */
+  /** 按小时预约时即「元/人/小时」 */
   @Column({
     type: 'decimal',
     precision: 10,
@@ -82,6 +84,16 @@ export class Store {
   })
   memberPrice: number | null;
 
+  /** 全天不限时价格（元/人）；null 表示未配置（按营业时长 × 小时单价计算） */
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: decimal,
+  })
+  allDayPrice: number | null;
+
   @Column({ length: 50, default: '09:00-21:00' })
   businessHours: string;
 
@@ -96,6 +108,9 @@ export class Store {
 
   @OneToMany(() => TimeSlot, (t) => t.store)
   slots: TimeSlot[];
+
+  @OneToMany(() => StorePackage, (p) => p.store)
+  packages: StorePackage[];
 
   @CreateDateColumn()
   createdAt: Date;

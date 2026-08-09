@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { storeApi, type Store, type StoreTable, type TimeSlot } from '../api/stores'
+import {
+  storeApi,
+  type Store,
+  type StoreTable,
+  type TimeSlot,
+  type StorePackage,
+} from '../api/stores'
 
 const stores = ref<Store[]>([])
 const loading = ref(false)
@@ -25,6 +31,12 @@ const slots = ref<TimeSlot[]>([])
 const newSlot = ref({ startTime: '', endTime: '', enabled: true })
 const slotDrafts = ref<Record<number, { startTime: string; endTime: string; enabled: boolean }>>({})
 
+// 时长套餐管理
+const showPackages = ref(false)
+const packages = ref<StorePackage[]>([])
+const newPackage = ref({ name: '', hours: 5, price: 0, enabled: true })
+const packageDrafts = ref<Record<number, { name: string; hours: number; price: number; enabled: boolean }>>({})
+
 const err = ref('')
 
 async function load() {
@@ -48,6 +60,7 @@ function openCreate() {
     phone: '',
     price: 39.9,
     memberPrice: null,
+    allDayPrice: null,
     enabled: true,
   }
   isEdit.value = false
@@ -72,6 +85,8 @@ async function saveStore() {
       price: form.value.price,
       memberPrice:
         form.value.memberPrice == null ? undefined : form.value.memberPrice,
+      allDayPrice:
+        form.value.allDayPrice == null ? undefined : form.value.allDayPrice,
       enabled: form.value.enabled,
     }
     if (isEdit.value) await storeApi.update(form.value.id!, payload)
@@ -214,6 +229,64 @@ async function removeSlot(t: TimeSlot) {
   }
 }
 
+// ===== 时长套餐管理 =====
+function openPackageManager(s: Store) {
+  currentStore.value = s
+  packages.value = [...(s.packages ?? [])].sort(
+    (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
+  )
+  newPackage.value = { name: '', hours: 5, price: 0, enabled: true }
+  packageDrafts.value = {}
+  showPackages.value = true
+}
+
+async function addPackage() {
+  if (!newPackage.value.name || !newPackage.value.hours) return
+  try {
+    const { data } = await storeApi.addPackage(currentStore.value!.id, newPackage.value)
+    packages.value.push(data)
+    newPackage.value = { name: '', hours: 5, price: 0, enabled: true }
+  } catch (e: any) {
+    alert(e?.response?.data?.message ?? '添加失败')
+  }
+}
+
+function editPackage(p: StorePackage) {
+  packageDrafts.value[p.id] = {
+    name: p.name,
+    hours: p.hours,
+    price: p.price,
+    enabled: p.enabled,
+  }
+}
+
+async function savePackage(p: StorePackage) {
+  const draft = packageDrafts.value[p.id]
+  if (!draft || !draft.name || !draft.hours) return
+  try {
+    const { data } = await storeApi.updatePackage(p.id, draft)
+    const idx = packages.value.findIndex((x) => x.id === p.id)
+    if (idx >= 0) packages.value[idx] = data
+    delete packageDrafts.value[p.id]
+  } catch (e: any) {
+    alert(e?.response?.data?.message ?? '保存失败')
+  }
+}
+
+function cancelPackageEdit(id: number) {
+  delete packageDrafts.value[id]
+}
+
+async function removePackage(p: StorePackage) {
+  if (!confirm(`确认删除套餐「${p.name}」？`)) return
+  try {
+    await storeApi.removePackage(p.id)
+    packages.value = packages.value.filter((x) => x.id !== p.id)
+  } catch (e: any) {
+    alert(e?.response?.data?.message ?? '删除失败')
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -232,7 +305,7 @@ onMounted(load)
       <thead>
         <tr>
           <th>ID</th><th>名称</th><th>地址</th><th>电话</th><th>营业时间</th>
-          <th>评分</th><th>桌位</th><th>时段</th><th>状态</th><th>操作</th>
+          <th>评分</th><th>桌位</th><th>时段</th><th>套餐</th><th>状态</th><th>操作</th>
         </tr>
       </thead>
       <tbody>
@@ -245,6 +318,7 @@ onMounted(load)
           <td>{{ s.rating }}</td>
           <td>{{ s.tables?.length ?? 0 }}</td>
           <td>{{ s.slots?.length ?? 0 }}</td>
+          <td>{{ s.packages?.length ?? 0 }}</td>
           <td>
             <span class="tag" :class="s.enabled ? 'tag-on' : 'tag-off'">
               {{ s.enabled ? '营业中' : '已停用' }}
@@ -254,6 +328,7 @@ onMounted(load)
             <button @click="openEdit(s)">编辑</button>
             <button @click="openTableManager(s)">桌位</button>
             <button @click="openSlotManager(s)">时段</button>
+            <button @click="openPackageManager(s)">套餐</button>
             <button :class="s.enabled ? '' : 'primary'" @click="toggleStore(s)">
               {{ s.enabled ? '停用' : '启用' }}
             </button>
@@ -273,6 +348,10 @@ onMounted(load)
           <label>门市价（元/人）<input v-model.number="form.price" type="number" min="0" step="0.1" /></label>
           <label>会员价（元/人，0 = 会员免费）<input v-model.number="form.memberPrice" type="number" min="0" step="0.1" /></label>
         </div>
+        <label>
+          全天不限时价（元/人，留空 = 按营业时长 × 小时价）
+          <input v-model.number="form.allDayPrice" type="number" min="0" step="0.1" />
+        </label>
         <label>营业时间<input v-model="form.businessHours" placeholder="如 10:00-22:00" /></label>
         <label>联系电话<input v-model="form.phone" /></label>
         <label class="check-label">
@@ -378,6 +457,57 @@ onMounted(load)
         </div>
       </div>
     </div>
+
+    <!-- 时长套餐管理 -->
+    <div v-if="showPackages" class="mask">
+      <div class="dialog wide">
+        <h3>时长套餐配置 · {{ currentStore?.name }}</h3>
+        <p class="hint-text">
+          用户预约时可选择「按小时 / 时长套餐 / 全天不限时」；套餐价为元/人。
+        </p>
+        <table class="grid">
+          <thead><tr><th>套餐名</th><th>时长（小时）</th><th>价格（元/人）</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr v-for="p in packages" :key="p.id">
+              <template v-if="packageDrafts[p.id]">
+                <td><input v-model="packageDrafts[p.id].name" /></td>
+                <td><input v-model.number="packageDrafts[p.id].hours" type="number" min="1" /></td>
+                <td><input v-model.number="packageDrafts[p.id].price" type="number" min="0" step="0.1" /></td>
+                <td><label><input v-model="packageDrafts[p.id].enabled" type="checkbox" /> 启用</label></td>
+                <td class="ops">
+                  <button class="primary" @click="savePackage(p)">保存</button>
+                  <button @click="cancelPackageEdit(p.id)">取消</button>
+                </td>
+              </template>
+              <template v-else>
+                <td>{{ p.name }}</td>
+                <td>{{ p.hours }} 小时</td>
+                <td>¥{{ p.price }}</td>
+                <td>
+                  <span class="tag" :class="p.enabled ? 'tag-on' : 'tag-off'">
+                    {{ p.enabled ? '启用' : '停用' }}
+                  </span>
+                </td>
+                <td class="ops">
+                  <button @click="editPackage(p)">编辑</button>
+                  <button class="danger" @click="removePackage(p)">删除</button>
+                </td>
+              </template>
+            </tr>
+            <tr v-if="packages.length === 0"><td colspan="5" class="empty">暂无套餐，可添加如「5 小时套餐」「6 小时套餐」</td></tr>
+          </tbody>
+        </table>
+        <div class="row">
+          <input v-model="newPackage.name" placeholder="套餐名，如 5 小时套餐" />
+          <input v-model.number="newPackage.hours" type="number" min="1" placeholder="时长（小时）" />
+          <input v-model.number="newPackage.price" type="number" min="0" step="0.1" placeholder="价格（元/人）" />
+          <button class="primary" @click="addPackage">添加</button>
+        </div>
+        <div class="actions">
+          <button class="primary" @click="showPackages = false">完成</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -391,6 +521,7 @@ onMounted(load)
 h2 { margin: 0; font-size: 18px; }
 .state { text-align: center; padding: 40px; color: #8a8a8a; }
 .error { color: #d9453e; }
+.hint-text { font-size: 12px; color: #8a8a8a; margin: 0 0 10px; }
 .grid {
   width: 100%;
   border-collapse: collapse;
