@@ -19,6 +19,9 @@ import 'screens/profile_screens.dart';
 import 'screens/store_screens.dart';
 import 'screens/video_screens.dart';
 
+/// 底部 Tab 快速连续切换的防抖时间戳。
+DateTime? _lastTabTap;
+
 /// 手作星球路由表。
 /// - 底部 5 Tab 使用 StatefulShellRoute.indexedStack，切换时保留各分支状态（Tab 保活）；
 /// - 其余页面为顶层路由，覆盖在 Tab 壳之上；
@@ -88,10 +91,18 @@ final GoRouter appRouter = GoRouter(
             Expanded(child: navigationShell),
             LiveTabBar(
               current: navigationShell.currentIndex,
-              onTap: (i) => navigationShell.goBranch(
-                i,
-                initialLocation: i == navigationShell.currentIndex,
-              ),
+              onTap: (i) {
+                // 重复点击当前 Tab 不导航；快速连续切换也做防抖，
+                // 避免过渡期重复导航触发 '!keyReservation.contains(key)' 断言。
+                if (i == navigationShell.currentIndex) return;
+                final now = DateTime.now();
+                if (_lastTabTap != null &&
+                    now.difference(_lastTabTap!).inMilliseconds < 250) {
+                  return;
+                }
+                _lastTabTap = now;
+                navigationShell.goBranch(i, initialLocation: false);
+              },
             ),
           ],
         ),

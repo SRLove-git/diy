@@ -70,6 +70,26 @@ class RoutePaths {
 class LiveRoutes {
   LiveRoutes._();
 
+  static DateTime? _lastNavAt;
+  static String? _lastDest;
+
+  /// 导航防抖：go_router 在页面过渡动画期间（约 300ms）连续导航会触发
+  /// '!keyReservation.contains(key)' 断言（flutter/flutter#140586）。
+  /// - 同一目标 500ms 内重复导航：直接丢弃（双击同一入口会压入重复 page key）；
+  /// - 不同目标 250ms 内连续导航：直接丢弃（同帧连续切换页面）。
+  static bool _allowNavigation(String dest) {
+    final now = DateTime.now();
+    final last = _lastNavAt;
+    if (last != null) {
+      final elapsed = now.difference(last).inMilliseconds;
+      final same = _lastDest == dest;
+      if (same ? elapsed < 500 : elapsed < 250) return false;
+    }
+    _lastNavAt = now;
+    _lastDest = dest;
+    return true;
+  }
+
   static void switchTab(BuildContext context, int index) {
     final path = switch (index) {
       0 => RoutePaths.home,
@@ -78,11 +98,21 @@ class LiveRoutes {
       3 => RoutePaths.chat,
       _ => RoutePaths.profile,
     };
-    // 注意：不能在这里做「当前路径 == 目标路径」的防重入判断。
-    // 页面经两次 push 压在外层路由（如 /post/publish/success）时，
-    // routeInformationProvider 的当前路径在某些场景下会与目标 Tab 相同，
-    // 导致 go() 被误判为空操作、按钮点击无响应。
-    // 重复导航的 keyReservation 保护由调用侧延迟（pop 稳定后再切 Tab）承担。
+    if (!_allowNavigation(path)) return;
+    // 防重入：已处于目标 Tab（栈顶真实路径，含 imperative push）时跳过。
+    // 避免延迟导航（如删除会话后 300ms 再切 Tab）期间用户已手动回到该 Tab，
+    // 重复 go() 触发 '!keyReservation.contains(key)' 断言（flutter/flutter#140586）。
+    //
+    // 注意：不能用 routeInformationProvider / currentConfiguration.uri 判断，
+    // 它们的 uri 不包含 imperative 路由（会返回底层 Tab 路径），
+    // 曾导致“返回社区/删除会话”被误判为空操作。GoRouterState.of 反映当前页真实路径。
+    try {
+      final current = GoRouterState.of(context).uri.path;
+      if (current == path) return;
+    } catch (_) {
+      // 拿不到当前路径（如根 Navigator context / 弹层 context）时不拦截，
+      // 避免 pushAfterPop 等以 Navigator 上下文导航的调用被误伤。
+    }
     context.go(path);
   }
 
@@ -97,18 +127,24 @@ class LiveRoutes {
     String path, {
     Object? extra,
   }) {
+    if (!_allowNavigation(path)) return Future<T?>.value();
     // go_router 的 page key 由完整路径生成：同路径重复入栈会触发
     // '!keyReservation.contains(key)' 断言。连续点击同一入口时直接跳过，
     // 避免向同一 Navigator 压入两个相同 key 的页面。
-    final router = GoRouter.of(context);
-    final current = router.routeInformationProvider.value.uri.path;
-    if (current == path) return Future<T?>.value();
+    try {
+      final current = GoRouterState.of(context).uri.path;
+      if (current == path) return Future<T?>.value();
+    } catch (_) {
+      // 拿不到当前路径时不拦截，保证 pushAfterPop（根 Navigator 上下文）正常导航。
+    }
     return context.push<T>(path, extra: extra);
   }
 
   /// 替换当前页（登录流程用）。
-  static void replace(BuildContext context, String path, {Object? extra}) =>
-      context.pushReplacement(path, extra: extra);
+  static void replace(BuildContext context, String path, {Object? extra}) {
+    if (!_allowNavigation(path)) return;
+    context.pushReplacement(path, extra: extra);
+  }
 
   /// 带 int 路径参数（:id）的跳转。
   static Future<void> pushId(BuildContext context, String path, int id) =>
@@ -121,8 +157,11 @@ class LiveRoutes {
     // 向 Navigator 重复压入相同 key 的页面而触发 keyReservation 断言。
   }
 
-  /// 先关掉当前页（如抽屉菜单），再打开目标页。
-  /// 使用捕获的 NavigatorState，避免在已卸载的 context 上再取 Navigator。
+  /// 打开目标页并移除当前弹层（如抽屉菜单）：
+  /// 先推入目标页，下一帧再移除弹层，让页面直接覆盖上来、弹层顺势消失，
+  /// 避免“先退出侧边栏再跳转”的割裂感。
+  /// 移除放到下一帧，避免同帧 pop+push 触发
+  /// InheritedElement 依赖残留断言（_dependents.isEmpty）。
   static Future<void> pushAfterPop(
     BuildContext context,
     String path, {
@@ -130,14 +169,15 @@ class LiveRoutes {
   }) async {
     final nav = Navigator.of(context);
     if (!nav.mounted) return;
-    nav.pop();
-    // 等 pop 的弹层完全退场（showGeneralDialog 退场动画约 220ms）后再 push，
-    // 避免「新 route 与退场中的弹层同帧共享 InheritedElement」触发
-    // _dependents.isEmpty 断言。
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    if (nav.mounted) {
-      push(nav.context, path, extra: extra);
+    final overlayRoute = ModalRoute.of(context);
+    final future = push(nav.context, path, extra: extra);
+    // 仅移除非 go_router 页面路由的弹层（抽屉/对话框），避免误删页面。
+    if (overlayRoute != null && overlayRoute.settings is! Page) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (nav.mounted) nav.removeRoute(overlayRoute);
+      });
     }
+    await future;
   }
 }
 

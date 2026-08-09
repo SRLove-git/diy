@@ -711,12 +711,19 @@ class ProfileMenuScreen extends StatelessWidget {
               child: const ColoredBox(color: Color(0x66000000)),
             ),
           ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Container(
-              width: 300,
-              color: LiveColors.bg,
-              child: Column(
+          // 抽屉占满右侧整块区域：内部（含空白/标题）点击不关闭，
+          // 只有点击抽屉外部遮罩或菜单项才会退出。
+          Positioned(
+            top: 0,
+            bottom: 0,
+            right: 0,
+            width: 300,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {},
+              child: Container(
+                color: LiveColors.bg,
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 42),
@@ -788,6 +795,7 @@ class ProfileMenuScreen extends StatelessWidget {
                 ],
               ),
             ),
+          ),
           ),
         ],
       ),
@@ -1945,11 +1953,104 @@ class _MyContentScreenState extends State<MyContentScreen> {
   }
 }
 
-class SettingsScreen extends StatelessWidget {
+/// 32-设置：账号与安全 / 通用 / 关于 + 退出登录（对齐 Pixso 32/32b）。
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  User? _user;
+  bool _notify = true;
+  bool _darkMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    AuthService.instance
+        .me()
+        .then((u) {
+          if (mounted) setState(() => _user = u);
+        })
+        .catchError((_) {});
+  }
+
+  String _maskPhone(String phone) {
+    if (phone.length < 7) return phone.isEmpty ? '未绑定' : phone;
+    return '${phone.substring(0, 3)}****${phone.substring(phone.length - 4)}';
+  }
+
+  Future<void> _logout() async {
+    // 对齐 Pixso 39-弹窗-退出登录确认：
+    // 遮罩 + 居中白色圆角 22 对话框 + 灰底取消 / 红底退出登录。
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierColor: const Color(0x6B141414),
+      builder: (_) => Center(
+        child: Container(
+          width: 312,
+          padding: const EdgeInsets.fromLTRB(25, 29, 25, 22),
+          decoration: BoxDecoration(
+            color: LiveColors.bg,
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '退出登录',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: LiveColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                '退出后需要重新登录，才能查看消息、预约和会员信息，确定退出吗？',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.5,
+                  color: LiveColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: _DialogButton(
+                      label: '取消',
+                      backgroundColor: LiveColors.card,
+                      textColor: LiveColors.textPrimary,
+                      onTap: () => Navigator.pop(context, false),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _DialogButton(
+                      label: '退出登录',
+                      backgroundColor: const Color(0xFFFF3B30),
+                      textColor: Colors.white,
+                      onTap: () => Navigator.pop(context, true),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (ok == true) await LiveRoutes.logout(context);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final phone = _user?.phone ?? '';
+    final username = _user?.username;
     return LivePage(
       child: Column(
         children: [
@@ -1958,107 +2059,129 @@ class SettingsScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(18),
               children: [
-                const _SettingGroupHeader('账号与安全'),
-                _SettingRow(
-                  icon: Icons.lock_outline,
-                  label: '修改密码',
-                  onTap: () => LiveRoutes.push(context, RoutePaths.loginSetPassword),
+                // 账号与安全
+                const _SettingsTitle('账号与安全', top: 0),
+                _SettingsCard(
+                  children: [
+                    _SettingsInfoRow(
+                      title: '手机号',
+                      subtitle: '${_maskPhone(phone)} 已绑定',
+                    ),
+                    const Divider(height: 1, color: LiveColors.divider),
+                    _SettingsInfoRow(
+                      title: '用户名',
+                      subtitle: username == null
+                          ? '未设置'
+                          : '$username · 已设置',
+                    ),
+                    const Divider(height: 1, color: LiveColors.divider),
+                    _SettingsInfoRow(
+                      title: '登录密码',
+                      subtitle: '已设置 · 可用密码登录',
+                      chevron: true,
+                      onTap: () => LiveRoutes.push(
+                        context,
+                        RoutePaths.loginSetPassword,
+                      ),
+                    ),
+                    const Divider(height: 1, color: LiveColors.divider),
+                    _SettingsInfoRow(
+                      title: '登录设备',
+                      subtitle: '2 台设备在线',
+                    ),
+                    const Divider(height: 1, color: LiveColors.divider),
+                    _SettingsInfoRow(
+                      title: '切换账号',
+                      subtitle: '登录其他账号',
+                      chevron: true,
+                      onTap: () => LiveRoutes.logout(context),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                const _SettingGroupHeader('通用'),
-                _SettingRow(
-                  icon: Icons.notifications_outlined,
-                  label: '消息通知',
-                  onTap: () => LiveRoutes.push(context, RoutePaths.notifications),
+                // 通用
+                const _SettingsTitle('通用'),
+                _SettingsCard(
+                  children: [
+                    _SettingsSwitchRow(
+                      title: '消息通知',
+                      subtitle: '互动、系统消息提醒',
+                      value: _notify,
+                      onChanged: (v) => setState(() => _notify = v),
+                    ),
+                    const Divider(height: 1, color: LiveColors.divider),
+                    _SettingsSwitchRow(
+                      title: '深色模式',
+                      subtitle: '跟随系统',
+                      value: _darkMode,
+                      onChanged: (v) => setState(() => _darkMode = v),
+                    ),
+                    const Divider(height: 1, color: LiveColors.divider),
+                    _SettingsInfoRow(
+                      title: '隐私设置',
+                      subtitle: '谁可以评论我的作品',
+                      chevron: true,
+                      onTap: () =>
+                          showLiveSnack(context, '隐私设置敬请期待'),
+                    ),
+                  ],
                 ),
-                _SettingRow(
-                  icon: Icons.card_giftcard_outlined,
-                  label: '我的卡包',
-                  onTap: () => LiveRoutes.push(context, RoutePaths.memberCoupons),
-                ),
-                const SizedBox(height: 16),
-                const _SettingGroupHeader('关于'),
-                _SettingRow(
-                  icon: Icons.info_outline,
-                  label: '关于手作星球',
-                  onTap: () => showAboutDialog(
-                    context: context,
-                    applicationName: '手作星球',
-                    applicationVersion: '1.0.0',
-                    applicationLegalese: '发现手作 · 遇见同好',
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: Text(
+                    '下拉查看关于与退出登录',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: LiveColors.textTertiary,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 28),
-                _SettingRow(
-                  icon: Icons.logout,
-                  label: '退出登录',
-                  danger: true,
-                  onTap: () async {
-                    final ok = await showDialog<bool>(
-                      context: context,
-                      // 对齐 Pixso 39-弹窗-退出登录确认：
-                      // 遮罩 + 居中白色圆角 22 对话框 + 灰底取消 / 红底退出登录。
-                      barrierColor: const Color(0x6B141414),
-                      builder: (_) => Center(
-                        child: Container(
-                          width: 312,
-                          padding: const EdgeInsets.fromLTRB(25, 29, 25, 22),
-                          decoration: BoxDecoration(
-                            color: LiveColors.bg,
-                            borderRadius: BorderRadius.circular(22),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text(
-                                '退出登录',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w700,
-                                  color: LiveColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              const Text(
-                                '退出后需要重新登录，才能查看消息、预约和会员信息，确定退出吗？',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  height: 1.5,
-                                  color: LiveColors.textSecondary,
-                                ),
-                              ),
-                              const SizedBox(height: 22),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _DialogButton(
-                                      label: '取消',
-                                      backgroundColor: LiveColors.card,
-                                      textColor: LiveColors.textPrimary,
-                                      onTap: () => Navigator.pop(context, false),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: _DialogButton(
-                                      label: '退出登录',
-                                      backgroundColor: const Color(0xFFFF3B30),
-                                      textColor: Colors.white,
-                                      onTap: () => Navigator.pop(context, true),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                // 关于
+                const _SettingsTitle('关于'),
+                _SettingsCard(
+                  children: [
+                    _SettingsInfoRow(
+                      title: '版本',
+                      subtitle: '手作星球 v1.0.0',
+                    ),
+                    const Divider(height: 1, color: LiveColors.divider),
+                    _SettingsInfoRow(
+                      title: '用户协议',
+                      chevron: true,
+                      onTap: () => showLiveSnack(context, '用户协议敬请期待'),
+                    ),
+                    const Divider(height: 1, color: LiveColors.divider),
+                    _SettingsInfoRow(
+                      title: '隐私政策',
+                      chevron: true,
+                      onTap: () => showLiveSnack(context, '隐私政策敬请期待'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                // 退出登录：浅灰底红字整宽按钮（对齐设计稿 btn-ghost + danger）
+                SizedBox(
+                  height: 52,
+                  child: Material(
+                    color: const Color(0xFFF7F7F8),
+                    borderRadius: BorderRadius.circular(16),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: _logout,
+                      child: const Center(
+                        child: Text(
+                          '退出登录',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: LiveColors.danger,
                           ),
                         ),
                       ),
-                    );
-                    if (ok == true) await LiveRoutes.logout(context);
-                  },
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -2107,66 +2230,191 @@ class _DialogButton extends StatelessWidget {
   }
 }
 
-class _SettingGroupHeader extends StatelessWidget {
-  const _SettingGroupHeader(this.title);
+/// 设置分区标题（对齐设计稿 h2：17 号加粗；通用/关于前留 24px 间距）。
+class _SettingsTitle extends StatelessWidget {
+  const _SettingsTitle(this.title, {this.top = 24});
 
   final String title;
+  final double top;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      padding: EdgeInsets.only(top: top, bottom: 8),
       child: Text(
         title,
         style: const TextStyle(
-          fontSize: 13,
+          fontSize: 17,
           fontWeight: FontWeight.w700,
-          color: LiveColors.textSecondary,
+          color: LiveColors.textPrimary,
+          letterSpacing: -0.2,
         ),
       ),
     );
   }
 }
 
-class _SettingRow extends StatelessWidget {
-  const _SettingRow({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.danger = false,
+/// 设置白卡容器（圆角 16 + 浅灰边框）。
+class _SettingsCard extends StatelessWidget {
+  const _SettingsCard({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: LiveColors.divider),
+      ),
+      child: Column(children: children),
+    );
+  }
+}
+
+/// 设置行：标题 + 副标题（可选右箭头）。
+class _SettingsInfoRow extends StatelessWidget {
+  const _SettingsInfoRow({
+    required this.title,
+    this.subtitle,
+    this.onTap,
+    this.chevron = false,
   });
 
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool danger;
+  final String title;
+  final String? subtitle;
+  final VoidCallback? onTap;
+  final bool chevron;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
-        decoration: BoxDecoration(
-          color: LiveColors.card,
-          borderRadius: BorderRadius.circular(14),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: danger ? LiveColors.danger : LiveColors.brand),
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: danger ? LiveColors.danger : LiveColors.textPrimary,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: LiveColors.textPrimary,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: LiveColors.textTertiary,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            const Spacer(),
-            const Icon(Icons.chevron_right, size: 18, color: LiveColors.textTertiary),
+            if (chevron)
+              const Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: LiveColors.textTertiary,
+              ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 设置开关行：标题 + 副标题 + 设计稿开关。
+class _SettingsSwitchRow extends StatelessWidget {
+  const _SettingsSwitchRow({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: LiveColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: LiveColors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _SettingsSwitch(value: value, onChanged: onChanged),
+        ],
+      ),
+    );
+  }
+}
+
+/// 设计稿开关：44×26 圆角，开=黑底白钮靠右，关=浅灰底白钮靠左。
+class _SettingsSwitch extends StatelessWidget {
+  const _SettingsSwitch({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 44,
+        height: 26,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: value ? const Color(0xFF141414) : const Color(0xFFE4E4E8),
+          borderRadius: BorderRadius.circular(13),
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 180),
+          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: 20,
+            height: 20,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
         ),
       ),
     );
