@@ -440,21 +440,15 @@ String _previewText(String raw) {
 
 /// Pixso 居中确认弹窗（40-群聊踢人确认 / 34-居中确认）：
 /// 半透明遮罩 + 312 宽圆角白卡 + 成员头像 + 标题 + 说明 + 取消/确认按钮。
-Future<bool?> showMemberActionDialog(
+Future<bool?> showDesignConfirmDialog(
   BuildContext context, {
-  required GroupMember member,
-  required bool setAdmin,
+  String? avatarUrl,
+  String? name,
+  required String title,
+  required String message,
+  required String confirmLabel,
+  Color confirmColor = const Color(0xFFFF3B30),
 }) {
-  final title = setAdmin
-      ? '将「${member.nickname}」设为管理员'
-      : '将「${member.nickname}」移出群聊';
-  final message = setAdmin
-      ? '设为管理员后 TA 可协助管理群成员（添加 / 移出成员），确定设为管理员吗？'
-      : '移出后 TA 将无法查看群聊消息，其他成员仍可重新邀请';
-  final confirmLabel = setAdmin ? '设为管理员' : '移出';
-  final confirmColor = setAdmin
-      ? const Color(0xFF141414)
-      : const Color(0xFFFF3B30);
   return showDialog<bool>(
     context: context,
     // 遮罩 rgba(20,20,20,.42)，与设计稿一致
@@ -481,10 +475,15 @@ Future<bool?> showMemberActionDialog(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Avatar(url: member.avatar, name: member.nickname, size: 40),
-              ),
+              if (name != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Avatar(
+                    url: avatarUrl ?? '',
+                    name: name,
+                    size: 40,
+                  ),
+                ),
               Text(
                 title,
                 textAlign: TextAlign.center,
@@ -535,6 +534,31 @@ Future<bool?> showMemberActionDialog(
         ),
       ),
     ),
+  );
+}
+
+/// 群成员管理确认弹窗（设为管理员 / 移出群聊），复用通用设计稿弹窗。
+Future<bool?> showMemberActionDialog(
+  BuildContext context, {
+  required GroupMember member,
+  required bool setAdmin,
+}) {
+  final title = setAdmin
+      ? '将「${member.nickname}」设为管理员'
+      : '将「${member.nickname}」移出群聊';
+  final message = setAdmin
+      ? '设为管理员后 TA 可协助管理群成员（添加 / 移出成员），确定设为管理员吗？'
+      : '移出后 TA 将无法查看群聊消息，其他成员仍可重新邀请';
+  return showDesignConfirmDialog(
+    context,
+    avatarUrl: member.avatar,
+    name: member.nickname,
+    title: title,
+    message: message,
+    confirmLabel: setAdmin ? '设为管理员' : '移出',
+    confirmColor: setAdmin
+        ? const Color(0xFF141414)
+        : const Color(0xFFFF3B30),
   );
 }
 
@@ -1281,31 +1305,36 @@ class _ChatScreenState extends State<ChatScreen> {
                 : widget.peerName,
             actions: widget.isGroup
                 ? [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 10),
-                      child: _GroupNavAvatars(
-                        members: _groupMembers,
-                        onTap: () => LiveRoutes.pushId(
-                          context,
-                          RoutePaths.chatGroupSettings,
-                          widget.groupId!,
-                        ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.more_horiz,
+                        color: LiveColors.textPrimary,
+                      ),
+                      onPressed: () => LiveRoutes.pushId(
+                        context,
+                        RoutePaths.chatGroupSettings,
+                        widget.groupId!,
                       ),
                     ),
                   ]
                 : [
                     IconButton(
                       icon: const Icon(Icons.more_horiz, color: LiveColors.textPrimary),
-                      onPressed: () => LiveRoutes.push(
-                        context,
-                        RoutePaths.chatInfo,
-                        extra: {
-                          'peerId': widget.peerId,
-                          'peerName': widget.peerName,
-                          'peerAvatar': widget.peerAvatar,
-                          'conversationId': widget.conversationId ?? 0,
-                        },
-                      ),
+                      onPressed: () async {
+                        await LiveRoutes.push(
+                          context,
+                          RoutePaths.chatInfo,
+                          extra: {
+                            'peerId': widget.peerId,
+                            'peerName': widget.peerName,
+                            'peerAvatar': widget.peerAvatar,
+                            'conversationId': widget.conversationId ?? 0,
+                          },
+                        );
+                        // 从聊天信息页返回（可能清空过聊天记录 / 调整过置顶）后重新拉取消息，
+                        // 让清空效果在回到聊天页时立即生效。
+                        if (mounted) _loadMessages();
+                      },
                     ),
                   ],
           ),
@@ -1852,38 +1881,6 @@ class _Bubble extends StatelessWidget {
           ),
         ],
       ),
-      ),
-    );
-  }
-}
-
-/// 群聊导航栏右侧：最多 3 个成员小头像（对齐 Pixso 23-群聊）。
-class _GroupNavAvatars extends StatelessWidget {
-  const _GroupNavAvatars({required this.members, required this.onTap});
-
-  final List<GroupMember> members;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    var shown = members.take(3).toList();
-    if (shown.isEmpty) {
-      shown = [const GroupMember(id: 0, userId: 0, nickname: '群')];
-    }
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var i = 0; i < shown.length; i++) ...[
-              if (i > 0) const SizedBox(width: 2),
-              _GradientAvatar(name: shown[i].nickname, size: 25),
-            ],
-          ],
-        ),
       ),
     );
   }
@@ -4064,7 +4061,7 @@ class _GroupMemberRow extends StatelessWidget {
 }
 
 /// 51-单聊设置（聊天信息）。
-class ChatInfoScreen extends StatelessWidget {
+class ChatInfoScreen extends StatefulWidget {
   const ChatInfoScreen({
     super.key,
     required this.peerId,
@@ -4078,10 +4075,20 @@ class ChatInfoScreen extends StatelessWidget {
   final String peerAvatar;
   final int conversationId;
 
-  Future<void> _deleteConversation(BuildContext context) async {
+  @override
+  State<ChatInfoScreen> createState() => _ChatInfoScreenState();
+}
+
+class _ChatInfoScreenState extends State<ChatInfoScreen> {
+  bool _pinned = false;
+  bool _muted = false;
+  bool _notify = true;
+
+  Future<void> _deleteConversation() async {
     try {
-      await ChatService.instance.deleteConversation(conversationId);
-      if (context.mounted) {
+      await ChatService.instance.deleteConversation(widget.conversationId);
+      if (!mounted) return;
+      {
         // 提示先于导航插入顶层 Overlay，随后一次性回到会话列表。
         // 不要在同一帧连续 pop 两个 route（聊天信息 + 单聊），
         // 否则会触发 InheritedElement 依赖残留断言（_dependents.isEmpty）。
@@ -4090,11 +4097,66 @@ class ChatInfoScreen extends StatelessWidget {
         // 避免外层路由与 Shell 页面在过渡期同时携带相同 page key，
         // 触发 '!keyReservation.contains(key)' 断言（flutter/flutter#140586）。
         await Future<void>.delayed(const Duration(milliseconds: 300));
-        if (!context.mounted) return;
+        if (!mounted) return;
         LiveRoutes.switchTab(context, 3);
       }
     } on ApiException catch (e) {
-      if (context.mounted) showLiveSnack(context, e.message);
+      if (mounted) showLiveSnack(context, e.message);
+    }
+  }
+
+  Future<void> _togglePin(bool v) async {
+    setState(() => _pinned = v);
+    if (widget.conversationId <= 0) return;
+    try {
+      await ChatService.instance.pinConversation(widget.conversationId, v);
+    } on ApiException catch (e) {
+      if (mounted) {
+        showLiveSnack(context, e.message);
+        setState(() => _pinned = !v);
+      }
+    }
+  }
+
+  Future<void> _clearMessages() async {
+    final ok = await showDesignConfirmDialog(
+      context,
+      avatarUrl: widget.peerAvatar,
+      name: widget.peerName,
+      title: '清空聊天记录',
+      message: '清空后你这边将不再显示与该好友的聊天记录，对端不受影响。确定清空吗？',
+      confirmLabel: '清空',
+      confirmColor: const Color(0xFFFF3B30),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await ChatService.instance.clearMessages(widget.conversationId);
+      if (mounted) showLiveSnack(context, '聊天记录已清空');
+    } on ApiException catch (e) {
+      if (mounted) showLiveSnack(context, e.message);
+    }
+  }
+
+  Future<void> _blockUser() async {
+    final ok = await showDesignConfirmDialog(
+      context,
+      avatarUrl: widget.peerAvatar,
+      name: widget.peerName,
+      title: '将「${widget.peerName}」加入黑名单',
+      message: '加入黑名单后 TA 将无法给你发消息，你也不会再收到 TA 的消息',
+      confirmLabel: '加入',
+      confirmColor: const Color(0xFFFF3B30),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await ChatService.instance.setBlocked(widget.peerId, true);
+      if (!mounted) return;
+      showLiveSnack(context, '已加入黑名单');
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+      LiveRoutes.switchTab(context, 3);
+    } on ApiException catch (e) {
+      if (mounted) showLiveSnack(context, e.message);
     }
   }
 
@@ -4108,36 +4170,128 @@ class ChatInfoScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(18),
               children: [
-                const SizedBox(height: 20),
+                // 头像圆环 + 昵称 + 在线（对齐 Pixso 51-聊天信息）
                 Center(
-                  child: Avatar(url: peerAvatar, name: peerName, size: 76),
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF333333), Color(0xFF141414)],
+                      ),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Avatar(
+                        url: widget.peerAvatar,
+                        name: widget.peerName,
+                        size: 72,
+                      ),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Center(
                   child: Text(
-                    peerName,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
+                    widget.peerName,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: LiveColors.textPrimary,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Center(
-                  child: Text(
-                    '在线',
-                    style: TextStyle(fontSize: 12.6, color: LiveColors.success),
-                  ),
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.circle, size: 8, color: LiveColors.success),
+                    SizedBox(width: 4),
+                    Text(
+                      '在线',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: LiveColors.textTertiary,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 24),
-                _ChatInfoRow(
-                  icon: Icons.block,
-                  label: '黑名单管理',
-                  onTap: () => LiveRoutes.push(context, RoutePaths.chatBlocks),
+                // 个人信息卡
+                _InfoCard(
+                  children: [
+                    _InfoIconRow(
+                      icon: Icons.person_outline,
+                      title: '个人资料',
+                      desc: '昵称 · 签名 · 地区',
+                      onTap: () => LiveRoutes.pushId(
+                        context,
+                        RoutePaths.userDetail,
+                        widget.peerId,
+                      ),
+                    ),
+                    const Divider(height: 1, color: LiveColors.divider),
+                    _InfoIconRow(
+                      icon: Icons.person_search_outlined,
+                      title: '查看 TA 的主页',
+                      desc: '作品 · 粉丝 · 关注',
+                      onTap: () => LiveRoutes.pushId(
+                        context,
+                        RoutePaths.userDetail,
+                        widget.peerId,
+                      ),
+                    ),
+                  ],
                 ),
-                _ChatInfoRow(
-                  icon: Icons.delete_outline,
-                  label: '删除会话',
+                // 设置卡：置顶 / 免打扰 / 通知 / 清空
+                _InfoCard(
+                  children: [
+                    _InfoSwitchRow(
+                      title: '置顶聊天',
+                      value: _pinned,
+                      onChanged: _togglePin,
+                    ),
+                    const Divider(height: 1, color: LiveColors.divider),
+                    _InfoSwitchRow(
+                      title: '消息免打扰',
+                      value: _muted,
+                      onChanged: (v) => setState(() => _muted = v),
+                    ),
+                    const Divider(height: 1, color: LiveColors.divider),
+                    _InfoSwitchRow(
+                      title: '消息通知',
+                      value: _notify,
+                      onChanged: (v) => setState(() => _notify = v),
+                    ),
+                    const Divider(height: 1, color: LiveColors.divider),
+                    _InfoChevronRow(
+                      title: '清空聊天记录',
+                      onTap: _clearMessages,
+                    ),
+                  ],
+                ),
+                // 危险操作卡（浅红底 + 浅红分隔线）
+                _InfoCard(
                   danger: true,
-                  onTap: () => _deleteConversation(context),
+                  children: [
+                    _DangerRow(label: '加入黑名单', onTap: _blockUser),
+                    const Divider(height: 1, color: Color(0xFFFFE3E3)),
+                    _DangerRow(label: '删除会话', onTap: _deleteConversation),
+                    const Divider(height: 1, color: Color(0xFFFFE3E3)),
+                    _DangerRow(
+                      label: '投诉',
+                      onTap: () => showLiveSnack(context, '投诉功能敬请期待'),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 12),
               ],
             ),
           ),
@@ -4147,45 +4301,226 @@ class ChatInfoScreen extends StatelessWidget {
   }
 }
 
-class _ChatInfoRow extends StatelessWidget {
-  const _ChatInfoRow({
+/// 设置卡片容器：白底 / 浅红底，圆角 16，内衬 4/16。
+class _InfoCard extends StatelessWidget {
+  const _InfoCard({required this.children, this.danger = false});
+
+  final List<Widget> children;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: danger ? const Color(0xFFFFF7F7) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: danger ? const Color(0xFFFFE3E3) : LiveColors.divider,
+        ),
+      ),
+      child: Column(children: children),
+    );
+  }
+}
+
+/// 个人信息行：浅色图标块 + 标题/描述 + 右箭头。
+class _InfoIconRow extends StatelessWidget {
+  const _InfoIconRow({
     required this.icon,
-    required this.label,
+    required this.title,
     required this.onTap,
-    this.danger = false,
+    required this.desc,
   });
 
   final IconData icon;
-  final String label;
+  final String title;
+  final String desc;
   final VoidCallback onTap;
-  final bool danger;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: LiveColors.card,
-          borderRadius: BorderRadius.circular(14),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: danger ? LiveColors.danger : LiveColors.textPrimary),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF4F4F6),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, size: 20, color: LiveColors.textPrimary),
+            ),
             const SizedBox(width: 12),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: danger ? LiveColors.danger : LiveColors.textPrimary,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: LiveColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    desc,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: LiveColors.textTertiary,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const Spacer(),
-            const Icon(Icons.chevron_right, size: 18, color: LiveColors.textTertiary),
+            const Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: LiveColors.textTertiary,
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 设置行：标题 + 设计稿开关（44×26 圆角滑块）。
+class _InfoSwitchRow extends StatelessWidget {
+  const _InfoSwitchRow({
+    required this.title,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: LiveColors.textPrimary,
+              ),
+            ),
+          ),
+          _DesignSwitch(value: value, onChanged: onChanged),
+        ],
+      ),
+    );
+  }
+}
+
+/// 普通跳转行：标题 + 右箭头（清空聊天记录）。
+class _InfoChevronRow extends StatelessWidget {
+  const _InfoChevronRow({required this.title, required this.onTap});
+
+  final String title;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: LiveColors.textPrimary,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: LiveColors.textTertiary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 红色危险操作行（加入黑名单 / 删除会话 / 投诉）。
+class _DangerRow extends StatelessWidget {
+  const _DangerRow({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: LiveColors.danger,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 设计稿开关：44×26 圆角，开=黑底白钮靠右，关=浅灰底白钮靠左。
+class _DesignSwitch extends StatelessWidget {
+  const _DesignSwitch({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 44,
+        height: 26,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: value ? const Color(0xFF141414) : const Color(0xFFE4E4E8),
+          borderRadius: BorderRadius.circular(13),
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 180),
+          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: 20,
+            height: 20,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
         ),
       ),
     );

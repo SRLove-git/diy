@@ -112,6 +112,16 @@ export class ChatController {
     return { ok: true };
   }
 
+  /** 清空聊天记录（仅对自己隐藏本会话全部消息，对端不受影响） */
+  @Delete(':id/messages')
+  @UseGuards(JwtAuthGuard)
+  async clearMessages(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.chat.clearMessages(user.id, id);
+  }
+
   /** 批量标记已读 */
   @Post(':id/read')
   @UseGuards(JwtAuthGuard)

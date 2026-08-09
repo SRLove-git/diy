@@ -287,6 +287,33 @@ export class ChatService {
     });
   }
 
+  /** 清空聊天记录：仅对自己隐藏本会话全部消息（message_status.deletedAt），对端不受影响 */
+  async clearMessages(
+    userId: number,
+    conversationId: number,
+  ): Promise<{ count: number }> {
+    await this.findConversationForUser(conversationId, userId);
+    const ids = await this.messages.find({
+      where: { conversationId },
+      select: { id: true },
+    });
+    if (ids.length === 0) return { count: 0 };
+    const now = new Date();
+    const rows = ids.map((m) => ({
+      messageId: m.id,
+      userId,
+      readAt: now,
+      deletedAt: now,
+    }));
+    await this.messageStatus
+      .createQueryBuilder()
+      .insert()
+      .values(rows)
+      .orUpdate(['deletedAt', 'readAt'], ['messageId', 'userId'])
+      .execute();
+    return { count: ids.length };
+  }
+
   /** 游标分页拉取历史消息（按时间升序返回） */
   async getMessages(
     userId: number,

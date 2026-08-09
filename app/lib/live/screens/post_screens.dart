@@ -1,7 +1,9 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:photo_manager/photo_manager.dart';
 
 import '../../api/api_client.dart';
 import '../../api/content_services.dart';
@@ -528,15 +530,27 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
   }
 
   Future<void> _pickImages() async {
+    if (_uploading) return;
+    final remaining = 9 - _images.length;
+    if (remaining <= 0) {
+      showLiveSnack(context, '最多选择 9 张图片');
+      return;
+    }
+    // 打开设计稿 41-照片选择面板：拍摄 + 9 宫格多选 + 已选计数 + 预览/完成。
+    final picked = await showModalBottomSheet<List<_SelectedPhoto>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => PhotoPickerSheet(maxCount: remaining),
+    );
+    if (picked == null || picked.isEmpty || !mounted) return;
+    setState(() => _uploading = true);
     try {
-      final picked = await ImagePicker().pickMultiImage(limit: 9 - _images.length);
-      if (picked.isEmpty) return;
-      setState(() => _uploading = true);
       for (final f in picked) {
-        final bytes = await f.readAsBytes();
+        final bytes = await f.bytes();
         final url = await UploadService.instance.uploadImage(
           bytes,
-          f.name.isEmpty ? 'post_${DateTime.now().millisecondsSinceEpoch}.jpg' : f.name,
+          f.filename,
           folder: 'post',
         );
         if (mounted) setState(() => _images.add(url));
@@ -772,7 +786,7 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
                   _ActionItem(
                     icon: Icons.photo_camera_outlined,
                     label: '拍摄',
-                    onTap: () => showLiveSnack(context, '拍摄功能敬请期待'),
+                    onTap: _uploading ? null : _pickImages,
                   ),
                   _ActionItem(
                     icon: Icons.photo_library_outlined,
@@ -814,24 +828,140 @@ class PostPublishSuccessScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return LivePage(
       resizeToAvoidBottomInset: false,
-      child: Padding(
-        padding: const EdgeInsets.all(24),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 70),
-            const Icon(Icons.check_circle, size: 84, color: LiveColors.success),
-            const SizedBox(height: 18),
+            const SizedBox(height: 56),
+            // 黑色圆形对勾（对齐 Pixso 54-发布成功）
+            Container(
+              width: 92,
+              height: 92,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: Color(0xFF141414),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check,
+                size: 44,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 22),
             const Text(
               '发布成功',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              '作品已提交，审核通过后将在社区公开展示',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: LiveColors.textSecondary),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: LiveColors.textPrimary,
+              ),
             ),
-            const Spacer(),
+            const SizedBox(height: 8),
+            const Text(
+              '作品已提交审核，审核通过后将展示在社区',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: LiveColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            // 审核状态卡（已提交 → 审核中 → 已上架）
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: LiveColors.divider),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        '审核状态',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: LiveColors.textSecondary,
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        height: 22,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFF4F4F6), Color(0xFFECECEF)],
+                          ),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Center(
+                          child: const Text(
+                            '审核中',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: LiveColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _StepNode(
+                          icon: Icons.check,
+                          label: '已提交',
+                          done: true,
+                        ),
+                      ),
+                      Expanded(
+                        child: Container(
+                          height: 2,
+                          color: Color(0xFF141414),
+                        ),
+                      ),
+                      Expanded(
+                        child: _StepNode(
+                          icon: Icons.schedule,
+                          label: '审核中',
+                          done: true,
+                        ),
+                      ),
+                      Expanded(
+                        child: Container(
+                          height: 2,
+                          color: LiveColors.divider,
+                        ),
+                      ),
+                      Expanded(
+                        child: _StepNode(
+                          icon: Icons.local_fire_department_outlined,
+                          label: '已上架',
+                          done: false,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '一般 5 分钟内完成审核，可在「我的内容」查看状态',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: LiveColors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
             PrimaryButton(
               label: '查看我的作品',
               color: Colors.black,
@@ -839,14 +969,74 @@ class PostPublishSuccessScreen extends StatelessWidget {
               onTap: () => LiveRoutes.pushId(context, RoutePaths.postDetail, post.id),
             ),
             const SizedBox(height: 12),
-            OutlineButton(
-              label: '返回社区',
-              onTap: () => LiveRoutes.switchTab(context, 1),
+            // 返回社区：浅灰幽灵按钮（对齐设计稿 btn-ghost）
+            SizedBox(
+              height: 52,
+              child: Material(
+                color: const Color(0xFFF7F7F8),
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => LiveRoutes.switchTab(context, 1),
+                  child: const Center(
+                    child: Text(
+                      '返回社区',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: LiveColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 24),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 审核进度节点：黑色圆形图标 + 状态文字（对齐 Pixso 54-发布成功）。
+class _StepNode extends StatelessWidget {
+  const _StepNode({
+    required this.icon,
+    required this.label,
+    required this.done,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool done;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(
+            color: done ? const Color(0xFF141414) : LiveColors.card,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            size: 14,
+            color: done ? Colors.white : LiveColors.textTertiary,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: done ? LiveColors.textPrimary : LiveColors.textTertiary,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1515,6 +1705,542 @@ class _UserRow extends StatelessWidget {
             ),
             const Icon(Icons.chevron_right, color: LiveColors.textTertiary),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ===== 发布作品-照片选择面板（对齐 Pixso 41-弹窗-照片选择）=====
+
+/// 选中图片的统一封装：相册图片（AssetEntity）或拍照（XFile）。
+class _SelectedPhoto {
+  _SelectedPhoto.asset(AssetEntity asset)
+      : _asset = asset,
+        _xfile = null;
+  _SelectedPhoto.camera(XFile xfile)
+      : _asset = null,
+        _xfile = xfile;
+
+  final AssetEntity? _asset;
+  final XFile? _xfile;
+
+  AssetEntity? get asset => _asset;
+
+  bool sameAsset(AssetEntity a) => _asset?.id == a.id;
+
+  Future<List<int>> bytes() async {
+    if (_xfile != null) return _xfile!.readAsBytes();
+    final f = await _asset!.originFile;
+    return f?.readAsBytes() ?? <int>[];
+  }
+
+  String get filename {
+    if (_xfile != null) {
+      final name = _xfile!.name;
+      return name.isEmpty
+          ? 'post_${DateTime.now().millisecondsSinceEpoch}.jpg'
+          : name;
+    }
+    return _asset!.title ??
+        'post_${DateTime.now().millisecondsSinceEpoch}.jpg';
+  }
+}
+
+/// 照片选择底部面板：拍摄 + 3 列宫格多选 + 已选计数 + 预览/完成。
+class PhotoPickerSheet extends StatefulWidget {
+  const PhotoPickerSheet({super.key, required this.maxCount});
+
+  final int maxCount;
+
+  @override
+  State<PhotoPickerSheet> createState() => _PhotoPickerSheetState();
+}
+
+class _PhotoPickerSheetState extends State<PhotoPickerSheet> {
+  final List<AssetEntity> _assets = [];
+  final List<_SelectedPhoto> _selected = [];
+  final _scrollCtrl = ScrollController();
+  AssetPathEntity? _path;
+  int _page = 0;
+  bool _loading = false;
+  bool _hasMore = true;
+  bool _takingPhoto = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollCtrl.addListener(() {
+      if (!_loading &&
+          _hasMore &&
+          _scrollCtrl.position.pixels >
+              _scrollCtrl.position.maxScrollExtent - 240) {
+        _loadMore();
+      }
+    });
+    _init();
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _init() async {
+    try {
+      final state = await PhotoManager.requestPermissionExtend();
+      if (!state.hasAccess) {
+        if (mounted) setState(() => _error = '需要相册权限才能选择图片');
+        return;
+      }
+      final paths = await PhotoManager.getAssetPathList(
+        type: RequestType.image,
+        onlyAll: true,
+      );
+      if (mounted) _path = paths.isNotEmpty ? paths.first : null;
+      await _loadMore(reset: true);
+    } catch (_) {
+      if (mounted) setState(() => _error = '读取相册失败');
+    }
+  }
+
+  Future<void> _loadMore({bool reset = false}) async {
+    final path = _path;
+    if (path == null) {
+      if (mounted && reset) setState(() => _error = '相册中没有图片');
+      return;
+    }
+    if (_loading) return;
+    setState(() {
+      _loading = true;
+      if (reset) _error = null;
+    });
+    try {
+      final list = await path.getAssetListPaged(page: _page, size: 60);
+      if (!mounted) return;
+      setState(() {
+        if (reset) _assets.clear();
+        _assets.addAll(list);
+        _page += 1;
+        _hasMore = list.length == 60;
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = '读取相册失败';
+        });
+      }
+    }
+  }
+
+  Future<void> _takePhoto() async {
+    if (_takingPhoto || _selected.length >= widget.maxCount) return;
+    setState(() => _takingPhoto = true);
+    try {
+      final x = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+      if (x != null && mounted) {
+        setState(() => _selected.add(_SelectedPhoto.camera(x)));
+      }
+    } catch (e) {
+      if (mounted) showLiveSnack(context, '拍照失败：$e');
+    } finally {
+      if (mounted) setState(() => _takingPhoto = false);
+    }
+  }
+
+  void _toggle(AssetEntity a) {
+    if (_selected.any((p) => p.sameAsset(a))) {
+      setState(() => _selected.removeWhere((p) => p.sameAsset(a)));
+    } else if (_selected.length < widget.maxCount) {
+      setState(() => _selected.add(_SelectedPhoto.asset(a)));
+    } else {
+      showLiveSnack(context, '最多选择 ${widget.maxCount} 张图片');
+    }
+  }
+
+  Future<void> _preview() async {
+    if (_selected.isEmpty) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => Dialog.fullscreen(
+        backgroundColor: Colors.black,
+        child: Stack(
+          children: [
+            PageView.builder(
+              itemCount: _selected.length,
+              itemBuilder: (_, i) => Center(
+                child: FutureBuilder<List<int>>(
+                  future: _selected[i].bytes(),
+                  builder: (_, snap) {
+                    final data = snap.data;
+                    if (data == null) {
+                      return const CircularProgressIndicator(
+                        color: Colors.white54,
+                      );
+                    }
+                    return Image.memory(
+                      Uint8List.fromList(data),
+                      fit: BoxFit.contain,
+                    );
+                  },
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedCount = _selected.length;
+    final gridHeight = math.min(
+      MediaQuery.of(context).size.height * 0.42,
+      360.0,
+    );
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: LiveColors.bg,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE4E4E8),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                const Text(
+                  '从相册选择',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: LiveColors.textPrimary,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '已选 $selectedCount / ${widget.maxCount}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: LiveColors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (_error != null)
+              SizedBox(
+                height: 160,
+                child: Center(
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: LiveColors.textSecondary,
+                    ),
+                  ),
+                ),
+              )
+            else
+              SizedBox(
+                height: gridHeight,
+                child: GridView.builder(
+                  controller: _scrollCtrl,
+                  padding: const EdgeInsets.only(bottom: 16),
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 4,
+                    crossAxisSpacing: 4,
+                    childAspectRatio: 1.12,
+                  ),
+                  itemCount: _assets.length + 1,
+                  itemBuilder: (_, i) {
+                    if (i == 0) {
+                      return _PhotoCell(
+                        child: InkWell(
+                          onTap: _takingPhoto ? null : _takePhoto,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF7F7F8),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (_takingPhoto)
+                                  const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: LiveColors.textSecondary,
+                                    ),
+                                  )
+                                else
+                                  const Icon(
+                                    Icons.photo_camera_outlined,
+                                    size: 24,
+                                    color: LiveColors.textSecondary,
+                                  ),
+                                const SizedBox(height: 5),
+                                const Text(
+                                  '拍摄',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: LiveColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                    final asset = _assets[i - 1];
+                    final selected =
+                        _selected.any((p) => p.sameAsset(asset));
+                    return _PhotoCell(
+                      child: GestureDetector(
+                        onTap: () => _toggle(asset),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            _AssetThumb(asset: asset),
+                            Positioned(
+                              right: 6,
+                              top: 6,
+                              child: Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: selected
+                                      ? const Color(0xFF141414)
+                                      : Colors.white.withOpacity(0.92),
+                                  shape: BoxShape.circle,
+                                  border: selected
+                                      ? null
+                                      : Border.all(
+                                          color: const Color(0x33000000),
+                                        ),
+                                ),
+                                child: selected
+                                    ? const Icon(
+                                        Icons.check,
+                                        size: 13,
+                                        color: Colors.white,
+                                      )
+                                    : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            // 底部：已选缩略图 + 预览 + 完成
+            Container(
+              padding: const EdgeInsets.fromLTRB(0, 12, 0, 24),
+              decoration: const BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: LiveColors.divider),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 34,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          for (var i = 0; i < selectedCount && i < 5; i++)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 5),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: SizedBox(
+                                  width: 34,
+                                  height: 34,
+                                  child: _SelectedThumb(photo: _selected[i]),
+                                ),
+                              ),
+                            ),
+                          if (selectedCount > 5)
+                            Container(
+                              width: 34,
+                              height: 34,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF141414),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '+${selectedCount - 5}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  _SheetButton(
+                    label: '预览',
+                    ghost: true,
+                    onTap: _preview,
+                  ),
+                  const SizedBox(width: 10),
+                  _SheetButton(
+                    label: selectedCount > 0 ? '完成 ($selectedCount)' : '完成',
+                    ghost: false,
+                    onTap: selectedCount > 0
+                        ? () => Navigator.pop(context, _selected)
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 宫格单元：圆角裁剪容器。
+class _PhotoCell extends StatelessWidget {
+  const _PhotoCell({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(borderRadius: BorderRadius.circular(12), child: child);
+  }
+}
+
+/// 相册缩略图（photo_manager 按尺寸生成，网格用）。
+class _AssetThumb extends StatelessWidget {
+  const _AssetThumb({required this.asset});
+
+  final AssetEntity asset;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Uint8List?>(
+      future: asset.thumbnailDataWithSize(
+        const ThumbnailSize.square(240),
+        quality: 85,
+      ),
+      builder: (_, snap) {
+        final data = snap.data;
+        if (data == null) return Container(color: LiveColors.card);
+        return Image.memory(data, fit: BoxFit.cover);
+      },
+    );
+  }
+}
+
+/// 底部已选缩略图（相册用 thumbnail，拍照用原文件字节）。
+class _SelectedThumb extends StatelessWidget {
+  const _SelectedThumb({required this.photo});
+
+  final _SelectedPhoto photo;
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = photo.asset;
+    if (asset != null) {
+      return FutureBuilder<Uint8List?>(
+        future: asset.thumbnailDataWithSize(
+          const ThumbnailSize.square(160),
+          quality: 85,
+        ),
+        builder: (_, snap) {
+          final data = snap.data;
+          if (data == null) return Container(color: LiveColors.card);
+          return Image.memory(data, fit: BoxFit.cover);
+        },
+      );
+    }
+    return FutureBuilder<List<int>>(
+      future: photo.bytes(),
+      builder: (_, snap) {
+        final data = snap.data;
+        if (data == null) return Container(color: LiveColors.card);
+        return Image.memory(Uint8List.fromList(data), fit: BoxFit.cover);
+      },
+    );
+  }
+}
+
+/// 底部按钮：预览（浅灰）/ 完成（黑底白字）。
+class _SheetButton extends StatelessWidget {
+  const _SheetButton({
+    required this.label,
+    required this.ghost,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool ghost;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: ghost ? const Color(0xFFF7F7F8) : const Color(0xFF141414),
+      borderRadius: BorderRadius.circular(15),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: ghost ? LiveColors.textPrimary : Colors.white,
+            ),
+          ),
         ),
       ),
     );

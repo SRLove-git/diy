@@ -61,6 +61,10 @@ class ChatService {
 
   Future<void> deleteConversation(int id) => ApiClient.instance.delete('/conversations/$id');
 
+  /// 清空聊天记录（仅对自己隐藏本会话全部消息，对端不受影响）
+  Future<void> clearMessages(int conversationId) =>
+      ApiClient.instance.delete('/conversations/$conversationId/messages');
+
   Future<void> deleteMessage(int conversationId, int messageId) =>
       ApiClient.instance.delete('/conversations/$conversationId/messages/$messageId');
 

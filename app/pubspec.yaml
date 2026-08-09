@@ -40,6 +40,7 @@ dependencies:
   http: ^1.2.0
   image_picker: ^1.1.0
   path_provider: ^2.1.5
+  photo_manager: ^3.11.0
   qr_flutter: ^4.1.0
   record: ^7.1.1
   shared_preferences: ^2.3.0

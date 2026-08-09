@@ -70,6 +70,10 @@ class LiveAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
+      // 顶部导航强制白底（去掉 Material 3 的灰色 surfaceTint），
+      // 对齐设计稿的白底极简体系。
+      backgroundColor: LiveColors.bg,
+      surfaceTintColor: Colors.transparent,
       title: title == null ? null : Text(title!),
       leading: leading ??
           (Navigator.of(context).canPop()

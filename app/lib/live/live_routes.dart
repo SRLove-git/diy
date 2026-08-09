@@ -78,12 +78,11 @@ class LiveRoutes {
       3 => RoutePaths.chat,
       _ => RoutePaths.profile,
     };
-    // 与 push 相同的防重入保护：已处于目标路径时直接跳过。
-    // 避免「外层路由 → Shell Tab」过渡期间重复压入相同 page key，
-    // 触发 '!keyReservation.contains(key)' 断言（flutter/flutter#140586）。
-    final router = GoRouter.of(context);
-    final current = router.routeInformationProvider.value.uri.path;
-    if (current == path) return;
+    // 注意：不能在这里做「当前路径 == 目标路径」的防重入判断。
+    // 页面经两次 push 压在外层路由（如 /post/publish/success）时，
+    // routeInformationProvider 的当前路径在某些场景下会与目标 Tab 相同，
+    // 导致 go() 被误判为空操作、按钮点击无响应。
+    // 重复导航的 keyReservation 保护由调用侧延迟（pop 稳定后再切 Tab）承担。
     context.go(path);
   }
 
