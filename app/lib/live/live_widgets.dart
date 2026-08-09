@@ -88,8 +88,8 @@ class LiveAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
-/// 底部 Tab（主页/我的）。
-/// 社区 / Reels / 聊天前期暂不开放，已隐藏（保留 5 Tab 设计资源，后续恢复时切换回设计稿资源图）。
+/// 底部悬浮 Tab（主页/我的），对齐原设计稿的悬浮胶囊样式。
+/// 社区 / Reels / 聊天前期暂不开放，已隐藏（保留 5 Tab 设计资源，后续恢复时切回）。
 class LiveTabBar extends StatelessWidget {
   const LiveTabBar({super.key, required this.current, this.onTap});
 
@@ -104,48 +104,64 @@ class LiveTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    return Container(
-      height: 64 + bottomInset,
-      color: LiveColors.bg,
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: LiveColors.divider, width: 0.5)),
-      ),
-      child: Row(
-        children: [
-          for (var i = 0; i < _tabs.length; i++)
-            Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  if (i != current) onTap?.call(i);
-                },
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      i == current ? _tabs[i].$2 : _tabs[i].$1,
-                      size: 24,
-                      color: i == current
-                          ? LiveColors.textPrimary
-                          : LiveColors.textTertiary,
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _tabs[i].$3,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight:
-                            i == current ? FontWeight.w700 : FontWeight.w400,
-                        color: i == current
-                            ? LiveColors.textPrimary
-                            : LiveColors.textTertiary,
-                      ),
-                    ),
-                  ],
-                ),
+    return SizedBox(
+      height: 88 + bottomInset,
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Container(
+          height: 62,
+          margin: EdgeInsets.fromLTRB(20, 0, 20, 4 + bottomInset),
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          decoration: BoxDecoration(
+            color: LiveColors.bg,
+            borderRadius: BorderRadius.circular(31),
+            border: Border.all(color: LiveColors.divider, width: 0.5),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x14000000),
+                blurRadius: 12,
+                offset: Offset(0, 4),
               ),
-            ),
-        ],
+            ],
+          ),
+          child: Row(
+            children: [
+              for (var i = 0; i < _tabs.length; i++)
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      if (i != current) onTap?.call(i);
+                    },
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          i == current ? _tabs[i].$2 : _tabs[i].$1,
+                          size: 22,
+                          color: i == current
+                              ? LiveColors.textPrimary
+                              : LiveColors.textTertiary,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _tabs[i].$3,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight:
+                                i == current ? FontWeight.w700 : FontWeight.w400,
+                            color: i == current
+                                ? LiveColors.textPrimary
+                                : LiveColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

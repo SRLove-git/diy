@@ -30,21 +30,23 @@ const router = createRouter({
           component: () => import('../views/OrdersView.vue'),
           meta: { title: '订单管理' },
         },
-        {
-          path: 'posts',
-          component: () => import('../views/PostsView.vue'),
-          meta: { title: '社区管理' },
-        },
-        {
-          path: 'videos',
-          component: () => import('../views/VideosView.vue'),
-          meta: { title: '视频管理' },
-        },
-        {
-          path: 'music',
-          component: () => import('../views/MusicView.vue'),
-          meta: { title: '曲库管理' },
-        },
+        // 社区 / Reels 前期暂不开放，路由先注释（恢复时取消注释）
+        // {
+        //   path: 'posts',
+        //   component: () => import('../views/PostsView.vue'),
+        //   meta: { title: '社区管理' },
+        // },
+        // {
+        //   path: 'videos',
+        //   component: () => import('../views/VideosView.vue'),
+        //   meta: { title: '视频管理' },
+        // },
+        // Reels 前期暂不开放，曲库路由先注释（恢复时取消注释）
+        // {
+        //   path: 'music',
+        //   component: () => import('../views/MusicView.vue'),
+        //   meta: { title: '曲库管理' },
+        // },
         {
           path: 'users',
           component: () => import('../views/UsersView.vue'),

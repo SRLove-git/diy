@@ -87,32 +87,38 @@ final GoRouter appRouter = GoRouter(
     // ===== 底部 5 Tab（保活） =====
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) => LiveHost(
-        child: Column(
+        child: Stack(
           children: [
-            Expanded(child: navigationShell),
-            LiveTabBar(
-              current: navigationShell.currentIndex,
-              onTap: (i) {
-                // 重复点击当前 Tab 不导航；快速连续切换也做防抖，
-                // 避免过渡期重复导航触发 '!keyReservation.contains(key)' 断言。
-                if (i == navigationShell.currentIndex) return;
-                final now = DateTime.now();
-                if (_lastTabTap != null &&
-                    now.difference(_lastTabTap!).inMilliseconds < 250) {
-                  return;
-                }
-                _lastTabTap = now;
-                // 不能在 build 阶段同步 goBranch：正常点击立即切换，
-                // 仅在 build 帧内时延迟到帧末，避免与页面过渡叠加触发重复 page key 断言。
-                LiveRoutes.afterBuildFrame(() {
-                  if (!context.mounted) return;
-                  navigationShell.goBranch(i, initialLocation: false);
-                  // 切回首页时刷新订单，感知店员后台核销（事件驱动，非轮询）
-                  if (i == 0) {
-                    HomeOrdersRefresh.instance.refresh();
+            Positioned.fill(child: navigationShell),
+            // 悬浮 Tab 覆盖在内容之上：内容可滚动到 Tab 背后，不留白色条
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: LiveTabBar(
+                current: navigationShell.currentIndex,
+                onTap: (i) {
+                  // 重复点击当前 Tab 不导航；快速连续切换也做防抖，
+                  // 避免过渡期重复导航触发 '!keyReservation.contains(key)' 断言。
+                  if (i == navigationShell.currentIndex) return;
+                  final now = DateTime.now();
+                  if (_lastTabTap != null &&
+                      now.difference(_lastTabTap!).inMilliseconds < 250) {
+                    return;
                   }
-                });
-              },
+                  _lastTabTap = now;
+                  // 不能在 build 阶段同步 goBranch：正常点击立即切换，
+                  // 仅在 build 帧内时延迟到帧末，避免与页面过渡叠加触发重复 page key 断言。
+                  LiveRoutes.afterBuildFrame(() {
+                    if (!context.mounted) return;
+                    navigationShell.goBranch(i, initialLocation: false);
+                    // 切回首页时刷新订单，感知店员后台核销（事件驱动，非轮询）
+                    if (i == 0) {
+                      HomeOrdersRefresh.instance.refresh();
+                    }
+                  });
+                },
+              ),
             ),
           ],
         ),

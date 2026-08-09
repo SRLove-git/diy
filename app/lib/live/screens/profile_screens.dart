@@ -22,12 +22,13 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   User? _me;
-  FollowStatus? _follow;
-  List<Post> _posts = [];
-  List<Video> _videos = [];
+  // FollowStatus? _follow; // 粉丝统计前期暂不开放，先隐藏
+  // ── 社区内容（帖子/笔记/视频）前期暂不开放，先隐藏 ──
+  // List<Post> _posts = [];
+  // List<Video> _videos = [];
   bool _loading = true;
   String? _error;
-  int _tab = 0; // 0 帖子 1 笔记 2 视频
+  // int _tab = 0; // 0 帖子 1 笔记 2 视频
 
   @override
   void initState() {
@@ -42,17 +43,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
     try {
       final me = await AuthService.instance.me();
-      final results = await Future.wait([
-        FollowService.instance.status(me.id),
-        CommunityService.instance.mine(),
-        VideoService.instance.mine(),
-      ]);
+      // final follow = await FollowService.instance.status(me.id);
+      // final results = await Future.wait([
+      //   FollowService.instance.status(me.id),
+      //   CommunityService.instance.mine(),
+      //   VideoService.instance.mine(),
+      // ]);
       if (mounted) {
         setState(() {
           _me = me;
-          _follow = results[0] as FollowStatus;
-          _posts = (results[1] as Page<Post>).items;
-          _videos = (results[2] as Page<Video>).items;
+          // _follow = follow;
+          // _posts = (results[1] as Page<Post>).items;
+          // _videos = (results[2] as Page<Video>).items;
         });
       }
     } on ApiException catch (e) {
@@ -62,14 +64,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  List<Post> get _textPosts =>
-      _posts.where((p) => p.mediaUrls.isEmpty).toList();
-  List<Post> get _notePosts =>
-      _posts.where((p) => p.mediaUrls.isNotEmpty).toList();
-
-  int get _totalLikes =>
-      _posts.fold(0, (s, p) => s + p.likeCount) +
-      _videos.fold(0, (s, v) => s + v.likeCount);
+  // List<Post> get _textPosts =>
+  //     _posts.where((p) => p.mediaUrls.isEmpty).toList();
+  // List<Post> get _notePosts =>
+  //     _posts.where((p) => p.mediaUrls.isNotEmpty).toList();
+  //
+  // int get _totalLikes =>
+  //     _posts.fold(0, (s, p) => s + p.likeCount) +
+  //     _videos.fold(0, (s, v) => s + v.likeCount);
 
   @override
   Widget build(BuildContext context) {
@@ -90,67 +92,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         : RefreshIndicator(
                             onRefresh: _load,
                             child: ListView(
-                              padding: const EdgeInsets.fromLTRB(18, 6, 18, 24),
+                              // 底部悬浮 Tab 覆盖在内容之上，预留滚动空间避免最后内容被遮挡
+                              padding: const EdgeInsets.fromLTRB(18, 6, 18, 96),
                               children: [
                                 _ProfileHeader(
                                   user: _me!,
-                                  follow: _follow,
-                                  worksCount: _posts.length + _videos.length,
-                                  totalLikes: _totalLikes,
                                   onEdit: () async {
                                     await LiveRoutes.push(context, RoutePaths.profileEdit);
                                     _load();
                                   },
-                                  onFans: () => LiveRoutes.push(
-                                    context,
-                                    RoutePaths.userFollows,
-                                    extra: {'targetId': _me!.id, 'initialTab': 'followers'},
-                                  ),
                                   onShare: () =>
                                       showLiveSnack(context, '已复制主页分享链接（模拟）'),
                                 ),
                                 const SizedBox(height: 18),
-                                _ProfileTabs(
-                                  tab: _tab,
-                                  counts: (
-                                    _textPosts.length,
-                                    _notePosts.length,
-                                    _videos.length,
-                                  ),
-                                  onChanged: (t) => setState(() => _tab = t),
-                                ),
-                                const SizedBox(height: 10),
-                                if (_tab == 0)
-                                  _WorksGrid(
-                                    posts: _textPosts,
-                                    textStyle: true,
-                                    onTapPost: (p) => LiveRoutes.pushId(
-                                      context,
-                                      RoutePaths.postDetail,
-                                      p.id,
-                                    ),
-                                    emptyText: '还没有发布帖子',
-                                  )
-                                else if (_tab == 1)
-                                  _WorksGrid(
-                                    posts: _notePosts,
-                                    onTapPost: (p) => LiveRoutes.pushId(
-                                      context,
-                                      RoutePaths.postDetail,
-                                      p.id,
-                                    ),
-                                    emptyText: '还没有发布笔记',
-                                  )
-                                else
-                                  _VideoGrid(
-                                    videos: _videos,
-                                    onTapVideo: (v) => LiveRoutes.pushId(
-                                      context,
-                                      RoutePaths.videoDetail,
-                                      v.id,
-                                    ),
-                                    emptyText: '还没有发布视频',
-                                  ),
+                                // ── 社区内容（帖子/笔记/视频）前期暂不开放，Tab 与内容网格先隐藏 ──
+                                // _ProfileTabs(
+                                //   tab: _tab,
+                                //   counts: (
+                                //     _textPosts.length,
+                                //     _notePosts.length,
+                                //     _videos.length,
+                                //   ),
+                                //   onChanged: (t) => setState(() => _tab = t),
+                                // ),
+                                // const SizedBox(height: 10),
+                                // if (_tab == 0)
+                                //   _WorksGrid(
+                                //     posts: _textPosts,
+                                //     textStyle: true,
+                                //     onTapPost: (p) => LiveRoutes.pushId(
+                                //       context,
+                                //       RoutePaths.postDetail,
+                                //       p.id,
+                                //     ),
+                                //     emptyText: '还没有发布帖子',
+                                //   )
+                                // else if (_tab == 1)
+                                //   _WorksGrid(
+                                //     posts: _notePosts,
+                                //     onTapPost: (p) => LiveRoutes.pushId(
+                                //       context,
+                                //       RoutePaths.postDetail,
+                                //       p.id,
+                                //     ),
+                                //     emptyText: '还没有发布笔记',
+                                //   )
+                                // else
+                                //   _VideoGrid(
+                                //     videos: _videos,
+                                //     onTapVideo: (v) => LiveRoutes.pushId(
+                                //       context,
+                                //       RoutePaths.videoDetail,
+                                //       v.id,
+                                //     ),
+                                //     emptyText: '还没有发布视频',
+                                //   ),
                                 const SizedBox(height: 20),
                               ],
                             ),
@@ -238,20 +234,12 @@ class _FollowTabs extends StatelessWidget {
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({
     required this.user,
-    required this.follow,
-    required this.worksCount,
-    required this.totalLikes,
     required this.onEdit,
-    required this.onFans,
     required this.onShare,
   });
 
   final User user;
-  final FollowStatus? follow;
-  final int worksCount;
-  final int totalLikes;
   final VoidCallback onEdit;
-  final VoidCallback onFans;
   final VoidCallback onShare;
 
   @override
@@ -259,45 +247,23 @@ class _ProfileHeader extends StatelessWidget {
     final joinYear = user.createdAt?.year;
     final joinMonth = user.createdAt?.month;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // 内容与顶部导航保持少量间距
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Avatar(url: user.avatar, name: user.nickname, size: 84),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Row(
-                children: [
-                  _StatColumn(
-                    label: '作品',
-                    value: '${fmtCount(worksCount)}',
-                  ),
-                  const _StatDivider(),
-                  _StatColumn(
-                    label: '粉丝',
-                    value: '${fmtCount(follow?.followerCount ?? 0)}',
-                    onTap: onFans,
-                  ),
-                  const _StatDivider(),
-                  _StatColumn(
-                    label: '获赞',
-                    value: '${fmtCount(totalLikes)}',
-                  ),
-                ],
-              ),
-            ),
-          ],
+        // 头像 / 昵称 / 介绍居中展示
+        const SizedBox(height: 20),
+        Center(
+          child: Avatar(url: user.avatar, name: user.nickname, size: 84),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         Text(
           user.displayName,
+          textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
         ),
         const SizedBox(height: 6),
         Text(
           '@${user.username ?? ''}${user.bio.isEmpty ? '' : ' · ${user.bio}'}',
+          textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 14, color: LiveColors.textSecondary),
@@ -306,11 +272,12 @@ class _ProfileHeader extends StatelessWidget {
         Text(
           '手作星球${joinYear != null ? ' ${joinYear} 年 ${joinMonth ?? ''} 月入驻' : ''}'
           '${user.location.isNotEmpty ? ' · ${user.location}' : ''}',
+          textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 13, color: LiveColors.textTertiary),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 22),
         Row(
           children: [
             Expanded(
@@ -335,49 +302,51 @@ class _ProfileHeader extends StatelessWidget {
   }
 }
 
-class _StatColumn extends StatelessWidget {
-  const _StatColumn({
-    required this.label,
-    required this.value,
-    this.onTap,
-  });
+// 粉丝统计前期暂不开放，统计列组件先隐藏
+// class _StatColumn extends StatelessWidget {
+//   const _StatColumn({
+//     required this.label,
+//     required this.value,
+//     this.onTap,
+//   });
+//
+//   final String label;
+//   final String value;
+//   final VoidCallback? onTap;
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Expanded(
+//       child: InkWell(
+//         onTap: onTap,
+//         child: Column(
+//           mainAxisSize: MainAxisSize.min,
+//           children: [
+//             Text(
+//               value,
+//               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
+//             ),
+//             const SizedBox(height: 4),
+//             Text(
+//               label,
+//               style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
 
-  final String label;
-  final String value;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              value,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatDivider extends StatelessWidget {
-  const _StatDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(width: 1, height: 26, color: LiveColors.divider);
-  }
-}
+// 社区内容（作品/获赞统计）前期暂不开放，分隔线先隐藏
+// class _StatDivider extends StatelessWidget {
+//   const _StatDivider();
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(width: 1, height: 26, color: LiveColors.divider);
+//   }
+// }
 
 /// 帖子 / 笔记 / 视频 分段切换（胶囊样式）。
 class _ProfileTabs extends StatelessWidget {
@@ -750,22 +719,23 @@ class ProfileMenuScreen extends StatelessWidget {
                       LiveRoutes.pushAfterPop(context, RoutePaths.memberCoupons);
                     },
                   ),
-                  _MenuEntryTile(
-                    icon: Icons.favorite_outline,
-                    title: '点赞与收藏',
-                    subtitle: '我喜欢的作品',
-                    onTap: () {
-                      LiveRoutes.pushAfterPop(context, RoutePaths.profileLiked);
-                    },
-                  ),
-                  _MenuEntryTile(
-                    icon: Icons.history,
-                    title: '观看历史',
-                    subtitle: '作品 · 视频浏览记录',
-                    onTap: () {
-                      LiveRoutes.pushAfterPop(context, RoutePaths.profileHistory);
-                    },
-                  ),
+                  // ── 社区内容（点赞/收藏/历史）前期暂不开放，入口先隐藏 ──
+                  // _MenuEntryTile(
+                  //   icon: Icons.favorite_outline,
+                  //   title: '点赞与收藏',
+                  //   subtitle: '我喜欢的作品',
+                  //   onTap: () {
+                  //     LiveRoutes.pushAfterPop(context, RoutePaths.profileLiked);
+                  //   },
+                  // ),
+                  // _MenuEntryTile(
+                  //   icon: Icons.history,
+                  //   title: '观看历史',
+                  //   subtitle: '作品 · 视频浏览记录',
+                  //   onTap: () {
+                  //     LiveRoutes.pushAfterPop(context, RoutePaths.profileHistory);
+                  //   },
+                  // ),
                   _MenuEntryTile(
                     icon: Icons.receipt_long_outlined,
                     title: '我的订单',
@@ -1963,7 +1933,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   User? _user;
   bool _notify = true;
-  bool _darkMode = false;
+  // bool _darkMode = false; // 深色模式前期暂不开放，已隐藏
 
   @override
   void initState() {
@@ -2078,11 +2048,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         RoutePaths.loginForgot,
                       ),
                     ),
-                    const Divider(height: 1, color: LiveColors.divider),
-                    _SettingsInfoRow(
-                      title: '登录设备',
-                      subtitle: '2 台设备在线',
-                    ),
+                    // 登录设备前期暂不开放，已隐藏
+                    // const Divider(height: 1, color: LiveColors.divider),
+                    // _SettingsInfoRow(
+                    //   title: '登录设备',
+                    //   subtitle: '2 台设备在线',
+                    // ),
                     const Divider(height: 1, color: LiveColors.divider),
                     _SettingsInfoRow(
                       title: '切换账号',
@@ -2102,21 +2073,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: _notify,
                       onChanged: (v) => setState(() => _notify = v),
                     ),
-                    const Divider(height: 1, color: LiveColors.divider),
-                    _SettingsSwitchRow(
-                      title: '深色模式',
-                      subtitle: '跟随系统',
-                      value: _darkMode,
-                      onChanged: (v) => setState(() => _darkMode = v),
-                    ),
-                    const Divider(height: 1, color: LiveColors.divider),
-                    _SettingsInfoRow(
-                      title: '隐私设置',
-                      subtitle: '谁可以评论我的作品',
-                      chevron: true,
-                      onTap: () =>
-                          showLiveSnack(context, '隐私设置敬请期待'),
-                    ),
+                    // 深色模式 / 隐私设置前期暂不开放，已隐藏
+                    // const Divider(height: 1, color: LiveColors.divider),
+                    // _SettingsSwitchRow(
+                    //   title: '深色模式',
+                    //   subtitle: '跟随系统',
+                    //   value: _darkMode,
+                    //   onChanged: (v) => setState(() => _darkMode = v),
+                    // ),
+                    // const Divider(height: 1, color: LiveColors.divider),
+                    // _SettingsInfoRow(
+                    //   title: '隐私设置',
+                    //   subtitle: '谁可以评论我的作品',
+                    //   chevron: true,
+                    //   onTap: () =>
+                    //       showLiveSnack(context, '隐私设置敬请期待'),
+                    // ),
                   ],
                 ),
                 const Padding(

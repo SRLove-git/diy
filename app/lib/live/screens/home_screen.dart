@@ -184,7 +184,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           return RefreshIndicator(
             onRefresh: () async => _retry(),
             child: ListView(
-              padding: const EdgeInsets.only(bottom: 16),
+              // 底部悬浮 Tab 覆盖在内容之上，预留滚动空间避免最后内容被遮挡
+              padding: const EdgeInsets.only(bottom: 96),
               children: [
                 const _TopBar(),
                 // 「拼豆」板块：入口卡（预约 / 到店 / 会员套餐）

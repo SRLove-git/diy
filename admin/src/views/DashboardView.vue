@@ -65,7 +65,8 @@ const maxVal = computed(() => {
           <div class="card-label">已完成订单</div>
           <div class="card-value">{{ overview.appointments.completed.toLocaleString() }}</div>
         </div>
-        <div class="card">
+        <!-- 社区 / Reels 前期暂不开放，相关指标卡先隐藏 -->
+        <!-- <div class="card">
           <div class="card-label">累计作品</div>
           <div class="card-value">{{ overview.community.totalPosts.toLocaleString() }}</div>
           <div class="card-sub">今日 {{ overview.community.todayPosts }} 篇</div>
@@ -79,11 +80,11 @@ const maxVal = computed(() => {
           <div class="card-label">短视频 / 照片作品</div>
           <div class="card-value">{{ overview.videos.total.toLocaleString() }}</div>
           <div class="card-sub">今日新增 {{ overview.videos.today }}</div>
-        </div>
+        </div> -->
       </section>
 
-      <!-- 待办审核 -->
-      <section class="todo-section">
+      <!-- 社区 / Reels 前期暂不开放，待办审核先隐藏 -->
+      <!-- <section class="todo-section">
         <h3>待办审核</h3>
         <div class="todo-cards">
           <RouterLink to="/posts" class="todo-card">
@@ -95,7 +96,7 @@ const maxVal = computed(() => {
             <div class="todo-label">短视频待审核</div>
           </RouterLink>
         </div>
-      </section>
+      </section> -->
 
       <!-- 近7天趋势图表 -->
       <section class="chart-section">
@@ -107,10 +108,10 @@ const maxVal = computed(() => {
                 <th>日期</th>
                 <th>新注册</th>
                 <th>新预约</th>
-                <th>新作品</th>
+                <!-- <th>新作品</th>
                 <th>点赞</th>
                 <th>评论</th>
-                <th>短视频</th>
+                <th>短视频</th> -->
               </tr>
             </thead>
             <tbody>
@@ -118,10 +119,10 @@ const maxVal = computed(() => {
                 <td>{{ t.date }}</td>
                 <td>{{ t.users }}</td>
                 <td>{{ t.appointments }}</td>
-                <td>{{ t.posts }}</td>
+                <!-- <td>{{ t.posts }}</td>
                 <td>{{ t.likes }}</td>
                 <td>{{ t.comments }}</td>
-                <td>{{ t.videos }}</td>
+                <td>{{ t.videos }}</td> -->
               </tr>
             </tbody>
           </table>
@@ -136,7 +137,7 @@ const maxVal = computed(() => {
             v-for="t in trends"
             :key="t.date"
             class="bar-col"
-            :title="`${t.date}: 注册${t.users} | 预约${t.appointments} | 作品${t.posts} | 短视频${t.videos}`"
+            :title="`${t.date}: 注册${t.users} | 预约${t.appointments}`"
           >
             <div class="bar-group">
               <div
@@ -147,14 +148,14 @@ const maxVal = computed(() => {
                 class="bar bar-a"
                 :style="{ height: Math.max(t.appointments / maxVal * 100, 8) + '%' }"
               ></div>
-              <div
+              <!-- <div
                 class="bar bar-p"
                 :style="{ height: Math.max(t.posts / maxVal * 100, 8) + '%' }"
               ></div>
               <div
                 class="bar bar-v"
                 :style="{ height: Math.max(t.videos / maxVal * 100, 8) + '%' }"
-              ></div>
+              ></div> -->
             </div>
             <div class="bar-label">{{ t.date.slice(5) }}</div>
           </div>
@@ -162,8 +163,8 @@ const maxVal = computed(() => {
         <div class="legend">
           <span class="legend-item"><i class="dot dot-u"></i> 新注册</span>
           <span class="legend-item"><i class="dot dot-a"></i> 新预约</span>
-          <span class="legend-item"><i class="dot dot-p"></i> 新作品</span>
-          <span class="legend-item"><i class="dot dot-v"></i> 短视频</span>
+          <!-- <span class="legend-item"><i class="dot dot-p"></i> 新作品</span>
+          <span class="legend-item"><i class="dot dot-v"></i> 短视频</span> -->
         </div>
       </section>
     </template>
