@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -448,14 +450,13 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
   static const _tabs = [
     ('all', '全部'),
     ('booked', '待核销'),
-    ('checked_in', '服务中'),
+    ('in_service', '服务中'),
     ('completed', '已完成'),
-    ('cancelled', '已取消'),
   ];
 
   List<Appointment> _filter(List<Appointment> list) {
     if (_tab == 'all') return list;
-    if (_tab == 'checked_in') {
+    if (_tab == 'in_service') {
       return list
           .where((a) => a.status == 'checked_in' || a.status == 'in_service')
           .toList();
@@ -553,6 +554,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
   }
 }
 
+/// 07-我的预约卡片（对齐 Pixso）：白卡 + 状态标签，按状态展示预约码 / 计时 / 支付信息。
 class _AppointmentCard extends StatelessWidget {
   const _AppointmentCard({
     required this.appointment,
@@ -566,28 +568,24 @@ class _AppointmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final actionLabel = switch (appointment.status) {
-      'booked' => '扫码核销',
-      'checked_in' => '查看二维码',
-      'in_service' => '查看二维码',
-      'completed' => '再次预约',
-      _ => '查看详情',
-    };
-    final progress = switch (appointment.status) {
-      'booked' => 0.25,
-      'checked_in' => 0.5,
-      'in_service' => 0.75,
-      'completed' => 1.0,
-      _ => 0.1,
+    final a = appointment;
+    // 状态标签配色（对齐设计稿 tag.red / tag.green / tag.blue / tag.gray）
+    final (tagBg, tagFg) = switch (a.status) {
+      'booked' => (const Color(0xFFFFEBEE), const Color(0xFFE53935)),
+      'checked_in' => (const Color(0xFFE3F2FD), const Color(0xFF1565C0)),
+      'in_service' => (const Color(0xFFE8F5E9), const Color(0xFF2E7D32)),
+      'completed' => (const Color(0xFFF7F7F8), const Color(0xFF8E8E93)),
+      _ => (const Color(0xFFF7F7F8), const Color(0xFF8E8E93)),
     };
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF6F6F8),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: LiveColors.divider),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -596,75 +594,149 @@ class _AppointmentCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    appointment.title,
+                    a.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 14.6,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
                       color: LiveColors.textPrimary,
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  appointment.statusLabel,
-                  style: const TextStyle(fontSize: 11.6, color: LiveColors.textSecondary),
-                ),
+                _StatusTag(label: a.statusLabel, bg: tagBg, fg: tagFg),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Text(
-              appointment.code,
+              _infoLine(a),
               style: const TextStyle(
-                fontSize: 21.6,
-                fontWeight: FontWeight.w800,
-                color: LiveColors.textPrimary,
-                letterSpacing: 3,
+                fontSize: 13,
+                color: LiveColors.textSecondary,
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              _infoLine(appointment),
-              style: const TextStyle(fontSize: 11.6, color: LiveColors.textSecondary),
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 4,
-                backgroundColor: const Color(0xFFF0F0F0),
-                valueColor: const AlwaysStoppedAnimation(LiveColors.textPrimary),
+            if (a.status == 'booked' || a.status == 'checked_in') ...[
+              const SizedBox(height: 2),
+              Text(
+                '预约码 ${a.code}',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: LiveColors.textTertiary,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: InkWell(
+            ],
+            if (a.status == 'booked') ...[
+              const SizedBox(height: 12),
+              // 到店核销卡：大号预约码 + 到店核销标签（点击进入核销）
+              InkWell(
                 onTap: onAction,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(12),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: LiveColors.textPrimary,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Text(
-                    actionLabel,
-                    style: const TextStyle(
-                      fontSize: 12.6,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                    color: const Color(0xFFF7F7F8),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFDDDDE3),
+                      width: 1,
                     ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              a.code.split('').join(' '),
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 3,
+                                color: LiveColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            height: 22,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF333333), Color(0xFF141414)],
+                              ),
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '到店核销',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        '出示预约码，店员扫码或输入验证码开始体验',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: LiveColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ),
+            ],
+            if (a.status == 'in_service') ...[
+              const SizedBox(height: 12),
+              // 计时卡：实时计时（每秒刷新）+ 进度 + 下钟结束
+              _TimerCard(appointment: a, onAction: onAction),
+            ],
+            if (a.status == 'completed' || a.status == 'cancelled') ...[
+              const SizedBox(height: 2),
+              Text(
+                _payLine(a),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: LiveColors.textTertiary,
+                ),
+              ),
+            ],
+            if (a.status != 'booked' && a.status != 'in_service') ...[
+              const Divider(height: 24, color: LiveColors.divider),
+              Align(
+                alignment: Alignment.centerRight,
+                child: _ActionButton(
+                  label: _actionLabel(a),
+                  onTap: onAction,
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  String _actionLabel(Appointment a) => switch (a.status) {
+        'checked_in' => '查看二维码',
+        'completed' => '再次预约',
+        'cancelled' => '再次预约',
+        _ => '查看详情',
+      };
+
+  String _payLine(Appointment a) {
+    final paid = a.amount > 0
+        ? '支付 ¥${a.amount.toStringAsFixed(0)}'
+        : '支付 ¥0（会员免费）';
+    return '${a.statusLabel} · $paid';
   }
 
   String _infoLine(Appointment a) {
@@ -674,6 +746,184 @@ class _AppointmentCard extends StatelessWidget {
         : '周${'一二三四五六日'[date.weekday - 1]}';
     final table = a.tableName.isNotEmpty ? ' · ${a.tableName}' : '';
     return '${a.date} $week ${a.startTime}-${a.endTime}$table · ${a.peopleCount} 人';
+  }
+}
+
+/// 状态标签（对齐设计稿 tag：高 22、圆角 11、字号 11 加粗）。
+class _StatusTag extends StatelessWidget {
+  const _StatusTag({
+    required this.label,
+    required this.bg,
+    required this.fg,
+  });
+
+  final String label;
+  final Color bg;
+  final Color fg;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 22,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: Center(
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: fg,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 卡片底部操作按钮（黑色胶囊）。
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+        decoration: BoxDecoration(
+          color: LiveColors.textPrimary,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12.6,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 服务中计时卡：每秒刷新已用时长，实时计时。
+class _TimerCard extends StatefulWidget {
+  const _TimerCard({required this.appointment, required this.onAction});
+
+  final Appointment appointment;
+  final VoidCallback onAction;
+
+  @override
+  State<_TimerCard> createState() => _TimerCardState();
+}
+
+class _TimerCardState extends State<_TimerCard> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _elapsed() {
+    final start = widget.appointment.serviceStartTime;
+    if (start == null) return '00:00:00';
+    var sec = DateTime.now().difference(start).inSeconds;
+    if (sec < 0) sec = 0;
+    final h = (sec ~/ 3600).toString().padLeft(2, '0');
+    final m = ((sec % 3600) ~/ 60).toString().padLeft(2, '0');
+    final s = (sec % 60).toString().padLeft(2, '0');
+    return '$h:$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6F6F8),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                '计时中',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: LiveColors.textSecondary,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                _elapsed(),
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: LiveColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: 0.62,
+              minHeight: 4,
+              backgroundColor: const Color(0xFFF0F0F0),
+              valueColor: const AlwaysStoppedAnimation(
+                LiveColors.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 42,
+            child: Material(
+              color: const Color(0xFF141414),
+              borderRadius: BorderRadius.circular(15),
+              child: InkWell(
+                onTap: widget.onAction,
+                borderRadius: BorderRadius.circular(15),
+                child: const Center(
+                  child: Text(
+                    '下钟结束',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

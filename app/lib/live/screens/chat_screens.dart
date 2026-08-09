@@ -1215,6 +1215,30 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  /// 拍摄：调起相机拍照 → 上传（/api/uploads/images，folder=chat）→ 作为图片消息发送。
+  Future<void> _takePhoto() async {
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+      if (picked == null || !mounted) return;
+      final bytes = await picked.readAsBytes();
+      final url = await UploadService.instance.uploadImage(
+        bytes,
+        picked.name.isEmpty
+            ? 'chat_${DateTime.now().millisecondsSinceEpoch}.jpg'
+            : picked.name,
+        folder: 'chat',
+      );
+      if (mounted) await _sendImage(url);
+    } on ApiException catch (e) {
+      if (mounted) showLiveSnack(context, e.message);
+    } catch (e) {
+      if (mounted) showLiveSnack(context, '拍照失败：$e');
+    }
+  }
+
   void _showEmojiPanel() {
     const emojis = [
       '😀', '😂', '😍', '😭', '😡', '👍', '👏', '🎉',
@@ -1251,59 +1275,64 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  void _showAttachPanel() {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: LiveColors.bg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+  /// “+”面板是否展开（键盘式：面板紧贴输入框下端，代替键盘位置）。
+  bool _attachPanelOpen = false;
+
+  void _toggleAttachPanel() {
+    FocusScope.of(context).unfocus();
+    setState(() => _attachPanelOpen = !_attachPanelOpen);
+  }
+
+  void _closeAttachPanel() {
+    if (_attachPanelOpen) setState(() => _attachPanelOpen = false);
+  }
+
+  /// 相册 / 拍摄 / 文件 / 名片面板（内联在输入框下方，像键盘一样滑出）。
+  Widget _buildAttachPanel() {
+    return Container(
+      decoration: const BoxDecoration(
+        color: LiveColors.bg,
+        border: Border(top: BorderSide(color: LiveColors.divider)),
       ),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _AttachItem(
-                icon: Icons.photo_library_outlined,
-                label: '相册',
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _pickImages();
-                },
-              ),
-              _AttachItem(
-                icon: Icons.photo_camera_outlined,
-                label: '拍摄',
-                onTap: () {
-                  Navigator.of(context).pop();
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (context.mounted) showLiveSnack(context, '拍摄功能敬请期待');
-                  });
-                },
-              ),
-              _AttachItem(
-                icon: Icons.description_outlined,
-                label: '文件',
-                onTap: () {
-                  Navigator.of(context).pop();
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (context.mounted) showLiveSnack(context, '文件功能敬请期待');
-                  });
-                },
-              ),
-              _AttachItem(
-                icon: Icons.person_outline,
-                label: '名片',
-                onTap: () {
-                  Navigator.of(context).pop();
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (context.mounted) showLiveSnack(context, '名片功能敬请期待');
-                  });
-                },
-              ),
-            ],
-          ),
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _AttachItem(
+              icon: Icons.photo_library_outlined,
+              label: '相册',
+              onTap: () {
+                _closeAttachPanel();
+                _pickImages();
+              },
+            ),
+            _AttachItem(
+              icon: Icons.photo_camera_outlined,
+              label: '拍摄',
+              onTap: () {
+                _closeAttachPanel();
+                _takePhoto();
+              },
+            ),
+            _AttachItem(
+              icon: Icons.description_outlined,
+              label: '文件',
+              onTap: () {
+                _closeAttachPanel();
+                showLiveSnack(context, '文件功能敬请期待');
+              },
+            ),
+            _AttachItem(
+              icon: Icons.person_outline,
+              label: '名片',
+              onTap: () {
+                _closeAttachPanel();
+                showLiveSnack(context, '名片功能敬请期待');
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -1433,7 +1462,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                 message: msg,
                                 isMine: isMine,
                                 isGroup: widget.isGroup,
-                                showAvatar: widget.isGroup && !isMine,
+                                // 单聊/群聊都显示双方头像（我自己的头像在右侧）
+                                showAvatar: true,
                                 isPlaying: _playingMessageId == msg.id,
                                 onVoiceTap: () => _toggleVoicePlay(msg),
                                 onLongPress: (globalPos) =>
@@ -1549,6 +1579,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                         controller: _inputCtrl,
                                         minLines: 1,
                                         maxLines: 4,
+                                        onTap: () => _closeAttachPanel(),
                                         style: const TextStyle(fontSize: 13),
                                         decoration: const InputDecoration(
                                           hintText: '@ 提及成员…',
@@ -1566,6 +1597,10 @@ class _ChatScreenState extends State<ChatScreen> {
                             IconButton(
                               onPressed: _showEmojiPanel,
                               icon: const Icon(Icons.emoji_emotions_outlined, color: LiveColors.textSecondary, size: 25),
+                            ),
+                            IconButton(
+                              onPressed: _toggleAttachPanel,
+                              icon: const Icon(Icons.add_circle_outline, color: LiveColors.textSecondary, size: 24),
                             ),
                             if (!_voiceMode) ...[
                               const SizedBox(width: 8),
@@ -1648,6 +1683,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                       controller: _inputCtrl,
                                       minLines: 1,
                                       maxLines: 4,
+                                      onTap: () => _closeAttachPanel(),
                                       decoration: InputDecoration(
                                         hintText: '发送消息…',
                                         contentPadding:
@@ -1662,7 +1698,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               icon: const Icon(Icons.emoji_emotions_outlined, color: LiveColors.textSecondary, size: 22),
                             ),
                             IconButton(
-                              onPressed: _showAttachPanel,
+                              onPressed: _toggleAttachPanel,
                               icon: const Icon(Icons.add_circle_outline, color: LiveColors.textSecondary, size: 24),
                             ),
                             if (!_voiceMode) ...[
@@ -1689,6 +1725,8 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
             ),
+            // “+”面板：像键盘一样紧贴输入框下端弹出（相册 / 拍摄 / 文件 / 名片）
+            if (_attachPanelOpen) _buildAttachPanel(),
           ],
       ),
     );
@@ -1785,15 +1823,22 @@ class _Bubble extends StatelessWidget {
 
     final bubble = Container(
       constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.62),
-      padding: isGroup
-          ? const EdgeInsets.symmetric(horizontal: 14, vertical: 11)
-          : const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      // 图片消息：无背景、无内边距，图片本身就是气泡（圆角展示）
+      padding: isImage
+          ? EdgeInsets.zero
+          : (isGroup
+              ? const EdgeInsets.symmetric(horizontal: 14, vertical: 11)
+              : const EdgeInsets.symmetric(horizontal: 12, vertical: 9)),
       decoration: BoxDecoration(
-        color: message.isRecalled
-            ? LiveColors.card
-            : (isGroup ? (isMine ? null : LiveColors.card) : bubbleColor),
-        gradient:
-            isGroup && !message.isRecalled && isMine
+        color: isImage
+            ? Colors.transparent
+            : (message.isRecalled
+                ? LiveColors.card
+                : (isGroup ? (isMine ? null : LiveColors.card) : bubbleColor)),
+        gradient: !isImage &&
+                isGroup &&
+                !message.isRecalled &&
+                isMine
                 ? const LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
@@ -1897,8 +1942,22 @@ class _Bubble extends StatelessWidget {
                 ],
               ],
             ),
-          ),
-        ],
+            ),
+            if (isMine && showAvatar)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: isGroup
+                    ? _GradientAvatar(
+                        name: message.author?.nickname ?? '',
+                        size: 36,
+                      )
+                    : Avatar(
+                        url: message.author?.avatar ?? '',
+                        name: message.author?.nickname ?? '',
+                        size: 36,
+                    ),
+              ),
+          ],
       ),
       ),
     );

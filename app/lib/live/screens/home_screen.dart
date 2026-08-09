@@ -159,6 +159,10 @@ class _TopBar extends StatelessWidget {
             onPressed: () => LiveRoutes.push(context, RoutePaths.search),
           ),
           IconButton(
+            icon: const Icon(Icons.receipt_long_outlined, color: LiveColors.textPrimary, size: 24),
+            onPressed: () => LiveRoutes.push(context, RoutePaths.appointmentMy),
+          ),
+          IconButton(
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
