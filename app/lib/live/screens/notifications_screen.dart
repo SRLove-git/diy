@@ -5,7 +5,7 @@ import '../../api/chat_services.dart';
 import '../../api/models.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
-import '../live_routes.dart';
+// import '../live_routes.dart'; // 社区/Reels 前期暂不开放（跳转已注释）
 
 /// 通知页：按 Pixso 设计稿「31-通知」重做。
 /// 结构：顶部导航（返回 / 通知 / 全部已读）→ 互动分组（红色未读角标）→
@@ -316,18 +316,21 @@ class _NotificationRow extends StatelessWidget {
     );
   }
 
-  /// 点击通知跳转到对应内容：作品 / 短视频 / 用户主页；无跳转目标则仅标记已读。
+  /// 点击通知跳转到对应内容：作品 / 短视频 / 用户主页。
+  /// 社区 / Reels 前期暂不开放，跳转先注释，点击仅提示。
   void _open(BuildContext context) {
-    final id = n.actionId;
     switch (n.actionType) {
       case 'post':
-        if (id != null) LiveRoutes.pushId(context, RoutePaths.postDetail, id);
+        // if (id != null) LiveRoutes.pushId(context, RoutePaths.postDetail, id);
+        showLiveSnack(context, '社区功能暂未开放');
         break;
       case 'video':
-        if (id != null) LiveRoutes.pushId(context, RoutePaths.videoDetail, id);
+        // if (id != null) LiveRoutes.pushId(context, RoutePaths.videoDetail, id);
+        showLiveSnack(context, 'Reels 功能暂未开放');
         break;
       case 'user':
-        if (id != null) LiveRoutes.pushId(context, RoutePaths.userDetail, id);
+        // if (id != null) LiveRoutes.pushId(context, RoutePaths.userDetail, id);
+        showLiveSnack(context, '社区功能暂未开放');
         break;
     }
   }

@@ -88,45 +88,63 @@ class LiveAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
-/// 底部 5 Tab（主页/社区/Reels/聊天/我的），使用设计稿高亮资源图。
-/// 由 go_router StatefulShellRoute 的 shell 提供，切换时保活各分支状态。
+/// 底部 Tab（主页/我的）。
+/// 社区 / Reels / 聊天前期暂不开放，已隐藏（保留 5 Tab 设计资源，后续恢复时切换回设计稿资源图）。
 class LiveTabBar extends StatelessWidget {
   const LiveTabBar({super.key, required this.current, this.onTap});
 
   final int current;
   final ValueChanged<int>? onTap;
 
-  static const _assets = [
-    'assets/divtabwrap-home.png',
-    'assets/divtabwrap-community.png',
-    'assets/divtabwrap-reels.png',
-    'assets/divtabwrap-chat.png',
-    'assets/divtabwrap-profile.png',
+  static const _tabs = [
+    (Icons.home_outlined, Icons.home, '主页'),
+    (Icons.person_outline, Icons.person, '我的'),
   ];
 
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
     return Container(
-      height: 88 + bottomInset,
-      // Reels 深色导航图底部透明，补成不透明深色整块，与其他页面导航尺寸观感一致
-      color: current == 2 ? const Color(0xFF141414) : null,
-      child: Stack(
-        fit: StackFit.expand,
+      height: 64 + bottomInset,
+      color: LiveColors.bg,
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: LiveColors.divider, width: 0.5)),
+      ),
+      child: Row(
         children: [
-          Image.asset(_assets[current], fit: BoxFit.fill),
-          Row(
-            children: List.generate(5, (i) {
-              return Expanded(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    if (i != current) onTap?.call(i);
-                  },
+          for (var i = 0; i < _tabs.length; i++)
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  if (i != current) onTap?.call(i);
+                },
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      i == current ? _tabs[i].$2 : _tabs[i].$1,
+                      size: 24,
+                      color: i == current
+                          ? LiveColors.textPrimary
+                          : LiveColors.textTertiary,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _tabs[i].$3,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight:
+                            i == current ? FontWeight.w700 : FontWeight.w400,
+                        color: i == current
+                            ? LiveColors.textPrimary
+                            : LiveColors.textTertiary,
+                      ),
+                    ),
+                  ],
                 ),
-              );
-            }),
-          ),
+              ),
+            ),
         ],
       ),
     );

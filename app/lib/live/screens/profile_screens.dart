@@ -2,7 +2,7 @@ import 'package:flutter/material.dart' hide Page;
 import 'package:image_picker/image_picker.dart';
 
 import '../../api/api_client.dart';
-import '../../api/chat_services.dart';
+// import '../../api/chat_services.dart'; // 聊天前期暂不开放（私信入口已注释）
 import '../../api/content_services.dart';
 import '../../api/models.dart';
 import '../../api/services.dart';
@@ -1005,32 +1005,33 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 10),
-                                    Expanded(
-                                      child: OutlineButton(
-                                        label: '私信',
-                                        height: 42,
-                                        onTap: () async {
-                                          try {
-                                            final conv = await ChatService.instance
-                                                .createConversation(widget.userId);
-                                            if (context.mounted) {
-                                              LiveRoutes.push(
-                                                context,
-                                                RoutePaths.chatDetail,
-                                                extra: {
-                                                  'conversationId': conv.id,
-                                                  'peerId': widget.userId,
-                                                  'peerName': _status!.nickname,
-                                                  'peerAvatar': _status!.avatar,
-                                                },
-                                              );
-                                            }
-                                          } on ApiException catch (e) {
-                                            if (context.mounted) showLiveSnack(context, e.message);
-                                          }
-                                        },
-                                      ),
-                                    ),
+                                    // ── 聊天功能前期暂不开放，私信入口先隐藏 ──
+                                    // Expanded(
+                                    //   child: OutlineButton(
+                                    //     label: '私信',
+                                    //     height: 42,
+                                    //     onTap: () async {
+                                    //       try {
+                                    //         final conv = await ChatService.instance
+                                    //             .createConversation(widget.userId);
+                                    //         if (context.mounted) {
+                                    //           LiveRoutes.push(
+                                    //             context,
+                                    //             RoutePaths.chatDetail,
+                                    //             extra: {
+                                    //               'conversationId': conv.id,
+                                    //               'peerId': widget.userId,
+                                    //               'peerName': _status!.nickname,
+                                    //               'peerAvatar': _status!.avatar,
+                                    //             },
+                                    //           );
+                                    //         }
+                                    //       } on ApiException catch (e) {
+                                    //         if (context.mounted) showLiveSnack(context, e.message);
+                                    //       }
+                                    //     },
+                                    //   ),
+                                    // ),
                                   ],
                                 ),
                                 const SizedBox(height: 18),

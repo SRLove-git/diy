@@ -11,7 +11,7 @@ import 'screens/activity_screens.dart';
 import 'screens/appointment_screens.dart';
 import 'screens/auth_screens.dart';
 import 'screens/chat_screens.dart';
-import 'screens/community_screens.dart';
+// import 'screens/community_screens.dart'; // 社区前期暂不开放（分支已注释）
 import 'screens/home_screen.dart';
 import 'screens/member_screens.dart';
 import 'screens/notifications_screen.dart';
@@ -126,30 +126,31 @@ final GoRouter appRouter = GoRouter(
             ),
           ],
         ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: RoutePaths.community,
-              builder: (_, __) => const CommunityHomeScreen(),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: RoutePaths.reels,
-              builder: (_, __) => const ReelsScreen(),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: RoutePaths.chat,
-              builder: (_, __) => const ConversationListScreen(),
-            ),
-          ],
-        ),
+        // ── 社区 / Reels / 聊天前期暂不开放，分支先隐藏（恢复时取消注释） ──
+        // StatefulShellBranch(
+        //   routes: [
+        //     GoRoute(
+        //       path: RoutePaths.community,
+        //       builder: (_, __) => const CommunityHomeScreen(),
+        //     ),
+        //   ],
+        // ),
+        // StatefulShellBranch(
+        //   routes: [
+        //     GoRoute(
+        //       path: RoutePaths.reels,
+        //       builder: (_, __) => const ReelsScreen(),
+        //     ),
+        //   ],
+        // ),
+        // StatefulShellBranch(
+        //   routes: [
+        //     GoRoute(
+        //       path: RoutePaths.chat,
+        //       builder: (_, __) => const ConversationListScreen(),
+        //     ),
+        //   ],
+        // ),
         StatefulShellBranch(
           routes: [
             GoRoute(

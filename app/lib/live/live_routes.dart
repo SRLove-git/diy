@@ -117,13 +117,8 @@ class LiveRoutes {
   }
 
   static Future<void> switchTab(BuildContext context, int index) async {
-    final path = switch (index) {
-      0 => RoutePaths.home,
-      1 => RoutePaths.community,
-      2 => RoutePaths.reels,
-      3 => RoutePaths.chat,
-      _ => RoutePaths.profile,
-    };
+    // 社区 / Reels / 聊天前期暂不开放，仅保留 主页 / 我的 两个 Tab
+    final path = index == 0 ? RoutePaths.home : RoutePaths.profile;
     if (!_allowNavigation(path)) return;
     // 防重入：已处于目标 Tab（栈顶真实路径，含 imperative push）时跳过。
     // 避免延迟导航（如删除会话后 300ms 再切 Tab）期间用户已手动回到该 Tab，

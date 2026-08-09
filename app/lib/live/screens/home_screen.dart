@@ -313,10 +313,11 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.search, color: LiveColors.textPrimary, size: 24),
-            onPressed: () => LiveRoutes.push(context, RoutePaths.search),
-          ),
+          // ── 社区搜索前期暂不开放，入口先隐藏 ──
+          // IconButton(
+          //   icon: const Icon(Icons.search, color: LiveColors.textPrimary, size: 24),
+          //   onPressed: () => LiveRoutes.push(context, RoutePaths.search),
+          // ),
           IconButton(
             icon: const Icon(Icons.receipt_long_outlined, color: LiveColors.textPrimary, size: 24),
             onPressed: () => LiveRoutes.push(context, RoutePaths.appointmentMy),
