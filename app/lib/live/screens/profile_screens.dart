@@ -100,7 +100,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 _ProfileHeader(
                                   user: _me!,
                                   onEdit: () async {
-                                    await LiveRoutes.push(context, RoutePaths.profileEdit);
+                                    // 编辑页保存成功后直接返回最新用户信息，立即刷新主页头像/昵称
+                                    final updated =
+                                        await LiveRoutes.push<User>(
+                                      context,
+                                      RoutePaths.profileEdit,
+                                    );
+                                    if (updated != null && mounted) {
+                                      setState(() => _me = updated);
+                                    }
                                     _load();
                                   },
                                   onOrders: () => LiveRoutes.push(
@@ -1077,6 +1085,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   /// 刚选择的头像本地字节：立即预览，上传完成后仍保留到保存/离开页面，
   /// 避免预览依赖网络图加载（上传后不显示的问题）。
   Uint8List? _avatarPreview;
+  bool _avatarUploading = false;
   String _gender = 'secret';
   bool _saving = false;
 
@@ -1116,22 +1125,46 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
       if (picked == null) return;
       final bytes = await picked.readAsBytes();
-      // 先本地预览，保证选完立刻显示
-      if (mounted) setState(() => _avatarPreview = bytes);
+      // 先本地预览，保证选完立刻显示；上传期间禁止保存，避免头像漏存
+      if (mounted) {
+        setState(() {
+          _avatarPreview = bytes;
+          _avatarUploading = true;
+        });
+      }
       final url = await UploadService.instance.uploadImage(bytes, picked.name, folder: 'avatar');
       // 上传成功后记录正式 URL（保存时写入资料）；预览继续用本地字节，
       // 不受网络加载/缓存时序影响
-      if (mounted) setState(() => _avatar = url);
+      if (mounted) {
+        setState(() {
+          _avatar = url;
+          _avatarUploading = false;
+        });
+      }
     } on ApiException catch (e) {
-      if (mounted) setState(() => _avatarPreview = null);
+      if (mounted) {
+        setState(() {
+          _avatarPreview = null;
+          _avatarUploading = false;
+        });
+      }
       if (mounted) showLiveSnack(context, e.message);
     } catch (e) {
-      if (mounted) setState(() => _avatarPreview = null);
+      if (mounted) {
+        setState(() {
+          _avatarPreview = null;
+          _avatarUploading = false;
+        });
+      }
       if (mounted) showLiveSnack(context, '选择头像失败：$e');
     }
   }
 
   Future<void> _save() async {
+    if (_avatarUploading) {
+      showLiveSnack(context, '头像上传中，请稍候再保存');
+      return;
+    }
     setState(() => _saving = true);
     try {
       final body = <String, dynamic>{
@@ -1144,10 +1177,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         if (_birthdayCtrl.text.trim().isNotEmpty) 'birthday': _birthdayCtrl.text.trim(),
         if (_avatar.isNotEmpty) 'avatar': _avatar,
       };
-      await UserService.instance.updateMe(body);
+      final updated = await UserService.instance.updateMe(body);
       if (mounted) {
         showLiveSnack(context, '保存成功');
-        Navigator.of(context).pop(true);
+        // 返回最新用户信息，个人主页立即刷新头像/昵称等
+        Navigator.of(context).pop(updated);
       }
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -1261,7 +1295,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: InkWell(
-                  onTap: _saving ? null : _save,
+                  onTap: (_saving || _avatarUploading) ? null : _save,
                   borderRadius: BorderRadius.circular(18),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
