@@ -12,6 +12,11 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { randomInt } from 'crypto';
 import Redis from 'ioredis';
 import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
+import {
+  centsToYuan,
+  percentOffCents,
+  yuanToCents,
+} from '../common/money.util';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { Activity } from '../activities/activity.entity';
 import { ActivitySession } from '../activities/activity-session.entity';
@@ -273,12 +278,12 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       const hourly = this.hourlyUnitPrice(isMember, store);
       unitPrice =
         store.allDayPrice != null
-          ? store.allDayPrice
-          : this.roundMoney(hourly * durationHours);
+          ? centsToYuan(yuanToCents(store.allDayPrice))
+          : centsToYuan(yuanToCents(hourly) * durationHours);
       originalUnit =
         store.allDayPrice != null
-          ? store.allDayPrice
-          : this.roundMoney((store.price ?? 39.9) * durationHours);
+          ? centsToYuan(yuanToCents(store.allDayPrice))
+          : centsToYuan(yuanToCents(store.price ?? 39.9) * durationHours);
     } else if (bookingType === 'package') {
       // 时长套餐：选择套餐 + 开始时间
       if (dto.packageId == null) {
@@ -314,9 +319,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
         this.minutes(startTime) + durationHours * 60,
       );
       const hourly = this.hourlyUnitPrice(isMember, store);
-      unitPrice = this.roundMoney(hourly * durationHours);
-      originalUnit = this.roundMoney(
-        (store.price ?? 39.9) * durationHours,
+      unitPrice = centsToYuan(yuanToCents(hourly) * durationHours);
+      originalUnit = centsToYuan(
+        yuanToCents(store.price ?? 39.9) * durationHours,
       );
     }
 
@@ -343,8 +348,11 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    const amount = this.roundMoney(unitPrice * dto.peopleCount);
-    const originalAmount = this.roundMoney(originalUnit * dto.peopleCount);
+    // 金额计算统一走整数分，避免浮点误差
+    const amount = centsToYuan(yuanToCents(unitPrice) * dto.peopleCount);
+    const originalAmount = centsToYuan(
+      yuanToCents(originalUnit) * dto.peopleCount,
+    );
 
     // 1) Redis 分布式锁：串行化同一组桌位同日的创建请求
     const lockKey = `booking:lock:${dto.storeId}:${[...requestedIds]
@@ -399,11 +407,13 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
             em,
             userId,
             dto.userCouponId,
-            amount,
+            yuanToCents(amount),
           );
-          couponDiscount = applied.discount;
+          couponDiscount = centsToYuan(applied.discountCents);
           couponTitle = applied.title;
-          finalAmount = this.roundMoney(amount - couponDiscount);
+          finalAmount = centsToYuan(
+            yuanToCents(amount) - applied.discountCents,
+          );
         }
 
         const appointment = em.create(Appointment, {
@@ -482,8 +492,11 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       activity.memberPrice,
     );
     const originalUnit = activity.price ?? 0;
-    const amount = this.roundMoney(unitPrice * dto.peopleCount);
-    const originalAmount = this.roundMoney(originalUnit * dto.peopleCount);
+    // 金额计算统一走整数分，避免浮点误差
+    const amount = centsToYuan(yuanToCents(unitPrice) * dto.peopleCount);
+    const originalAmount = centsToYuan(
+      yuanToCents(originalUnit) * dto.peopleCount,
+    );
 
     const lockKey = `booking:activity:${dto.activityId}:${dto.activitySessionId}`;
     const acquired = await this.redis.set(lockKey, '1', 'EX', 10, 'NX');
@@ -522,11 +535,13 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
             em,
             userId,
             dto.userCouponId,
-            amount,
+            yuanToCents(amount),
           );
-          couponDiscount = applied.discount;
+          couponDiscount = centsToYuan(applied.discountCents);
           couponTitle = applied.title;
-          finalAmount = this.roundMoney(amount - couponDiscount);
+          finalAmount = centsToYuan(
+            yuanToCents(amount) - applied.discountCents,
+          );
         }
 
         const appointment = em.create(Appointment, {
@@ -581,8 +596,8 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     em: EntityManager,
     userId: number,
     userCouponId: number,
-    amount: number,
-  ): Promise<{ discount: number; title: string }> {
+    amountCents: number,
+  ): Promise<{ discountCents: number; title: string }> {
     const ownedRepo = em.getRepository(UserCoupon);
     const couponRepo = em.getRepository(Coupon);
 
@@ -600,24 +615,24 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     }
 
     const threshold = this.parseCouponThreshold(coupon.threshold);
-    if (amount < threshold) {
+    if (amountCents < yuanToCents(threshold)) {
       throw new BadRequestException(
         `订单金额未满足优惠券使用门槛（${coupon.threshold}）`,
       );
     }
 
     const parsed = this.parseCouponAmount(coupon.amount);
-    let discount =
+    const discountCents =
       parsed.kind === 'percent'
-        ? amount * (1 - parsed.value / 10)
-        : Math.min(parsed.value, amount);
-    discount = this.roundMoney(Math.max(0, discount));
+        ? percentOffCents(amountCents, parsed.value)
+        : Math.min(yuanToCents(parsed.value), amountCents);
+    const discount = centsToYuan(Math.max(0, discountCents));
 
     owned.status = 'used';
     owned.usedAt = new Date();
     await ownedRepo.save(owned);
 
-    return { discount, title: coupon.title };
+    return { discountCents, title: coupon.title };
   }
 
   /** 解析券额：`¥20` → 现金 20；`8.8 折` → 88% 支付 */
@@ -636,10 +651,6 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     if (/无门槛/.test(raw)) return 0;
     const m = raw.match(/(\d+(?:\.\d+)?)/);
     return m ? parseFloat(m[1]) : 0;
-  }
-
-  private roundMoney(value: number): number {
-    return Math.round(value * 100) / 100;
   }
 
   /** 活动场次列表（含剩余名额），预约流程选场次用 */
