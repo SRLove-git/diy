@@ -43,6 +43,22 @@ export class AdminMembersController {
   @Delete(':id') removeMembership(@Param('id', ParseIntPipe) id: number) {
     return this.members.removeMembership(id);
   }
+  @Get('orders') orders(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('keyword') keyword?: string,
+  ) {
+    return this.members.adminListOrders(page, keyword?.trim());
+  }
+  @Post('orders/:id/confirm') confirmOrder(
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.members.adminConfirmOrder(id);
+  }
+  @Post('orders/:id/cancel') cancelOrder(
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.members.adminCancelOrder(id);
+  }
   @Get('plans') plans() {
     return this.members.listPlans(true);
   }

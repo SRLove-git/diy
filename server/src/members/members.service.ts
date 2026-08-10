@@ -5,7 +5,14 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Like, MoreThan, Repository } from 'typeorm';
+import {
+  DataSource,
+  FindOptionsWhere,
+  In,
+  Like,
+  MoreThan,
+  Repository,
+} from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { Coupon, UserCoupon } from './coupon.entity';
 import {
@@ -15,6 +22,7 @@ import {
   UpdateMembershipDto,
 } from './member.dto';
 import { MemberExperience } from './member-experience.entity';
+import { MemberOrder } from './member-order.entity';
 import { MemberPlan } from './member-plan.entity';
 import { Membership } from './membership.entity';
 
@@ -30,6 +38,8 @@ export class MembersService implements OnModuleInit {
     private readonly userCoupons: Repository<UserCoupon>,
     @InjectRepository(MemberExperience)
     private readonly experiences: Repository<MemberExperience>,
+    @InjectRepository(MemberOrder)
+    private readonly orders: Repository<MemberOrder>,
     private readonly dataSource: DataSource,
     private readonly users: UsersService,
   ) {}
@@ -142,24 +152,99 @@ export class MembersService implements OnModuleInit {
   async purchase(userId: number, planId: number) {
     const plan = await this.plans.findOneBy({ id: planId, enabled: true });
     if (!plan) throw new NotFoundException('套餐不存在或已下架');
-    // 一期为「模拟支付」：不做在线支付，直接按套餐时长延长会员期；
-    // 上线前需明确处理方式（接入真实支付，或下线购买入口仅保留后台开通）。
-    const current = await this.memberships.findOneBy({ userId });
+    // 线上下单、到店支付：只生成待确认申请，不直接激活会员；
+    // 管理端确认（收款后）才真正开通/顺延会员期。
+    const order = this.orders.create({
+      userId,
+      planId: plan.id,
+      planName: plan.name,
+      durationDays: plan.durationDays,
+      amount: Number(plan.price),
+    });
+    return this.orders.save(order);
+  }
+
+  /** 我的开通申请列表 */
+  async myOrders(userId: number) {
+    return this.orders.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  /** 管理端：开通申请列表（分页，可按用户关键字筛选），附带用户邮箱/昵称 */
+  async adminListOrders(
+    page = 1,
+    keyword?: string,
+  ): Promise<
+    [Array<MemberOrder & { userEmail?: string; userNickname?: string }>, number]
+  > {
+    const where: FindOptionsWhere<MemberOrder> = {};
+    if (keyword?.trim()) {
+      const matched = await this.users.findByKeyword(keyword.trim());
+      const userIds = matched.map((u) => u.id);
+      if (!userIds.length) return [[], 0];
+      where.userId = In(userIds);
+    }
+    const [items, total] = await this.orders.findAndCount({
+      where,
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * 20,
+      take: 20,
+    });
+    const userIds = Array.from(new Set(items.map((i) => i.userId)));
+    const users = await this.users.findByIds(userIds);
+    const userMap = new Map(users.map((u) => [u.id, u]));
+    return [
+      items.map((i) => {
+        const user = userMap.get(i.userId);
+        return {
+          ...i,
+          userEmail: user?.email ?? undefined,
+          userNickname: user?.nickname || `用户 #${i.userId}`,
+        };
+      }),
+      total,
+    ];
+  }
+
+  /** 管理端确认开通：到店收款后按套餐时长开通/顺延会员期，申请置为已开通 */
+  async adminConfirmOrder(id: number) {
+    const order = await this.orders.findOneBy({ id });
+    if (!order) throw new NotFoundException('开通申请不存在');
+    if (order.status !== 'pending') {
+      throw new BadRequestException('仅待确认的开通申请可确认');
+    }
+    const current = await this.memberships.findOneBy({ userId: order.userId });
     const now = new Date();
     const base =
       current?.expireAt && current.expireAt > now ? current.expireAt : now;
-    const expireAt = new Date(base.getTime() + plan.durationDays * 86400000);
+    const expireAt = new Date(base.getTime() + order.durationDays * 86400000);
     const member =
       current ??
       this.memberships.create({
-        userId,
-        memberNo: `M${String(userId).padStart(8, '0')}`,
+        userId: order.userId,
+        memberNo: `M${String(order.userId).padStart(8, '0')}`,
         levelName: '手作会员',
         expireAt,
       });
     member.expireAt = expireAt;
     await this.memberships.save(member);
-    return this.myMembership(userId);
+    order.status = 'confirmed';
+    order.confirmedAt = new Date();
+    await this.orders.save(order);
+    return this.myMembership(order.userId);
+  }
+
+  /** 管理端取消开通申请（未确认前） */
+  async adminCancelOrder(id: number) {
+    const order = await this.orders.findOneBy({ id });
+    if (!order) throw new NotFoundException('开通申请不存在');
+    if (order.status !== 'pending') {
+      throw new BadRequestException('仅待确认的开通申请可取消');
+    }
+    order.status = 'cancelled';
+    return this.orders.save(order);
   }
 
   async listCoupons(userId: number) {

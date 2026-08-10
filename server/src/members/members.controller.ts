@@ -31,6 +31,9 @@ export class MembersController {
   ) {
     return this.members.purchase(user.id, planId);
   }
+  @Get('orders') orders(@CurrentUser() user: AuthUser) {
+    return this.members.myOrders(user.id);
+  }
   @Get('coupons') coupons(@CurrentUser() user: AuthUser) {
     return this.members.listCoupons(user.id);
   }
