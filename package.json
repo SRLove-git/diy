@@ -2,7 +2,7 @@
   "name": "diy-workspace",
   "version": "1.0.0",
   "private": true,
-  "description": "手作星球 Monorepo 根：统一各子项目（app/server/admin）的构建、测试与开发脚本",
+  "description": "Think Origin Monorepo 根：统一各子项目（app/server/admin）的构建、测试与开发脚本",
   "scripts": {
     "dev:server": "npm --prefix server run start:dev",
     "build:server": "npm --prefix server run build",

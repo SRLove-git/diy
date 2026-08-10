@@ -317,6 +317,20 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
+    // 已过去的时间段不可预约（服务端兜底）：
+    // 按小时/套餐：开始时间必须晚于当前；全天不限时：营业结束时间需晚于当前
+    if (bookingType === 'all_day') {
+      const endDateTime = new Date(`${dto.date}T${endTime}:00`);
+      if (endDateTime.getTime() <= Date.now()) {
+        throw new BadRequestException('该日期营业时段已结束，无法预约');
+      }
+    } else {
+      const startDateTime = new Date(`${dto.date}T${startTime}:00`);
+      if (startDateTime.getTime() <= Date.now()) {
+        throw new BadRequestException('该时段已开始，无法预约');
+      }
+    }
+
     const amount = this.roundMoney(unitPrice * dto.peopleCount);
     const originalAmount = this.roundMoney(originalUnit * dto.peopleCount);
 

@@ -264,7 +264,7 @@ class _ReelPage extends StatelessWidget {
   String get _caption {
     if (video.title.isNotEmpty) return video.title;
     if (video.content.isNotEmpty) return video.content;
-    return '来自 ${video.author?.displayName ?? '手作星球'} 的作品';
+    return '来自 ${video.author?.displayName ?? 'Think Origin'} 的作品';
   }
 
   @override
@@ -304,7 +304,7 @@ class _ReelPage extends StatelessWidget {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          '@${author?.displayName ?? '手作星球'}',
+                          '@${author?.displayName ?? 'Think Origin'}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -338,7 +338,7 @@ class _ReelPage extends StatelessWidget {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          '${video.music} - ${author?.displayName ?? '手作星球'}',
+                          '${video.music} - ${author?.displayName ?? 'Think Origin'}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -1230,7 +1230,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         ? widget.video.title
         : widget.video.content;
     final authorLine =
-        '@${widget.video.author?.displayName ?? '手作星球'}'
+        '@${widget.video.author?.displayName ?? 'Think Origin'}'
         '${title.isNotEmpty ? ' · $title' : ''}';
     final pos = _controller?.value.position ?? Duration.zero;
     final total = _controller?.value.duration ?? Duration.zero;

@@ -79,9 +79,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 90),
                   const Center(
                     child: Text(
-                      '手作星球',
+                      'Think Origin',
                       style: TextStyle(
-                        fontSize: 36,
+                        fontSize: 30,
                         fontWeight: FontWeight.w800,
                         color: LiveColors.textPrimary,
                       ),
@@ -289,7 +289,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         userId: r.userId,
       );
       if (!mounted) return;
-      showLiveSnack(context, '注册成功，欢迎加入手作星球');
+      showLiveSnack(context, '注册成功，欢迎加入 Think Origin');
       // save() 触发 AuthStore notifyListeners -> 路由 redirect 自动跳转首页
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);

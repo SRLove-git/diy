@@ -511,6 +511,13 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
     });
   }
 
+  String _todayStr() {
+    final now = DateTime.now();
+    final mm = now.month.toString().padLeft(2, '0');
+    final dd = now.day.toString().padLeft(2, '0');
+    return '${now.year}-$mm-$dd';
+  }
+
   @override
   Widget build(BuildContext context) {
     return LivePage(
@@ -774,7 +781,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
 
   Widget _startTimeChips(Store store, int hours) {
     final opts = _startOptions(store, hours);
-    if (opts.isEmpty) return const EmptyView(text: '该时长超出营业时间');
+    if (opts.isEmpty) return const EmptyView(text: '该时段已无可约开始时间');
     if (_startTime != null && !opts.contains(_startTime)) {
       // 时长/套餐变化后同步重置为第一个可选开始时间
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -801,7 +808,12 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
     final close = _minutes(range.$2);
     final maxStart = close - hours * 60;
     final list = <String>[];
+    // 今天已过去的开始时间不可预约
+    final isToday = _date == _todayStr();
+    final now = DateTime.now();
+    final nowMin = now.hour * 60 + now.minute;
     for (var m = open; m <= maxStart; m += 60) {
+      if (isToday && m <= nowMin) continue;
       list.add(_fmtMin(m));
     }
     return list;

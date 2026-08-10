@@ -31,7 +31,7 @@ void main() {
 
   testWidgets('启动进入登录页（用户名密码登录）', (tester) async {
     await pumpApp(tester);
-    expect(find.text('手作星球'), findsOneWidget);
+    expect(find.text('Think Origin'), findsOneWidget);
     expect(find.text('登录'), findsOneWidget);
     expect(find.text('用户名 / 邮箱'), findsOneWidget);
     expect(find.text('注册新账号'), findsOneWidget);

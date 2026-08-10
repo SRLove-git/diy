@@ -1,4 +1,4 @@
-# 手作星球 · Flutter UI 预览
+# Think Origin · Flutter UI 预览
 
 由 Pixso 设计稿（82 屏）通过 Pixso MCP `design_to_code` 生成的 Flutter/Dart 工程。
 

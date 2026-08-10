@@ -450,7 +450,7 @@ screen("01", "01-登录", f'''
 {statusbar()}
 <div class="content">
   <div style="text-align:center;margin:56px 0 40px;">
-    <div class="h1 brandtxt" style="font-size:36px;">手作星球</div>
+    <div class="h1 brandtxt" style="font-size:36px;">Think Origin</div>
     <div class="sec" style="margin-top:10px;">发现手作 · 遇见同好</div>
   </div>
   <div class="field mb3"><span class="pre">+86</span><span class="sep"></span><span class="ph">请输入手机号</span></div>
@@ -484,7 +484,7 @@ screen("65", "65-密码登录", f'''
 {nav("密码登录")}
 <div class="content">
   <div style="text-align:center;margin:36px 0 30px;">
-    <div class="h1 brandtxt" style="font-size:30px;">手作星球</div>
+    <div class="h1 brandtxt" style="font-size:30px;">Think Origin</div>
     <div class="sec" style="margin-top:8px;">使用密码登录</div>
   </div>
   <div class="field mb3"><span class="pre">+86</span><span class="sep"></span><span class="ph">请输入手机号 / 用户名</span></div>
@@ -522,7 +522,7 @@ def _home_entry(cls, title, desc):
 screen("03", "03-首页", f'''
 {statusbar()}
 <div class="nav">
-  <div class="title" style="font-size:20px;"><span class="brandtxt" style="font-weight:800;">手作星球</span></div>
+  <div class="title" style="font-size:20px;"><span class="brandtxt" style="font-weight:800;">Think Origin</span></div>
   <div class="right" style="gap:18px;">{icon("srch")}{icon("bl")}<span class="badge" style="position:absolute;top:2px;right:6px;">3</span></div>
 </div>
 <div class="content">
@@ -578,7 +578,7 @@ screen("04", "04-门店列表", f'''
     <div class="row between mt3"><span class="sec" style="font-size:12px;">上海市静安区南京西路 1266 号</span><div class="btn btn-sm black">预约</div></div>
   </div>
   <div class="card card-pad mb3">
-    <div class="row between mb2"><span class="h3">手作星球旗舰店</span><span class="price" style="font-size:14px;">¥49.9</span></div>
+    <div class="row between mb2"><span class="h3">Think Origin旗舰店</span><span class="price" style="font-size:14px;">¥49.9</span></div>
     <div class="row gap2 mb2"><span class="ter">★★★★★ 5.0</span><span class="ter">·</span><span class="ter">10:00-22:00</span></div>
     <div class="row gap2"><span class="tag red">旗舰</span><span class="tag gray">可预约</span></div>
     <div class="row between mt3"><span class="sec" style="font-size:12px;">徐汇区淮海中路 888 号</span><div class="btn btn-sm black">预约</div></div>
@@ -609,7 +609,7 @@ screen("67", "67-门店搜索", f'''
     <div class="row between mt3"><span class="sec" style="font-size:12px;">上海市静安区南京西路 1266 号</span><div class="btn btn-sm black">预约</div></div>
   </div>
   <div class="card card-pad mb3">
-    <div class="row between mb2"><span class="h3">手作星球旗舰店</span><span class="price" style="font-size:14px;">¥49.9</span></div>
+    <div class="row between mb2"><span class="h3">Think Origin旗舰店</span><span class="price" style="font-size:14px;">¥49.9</span></div>
     <div class="row gap2 mb2"><span class="ter">★★★★★ 5.0</span><span class="ter">·</span><span class="ter">10:00-22:00</span></div>
     <div class="row gap2"><span class="tag red">旗舰</span><span class="tag gray">可预约</span></div>
     <div class="row between mt3"><span class="sec" style="font-size:12px;">徐汇区淮海中路 888 号</span><div class="btn btn-sm black">预约</div></div>
@@ -1017,7 +1017,7 @@ screen("11c", "11-活动专区-续", f'''
 {nav("活动专区")}
 <div class="content">
   <div style="text-align:center;padding:6px 0 4px;"><span class="ter" style="font-size:10px;">· 接上一页 ·</span></div>
-  {_activity("亲子手作工坊","双倍积分","08-22 周六 14:00","徐汇 · 手作星球旗舰店","¥59", "16/30", "p6")}
+  {_activity("亲子手作工坊","双倍积分","08-22 周六 14:00","徐汇 · Think Origin旗舰店","¥59", "16/30", "p6")}
   {_activity("创意拼豆市集","新品","08-30 周日 10:00","浦东 · 滨江大道 1188 号","¥19.9", "40/80", "p2")}
   <div class="btn btn-ghost btn-block">查看更多活动</div>
 </div>
@@ -1030,7 +1030,7 @@ screen("11b", "11-活动详情-预约", f'''
 <div class="content" style="padding:4px 16px 0;">
   <div class="photo p1" style="height:150px;border-radius:20px;">
     <div class="tag" style="position:absolute;left:10px;top:10px;background:rgba(20,20,20,.78);color:#fff;">限会员</div>
-    <div class="tagline">七夕主题拼豆派对 · 手作星球</div>
+    <div class="tagline">七夕主题拼豆派对 · Think Origin</div>
   </div>
   <div class="h2 mt3">七夕主题拼豆派对</div>
   <div class="sec mt1">08-10 周六 · 静安万象城 3F</div>
@@ -1323,7 +1323,7 @@ screen("16", "16-Reels", f'''
       <b style="font-size:15px;">@手作阿周</b>
     </div>
     <div style="font-size:13px;line-height:1.6;">3 分钟学会渐变拼豆，新手也能轻松上手 🎨 #拼豆 #手工</div>
-    <div class="row gap2 mt2" style="font-size:12px;opacity:.75;">♪ 夏日小夜曲 - 手作星球</div>
+    <div class="row gap2 mt2" style="font-size:12px;opacity:.75;">♪ 夏日小夜曲 - Think Origin</div>
   </div>
   <div style="position:absolute;right:12px;bottom:180px;display:flex;flex-direction:column;align-items:center;gap:22px;color:#fff;">
     <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><div class="ring"><div class="inner"><div class="av sm g5">周</div></div></div><span style="font-size:10px;">关注</span></div>
@@ -1500,7 +1500,7 @@ screen("20", "20-选择音乐", f'''
   <div class="field mb4">{icon("srch","ic-sm")}<span class="ph">搜索歌名 / 歌手</span></div>
   <div class="section-title" style="margin-top:0;"><span class="h2">热门推荐</span></div>
   <div class="card card-pad" style="padding:4px 16px;">
-    {_music("g1","夏日小夜曲","手作星球", "01:26", True)}
+    {_music("g1","夏日小夜曲","Think Origin", "01:26", True)}
     <div class="divider"></div>
     {_music("g2","手作进行曲","拼豆乐队", "02:03", True)}
     <div class="divider"></div>
@@ -1516,7 +1516,7 @@ screen("20", "20-选择音乐", f'''
   </div>
 </div>
 <div style="position:absolute;left:0;right:0;bottom:0;height:72px;border-top:1px solid var(--line);background:#fff;display:flex;align-items:center;padding:0 16px;gap:12px;">
-  <div class="row gap3" style="flex:1;">{icon("mus")}<div><div class="h3" style="font-size:14px;">夏日小夜曲</div><div class="ter" style="font-size:11px;">手作星球</div></div></div>
+  <div class="row gap3" style="flex:1;">{icon("mus")}<div><div class="h3" style="font-size:14px;">夏日小夜曲</div><div class="ter" style="font-size:11px;">Think Origin</div></div></div>
   <div class="btn btn-black btn-sm" style="height:38px;">使用配乐</div>
 </div>
 ''')
@@ -1777,7 +1777,7 @@ def _my_profile_base():
   </div>
   <div class="h3">小豆子</div>
   <div class="sec mt1">@xiaodouzi · 拼豆手作爱好者</div>
-  <div class="ter mt1">手作星球 2026 年 6 月入驻 · 上海</div>
+  <div class="ter mt1">Think Origin 2026 年 6 月入驻 · 上海</div>
   <div class="row gap3 mt4">
     <div class="btn btn-black btn-sm" style="flex:1;height:44px;border-radius:14px;">编辑资料</div>
     <div class="btn btn-ghost btn-sm" style="flex:1;height:44px;border-radius:14px;">分享主页</div>
@@ -2044,7 +2044,7 @@ screen("32b", "32-设置-续", f'''
   <div style="text-align:center;padding:6px 0 4px;"><span class="ter" style="font-size:10px;">· 接上一页 ·</span></div>
   <div class="h2 mb2">关于</div>
   <div class="card card-pad" style="padding:4px 16px;">
-    {_setrow("版本","手作星球 v1.0.0")}
+    {_setrow("版本","Think Origin v1.0.0")}
     <div class="divider"></div>
     {_setrow("用户协议","",'<span class="cr" style="color:var(--ter);"></span>')}
     <div class="divider"></div>
@@ -2411,7 +2411,7 @@ screen("43", "43-观看历史", f'''
     <div class="divider"></div>
     {_hist_row("p6","奶油胶手机壳 DIY","果冻 · 作品","08-05 20:41")}
     <div class="divider"></div>
-    {_hist_row("p9","亲子手作工坊实录","手作星球 · 视频","08-05 16:22")}
+    {_hist_row("p9","亲子手作工坊实录","Think Origin · 视频","08-05 16:22")}
     <div class="divider"></div>
     {_hist_row("p3","七夕主题拼豆作品合集","柠檬精 · 作品","08-04 11:05")}
   </div>
@@ -2651,7 +2651,7 @@ screen("69", "69-搜索首页", f'''
     <div class="divider"></div>
     <div class="row gap3" style="padding:11px 0;"><span style="width:22px;font-size:14px;font-weight:700;">4</span><span class="h3" style="font-size:14px;">七夕拼豆派对</span><span style="flex:1;"></span><span class="ter" style="font-size:11px;">6.2w 搜索</span></div>
     <div class="divider"></div>
-    <div class="row gap3" style="padding:11px 0;"><span style="width:22px;font-size:14px;font-weight:700;">5</span><span class="h3" style="font-size:14px;">手作星球</span><span style="flex:1;"></span><span class="ter" style="font-size:11px;">5.1w 搜索</span></div>
+    <div class="row gap3" style="padding:11px 0;"><span style="width:22px;font-size:14px;font-weight:700;">5</span><span class="h3" style="font-size:14px;">Think Origin</span><span style="flex:1;"></span><span class="ter" style="font-size:11px;">5.1w 搜索</span></div>
   </div>
 </div>
 ''')

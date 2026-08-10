@@ -272,7 +272,7 @@ class _ProfileHeader extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          '手作星球${joinYear != null ? ' ${joinYear} 年 ${joinMonth ?? ''} 月入驻' : ''}'
+          'Think Origin${joinYear != null ? ' ${joinYear} 年 ${joinMonth ?? ''} 月入驻' : ''}'
           '${user.location.isNotEmpty ? ' · ${user.location}' : ''}',
           textAlign: TextAlign.center,
           maxLines: 1,
@@ -2110,7 +2110,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     _SettingsInfoRow(
                       title: '版本',
-                      subtitle: '手作星球 v1.0.0',
+                      subtitle: 'Think Origin v1.0.0',
                     ),
                     const Divider(height: 1, color: LiveColors.divider),
                     _SettingsInfoRow(

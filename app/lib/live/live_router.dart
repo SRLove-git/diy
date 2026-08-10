@@ -23,7 +23,7 @@ import 'screens/video_screens.dart';
 /// 底部 Tab 快速连续切换的防抖时间戳。
 DateTime? _lastTabTap;
 
-/// 手作星球路由表。
+/// Think Origin 路由表。
 /// - 底部 5 Tab 使用 StatefulShellRoute.indexedStack，切换时保留各分支状态（Tab 保活）；
 /// - 其余页面为顶层路由，覆盖在 Tab 壳之上；
 /// - redirect 负责登录态跳转：启动先进 Splash，等待 AuthStore 恢复完成
