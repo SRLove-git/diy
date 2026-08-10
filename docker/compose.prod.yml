@@ -54,6 +54,8 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me}
       # CORS 白名单（逗号分隔）；不配置则默认禁止跨域（原生 App 不受影响）
       CORS_ORIGINS: ${CORS_ORIGINS:-}
+      # 内容机审关键词（逗号分隔），管理端可运行时增删
+      CONTENT_KEYWORDS: ${CONTENT_KEYWORDS:-}
       # 生产 schema 由迁移管理：启动时自动执行 migrations/ 中的迁移（含首次建表）
       DB_MIGRATIONS_RUN: ${DB_MIGRATIONS_RUN:-true}
       # SMTP 邮件（验证码）：未配置时开发模式会打印到日志，生产必须配置

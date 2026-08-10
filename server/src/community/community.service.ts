@@ -20,9 +20,7 @@ import { FeedCacheService } from '../common/feed-cache.service';
 import { CreatePostDto, UpdatePostStatusDto } from './post.dto';
 import { CreateCommentDto } from './comment.dto';
 import { NotificationsService } from '../notifications/notifications.service';
-
-/** 简易敏感词列表（一期机审用） */
-const BLOCKED_KEYWORDS = ['违禁', '色情', '赌博', '诈骗', '枪支', '毒品'];
+import { ModerationService } from '../moderation/moderation.service';
 
 /** 作者简要信息（嵌入列表响应中，避免 N+1 查询） */
 export interface AuthorInfo {
@@ -53,6 +51,7 @@ export class CommunityService {
     private readonly users: Repository<User>,
     private readonly feedCache: FeedCacheService,
     private readonly notifications: NotificationsService,
+    private readonly moderation: ModerationService,
   ) {}
 
   /** 发送互动通知（失败不影响主流程），仅通知内容作者本人且跳过自己给自己发 */
@@ -107,10 +106,9 @@ export class CommunityService {
 
   /** 发布作品：内容机审 → 标记 pending，等待人工复核 */
   async create(userId: number, dto: CreatePostDto): Promise<Post> {
-    const text = (dto.content ?? '').toLowerCase();
-    const blocked = BLOCKED_KEYWORDS.find((kw) => text.includes(kw));
+    const blocked = await this.moderation.findBlocked(dto.content ?? '');
     if (blocked) {
-      throw new BadRequestException(`内容包含违规关键词，请修改后发布`);
+      throw new BadRequestException(`内容包含违规关键词「${blocked}」，请修改后发布`);
     }
 
     const post = this.posts.create({
