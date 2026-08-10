@@ -188,6 +188,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get changePasswordTitle => 'Change Password';
 
   @override
+  String get changePasswordAppBar => 'Change Password';
+
+  @override
   String get changePasswordDesc =>
       'Verify your current password, then set a new one';
 
@@ -464,6 +467,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeToCheckIn => 'Check in';
 
   @override
+  String homePriceFrom(String price) {
+    return 'From $price';
+  }
+
+  @override
   String homeStartedAt(String date, String time, String duration) {
     return '$date $time started$duration';
   }
@@ -478,6 +486,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonLoadFailed => 'Failed to load';
+
+  @override
+  String get commonLoadFailedHint =>
+      'Failed to load, please make sure the backend is running';
+
+  @override
+  String get commonFree => 'Free';
 
   @override
   String get weekdayMon => 'Mon';
@@ -583,6 +598,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get memberClaimAll => 'Claim All';
 
   @override
+  String get memberRecommended => 'Recommended';
+
+  @override
+  String get memberRenew => 'Renew';
+
+  @override
+  String get memberOpen => 'Open';
+
+  @override
+  String get memberUsable => 'Usable';
+
+  @override
   String get memberNoCoupons => 'No coupons yet, visit the coupon center';
 
   @override
@@ -657,6 +684,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get storeBookNow => 'Book Now';
+
+  @override
+  String get storeNoResults => 'No matching stores';
+
+  @override
+  String storeHourlyPerPerson(String price) {
+    return 'Hourly $price/person/hour';
+  }
+
+  @override
+  String get storeStepDate => 'Choose date';
+
+  @override
+  String get storeDuration => 'Duration';
+
+  @override
+  String get storeNoStartTimes => 'No start times available for this slot';
+
+  @override
+  String storeMemberPrefix(String price) {
+    return ' · Member $price';
+  }
+
+  @override
+  String get storeMemberFree => ' · Member free';
+
+  @override
+  String storeGroupPrefix(String price) {
+    return ' · Group $price';
+  }
+
+  @override
+  String storeAllDayPrefix(String price) {
+    return ' · All-day $price/person';
+  }
 
   @override
   String get storeSearchPlaceholder => 'Search stores';
@@ -838,6 +900,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appointmentViewQr => 'View QR code';
+
+  @override
+  String get appointmentRemainingTime =>
+      'Time remaining (starts on scan, no extension)';
+
+  @override
+  String get appointmentClockOutEnd => 'End session';
+
+  @override
+  String get appointmentShowStaff => 'Show to staff to check in';
+
+  @override
+  String get appointmentCodeLabel => 'Code';
+
+  @override
+  String get appointmentQrRefresh => 'QR code refreshes every 30 seconds';
+
+  @override
+  String appointmentValidUntilAt(String time) {
+    return 'Valid until $time';
+  }
+
+  @override
+  String get appointmentServiceEnd => 'Session Ended';
 
   @override
   String appointmentPayAtStore(String amount) {
@@ -1039,6 +1125,23 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get activityNotBookable =>
       'Online booking not available for this activity yet';
+
+  @override
+  String get activityEmpty => 'No activities';
+
+  @override
+  String get activityCardDescPlaceholder => 'Details coming soon';
+
+  @override
+  String activityPricePerPerson(String price) {
+    return '$price/person';
+  }
+
+  @override
+  String get activityNoSessions => 'No bookable sessions';
+
+  @override
+  String get activityFull => 'Full';
 
   @override
   String get notificationTitle => 'Notifications';

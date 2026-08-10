@@ -65,7 +65,7 @@ class _StoreListScreenState extends State<StoreListScreen> {
               ),
               Expanded(
                 child: stores.isEmpty
-                    ? const EmptyView(text: '暂无门店，请先到管理后台添加')
+                    ? EmptyView(text: context.l10n.storeEmpty)
                     : RefreshIndicator(
                         onRefresh: () async => _retry(),
                         child: ListView.separated(
@@ -374,7 +374,7 @@ class _StoreSearchScreenState extends State<StoreSearchScreen> {
                 : _error != null
                     ? ErrorView(message: _error!, onRetry: _load)
                     : _filtered.isEmpty
-                        ? const EmptyView(text: '未找到相关门店')
+                        ? EmptyView(text: context.l10n.storeNoResults)
                         : ListView.separated(
                             padding: const EdgeInsets.all(18),
                             itemCount: _filtered.length,
@@ -511,14 +511,14 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      '按小时 \$${fmtPrice(store.price)}/人/小时'
-                      '${store.memberPrice != null && store.memberPrice! > 0 ? '　会员 \$${fmtPrice(store.memberPrice!)}' : store.memberPrice == 0 ? '　会员免费' : ''}'
-                      '${store.groupPrice != null ? '　同行 \$${fmtPrice(store.groupPrice!)}' : ''}'
-                      '${store.allDayPrice != null ? '　全天 \$${fmtPrice(store.allDayPrice!)}/人' : ''}',
+                      '${l10n.storeHourlyPerPerson('\$${fmtPrice(store.price)}')}'
+                      '${store.memberPrice != null && store.memberPrice! > 0 ? l10n.storeMemberPrefix('\$${fmtPrice(store.memberPrice!)}') : store.memberPrice == 0 ? l10n.storeMemberFree : ''}'
+                      '${store.groupPrice != null ? l10n.storeGroupPrefix('\$${fmtPrice(store.groupPrice!)}') : ''}'
+                      '${store.allDayPrice != null ? l10n.storeAllDayPrefix('\$${fmtPrice(store.allDayPrice!)}') : ''}',
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
                     ),
                     const SizedBox(height: 20),
-                    const _StepTitle('1', '选择日期'),
+                    _StepTitle('1', l10n.storeStepDate),
                     _datesRow(store),
                     const SizedBox(height: 18),
                     _StepTitle('2', l10n.storeBookingTypeTitle),
@@ -664,9 +664,9 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
     final maxHoursSafe = maxHours < 1 ? 1 : maxHours;
     return Row(
       children: [
-        const Text(
-          '时长',
-          style: TextStyle(
+        Text(
+          context.l10n.storeDuration,
+          style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: LiveColors.textPrimary,
@@ -718,7 +718,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
 
   Widget _startTimeChips(Store store, int hours) {
     final opts = _startOptions(store, hours);
-    if (opts.isEmpty) return const EmptyView(text: '该时段已无可约开始时间');
+    if (opts.isEmpty) return EmptyView(text: context.l10n.storeNoStartTimes);
     if (_startTime != null && !opts.contains(_startTime)) {
       // 时长/套餐变化后同步重置为第一个可选开始时间
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -783,9 +783,12 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
     final hours = _selectedHours(store);
     final unit = _previewUnitPrice(store, hours);
     final label = switch (_bookingType) {
-      'package' => '${_package?.name ?? '套餐'} · $hours 小时',
-      'all_day' => '全天不限时',
-      _ => '$hours 小时',
+      'package' => context.l10n.bookingTypePackage(
+          _package?.name ?? context.l10n.commonPackage,
+          hours,
+        ),
+      'all_day' => context.l10n.bookingTypeAllDay,
+      _ => context.l10n.bookingTypeHours(hours),
     };
     return Container(
       padding: const EdgeInsets.all(14),

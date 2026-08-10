@@ -913,7 +913,9 @@ class _ActivityCard extends StatelessWidget {
             ),
             const Spacer(),
             Text(
-              activity.price > 0 ? '\$${fmtPrice(activity.price)} 起' : '免费',
+              activity.price > 0
+                  ? context.l10n.homePriceFrom('\$${fmtPrice(activity.price)}')
+                  : context.l10n.commonFree,
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,

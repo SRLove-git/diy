@@ -705,7 +705,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       resizeToAvoidBottomInset: false,
       child: Column(
         children: [
-          const LiveAppBar(title: '修改密码'),
+          LiveAppBar(title: context.l10n.changePasswordAppBar),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),

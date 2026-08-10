@@ -184,6 +184,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get changePasswordTitle => '修改登录密码';
 
   @override
+  String get changePasswordAppBar => '修改密码';
+
+  @override
   String get changePasswordDesc => '验证原密码后设置新密码，下次登录请使用新密码';
 
   @override
@@ -456,6 +459,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeToCheckIn => '到店核销';
 
   @override
+  String homePriceFrom(String price) {
+    return '$price 起';
+  }
+
+  @override
   String homeStartedAt(String date, String time, String duration) {
     return '$date $time 上钟$duration';
   }
@@ -470,6 +478,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get commonLoadFailed => '加载失败';
+
+  @override
+  String get commonLoadFailedHint => '加载失败，请确认后端服务已启动';
+
+  @override
+  String get commonFree => '免费';
 
   @override
   String get weekdayMon => '周一';
@@ -571,6 +585,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memberClaimAll => '一键领取全部';
 
   @override
+  String get memberRecommended => '推荐';
+
+  @override
+  String get memberRenew => '续费';
+
+  @override
+  String get memberOpen => '开通';
+
+  @override
+  String get memberUsable => '可使用';
+
+  @override
   String get memberNoCoupons => '暂无优惠券，去领券中心看看';
 
   @override
@@ -642,6 +668,41 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get storeBookNow => '立即预约';
+
+  @override
+  String get storeNoResults => '未找到相关门店';
+
+  @override
+  String storeHourlyPerPerson(String price) {
+    return '按小时 $price/人/小时';
+  }
+
+  @override
+  String get storeStepDate => '选择日期';
+
+  @override
+  String get storeDuration => '时长';
+
+  @override
+  String get storeNoStartTimes => '该时段已无可约开始时间';
+
+  @override
+  String storeMemberPrefix(String price) {
+    return '　会员 $price';
+  }
+
+  @override
+  String get storeMemberFree => '　会员免费';
+
+  @override
+  String storeGroupPrefix(String price) {
+    return '　同行 $price';
+  }
+
+  @override
+  String storeAllDayPrefix(String price) {
+    return '　全天 $price/人';
+  }
 
   @override
   String get storeSearchPlaceholder => '搜索门店';
@@ -819,6 +880,29 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appointmentViewQr => '查看二维码';
+
+  @override
+  String get appointmentRemainingTime => '剩余时间（扫码即开始计时，不顺延）';
+
+  @override
+  String get appointmentClockOutEnd => '下钟结束';
+
+  @override
+  String get appointmentShowStaff => '出示给店员扫码核销';
+
+  @override
+  String get appointmentCodeLabel => '预约码';
+
+  @override
+  String get appointmentQrRefresh => '二维码每 30 秒自动刷新';
+
+  @override
+  String appointmentValidUntilAt(String time) {
+    return '有效期至 $time';
+  }
+
+  @override
+  String get appointmentServiceEnd => '体验结束';
 
   @override
   String appointmentPayAtStore(String amount) {
@@ -1015,6 +1099,23 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get activityNotBookable => '该活动暂不支持线上预约，敬请期待';
+
+  @override
+  String get activityEmpty => '暂无活动';
+
+  @override
+  String get activityCardDescPlaceholder => '详情敬请期待';
+
+  @override
+  String activityPricePerPerson(String price) {
+    return '$price/人';
+  }
+
+  @override
+  String get activityNoSessions => '暂无可约场次';
+
+  @override
+  String get activityFull => '已满员';
 
   @override
   String get notificationTitle => '通知';

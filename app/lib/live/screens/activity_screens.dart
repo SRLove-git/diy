@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../api/api_client.dart';
 import '../../api/models.dart';
 import '../../api/services.dart';
+import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_ext.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
@@ -37,7 +38,7 @@ class _ActivityListScreenState extends State<ActivityListScreen> {
             return Column(
               children: [
                 LiveAppBar(title: l10n.activityListTitle),
-                Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
+                Expanded(child: ErrorView(message: _msg(snap.error, l10n), onRetry: _retry)),
               ],
             );
           }
@@ -55,7 +56,7 @@ class _ActivityListScreenState extends State<ActivityListScreen> {
               LiveAppBar(title: l10n.activityListTitle),
               Expanded(
                 child: list.isEmpty
-                    ? const EmptyView(text: '暂无活动')
+                    ? EmptyView(text: l10n.activityEmpty)
                     : RefreshIndicator(
                         onRefresh: () async => _retry(),
                         child: ListView.separated(
@@ -123,7 +124,9 @@ class _ActivityCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              activity.desc.isEmpty ? '详情敬请期待' : activity.desc,
+              activity.desc.isEmpty
+                  ? l10n.activityCardDescPlaceholder
+                  : activity.desc,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary, height: 1.4),
@@ -132,7 +135,9 @@ class _ActivityCard extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  activity.price > 0 ? '\$${fmtPrice(activity.price)}/人' : '免费',
+                  activity.price > 0
+                      ? l10n.activityPricePerPerson('\$${fmtPrice(activity.price)}')
+                      : l10n.commonFree,
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: LiveColors.brand),
                 ),
                 if (activity.bookable) ...[
@@ -194,7 +199,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
             return Column(
               children: [
                 LiveAppBar(title: l10n.activityDetailTitle),
-                Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
+                Expanded(child: ErrorView(message: _msg(snap.error, l10n), onRetry: _retry)),
               ],
             );
           }
@@ -254,7 +259,11 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                         ),
                         const Spacer(),
                         Text(
-                          activity.price > 0 ? '\$${activity.price.toStringAsFixed(2)}/人' : '免费',
+                          activity.price > 0
+                              ? l10n.activityPricePerPerson(
+                                  '\$${activity.price.toStringAsFixed(2)}',
+                                )
+                              : l10n.commonFree,
                           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: LiveColors.brand),
                         ),
                         if (activity.memberPrice != null && activity.memberPrice! < activity.price)
@@ -272,7 +281,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                       ),
                       const SizedBox(height: 10),
                       if (sessions.isEmpty)
-                        const EmptyView(text: '暂无可约场次')
+                        EmptyView(text: l10n.activityNoSessions)
                       else
                         ...sessions.map((s) {
                           final sel = _session?.id == s.id;
@@ -305,7 +314,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                                   ),
                                   Text(
                                     full
-                                        ? '已满员'
+                                        ? l10n.activityFull
                                         : l10n.activityRemaining(
                                             s.remainingCount,
                                             s.capacity,
@@ -445,5 +454,5 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   }
 }
 
-String _msg(Object? e) =>
-    e is ApiException ? e.message : '加载失败，请确认后端服务已启动';
+String _msg(Object? e, AppLocalizations l10n) =>
+    e is ApiException ? e.message : l10n.commonLoadFailedHint;

@@ -1547,9 +1547,9 @@ class _TimerCardState extends State<TimerCard> {
         children: [
           Row(
             children: [
-              const Text(
-                '剩余时间（扫码即开始计时，不顺延）',
-                style: TextStyle(
+              Text(
+                context.l10n.appointmentRemainingTime,
+                style: const TextStyle(
                   fontSize: 12,
                   color: LiveColors.textSecondary,
                 ),
@@ -1587,10 +1587,10 @@ class _TimerCardState extends State<TimerCard> {
               child: InkWell(
                 onTap: widget.onAction,
                 borderRadius: BorderRadius.circular(15),
-                child: const Center(
+                child: Center(
                   child: Text(
-                    '下钟结束',
-                    style: TextStyle(
+                    context.l10n.appointmentClockOutEnd,
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
@@ -1638,7 +1638,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
           await AppointmentService.instance.cancel(widget.appointmentId);
       HomeOrdersRefresh.instance.refresh(updated);
       if (mounted) {
-        showLiveSnack(context, '预约已取消');
+        showLiveSnack(context, context.l10n.appointmentCancelled);
         _reload();
       }
     } on ApiException catch (e) {
@@ -2070,10 +2070,10 @@ class CheckinQrScreen extends StatelessWidget {
               padding: const EdgeInsets.all(24),
               children: [
                 const SizedBox(height: 12),
-                const Center(
+                Center(
                   child: Text(
-                    '出示给店员扫码核销',
-                    style: TextStyle(
+                    context.l10n.appointmentShowStaff,
+                    style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: LiveColors.textPrimary,
@@ -2089,10 +2089,10 @@ class CheckinQrScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 22),
-                const Center(
+                Center(
                   child: Text(
-                    '预约码',
-                    style: TextStyle(fontSize: 12, color: LiveColors.textSecondary),
+                    context.l10n.appointmentCodeLabel,
+                    style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -2133,16 +2133,16 @@ class CheckinQrScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Center(
+                Center(
                   child: Text(
-                    '二维码每 30 秒自动刷新',
-                    style: TextStyle(fontSize: 11.6, color: LiveColors.textTertiary),
+                    context.l10n.appointmentQrRefresh,
+                    style: const TextStyle(fontSize: 11.6, color: LiveColors.textTertiary),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Center(
                   child: Text(
-                    '有效期至 ${appointment.endTime}',
+                    context.l10n.appointmentValidUntilAt(appointment.endTime),
                     style: const TextStyle(fontSize: 11.6, color: LiveColors.textTertiary),
                   ),
                 ),
@@ -2223,7 +2223,7 @@ class _ServiceEndScreenState extends State<ServiceEndScreen> {
     return LivePage(
       child: Column(
         children: [
-          const LiveAppBar(title: '体验结束'),
+          LiveAppBar(title: context.l10n.appointmentServiceEnd),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(18),

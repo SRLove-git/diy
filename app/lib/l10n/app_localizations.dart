@@ -440,6 +440,12 @@ abstract class AppLocalizations {
   /// **'修改登录密码'**
   String get changePasswordTitle;
 
+  /// No description provided for @changePasswordAppBar.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改密码'**
+  String get changePasswordAppBar;
+
   /// No description provided for @changePasswordDesc.
   ///
   /// In zh, this message translates to:
@@ -974,6 +980,12 @@ abstract class AppLocalizations {
   /// **'到店核销'**
   String get homeToCheckIn;
 
+  /// No description provided for @homePriceFrom.
+  ///
+  /// In zh, this message translates to:
+  /// **'{price} 起'**
+  String homePriceFrom(String price);
+
   /// No description provided for @homeStartedAt.
   ///
   /// In zh, this message translates to:
@@ -997,6 +1009,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'加载失败'**
   String get commonLoadFailed;
+
+  /// No description provided for @commonLoadFailedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载失败，请确认后端服务已启动'**
+  String get commonLoadFailedHint;
+
+  /// No description provided for @commonFree.
+  ///
+  /// In zh, this message translates to:
+  /// **'免费'**
+  String get commonFree;
 
   /// No description provided for @weekdayMon.
   ///
@@ -1184,6 +1208,30 @@ abstract class AppLocalizations {
   /// **'一键领取全部'**
   String get memberClaimAll;
 
+  /// No description provided for @memberRecommended.
+  ///
+  /// In zh, this message translates to:
+  /// **'推荐'**
+  String get memberRecommended;
+
+  /// No description provided for @memberRenew.
+  ///
+  /// In zh, this message translates to:
+  /// **'续费'**
+  String get memberRenew;
+
+  /// No description provided for @memberOpen.
+  ///
+  /// In zh, this message translates to:
+  /// **'开通'**
+  String get memberOpen;
+
+  /// No description provided for @memberUsable.
+  ///
+  /// In zh, this message translates to:
+  /// **'可使用'**
+  String get memberUsable;
+
   /// No description provided for @memberNoCoupons.
   ///
   /// In zh, this message translates to:
@@ -1321,6 +1369,60 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'立即预约'**
   String get storeBookNow;
+
+  /// No description provided for @storeNoResults.
+  ///
+  /// In zh, this message translates to:
+  /// **'未找到相关门店'**
+  String get storeNoResults;
+
+  /// No description provided for @storeHourlyPerPerson.
+  ///
+  /// In zh, this message translates to:
+  /// **'按小时 {price}/人/小时'**
+  String storeHourlyPerPerson(String price);
+
+  /// No description provided for @storeStepDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择日期'**
+  String get storeStepDate;
+
+  /// No description provided for @storeDuration.
+  ///
+  /// In zh, this message translates to:
+  /// **'时长'**
+  String get storeDuration;
+
+  /// No description provided for @storeNoStartTimes.
+  ///
+  /// In zh, this message translates to:
+  /// **'该时段已无可约开始时间'**
+  String get storeNoStartTimes;
+
+  /// No description provided for @storeMemberPrefix.
+  ///
+  /// In zh, this message translates to:
+  /// **'　会员 {price}'**
+  String storeMemberPrefix(String price);
+
+  /// No description provided for @storeMemberFree.
+  ///
+  /// In zh, this message translates to:
+  /// **'　会员免费'**
+  String get storeMemberFree;
+
+  /// No description provided for @storeGroupPrefix.
+  ///
+  /// In zh, this message translates to:
+  /// **'　同行 {price}'**
+  String storeGroupPrefix(String price);
+
+  /// No description provided for @storeAllDayPrefix.
+  ///
+  /// In zh, this message translates to:
+  /// **'　全天 {price}/人'**
+  String storeAllDayPrefix(String price);
 
   /// No description provided for @storeSearchPlaceholder.
   ///
@@ -1651,6 +1753,48 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'查看二维码'**
   String get appointmentViewQr;
+
+  /// No description provided for @appointmentRemainingTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'剩余时间（扫码即开始计时，不顺延）'**
+  String get appointmentRemainingTime;
+
+  /// No description provided for @appointmentClockOutEnd.
+  ///
+  /// In zh, this message translates to:
+  /// **'下钟结束'**
+  String get appointmentClockOutEnd;
+
+  /// No description provided for @appointmentShowStaff.
+  ///
+  /// In zh, this message translates to:
+  /// **'出示给店员扫码核销'**
+  String get appointmentShowStaff;
+
+  /// No description provided for @appointmentCodeLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'预约码'**
+  String get appointmentCodeLabel;
+
+  /// No description provided for @appointmentQrRefresh.
+  ///
+  /// In zh, this message translates to:
+  /// **'二维码每 30 秒自动刷新'**
+  String get appointmentQrRefresh;
+
+  /// No description provided for @appointmentValidUntilAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'有效期至 {time}'**
+  String appointmentValidUntilAt(String time);
+
+  /// No description provided for @appointmentServiceEnd.
+  ///
+  /// In zh, this message translates to:
+  /// **'体验结束'**
+  String get appointmentServiceEnd;
 
   /// No description provided for @appointmentPayAtStore.
   ///
@@ -2011,6 +2155,36 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'该活动暂不支持线上预约，敬请期待'**
   String get activityNotBookable;
+
+  /// No description provided for @activityEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无活动'**
+  String get activityEmpty;
+
+  /// No description provided for @activityCardDescPlaceholder.
+  ///
+  /// In zh, this message translates to:
+  /// **'详情敬请期待'**
+  String get activityCardDescPlaceholder;
+
+  /// No description provided for @activityPricePerPerson.
+  ///
+  /// In zh, this message translates to:
+  /// **'{price}/人'**
+  String activityPricePerPerson(String price);
+
+  /// No description provided for @activityNoSessions.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无可约场次'**
+  String get activityNoSessions;
+
+  /// No description provided for @activityFull.
+  ///
+  /// In zh, this message translates to:
+  /// **'已满员'**
+  String get activityFull;
 
   /// No description provided for @notificationTitle.
   ///

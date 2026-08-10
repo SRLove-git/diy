@@ -73,7 +73,7 @@ class _MemberCenterScreenState extends State<MemberCenterScreen> {
             return Column(
               children: [
                 LiveAppBar(title: l10n.memberCenterTitle),
-                Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
+                Expanded(child: ErrorView(message: _msg(snap.error, l10n), onRetry: _retry)),
               ],
             );
           }
@@ -123,7 +123,7 @@ class _MemberCenterScreenState extends State<MemberCenterScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  '有 ${pendingOrders.length} 笔会员开通申请待门店确认，到店支付费用后将为你开通',
+                                  l10n.memberPendingHint(pendingOrders.length),
                                   style: const TextStyle(
                                     fontSize: 12.5,
                                     height: 1.4,
@@ -603,6 +603,7 @@ class _PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final recommended = plan.recommended;
     final dark = recommended || renewing;
     return InkWell(
@@ -643,7 +644,7 @@ class _PlanCard extends StatelessWidget {
                     ),
                     child: Center(
                       child: Text(
-                        plan.badge.isNotEmpty ? plan.badge : '推荐',
+                        plan.badge.isNotEmpty ? plan.badge : l10n.memberRecommended,
                         style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
@@ -697,7 +698,7 @@ class _PlanCard extends StatelessWidget {
                     : Border.all(color: LiveColors.divider),
               ),
               child: Text(
-                renewing ? '续费' : '开通',
+                renewing ? l10n.memberRenew : l10n.memberOpen,
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -1023,7 +1024,7 @@ class _CouponsScreenState extends State<CouponsScreen> {
             return Column(
               children: [
                 LiveAppBar(title: l10n.memberWalletTitle),
-                Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
+                Expanded(child: ErrorView(message: _msg(snap.error, l10n), onRetry: _retry)),
               ],
             );
           }
@@ -1149,6 +1150,7 @@ class _CouponCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final usable = coupon.usable;
     return Opacity(
       opacity: usable ? 1 : 0.5,
@@ -1178,7 +1180,11 @@ class _CouponCard extends StatelessWidget {
                     style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
                   ),
                   Text(
-                    coupon.status == 'used' ? '已使用' : coupon.status == 'expired' ? '已过期' : '可使用',
+                    coupon.status == 'used'
+                        ? l10n.memberTabUsed
+                        : coupon.status == 'expired'
+                            ? l10n.memberTabExpired
+                            : l10n.memberUsable,
                     style: TextStyle(fontSize: 11, color: usable ? LiveColors.success : LiveColors.textTertiary),
                   ),
                 ],
@@ -1236,7 +1242,7 @@ class _CouponCenterScreenState extends State<CouponCenterScreen> {
             return Column(
               children: [
                 LiveAppBar(title: l10n.memberCouponCenter),
-                Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
+                Expanded(child: ErrorView(message: _msg(snap.error, l10n), onRetry: _retry)),
               ],
             );
           }
@@ -1295,5 +1301,5 @@ class _CouponCenterScreenState extends State<CouponCenterScreen> {
   }
 }
 
-String _msg(Object? e) =>
-    e is ApiException ? e.message : '加载失败，请确认后端服务已启动';
+String _msg(Object? e, AppLocalizations l10n) =>
+    e is ApiException ? e.message : l10n.commonLoadFailedHint;

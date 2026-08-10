@@ -70,7 +70,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ),
               Expanded(
                 child: data.items.isEmpty
-                    ? const EmptyView(text: '暂无通知', icon: Icons.notifications_none)
+                    ? EmptyView(
+                        text: context.l10n.notificationEmpty,
+                        icon: Icons.notifications_none,
+                      )
                     : RefreshIndicator(
                         onRefresh: () async => _retry(),
                         child: _NotificationList(

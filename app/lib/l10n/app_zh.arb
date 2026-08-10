@@ -71,6 +71,7 @@
   "forgotBackToLogin": "返回登录",
   "forgotNewPassword": "设置新密码（6-32 位）",
   "changePasswordTitle": "修改登录密码",
+  "changePasswordAppBar": "修改密码",
   "changePasswordDesc": "验证原密码后设置新密码，下次登录请使用新密码",
   "changePasswordOld": "原密码",
   "changePasswordNew": "新密码（6-32 位）",
@@ -177,6 +178,14 @@
   },
   "homeOrderExpired": "订单已失效",
   "homeToCheckIn": "到店核销",
+  "homePriceFrom": "{price} 起",
+  "@homePriceFrom": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "homeStartedAt": "{date} {time} 上钟{duration}",
   "@homeStartedAt": {
     "placeholders": {
@@ -201,6 +210,8 @@
     }
   },
   "commonLoadFailed": "加载失败",
+  "commonLoadFailedHint": "加载失败，请确认后端服务已启动",
+  "commonFree": "免费",
   "weekdayMon": "周一",
   "weekdayTue": "周二",
   "weekdayWed": "周三",
@@ -253,6 +264,10 @@
   "memberClaimed": "领取成功",
   "memberCouponCenter": "领券中心",
   "memberClaimAll": "一键领取全部",
+  "memberRecommended": "推荐",
+  "memberRenew": "续费",
+  "memberOpen": "开通",
+  "memberUsable": "可使用",
   "memberNoCoupons": "暂无优惠券，去领券中心看看",
   "memberNoCouponsAvailable": "暂无可领取的优惠券",
   "memberTabUnused": "未使用",
@@ -290,6 +305,43 @@
   "memberOrderSubmittedDesc": "到店支付会员费用后，由门店确认开通\n开通后即可享受会员权益",
   "storeListTitle": "门店列表",
   "storeBookNow": "立即预约",
+  "storeNoResults": "未找到相关门店",
+  "storeHourlyPerPerson": "按小时 {price}/人/小时",
+  "@storeHourlyPerPerson": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "storeStepDate": "选择日期",
+  "storeDuration": "时长",
+  "storeNoStartTimes": "该时段已无可约开始时间",
+  "storeMemberPrefix": "　会员 {price}",
+  "@storeMemberPrefix": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "storeMemberFree": "　会员免费",
+  "storeGroupPrefix": "　同行 {price}",
+  "@storeGroupPrefix": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "storeAllDayPrefix": "　全天 {price}/人",
+  "@storeAllDayPrefix": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "storeSearchPlaceholder": "搜索门店",
   "storeSearchHint": "搜索门店名称 / 地址",
   "storeEmpty": "暂无门店，请先到管理后台添加",
@@ -393,6 +445,20 @@
   "appointmentCoupon": "优惠券",
   "appointmentPayable": "应付金额",
   "appointmentViewQr": "查看二维码",
+  "appointmentRemainingTime": "剩余时间（扫码即开始计时，不顺延）",
+  "appointmentClockOutEnd": "下钟结束",
+  "appointmentShowStaff": "出示给店员扫码核销",
+  "appointmentCodeLabel": "预约码",
+  "appointmentQrRefresh": "二维码每 30 秒自动刷新",
+  "appointmentValidUntilAt": "有效期至 {time}",
+  "@appointmentValidUntilAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "appointmentServiceEnd": "体验结束",
   "appointmentPayAtStore": "到店支付 {amount}",
   "@appointmentPayAtStore": {
     "placeholders": {
@@ -508,6 +574,18 @@
   },
   "activityNoteHint": "备注（选填），如：两人同行",
   "activityNotBookable": "该活动暂不支持线上预约，敬请期待",
+  "activityEmpty": "暂无活动",
+  "activityCardDescPlaceholder": "详情敬请期待",
+  "activityPricePerPerson": "{price}/人",
+  "@activityPricePerPerson": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "activityNoSessions": "暂无可约场次",
+  "activityFull": "已满员",
   "@activityPeople": {
     "placeholders": {
       "count": {
