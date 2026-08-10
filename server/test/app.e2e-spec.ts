@@ -10,7 +10,8 @@ describe('AppController (e2e)', () => {
 
   beforeAll(async () => {
     // CORS 白名单：与 bootstrap 保持一致，测试安全头与跨域行为
-    process.env.CORS_ORIGINS = 'http://localhost:5173,https://admin.example.com';
+    process.env.CORS_ORIGINS =
+      'http://localhost:5173,https://admin.example.com';
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
