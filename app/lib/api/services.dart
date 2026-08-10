@@ -198,10 +198,17 @@ class MemberService {
     return data.map((e) => MemberPlan.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  Future<Membership> purchase(int planId) async {
+  Future<MemberOrder> purchase(int planId) async {
     final data = await ApiClient.instance.post('/members/purchase', body: {'planId': planId})
         as Map<String, dynamic>;
-    return Membership.fromJson(data);
+    return MemberOrder.fromJson(data);
+  }
+
+  Future<List<MemberOrder>> memberOrders() async {
+    final data = await ApiClient.instance.get('/members/orders') as List;
+    return data
+        .map((e) => MemberOrder.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<Coupon>> couponCenter() async {

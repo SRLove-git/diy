@@ -139,4 +139,18 @@ void main() {
     });
     expect(a.statusLabel, '待确认');
   });
+
+  test('会员开通申请解析与状态标签', () {
+    final o = MemberOrder.fromJson({
+      'id': 3,
+      'planName': '月卡会员',
+      'durationDays': 30,
+      'amount': '19.90',
+      'status': 'pending',
+      'createdAt': '2026-08-10T10:00:00',
+    });
+    expect(o.planName, '月卡会员');
+    expect(o.amount, 19.9);
+    expect(o.statusLabel, '待确认');
+  });
 }

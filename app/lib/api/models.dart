@@ -989,6 +989,42 @@ class Membership {
       );
 }
 
+class MemberOrder {
+  const MemberOrder({
+    required this.id,
+    required this.planName,
+    required this.durationDays,
+    required this.amount,
+    required this.status,
+    this.createdAt,
+  });
+
+  final int id;
+  final String planName;
+  final int durationDays;
+  final double amount;
+  final String status; // pending / confirmed / cancelled
+  final DateTime? createdAt;
+
+  String get statusLabel => switch (status) {
+        'pending' => '待确认',
+        'confirmed' => '已开通',
+        'cancelled' => '已取消',
+        _ => status,
+      };
+
+  factory MemberOrder.fromJson(Map<String, dynamic> json) => MemberOrder(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        planName: json['planName'] as String? ?? '',
+        durationDays: (json['durationDays'] as num?)?.toInt() ?? 0,
+        amount: _num(json['amount'])?.toDouble() ?? 0,
+        status: json['status'] as String? ?? 'pending',
+        createdAt: json['createdAt'] == null
+            ? null
+            : DateTime.tryParse(json['createdAt'].toString()),
+      );
+}
+
 class MemberPlan {
   const MemberPlan({
     required this.id,

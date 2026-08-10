@@ -23,7 +23,13 @@ class MemberCenterScreen extends StatefulWidget {
 }
 
 class _MemberCenterScreenState extends State<MemberCenterScreen> {
-  late Future<({Membership membership, List<MemberPlan> plans, List<Coupon> coupons})> _future;
+  late Future<
+      ({
+        Membership membership,
+        List<MemberPlan> plans,
+        List<Coupon> coupons,
+        List<MemberOrder> orders,
+      })> _future;
 
   @override
   void initState() {
@@ -31,16 +37,24 @@ class _MemberCenterScreenState extends State<MemberCenterScreen> {
     _future = _load();
   }
 
-  Future<({Membership membership, List<MemberPlan> plans, List<Coupon> coupons})> _load() async {
+  Future<
+      ({
+        Membership membership,
+        List<MemberPlan> plans,
+        List<Coupon> coupons,
+        List<MemberOrder> orders,
+      })> _load() async {
     final results = await Future.wait([
       MemberService.instance.myMembership(),
       MemberService.instance.plans(),
       MemberService.instance.wallet(),
+      MemberService.instance.memberOrders(),
     ]);
     return (
       membership: results[0] as Membership,
       plans: results[1] as List<MemberPlan>,
       coupons: results[2] as List<Coupon>,
+      orders: results[3] as List<MemberOrder>,
     );
   }
 
@@ -66,6 +80,8 @@ class _MemberCenterScreenState extends State<MemberCenterScreen> {
             );
           }
           final data = snap.data!;
+          final pendingOrders =
+              data.orders.where((o) => o.status == 'pending').toList();
           return Column(
             children: [
               const LiveAppBar(title: '会员中心'),
@@ -76,6 +92,42 @@ class _MemberCenterScreenState extends State<MemberCenterScreen> {
                     padding: const EdgeInsets.all(18),
                     children: [
                       _MembershipCard(membership: data.membership),
+                      if (pendingOrders.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        // 待确认开通申请提示
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3E8FF),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: const Color(0xFFDDC8FF),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.schedule,
+                                size: 20,
+                                color: Color(0xFF7C3AED),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  '有 ${pendingOrders.length} 笔会员开通申请待门店确认，到店支付费用后将为你开通',
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    height: 1.4,
+                                    color: Color(0xFF6D28D9),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       // 会员权益（对齐 Pixso 09-会员中心）
                       const _SectionTitle(title: '会员权益'),
                       Container(
@@ -663,14 +715,14 @@ class MemberPurchaseScreen extends StatefulWidget {
 
 class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
   bool _loading = false;
+  bool _submitted = false;
 
   Future<void> _purchase() async {
     setState(() => _loading = true);
     try {
-      final membership = await MemberService.instance.purchase(widget.plan.id);
+      await MemberService.instance.purchase(widget.plan.id);
       if (!mounted) return;
-      showLiveSnack(context, '开通成功，会员有效期至 ${fmtTime(membership.expireAt, withYear: true)}');
-      Navigator.of(context).pop(true);
+      setState(() => _submitted = true);
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
     } finally {
@@ -680,6 +732,13 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_submitted) {
+      return MemberOrderSubmittedView(
+        planName: widget.plan.name,
+        durationDays: widget.plan.durationDays,
+        onDone: () => Navigator.of(context).pop(true),
+      );
+    }
     return LivePage(
       child: Column(
         children: [
@@ -788,6 +847,88 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 下单成功：会员开通申请已提交，等待门店确认（到店支付后由门店开通）。
+class MemberOrderSubmittedView extends StatelessWidget {
+  const MemberOrderSubmittedView({
+    super.key,
+    required this.planName,
+    required this.durationDays,
+    required this.onDone,
+  });
+
+  final String planName;
+  final int durationDays;
+  final VoidCallback onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    return LivePage(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            const Spacer(),
+            const Icon(Icons.check_circle, size: 84, color: LiveColors.success),
+            const SizedBox(height: 16),
+            const Text(
+              '订单已提交',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: LiveColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '$planName · $durationDays 天',
+              style: const TextStyle(
+                fontSize: 13,
+                color: LiveColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 28),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3E8FF),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Column(
+                children: [
+                  Icon(Icons.schedule, size: 32, color: Color(0xFF7C3AED)),
+                  SizedBox(height: 8),
+                  Text(
+                    '等待门店确认',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF6D28D9),
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    '到店支付会员费用后，由门店确认开通\n开通后即可享受会员权益',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: LiveColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            const Spacer(),
+            PrimaryButton(
+              label: '完成',
+              color: Colors.black,
+              textColor: Colors.white,
+              onTap: onDone,
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }
