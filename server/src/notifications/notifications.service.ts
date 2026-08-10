@@ -261,7 +261,7 @@ export class NotificationsService {
     }
     if (targetType === 'role' && targetRole) {
       return this.userRepo.find({
-        where: { role: targetRole as any, isBanned: false },
+        where: { role: targetRole as User['role'], isBanned: false },
       });
     }
     if (targetType === 'user' && targetUserIds) {

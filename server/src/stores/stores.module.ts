@@ -17,6 +17,6 @@ import { StorePackage } from './store-package.entity';
   ],
   controllers: [StoresController, AdminStoresController],
   providers: [StoresService, AdminGuard],
-  exports: [StoresService],
+  exports: [StoresService, AdminGuard],
 })
 export class StoresModule {}

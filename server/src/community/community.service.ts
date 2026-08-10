@@ -108,7 +108,9 @@ export class CommunityService {
   async create(userId: number, dto: CreatePostDto): Promise<Post> {
     const blocked = await this.moderation.findBlocked(dto.content ?? '');
     if (blocked) {
-      throw new BadRequestException(`内容包含违规关键词「${blocked}」，请修改后发布`);
+      throw new BadRequestException(
+        `内容包含违规关键词「${blocked}」，请修改后发布`,
+      );
     }
 
     const post = this.posts.create({

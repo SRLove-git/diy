@@ -22,10 +22,19 @@ export function configureApp(app: INestApplication): void {
   app.useWebSocketAdapter(new WsAdapter(app));
 
   // 聊天图片等上传文件静态托管（UPLOAD_DIR 默认 uploads，相对进程工作目录）
-  app.use('/uploads', express.static(join(process.cwd(), process.env.UPLOAD_DIR ?? 'uploads')));
+  app.use(
+    '/uploads',
+    express.static(join(process.cwd(), process.env.UPLOAD_DIR ?? 'uploads')),
+  );
   // 开发环境演示短视频与曲库音频（bootstrap 种子引用的真实资产）
-  app.use('/assets/demo', express.static(join(process.cwd(), 'assets', 'demo')));
-  app.use('/assets/music', express.static(join(process.cwd(), 'assets', 'music')));
+  app.use(
+    '/assets/demo',
+    express.static(join(process.cwd(), 'assets', 'demo')),
+  );
+  app.use(
+    '/assets/music',
+    express.static(join(process.cwd(), 'assets', 'music')),
+  );
 
   // 安全响应头：X-Content-Type-Options、X-Frame-Options、CSP 等
   app.use(helmet());
@@ -38,9 +47,7 @@ export function configureApp(app: INestApplication): void {
   app.enableCors({
     // 配置 CORS_ORIGINS 时严格按白名单；生产未配置默认禁止跨域（原生 App 不受 CORS 限制）；
     // 开发未配置放行所有来源，便于本地联调
-    origin:
-      origins ??
-      (process.env.NODE_ENV === 'production' ? false : true),
+    origin: origins ?? (process.env.NODE_ENV === 'production' ? false : true),
     credentials: true,
   });
 }

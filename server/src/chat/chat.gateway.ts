@@ -616,7 +616,8 @@ export class ChatGateway
     for (const client of set) {
       if (client.readyState !== WebSocket.OPEN) continue;
       client.send(data, (err) => {
-        if (err) console.warn('[ChatGateway] appointment send error:', err.message);
+        if (err)
+          console.warn('[ChatGateway] appointment send error:', err.message);
       });
     }
   }

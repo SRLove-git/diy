@@ -207,7 +207,7 @@ export class ActivitiesService implements OnModuleInit {
       memberPrice:
         dto.memberPrice !== undefined
           ? dto.memberPrice
-          : item.memberPrice ?? null,
+          : (item.memberPrice ?? null),
       bookable: dto.bookable ?? item.bookable ?? false,
       membersOnly: dto.membersOnly ?? item.membersOnly,
       enabled: dto.enabled ?? item.enabled,

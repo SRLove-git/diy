@@ -12,14 +12,7 @@ import { DashboardService } from './dashboard.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      User,
-      Appointment,
-      Post,
-      Like,
-      Comment,
-      Video,
-    ]),
+    TypeOrmModule.forFeature([User, Appointment, Post, Like, Comment, Video]),
     UsersModule,
   ],
   controllers: [AdminDashboardController],

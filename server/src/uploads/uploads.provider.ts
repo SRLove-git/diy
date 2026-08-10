@@ -36,7 +36,7 @@ export function uploadRoot(): string {
 export class LocalUploadProvider implements UploadProvider {
   readonly name = 'local';
 
-  async save(file: Express.Multer.File, dir: string): Promise<UploadedFile> {
+  save(file: Express.Multer.File, dir: string): Promise<UploadedFile> {
     const targetDir = join(uploadRoot(), dir);
     mkdirSync(targetDir, { recursive: true });
     const dest = join(targetDir, file.filename);
@@ -47,7 +47,7 @@ export class LocalUploadProvider implements UploadProvider {
       copyFileSync(file.path, dest);
       unlinkSync(file.path);
     }
-    return { url: `/uploads/${dir}/${file.filename}` };
+    return Promise.resolve({ url: `/uploads/${dir}/${file.filename}` });
   }
 }
 

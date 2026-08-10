@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type Redis from 'ioredis';
-import { In, IsNull, Like, Repository } from 'typeorm';
+import { FindOptionsWhere, In, IsNull, Like, Repository } from 'typeorm';
 import { FORCE_OFFLINE_TTL, kickKey } from '../auth/session-keys';
 import { publishKickEvent } from '../chat/chat-events';
 import { REDIS_CLIENT } from '../redis/redis.module';
@@ -124,10 +124,14 @@ export class UsersService {
   }
 
   /** 按用户名搜索用户（添加好友/社区找人用）：精确匹配，排除被封禁账号 */
-  async searchByUsername(
-    username: string,
-  ): Promise<
-    Array<{ id: number; nickname: string; avatar: string; username: string; email: string }>
+  async searchByUsername(username: string): Promise<
+    Array<{
+      id: number;
+      nickname: string;
+      avatar: string;
+      username: string;
+      email: string;
+    }>
   > {
     const keyword = (username ?? '').trim();
     if (!keyword) return [];
@@ -269,7 +273,7 @@ export class UsersService {
     pageSize = 20,
   ): Promise<[User[], number]> {
     const keyword = (search ?? '').trim();
-    const where: any = keyword
+    const where: FindOptionsWhere<User> | FindOptionsWhere<User>[] = keyword
       ? [
           { username: Like(`%${keyword}%`) },
           { email: Like(`%${keyword}%`) },

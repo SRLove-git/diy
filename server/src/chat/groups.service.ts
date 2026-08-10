@@ -68,7 +68,11 @@ export class GroupsService {
       this.groups.create({ name: name.trim(), ownerId }),
     );
     await this.members.save(
-      this.members.create({ groupId: group.id, userId: ownerId, role: 'owner' }),
+      this.members.create({
+        groupId: group.id,
+        userId: ownerId,
+        role: 'owner',
+      }),
     );
     for (const uid of unique) {
       await this.members.save(
@@ -373,7 +377,10 @@ export class GroupsService {
     if (targetUserId === ownerId) {
       throw new BadRequestException('不能修改群主的角色');
     }
-    const member = await this.members.findOneBy({ groupId, userId: targetUserId });
+    const member = await this.members.findOneBy({
+      groupId,
+      userId: targetUserId,
+    });
     if (!member) {
       throw new BadRequestException('该用户不是群成员');
     }
@@ -391,7 +398,10 @@ export class GroupsService {
     if (newOwnerId === ownerId) {
       throw new BadRequestException('不能转让给自己');
     }
-    const target = await this.members.findOneBy({ groupId, userId: newOwnerId });
+    const target = await this.members.findOneBy({
+      groupId,
+      userId: newOwnerId,
+    });
     if (!target) {
       throw new BadRequestException('该用户不是群成员');
     }

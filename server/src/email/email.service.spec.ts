@@ -38,8 +38,8 @@ describe('SmtpEmailService', () => {
     sendMail.mockRejectedValue(new Error('connection refused'));
     const svc = new SmtpEmailService(config);
 
-    await expect(
-      svc.send('a@example.com', '主题', '正文'),
-    ).rejects.toThrow('connection refused');
+    await expect(svc.send('a@example.com', '主题', '正文')).rejects.toThrow(
+      'connection refused',
+    );
   });
 });

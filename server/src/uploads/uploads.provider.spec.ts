@@ -1,14 +1,16 @@
 import { ConfigService } from '@nestjs/config';
-import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { S3UploadProvider } from './uploads.provider';
 
-const send = jest.fn();
+const send: jest.Mock = jest.fn();
 
 jest.mock('@aws-sdk/client-s3', () => ({
   S3Client: jest.fn().mockImplementation(() => ({ send })),
-  PutObjectCommand: jest.fn().mockImplementation((input) => ({ input })),
+  PutObjectCommand: jest
+    .fn()
+    .mockImplementation((input: unknown) => ({ input })),
 }));
 
 describe('S3UploadProvider', () => {
@@ -60,7 +62,7 @@ describe('S3UploadProvider', () => {
     });
     expect(result.url).toBe('https://cdn.example.com/post/2026/08/abc.jpg');
     // 临时文件已清理
-    expect(require('fs').existsSync(filePath)).toBe(false);
+    expect(existsSync(filePath)).toBe(false);
   });
 
   it('未配置 publicBase 时回退到 bucket 默认域名', async () => {

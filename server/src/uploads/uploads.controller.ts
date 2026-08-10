@@ -20,6 +20,7 @@ import { mkdirSync, unlinkSync } from 'fs';
 import { diskStorage } from 'multer';
 import { tmpdir } from 'os';
 import { extname, join } from 'path';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UPLOAD_PROVIDER, type UploadProvider } from './uploads.provider';
 
@@ -72,8 +73,7 @@ function mimeAllowed(
 ): boolean {
   if (allowed.has(file.mimetype)) return true;
   return (
-    file.mimetype === 'application/octet-stream' &&
-    ext.test(file.originalname)
+    file.mimetype === 'application/octet-stream' && ext.test(file.originalname)
   );
 }
 
@@ -84,7 +84,7 @@ const MAX_VIDEO_SIZE = 1024 * 1024 * 1024;
 @Catch(PayloadTooLargeException)
 class UploadSizeExceptionFilter implements ExceptionFilter {
   catch(_exception: PayloadTooLargeException, host: ArgumentsHost) {
-    const res = host.switchToHttp().getResponse();
+    const res = host.switchToHttp().getResponse<Response>();
     res.status(HttpStatus.PAYLOAD_TOO_LARGE).json({
       statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
       message: '文件过大，请压缩后再上传',

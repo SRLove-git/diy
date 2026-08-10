@@ -1,7 +1,7 @@
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from 'crypto';
 import { promisify } from 'util';
 
-const scrypt = promisify(scryptCb) as (
+const scrypt = promisify(scryptCb) as unknown as (
   password: string,
   salt: Buffer,
   keylen: number,

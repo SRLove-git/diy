@@ -32,7 +32,7 @@ export class ModerationService {
       const list =
         fromRedis.length > 0
           ? fromRedis
-          : this.envKeywords() ?? DEFAULT_KEYWORDS;
+          : (this.envKeywords() ?? DEFAULT_KEYWORDS);
       this.cache = list;
       this.cacheAt = Date.now();
       return list;
@@ -51,7 +51,9 @@ export class ModerationService {
   }
 
   /** 管理端：新增关键词（幂等，重复返回 false） */
-  async addKeyword(raw: string): Promise<{ added: boolean; keywords: string[] }> {
+  async addKeyword(
+    raw: string,
+  ): Promise<{ added: boolean; keywords: string[] }> {
     const keyword = raw.trim();
     if (!keyword) return { added: false, keywords: await this.listKeywords() };
     this.cache = null;

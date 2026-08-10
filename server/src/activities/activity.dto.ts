@@ -51,4 +51,6 @@ export class SaveActivitySessionDto {
   enabled?: boolean;
 }
 
-export class UpdateActivitySessionDto extends PartialType(SaveActivitySessionDto) {}
+export class UpdateActivitySessionDto extends PartialType(
+  SaveActivitySessionDto,
+) {}

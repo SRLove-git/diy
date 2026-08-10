@@ -8,9 +8,14 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type Redis from 'ioredis';
+import type { Request } from 'express';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { JwtPayload } from './auth.service';
 import { kickKey } from './session-keys';
+
+interface AuthedRequest extends Request {
+  user?: { id: number };
+}
 
 /** 校验 Authorization: Bearer <accessToken>，通过后注入 req.user = { id } */
 @Injectable()
@@ -22,13 +27,13 @@ export class JwtAuthGuard implements CanActivate {
   ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
-    const req = ctx.switchToHttp().getRequest();
+    const req = ctx.switchToHttp().getRequest<AuthedRequest>();
     const header = req.headers.authorization;
     if (!header?.startsWith('Bearer '))
       throw new UnauthorizedException('未登录');
 
     try {
-      const payload = await this.jwt.verifyAsync(header.slice(7), {
+      const payload = await this.jwt.verifyAsync<JwtPayload>(header.slice(7), {
         secret: this.config.get<string>('JWT_SECRET'),
       });
       if (payload.type !== 'access') throw new Error('wrong token type');

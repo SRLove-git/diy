@@ -12,9 +12,10 @@ export abstract class EmailService {
 export class DevEmailService extends EmailService {
   private readonly logger = new Logger(DevEmailService.name);
 
-  async send(to: string, subject: string, content: string) {
+  send(to: string, subject: string, content: string): Promise<void> {
     // 开发环境验证码直接打印到服务端日志，便于本地联调
     this.logger.log(`[DevEmail] 发送至 ${to}：${subject} / ${content}`);
+    return Promise.resolve();
   }
 }
 
@@ -58,7 +59,9 @@ export class SmtpEmailService extends EmailService {
       });
       this.logger.log(`[SMTP] 已发送至 ${to}：${subject}`);
     } catch (e) {
-      this.logger.error(`[SMTP] 发送失败（${to} / ${subject}）：${(e as Error).message}`);
+      this.logger.error(
+        `[SMTP] 发送失败（${to} / ${subject}）：${(e as Error).message}`,
+      );
       throw e;
     }
   }

@@ -1,12 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { Activity } from '../activities/activity.entity';
-import { ActivitySession } from '../activities/activity-session.entity';
 import { Coupon, UserCoupon } from '../members/coupon.entity';
-import { Membership } from '../members/membership.entity';
-import { Store } from '../stores/store.entity';
-import { StorePackage } from '../stores/store-package.entity';
-import { StoreTable } from '../stores/store-table.entity';
-import { Appointment } from './appointment.entity';
 import { AppointmentsService } from './appointments.service';
 
 function dateStr(offsetDays = 0): string {
@@ -50,21 +43,26 @@ function buildService() {
   };
   redis.del.mockResolvedValue(1);
   redis.set.mockResolvedValue('OK');
-  const userCouponRepo = { findOne: jest.fn(), save: jest.fn() };
-  const couponRepo = { findOneBy: jest.fn() };
+  const userCouponRepo: { findOne: jest.Mock; save: jest.Mock } = {
+    findOne: jest.fn(),
+    save: jest.fn(),
+  };
+  const couponRepo: { findOneBy: jest.Mock } = { findOneBy: jest.fn() };
   const em = {
     find: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
     findOne: jest.fn(),
     findOneBy: jest.fn(),
-    getRepository: jest.fn((cls: unknown) => {
+    getRepository: jest.fn((cls: unknown): unknown => {
       if (cls === UserCoupon) return userCouponRepo;
       if (cls === Coupon) return couponRepo;
       return {};
     }),
   };
-  const dataSource = { transaction: jest.fn((cb) => cb(em)) };
+  const dataSource = {
+    transaction: jest.fn((cb: (manager: typeof em) => unknown) => cb(em)),
+  };
 
   const svc = new AppointmentsService(
     appointments as never,
@@ -119,13 +117,15 @@ describe('AppointmentsService', () => {
       m.redis.set.mockResolvedValue('OK');
       m.em.find.mockResolvedValue([]);
       m.em.findOne.mockResolvedValue(null);
-      m.em.create.mockImplementation((_cls: unknown, data: Record<string, unknown>) => ({
-        status: 'booked',
-        ...data,
-      }));
+      m.em.create.mockImplementation(
+        (_cls: unknown, data: Record<string, unknown>) => ({
+          status: 'booked',
+          ...data,
+        }),
+      );
       m.em.save.mockImplementation((x: unknown) => Promise.resolve(x));
 
-      const result = (await m.svc.create(7, baseDto as never)) as Appointment;
+      const result = await m.svc.create(7, baseDto);
 
       expect(result.status).toBe('booked');
       expect(result.code).toMatch(/^\d{6}$/);
@@ -165,7 +165,7 @@ describe('AppointmentsService', () => {
           ...baseDto,
           startTime: '10:00',
           durationHours: 1,
-        } as never),
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -188,7 +188,7 @@ describe('AppointmentsService', () => {
           date: dateStr(0),
           startTime: '00:00',
           durationHours: 1,
-        } as never),
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -207,10 +207,12 @@ describe('AppointmentsService', () => {
       m.redis.set.mockResolvedValue('OK');
       m.em.find.mockResolvedValue([]);
       m.em.findOne.mockResolvedValue(null);
-      m.em.create.mockImplementation((_cls: unknown, data: Record<string, unknown>) => ({
-        status: 'booked',
-        ...data,
-      }));
+      m.em.create.mockImplementation(
+        (_cls: unknown, data: Record<string, unknown>) => ({
+          status: 'booked',
+          ...data,
+        }),
+      );
       m.em.save.mockImplementation((x: unknown) => Promise.resolve(x));
       m.userCouponRepo.findOne.mockResolvedValue({
         id: 9,
@@ -227,10 +229,10 @@ describe('AppointmentsService', () => {
         expireAt: new Date(Date.now() + 86400_000),
       });
 
-      const result = (await m.svc.create(
-        7,
-        { ...baseDto, userCouponId: 9 } as never,
-      )) as Appointment;
+      const result = await m.svc.create(7, {
+        ...baseDto,
+        userCouponId: 9,
+      });
 
       expect(result.amount).toBe(139.6); // 159.6 - 20
       expect(result.couponDiscount).toBe(20);
@@ -259,7 +261,7 @@ describe('AppointmentsService', () => {
         Promise.resolve(x),
       );
 
-      const result = (await m.svc.checkIn('123456', 7)) as Appointment;
+      const result = await m.svc.checkIn('123456', 7);
 
       expect(result.status).toBe('in_service');
       expect(result.checkInTime).toBeInstanceOf(Date);

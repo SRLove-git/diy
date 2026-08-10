@@ -2,9 +2,15 @@ import { GroupsService } from './groups.service';
 
 describe('GroupsService.myGroups', () => {
   /** 构造一个只涉及 myGroups 的服务（其余仓库以空 mock 占位） */
-  function buildService(options: {
-    readRows?: Array<{ groupId: number; userId: number; lastReadMessageId: string }>;
-  } = {}) {
+  function buildService(
+    options: {
+      readRows?: Array<{
+        groupId: number;
+        userId: number;
+        lastReadMessageId: string;
+      }>;
+    } = {},
+  ) {
     const countWhere: Array<Record<string, unknown>> = [];
     const groups = {
       find: jest.fn().mockResolvedValue([
@@ -33,9 +39,9 @@ describe('GroupsService.myGroups', () => {
         .mockResolvedValue([{ id: 2, nickname: 'u2', avatar: '' }]),
     };
     const messages = {
-      countBy: jest.fn(async (where: Record<string, unknown>) => {
+      countBy: jest.fn((where: Record<string, unknown>) => {
         countWhere.push(where);
-        return 0;
+        return Promise.resolve(0);
       }),
     };
     const service = new GroupsService(
@@ -48,13 +54,23 @@ describe('GroupsService.myGroups', () => {
       {} as any,
     );
     // myGroups 内部只关心 formatGroup 返回的 unreadCount，这里直接透传
-    (service as any).formatGroup = (
-      g: unknown,
-      viewerId: number,
-      memberCount: number,
-      avatars: string[],
-      unreadCount: number,
-    ) => ({ ...(g as object), viewerId, memberCount, avatars, unreadCount });
+    (
+      service as unknown as {
+        formatGroup: (
+          g: unknown,
+          viewerId: number,
+          memberCount: number,
+          avatars: string[],
+          unreadCount: number,
+        ) => unknown;
+      }
+    ).formatGroup = (g, viewerId, memberCount, avatars, unreadCount) => ({
+      ...(g as object),
+      viewerId,
+      memberCount,
+      avatars,
+      unreadCount,
+    });
     return { service, countWhere };
   }
 

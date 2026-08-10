@@ -11,7 +11,14 @@ import {
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { randomInt } from 'crypto';
 import Redis from 'ioredis';
-import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  FindOptionsWhere,
+  In,
+  Not,
+  Repository,
+} from 'typeorm';
 import {
   centsToYuan,
   percentOffCents,
@@ -70,16 +77,16 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
 
   /** 启动后周期兜底：预约时段到点后自动下钟（未在读操作中即时结束的预约） */
   onModuleInit() {
-    this.autoClockoutTimer = setInterval(async () => {
+    this.autoClockoutTimer = setInterval(() => {
       if (this.autoClockoutRunning) return;
       this.autoClockoutRunning = true;
-      try {
-        await this.autoClockoutExpired();
-      } catch (e) {
-        this.logger.warn(`自动下钟失败：${(e as Error).message}`);
-      } finally {
-        this.autoClockoutRunning = false;
-      }
+      void this.autoClockoutExpired()
+        .catch((e) => {
+          this.logger.warn(`自动下钟失败：${(e as Error).message}`);
+        })
+        .finally(() => {
+          this.autoClockoutRunning = false;
+        });
     }, 30_000);
   }
 
@@ -97,9 +104,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     const m = (store.businessHours || '').match(
       /((?:[01]\d|2[0-3]):[0-5]\d)\s*-\s*((?:[01]\d|2[0-3]):[0-5]\d)/,
     );
-    return m
-      ? { start: m[1], end: m[2] }
-      : { start: '09:00', end: '22:00' };
+    return m ? { start: m[1], end: m[2] } : { start: '09:00', end: '22:00' };
   }
 
   private minutes(time: string): number {
@@ -114,10 +119,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** 按小时单价（元/人/小时）：会员且配置会员价时用会员价 */
-  private hourlyUnitPrice(
-    isMember: boolean,
-    store: Store,
-  ): number {
+  private hourlyUnitPrice(isMember: boolean, store: Store): number {
     if (isMember && store.memberPrice != null) return store.memberPrice;
     return store.price ?? 39.9;
   }
@@ -271,10 +273,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       // 全天不限时：营业开始 ~ 营业结束，结束时间固定
       startTime = range.start;
       endTime = range.end;
-      durationHours = Math.max(
-        1,
-        Math.round((closeMin - openMin) / 60),
-      );
+      durationHours = Math.max(1, Math.round((closeMin - openMin) / 60));
       const hourly = this.hourlyUnitPrice(isMember, store);
       unitPrice =
         store.allDayPrice != null
@@ -389,9 +388,10 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
           return sharesTable && a.startTime < endTime && a.endTime > startTime;
         });
         if (conflict) {
-          const conflictTables = (conflict.tables?.length
-            ? conflict.tables.map((t) => t.name)
-            : [conflict.tableName]
+          const conflictTables = (
+            conflict.tables?.length
+              ? conflict.tables.map((t) => t.name)
+              : [conflict.tableName]
           ).join('、');
           throw new BadRequestException(
             `桌位 ${conflictTables} ${conflict.startTime}-${conflict.endTime} 已被预约，请选择其他时段或桌位`,
@@ -477,9 +477,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     if (!session) throw new NotFoundException('活动场次不存在');
 
     if (dto.peopleCount > session.capacity) {
-      throw new BadRequestException(
-        `该场次最多容纳 ${session.capacity} 人`,
-      );
+      throw new BadRequestException(`该场次最多容纳 ${session.capacity} 人`);
     }
     if (session.date < this.todayStr()) {
       throw new BadRequestException('不能预约过去的场次');
@@ -514,15 +512,10 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
             status: Not(In(['cancelled', 'completed'])),
           },
         });
-        const bookedCount = booked.reduce(
-          (sum, a) => sum + a.peopleCount,
-          0,
-        );
+        const bookedCount = booked.reduce((sum, a) => sum + a.peopleCount, 0);
         if (bookedCount + dto.peopleCount > session.capacity) {
           throw new BadRequestException(
-            `该场次剩余名额不足，剩余 ${
-              session.capacity - bookedCount
-            } 人`,
+            `该场次剩余名额不足，剩余 ${session.capacity - bookedCount} 人`,
           );
         }
 
@@ -626,7 +619,6 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       parsed.kind === 'percent'
         ? percentOffCents(amountCents, parsed.value)
         : Math.min(yuanToCents(parsed.value), amountCents);
-    const discount = centsToYuan(Math.max(0, discountCents));
 
     owned.status = 'used';
     owned.usedAt = new Date();
@@ -831,8 +823,8 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
   ): Promise<
     [Array<Appointment & { userEmail?: string; userNickname?: string }>, number]
   > {
-    const where: any = {};
-    if (filters?.status) where.status = filters.status;
+    const where: FindOptionsWhere<Appointment> = {};
+    if (filters?.status) where.status = filters.status as Appointment['status'];
     if (filters?.storeId) where.storeId = parseInt(filters.storeId, 10);
     if (filters?.date) where.date = filters.date;
     if (filters?.code?.trim()) where.code = filters.code.trim();

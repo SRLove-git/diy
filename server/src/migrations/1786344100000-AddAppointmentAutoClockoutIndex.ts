@@ -1,9 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /** 自动下钟轮询索引：(status, date, endTime) */
-export class AddAppointmentAutoClockoutIndex1786344100000
-  implements MigrationInterface
-{
+export class AddAppointmentAutoClockoutIndex1786344100000 implements MigrationInterface {
   name = 'AddAppointmentAutoClockoutIndex1786344100000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
