@@ -1983,7 +1983,7 @@ class _PillTabs extends StatelessWidget {
   }
 }
 
-/// 71-核销二维码出示：调亮屏幕 + 二维码 + 30 秒刷新提示。
+/// 71-核销二维码出示：二维码 + 30 秒刷新提示。
 class CheckinQrScreen extends StatelessWidget {
   const CheckinQrScreen({super.key, required this.appointment});
 
@@ -1994,19 +1994,7 @@ class CheckinQrScreen extends StatelessWidget {
     return LivePage(
       child: Column(
         children: [
-          LiveAppBar(
-            title: '到店核销',
-            actions: [
-              TextButton(
-                onPressed: () => showLiveSnack(context, '已调亮屏幕（模拟）'),
-                child: const Text(
-                  '调亮屏幕',
-                  style: TextStyle(fontSize: 13, color: LiveColors.textPrimary),
-                ),
-              ),
-              const SizedBox(width: 8),
-            ],
-          ),
+          const LiveAppBar(title: '到店核销'),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(24),
