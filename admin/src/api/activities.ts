@@ -53,6 +53,7 @@ export const activityApi = {
     http.patch<Activity>(`/admin/activities/${id}`, data),
   toggle: (id: number, enabled: boolean) =>
     http.patch<Activity>(`/admin/activities/${id}/enabled`, { enabled }),
+  remove: (id: number) => http.delete(`/admin/activities/${id}`),
   addSession: (activityId: number, data: Partial<ActivitySession>) =>
     http.post<ActivitySession>(`/admin/activities/${activityId}/sessions`, data),
   removeSession: (sessionId: number) =>

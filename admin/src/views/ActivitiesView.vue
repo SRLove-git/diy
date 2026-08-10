@@ -168,6 +168,16 @@ async function toggle(a: Activity) {
   }
 }
 
+async function removeActivity(a: Activity) {
+  if (!confirm(`确认删除活动「${a.title}」？其下所有场次将一并删除。`)) return
+  try {
+    await activityApi.remove(a.id)
+    await load()
+  } catch (e: any) {
+    alert(e?.response?.data?.message ?? '删除失败')
+  }
+}
+
 async function move(a: Activity, delta: number) {
   const sorted = [...activities.value].sort((x, y) => x.sort - y.sort || x.id - y.id)
   const idx = sorted.findIndex((x) => x.id === a.id)
@@ -214,7 +224,7 @@ onMounted(load)
           <th style="width: 80px">会员专属</th>
           <th style="width: 60px">排序</th>
           <th style="width: 80px">状态</th>
-          <th style="width: 260px">操作</th>
+          <th style="width: 320px">操作</th>
         </tr>
       </thead>
       <tbody>
@@ -261,6 +271,7 @@ onMounted(load)
             >
               {{ a.enabled ? '下架' : '上架' }}
             </button>
+            <button class="btn btn-sm btn-danger" @click="removeActivity(a)">删除</button>
           </td>
         </tr>
       </tbody>

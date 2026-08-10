@@ -47,6 +47,10 @@ export class AdminActivitiesController {
     return this.activities.toggleEnabled(id, enabled);
   }
 
+  @Delete(':id') remove(@Param('id', ParseIntPipe) id: number) {
+    return this.activities.remove(id);
+  }
+
   // ===== 活动场次 =====
 
   @Post(':id/sessions')

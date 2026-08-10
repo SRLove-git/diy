@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   Logger,
   NotFoundException,
@@ -6,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Appointment } from '../appointments/appointment.entity';
 import { SaveActivityDto, SaveActivitySessionDto } from './activity.dto';
 import { ActivitySession } from './activity-session.entity';
 import { Activity } from './activity.entity';
@@ -20,6 +22,8 @@ export class ActivitiesService implements OnModuleInit {
     private readonly activities: Repository<Activity>,
     @InjectRepository(ActivitySession)
     private readonly sessions: Repository<ActivitySession>,
+    @InjectRepository(Appointment)
+    private readonly appointments: Repository<Appointment>,
   ) {}
 
   async onModuleInit() {
@@ -221,6 +225,19 @@ export class ActivitiesService implements OnModuleInit {
     if (!item) throw new NotFoundException('活动不存在');
     item.enabled = enabled;
     return this.activities.save(item);
+  }
+
+  /** 删除活动：场次随外键级联删除；已有预约记录时拒绝删除，避免历史数据悬空 */
+  async remove(id: number) {
+    const activity = await this.activities.findOneBy({ id });
+    if (!activity) throw new NotFoundException('活动不存在');
+    const bookings = await this.appointments.countBy({ activityId: id });
+    if (bookings > 0) {
+      throw new BadRequestException(
+        `该活动已有 ${bookings} 条预约记录，无法删除，请改为下架`,
+      );
+    }
+    await this.activities.remove(activity);
   }
 
   // ===== 活动场次（管理端） =====
