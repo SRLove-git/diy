@@ -16,6 +16,8 @@ void main() {
   Future<void> pumpApp(WidgetTester tester) async {
     tester.view.physicalSize = const Size(1320, 2868);
     tester.view.devicePixelRatio = 3.0;
+    // 固定中文环境，保证页面文案断言稳定
+    tester.binding.platformDispatcher.localesTestValue = const [Locale('zh')];
     // 模拟 main() 中的登录态恢复；未调用时 redirect 会一直停留在 Splash。
     await AuthStore.instance.restore();
     await tester.pumpWidget(const PrototypeApp());

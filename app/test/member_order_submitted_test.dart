@@ -1,13 +1,14 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:diy_ui_app/live/screens/member_screens.dart';
+
+import 'l10n_test_utils.dart';
 
 void main() {
   testWidgets('会员下单成功页：订单已提交，等待门店确认，不再提示开通成功', (tester) async {
     var done = false;
     await tester.pumpWidget(
-      MaterialApp(
+      l10nApp(
         home: MemberOrderSubmittedView(
           planName: '月卡会员',
           durationDays: 30,

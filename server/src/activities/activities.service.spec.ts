@@ -1,10 +1,12 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ActivitiesService } from './activities.service';
 
-function buildService(overrides: {
-  activity?: unknown;
-  bookings?: number;
-} = {}) {
+function buildService(
+  overrides: {
+    activity?: unknown;
+    bookings?: number;
+  } = {},
+) {
   const activities = {
     findOneBy: jest
       .fn()

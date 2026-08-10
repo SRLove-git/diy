@@ -1,9 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /** 门店/套餐新增计价字段：多人同行价、全天会员价/多人价、周末加价 */
-export class AddStorePricingColumns1786346000000
-  implements MigrationInterface
-{
+export class AddStorePricingColumns1786346000000 implements MigrationInterface {
   name = 'AddStorePricingColumns1786346000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

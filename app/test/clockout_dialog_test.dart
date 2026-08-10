@@ -3,8 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:diy_ui_app/live/screens/appointment_screens.dart';
 
+import 'l10n_test_utils.dart';
+
 void main() {
-  Widget host() => MaterialApp(
+  Widget host() => l10nApp(
         home: Builder(
           builder: (context) => Center(
             child: TextButton(
@@ -40,7 +42,7 @@ void main() {
   testWidgets('点“确认下钟”返回 true 并关闭弹窗', (tester) async {
     final result = <bool?>[];
     await tester.pumpWidget(
-      MaterialApp(
+      l10nApp(
         home: Builder(
           builder: (context) => Center(
             child: TextButton(
@@ -66,7 +68,7 @@ void main() {
     // 模拟 go_router StatefulShellRoute：页面在嵌套 Navigator 中，
     // showDialog 默认推到根 Navigator。修复前用外层 context pop 会误弹外层页面。
     await tester.pumpWidget(
-      MaterialApp(
+      l10nApp(
         home: Navigator(
           onGenerateRoute: (_) => MaterialPageRoute<void>(
             builder: (_) => Scaffold(

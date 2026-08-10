@@ -96,8 +96,14 @@ export class SeedIdolBeadsData1786346100000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DELETE FROM \`store_packages\` WHERE \`name\` = '6小时畅玩套餐'`);
-    await queryRunner.query(`DELETE FROM \`store_tables\` WHERE \`storeId\` IN (SELECT \`id\` FROM \`stores\` WHERE \`name\` = 'IDOL BEADS')`);
-    await queryRunner.query(`DELETE FROM \`stores\` WHERE \`name\` = 'IDOL BEADS'`);
+    await queryRunner.query(
+      `DELETE FROM \`store_packages\` WHERE \`name\` = '6小时畅玩套餐'`,
+    );
+    await queryRunner.query(
+      `DELETE FROM \`store_tables\` WHERE \`storeId\` IN (SELECT \`id\` FROM \`stores\` WHERE \`name\` = 'IDOL BEADS')`,
+    );
+    await queryRunner.query(
+      `DELETE FROM \`stores\` WHERE \`name\` = 'IDOL BEADS'`,
+    );
   }
 }

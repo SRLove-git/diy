@@ -9,7 +9,12 @@ import {
 
 /** 预约单状态机：待确认 → 待核销 → 服务中 → 已完成；扫码核销即上钟。checked_in 为兼容状态（历史数据/管理端单独上钟） */
 export type AppointmentStatus =
-  'pending' | 'booked' | 'checked_in' | 'in_service' | 'completed' | 'cancelled';
+  | 'pending'
+  | 'booked'
+  | 'checked_in'
+  | 'in_service'
+  | 'completed'
+  | 'cancelled';
 
 /** 预约类型：门店桌位预约 / 活动场次预约 */
 export type AppointmentType = 'store' | 'activity';
@@ -179,7 +184,14 @@ export class Appointment {
 
   @Column({
     type: 'enum',
-    enum: ['pending', 'booked', 'checked_in', 'in_service', 'completed', 'cancelled'],
+    enum: [
+      'pending',
+      'booked',
+      'checked_in',
+      'in_service',
+      'completed',
+      'cancelled',
+    ],
     default: 'booked',
   })
   status: AppointmentStatus;

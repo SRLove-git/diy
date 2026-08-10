@@ -1,11 +1,12 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:diy_ui_app/live/screens/auth_screens.dart';
 
+import 'l10n_test_utils.dart';
+
 void main() {
   testWidgets('修改密码页展示原密码/新密码/确认新密码与提交按钮', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ChangePasswordScreen()));
+    await tester.pumpWidget(l10nApp(home: const ChangePasswordScreen()));
     await tester.pumpAndSettle();
 
     expect(find.text('修改登录密码'), findsOneWidget);
@@ -16,7 +17,7 @@ void main() {
   });
 
   testWidgets('原密码为空时点击提交提示输入原密码', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ChangePasswordScreen()));
+    await tester.pumpWidget(l10nApp(home: const ChangePasswordScreen()));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('确认修改'));

@@ -1,9 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /** 预约状态机新增「待确认」：手机下单 → pending → 管理端确认 → booked */
-export class AddAppointmentPendingStatus1786347000000
-  implements MigrationInterface
-{
+export class AddAppointmentPendingStatus1786347000000 implements MigrationInterface {
   name = 'AddAppointmentPendingStatus1786347000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

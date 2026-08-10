@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:diy_ui_app/api/models.dart';
 import 'package:diy_ui_app/live/screens/appointment_screens.dart';
+
+import 'l10n_test_utils.dart';
 
 Appointment makeAppointment({String status = 'pending'}) =>
     Appointment.fromJson({
@@ -26,7 +27,7 @@ Appointment makeAppointment({String status = 'pending'}) =>
 void main() {
   testWidgets('下单成功页：待确认状态提示等待门店确认，不展示核销码', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
+      l10nApp(
         home: AppointmentSuccessScreen(appointment: makeAppointment()),
       ),
     );
@@ -40,7 +41,7 @@ void main() {
 
   testWidgets('门店预约成功页：直接展示核销码，无需等待确认', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
+      l10nApp(
         home: AppointmentSuccessScreen(
           appointment: makeAppointment(status: 'booked'),
         ),
