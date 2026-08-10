@@ -1604,11 +1604,83 @@ abstract class AppLocalizations {
   /// **'取消预约'**
   String get appointmentCancel;
 
+  /// No description provided for @appointmentCancelDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消后该时段名额将释放，确定取消吗？'**
+  String get appointmentCancelDesc;
+
+  /// No description provided for @appointmentCancelConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认取消'**
+  String get appointmentCancelConfirm;
+
   /// No description provided for @appointmentCancelled.
   ///
   /// In zh, this message translates to:
   /// **'预约已取消'**
   String get appointmentCancelled;
+
+  /// No description provided for @appointmentBookingType.
+  ///
+  /// In zh, this message translates to:
+  /// **'预约方式'**
+  String get appointmentBookingType;
+
+  /// No description provided for @appointmentOriginalPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'原价'**
+  String get appointmentOriginalPrice;
+
+  /// No description provided for @appointmentCoupon.
+  ///
+  /// In zh, this message translates to:
+  /// **'优惠券'**
+  String get appointmentCoupon;
+
+  /// No description provided for @appointmentPayable.
+  ///
+  /// In zh, this message translates to:
+  /// **'应付金额'**
+  String get appointmentPayable;
+
+  /// No description provided for @appointmentViewQr.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看二维码'**
+  String get appointmentViewQr;
+
+  /// No description provided for @appointmentPayAtStore.
+  ///
+  /// In zh, this message translates to:
+  /// **'到店支付 {amount}'**
+  String appointmentPayAtStore(String amount);
+
+  /// No description provided for @appointmentPayMemberFree.
+  ///
+  /// In zh, this message translates to:
+  /// **'到店支付 \$0（会员免费）'**
+  String get appointmentPayMemberFree;
+
+  /// No description provided for @bookingTypeHours.
+  ///
+  /// In zh, this message translates to:
+  /// **'{hours} 小时'**
+  String bookingTypeHours(int hours);
+
+  /// No description provided for @bookingTypePackage.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name} · {hours} 小时'**
+  String bookingTypePackage(String name, int hours);
+
+  /// No description provided for @bookingTypeAllDay.
+  ///
+  /// In zh, this message translates to:
+  /// **'全天不限时'**
+  String get bookingTypeAllDay;
 
   /// No description provided for @appointmentBookSuccess.
   ///
@@ -1675,6 +1747,66 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'预约时间'**
   String get appointmentTime;
+
+  /// No description provided for @appointmentPeopleCountLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'人数'**
+  String get appointmentPeopleCountLabel;
+
+  /// No description provided for @appointmentNoOnlinePay.
+  ///
+  /// In zh, this message translates to:
+  /// **'无需线上支付，预约成功后到店出示核销码，核销后线下付款'**
+  String get appointmentNoOnlinePay;
+
+  /// No description provided for @appointmentSurchargeLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'周末/节假日加价 {pct}%'**
+  String appointmentSurchargeLabel(int pct);
+
+  /// No description provided for @discountMember.
+  ///
+  /// In zh, this message translates to:
+  /// **'会员优惠'**
+  String get discountMember;
+
+  /// No description provided for @discountGroup.
+  ///
+  /// In zh, this message translates to:
+  /// **'同行优惠'**
+  String get discountGroup;
+
+  /// No description provided for @discountMemberGroup.
+  ///
+  /// In zh, this message translates to:
+  /// **'会员/同行优惠'**
+  String get discountMemberGroup;
+
+  /// No description provided for @commonPackage.
+  ///
+  /// In zh, this message translates to:
+  /// **'套餐'**
+  String get commonPackage;
+
+  /// No description provided for @activitySession.
+  ///
+  /// In zh, this message translates to:
+  /// **'活动场次'**
+  String get activitySession;
+
+  /// No description provided for @activityBooking.
+  ///
+  /// In zh, this message translates to:
+  /// **'活动预约'**
+  String get activityBooking;
+
+  /// No description provided for @storeBooking.
+  ///
+  /// In zh, this message translates to:
+  /// **'门店预约'**
+  String get storeBooking;
 
   /// No description provided for @appointmentPeople.
   ///
@@ -1769,7 +1901,7 @@ abstract class AppLocalizations {
   /// No description provided for @appointmentClockOutDesc.
   ///
   /// In zh, this message translates to:
-  /// **'点击确认下钟后将停止计时'**
+  /// **'下钟后将停止计时并生成完成记录，确认结束本次体验吗？'**
   String get appointmentClockOutDesc;
 
   /// No description provided for @appointmentClockOutConfirm.

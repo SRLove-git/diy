@@ -385,7 +385,43 @@
   "appointmentExpired": "订单已失效",
   "appointmentExpiredDesc": "已超过预约时间，无法再核销",
   "appointmentCancel": "取消预约",
+  "appointmentCancelDesc": "取消后该时段名额将释放，确定取消吗？",
+  "appointmentCancelConfirm": "确认取消",
   "appointmentCancelled": "预约已取消",
+  "appointmentBookingType": "预约方式",
+  "appointmentOriginalPrice": "原价",
+  "appointmentCoupon": "优惠券",
+  "appointmentPayable": "应付金额",
+  "appointmentViewQr": "查看二维码",
+  "appointmentPayAtStore": "到店支付 {amount}",
+  "@appointmentPayAtStore": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "appointmentPayMemberFree": "到店支付 $0（会员免费）",
+  "bookingTypeHours": "{hours} 小时",
+  "@bookingTypeHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "bookingTypePackage": "{name} · {hours} 小时",
+  "@bookingTypePackage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "bookingTypeAllDay": "全天不限时",
   "appointmentBookSuccess": "预约成功",
   "appointmentBookSubmitted": "预约已提交",
   "appointmentBookSuccessDesc": "到店出示此码即可核销体验，核销后线下付款",
@@ -397,6 +433,23 @@
   "appointmentInfo": "订单信息",
   "appointmentItem": "预约项目",
   "appointmentTime": "预约时间",
+  "appointmentPeopleCountLabel": "人数",
+  "appointmentNoOnlinePay": "无需线上支付，预约成功后到店出示核销码，核销后线下付款",
+  "appointmentSurchargeLabel": "周末/节假日加价 {pct}%",
+  "@appointmentSurchargeLabel": {
+    "placeholders": {
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "discountMember": "会员优惠",
+  "discountGroup": "同行优惠",
+  "discountMemberGroup": "会员/同行优惠",
+  "commonPackage": "套餐",
+  "activitySession": "活动场次",
+  "activityBooking": "活动预约",
+  "storeBooking": "门店预约",
   "appointmentPeople": "{count} 人",
   "@appointmentPeople": {
     "placeholders": {
@@ -419,7 +472,7 @@
   "appointmentConfirmTitle": "确认预约",
   "appointmentSubmit": "提交预约",
   "appointmentClockOutTitle": "结束体验",
-  "appointmentClockOutDesc": "点击确认下钟后将停止计时",
+  "appointmentClockOutDesc": "下钟后将停止计时并生成完成记录，确认结束本次体验吗？",
   "appointmentClockOutConfirm": "确认下钟",
   "appointmentClockOutThink": "再想想",
   "appointmentOrderExpired": "订单已失效",

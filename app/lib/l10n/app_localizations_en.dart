@@ -815,7 +815,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appointmentCancel => 'Cancel booking';
 
   @override
+  String get appointmentCancelDesc =>
+      'The slot will be released after cancelling. Cancel now?';
+
+  @override
+  String get appointmentCancelConfirm => 'Confirm Cancel';
+
+  @override
   String get appointmentCancelled => 'Booking cancelled';
+
+  @override
+  String get appointmentBookingType => 'Booking type';
+
+  @override
+  String get appointmentOriginalPrice => 'Original price';
+
+  @override
+  String get appointmentCoupon => 'Coupon';
+
+  @override
+  String get appointmentPayable => 'Amount due';
+
+  @override
+  String get appointmentViewQr => 'View QR code';
+
+  @override
+  String appointmentPayAtStore(String amount) {
+    return 'Pay at store $amount';
+  }
+
+  @override
+  String get appointmentPayMemberFree => 'Pay at store \$0 (member free)';
+
+  @override
+  String bookingTypeHours(int hours) {
+    return '$hours h';
+  }
+
+  @override
+  String bookingTypePackage(String name, int hours) {
+    return '$name · $hours h';
+  }
+
+  @override
+  String get bookingTypeAllDay => 'All-day';
 
   @override
   String get appointmentBookSuccess => 'Booking Successful';
@@ -851,6 +894,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appointmentTime => 'Time';
+
+  @override
+  String get appointmentPeopleCountLabel => 'Guests';
+
+  @override
+  String get appointmentNoOnlinePay =>
+      'No online payment needed. Show the code at the store and pay after check-in';
+
+  @override
+  String appointmentSurchargeLabel(int pct) {
+    return 'Weekend/holiday surcharge $pct%';
+  }
+
+  @override
+  String get discountMember => 'Member discount';
+
+  @override
+  String get discountGroup => 'Group discount';
+
+  @override
+  String get discountMemberGroup => 'Member/group discount';
+
+  @override
+  String get commonPackage => 'Package';
+
+  @override
+  String get activitySession => 'Activity session';
+
+  @override
+  String get activityBooking => 'Activity booking';
+
+  @override
+  String get storeBooking => 'Store booking';
 
   @override
   String appointmentPeople(int count) {
@@ -900,7 +976,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appointmentClockOutTitle => 'End Session';
 
   @override
-  String get appointmentClockOutDesc => 'Tapping confirm will stop the timer';
+  String get appointmentClockOutDesc =>
+      'Ending will stop the timer and create a completion record. End now?';
 
   @override
   String get appointmentClockOutConfirm => 'Confirm End';

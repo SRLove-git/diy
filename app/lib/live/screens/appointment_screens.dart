@@ -7,10 +7,24 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../api/api_client.dart';
 import '../../api/models.dart';
 import '../../api/services.dart';
+import '../../l10n/app_localizations.dart';
+import '../../l10n/l10n_ext.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
 import '../singapore_holidays.dart';
+
+/// 预约状态展示名（跟随语言）。
+String _appointmentStatusLabel(AppLocalizations l10n, String status) =>
+    switch (status) {
+      'pending' => l10n.appointmentStatusPending,
+      'booked' => l10n.appointmentStatusBooked,
+      'checked_in' => l10n.appointmentStatusCheckedIn,
+      'in_service' => l10n.appointmentStatusInService,
+      'completed' => l10n.appointmentStatusCompleted,
+      'cancelled' => l10n.appointmentStatusCancelled,
+      _ => status,
+    };
 
 /// 34-取消预约确认弹窗（对齐 Pixso 34-居中确认）：
 /// 遮罩 + 312 宽圆角白卡 + 标题 + 说明 + 再想想 / 确认取消。
@@ -40,9 +54,9 @@ Future<bool?> showCancelAppointmentDialog(BuildContext context) {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                '取消预约',
-                style: TextStyle(
+              Text(
+                context.l10n.appointmentCancel,
+                style: const TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF141414),
@@ -50,10 +64,10 @@ Future<bool?> showCancelAppointmentDialog(BuildContext context) {
                 ),
               ),
               const SizedBox(height: 10),
-              const Text(
-                '取消后该时段名额将释放，确定取消吗？',
+              Text(
+                context.l10n.appointmentCancelDesc,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 13,
                   color: Color(0xFF8E8E93),
                   height: 1.6,
@@ -65,7 +79,7 @@ Future<bool?> showCancelAppointmentDialog(BuildContext context) {
                   children: [
                     Expanded(
                       child: _DialogActionBtn(
-                        label: '再想想',
+                        label: context.l10n.appointmentClockOutThink,
                         backgroundColor: const Color(0xFFF7F7F8),
                         foregroundColor: const Color(0xFF141414),
                         onTap: () => Navigator.pop(dialogContext, false),
@@ -74,7 +88,7 @@ Future<bool?> showCancelAppointmentDialog(BuildContext context) {
                     const SizedBox(width: 10),
                     Expanded(
                       child: _DialogActionBtn(
-                        label: '确认取消',
+                        label: context.l10n.appointmentCancelConfirm,
                         backgroundColor: const Color(0xFFFF3B30),
                         foregroundColor: Colors.white,
                         onTap: () => Navigator.pop(dialogContext, true),
@@ -119,9 +133,9 @@ Future<bool?> showClockOutConfirmDialog(BuildContext context) {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                '结束体验',
-                style: TextStyle(
+              Text(
+                context.l10n.appointmentClockOutTitle,
+                style: const TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF141414),
@@ -129,10 +143,10 @@ Future<bool?> showClockOutConfirmDialog(BuildContext context) {
                 ),
               ),
               const SizedBox(height: 10),
-              const Text(
-                '下钟后将停止计时并生成完成记录，确认结束本次体验吗？',
+              Text(
+                context.l10n.appointmentClockOutDesc,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 13,
                   color: Color(0xFF8E8E93),
                   height: 1.6,
@@ -144,7 +158,7 @@ Future<bool?> showClockOutConfirmDialog(BuildContext context) {
                   children: [
                     Expanded(
                       child: _DialogActionBtn(
-                        label: '再想想',
+                        label: context.l10n.appointmentClockOutThink,
                         backgroundColor: const Color(0xFFF7F7F8),
                         foregroundColor: const Color(0xFF141414),
                         onTap: () => Navigator.pop(dialogContext, false),
@@ -153,7 +167,7 @@ Future<bool?> showClockOutConfirmDialog(BuildContext context) {
                     const SizedBox(width: 10),
                     Expanded(
                       child: _DialogActionBtn(
-                        label: '确认下钟',
+                        label: context.l10n.appointmentClockOutConfirm,
                         backgroundColor: const Color(0xFFFF3B30),
                         foregroundColor: Colors.white,
                         onTap: () => Navigator.pop(dialogContext, true),
@@ -368,14 +382,20 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
           .clamp(0, double.infinity);
 
   String get _discountLabel {
-    if (widget.type == 'activity') return '会员优惠';
-    if (widget.peopleCount >= 2) return _isMember ? '会员/同行优惠' : '同行优惠';
-    return '会员优惠';
+    final l10n = context.l10n;
+    if (widget.type == 'activity') return l10n.discountMember;
+    if (widget.peopleCount >= 2) {
+      return _isMember ? l10n.discountMemberGroup : l10n.discountGroup;
+    }
+    return l10n.discountMember;
   }
 
   String get _title {
-    if (widget.type == 'activity') return widget.activity?.title ?? '活动预约';
-    return widget.store?.name ?? '门店预约';
+    final l10n = context.l10n;
+    if (widget.type == 'activity') {
+      return widget.activity?.title ?? l10n.activityBooking;
+    }
+    return widget.store?.name ?? l10n.storeBooking;
   }
 
   String get _timeText {
@@ -389,11 +409,15 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
   }
 
   String get _bookingLabel {
-    if (widget.type == 'activity') return '活动场次';
+    final l10n = context.l10n;
+    if (widget.type == 'activity') return l10n.activitySession;
     return switch (widget.bookingType) {
-      'package' => '${widget.packageName.isEmpty ? '套餐' : widget.packageName} · ${widget.durationHours} 小时',
-      'all_day' => '全天不限时',
-      _ => '${widget.durationHours} 小时',
+      'package' => l10n.bookingTypePackage(
+          widget.packageName.isEmpty ? l10n.commonPackage : widget.packageName,
+          widget.durationHours,
+        ),
+      'all_day' => l10n.bookingTypeAllDay,
+      _ => l10n.bookingTypeHours(widget.durationHours),
     };
   }
 
@@ -440,28 +464,33 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return LivePage(
       child: Column(
         children: [
-          const LiveAppBar(title: '预约确认'),
+          LiveAppBar(title: l10n.appointmentConfirmTitle),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(18),
               children: [
-                _InfoRow(label: '预约项目', value: _title),
-                _InfoRow(label: '预约时间', value: _timeText),
+                _InfoRow(label: l10n.appointmentItem, value: _title),
+                _InfoRow(label: l10n.appointmentTime, value: _timeText),
                 if (widget.type == 'store')
                   ...[
-                    _InfoRow(label: '预约方式', value: _bookingLabel),
+                    _InfoRow(label: l10n.appointmentBookingType, value: _bookingLabel),
                     _InfoRow(
-                      label: '桌位',
+                      label: l10n.appointmentTable,
                       value:
-                          '${widget.tableLabel.isEmpty ? '-' : widget.tableLabel}（${widget.peopleCount} 人）',
+                          '${widget.tableLabel.isEmpty ? '-' : widget.tableLabel}'
+                          '（${l10n.appointmentPeople(widget.peopleCount)}）',
                     ),
-                    _InfoRow(label: '付款方式', value: '到店核销后付款'),
+                    _InfoRow(label: l10n.appointmentPayMethod, value: l10n.appointmentPayOffline),
                   ]
                 else
-                  _InfoRow(label: '人数', value: '${widget.peopleCount} 人'),
+                  _InfoRow(
+                    label: l10n.appointmentPeopleCountLabel,
+                    value: l10n.appointmentPeople(widget.peopleCount),
+                  ),
                 const Divider(height: 32, color: LiveColors.divider),
                 // ── 线上支付（暂不接入）：优惠券 / 支付方式选择，先注释 ──
                 // Text('优惠券', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
@@ -495,21 +524,21 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
                     color: LiveColors.brandLight,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.storefront_outlined, size: 18, color: LiveColors.brand),
-                      SizedBox(width: 8),
+                      const Icon(Icons.storefront_outlined, size: 18, color: LiveColors.brand),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          '无需线上支付，预约成功后到店出示核销码，核销后线下付款',
-                          style: TextStyle(fontSize: 12.5, color: LiveColors.textSecondary, height: 1.5),
+                          l10n.appointmentNoOnlinePay,
+                          style: const TextStyle(fontSize: 12.5, color: LiveColors.textSecondary, height: 1.5),
                         ),
                       ),
                     ],
                   ),
                 ),
                 const Divider(height: 32, color: LiveColors.divider),
-                _PriceRow(label: '原价', value: '\$${_originalBase.toStringAsFixed(2)}'),
+                _PriceRow(label: l10n.appointmentOriginalPrice, value: '\$${_originalBase.toStringAsFixed(2)}'),
                 if (_discountBase > 0)
                   _PriceRow(
                     label: _discountLabel,
@@ -518,25 +547,26 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
                   ),
                 if (_discount > 0)
                   _PriceRow(
-                    label: '优惠券',
+                    label: l10n.appointmentCoupon,
                     value: '-\$${_discount.toStringAsFixed(2)}',
                     valueColor: LiveColors.success,
                   ),
                 if (_weekendSurcharge)
                   _PriceRow(
-                    label:
-                        '周末/节假日加价 ${widget.store?.weekendSurchargePercent ?? 0}%',
+                    label: l10n.appointmentSurchargeLabel(
+                      widget.store?.weekendSurchargePercent ?? 0,
+                    ),
                     value: '+\$${_surchargeAmount.toStringAsFixed(2)}',
                   ),
                 const Divider(height: 22, color: LiveColors.divider),
                 _PriceRow(
-                  label: '应付金额',
+                  label: l10n.appointmentPayable,
                   value: '\$${_total.toStringAsFixed(2)}',
                   bold: true,
                 ),
                 const SizedBox(height: 24),
                 PrimaryButton(
-                  label: '提交预约',
+                  label: l10n.appointmentSubmit,
                   loading: _loading,
                   onTap: _loading ? null : _submit,
                 ),
@@ -711,6 +741,7 @@ class AppointmentSuccessScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // 门店预约下单即待核销：成功页直接展示核销码；
     // 活动场次预约仍需门店确认：展示等待门店确认提示。
+    final l10n = context.l10n;
     final pending = appointment.status == 'pending';
     // 预约成功后返回（系统返回手势/按钮）直接回首页，避免退回下单流程。
     return PopScope(
@@ -727,7 +758,7 @@ class AppointmentSuccessScreen extends StatelessWidget {
               const Icon(Icons.check_circle, size: 84, color: LiveColors.success),
               const SizedBox(height: 16),
               Text(
-                pending ? '预约已提交' : '预约成功',
+                pending ? l10n.appointmentBookSubmitted : l10n.appointmentBookSuccess,
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
               ),
               const SizedBox(height: 8),
@@ -745,31 +776,31 @@ class AppointmentSuccessScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: pending
-                    ? const Column(
+                    ? Column(
                         children: [
-                          Icon(Icons.schedule, size: 32, color: Color(0xFF7C3AED)),
-                          SizedBox(height: 8),
+                          const Icon(Icons.schedule, size: 32, color: Color(0xFF7C3AED)),
+                          const SizedBox(height: 8),
                           Text(
-                            '等待门店确认',
-                            style: TextStyle(
+                            l10n.appointmentWaitingConfirm,
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF6D28D9),
                             ),
                           ),
-                          SizedBox(height: 10),
+                          const SizedBox(height: 10),
                           Text(
-                            '预约已提交，门店在管理端确认后\n到店出示预约码即可核销体验',
+                            l10n.appointmentBookSubmittedDesc,
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 12, color: LiveColors.textSecondary),
+                            style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
                           ),
                         ],
                       )
                     : Column(
                         children: [
-                          const Text(
-                            '核销码',
-                            style: TextStyle(fontSize: 12, color: LiveColors.brand),
+                          Text(
+                            l10n.appointmentCheckInCode,
+                            style: const TextStyle(fontSize: 12, color: LiveColors.brand),
                           ),
                           const SizedBox(height: 6),
                           SelectableText(
@@ -782,17 +813,17 @@ class AppointmentSuccessScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          const Text(
-                            '到店出示此码即可核销体验，核销后线下付款',
+                          Text(
+                            l10n.appointmentBookSuccessDesc,
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 12, color: LiveColors.textSecondary),
+                            style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
                           ),
                         ],
                       ),
               ),
               const Spacer(),
               PrimaryButton(
-                label: '查看预约',
+                label: l10n.appointmentView,
                 color: Colors.black,
                 textColor: Colors.white,
                 onTap: () => LiveRoutes.pushId(
@@ -803,7 +834,7 @@ class AppointmentSuccessScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               OutlineButton(
-                label: '返回首页',
+                label: l10n.appointmentBackHome,
                 onTap: () => LiveRoutes.goHome(context),
               ),
               const SizedBox(height: 20),
@@ -908,7 +939,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
       final updated = await AppointmentService.instance.cancel(a.id);
       HomeOrdersRefresh.instance.refresh(updated);
       if (!mounted) return;
-      showLiveSnack(context, '预约已取消');
+      showLiveSnack(context, context.l10n.appointmentCancelled);
     } on ApiException catch (e) {
       // 失败回滚：恢复显示
       if (mounted) {
@@ -917,13 +948,6 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
       }
     }
   }
-
-  static const _tabs = [
-    ('all', '全部'),
-    ('booked', '待核销'),
-    ('in_service', '服务中'),
-    ('completed', '已完成'),
-  ];
 
   List<Appointment> _filter(List<Appointment> list) {
     // 已取消的订单不再展示（取消后直接消失）
@@ -955,34 +979,44 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
       child: FutureBuilder<List<Appointment>>(
         future: _future,
         builder: (context, snap) {
+          final l10n = context.l10n;
+          final tabs = [
+            ('all', l10n.appointmentTabAll),
+            ('booked', l10n.appointmentTabBooked),
+            ('in_service', l10n.appointmentTabInService),
+            ('completed', l10n.appointmentTabCompleted),
+          ];
           if (snap.hasError) {
             return Column(
               children: [
-                const LiveAppBar(title: '我的预约'),
+                LiveAppBar(title: l10n.appointmentMyTitle),
                 Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
               ],
             );
           }
           if (!snap.hasData) {
-            return const Column(
-              children: [LiveAppBar(title: '我的预约'), Expanded(child: LoadingView())],
+            return Column(
+              children: [
+                LiveAppBar(title: l10n.appointmentMyTitle),
+                const Expanded(child: LoadingView()),
+              ],
             );
           }
           final list = _filter(snap.data!);
           return Column(
             children: [
-              const LiveAppBar(title: '我的预约'),
+              LiveAppBar(title: l10n.appointmentMyTitle),
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 4, 18, 10),
                 child: _PillTabs(
-                  tabs: _tabs.map((t) => t.$2).toList(),
-                  current: _tabs.indexWhere((t) => t.$1 == _tab),
-                  onChanged: (i) => setState(() => _tab = _tabs[i].$1),
+                  tabs: tabs.map((t) => t.$2).toList(),
+                  current: tabs.indexWhere((t) => t.$1 == _tab),
+                  onChanged: (i) => setState(() => _tab = tabs[i].$1),
                 ),
               ),
               Expanded(
                 child: list.isEmpty
-                    ? const EmptyView(text: '暂无预约，去预约一个体验吧')
+                    ? EmptyView(text: l10n.appointmentEmpty)
                     : RefreshIndicator(
                         onRefresh: () async => _retry(),
                         child: ListView.separated(
@@ -1064,6 +1098,7 @@ class _AppointmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final a = appointment;
     final expired = a.status == 'booked' && a.isExpired();
     // 状态标签配色（对齐设计稿 tag.red / tag.green / tag.blue / tag.gray）
@@ -1110,7 +1145,9 @@ class _AppointmentCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 _StatusTag(
-                  label: expired ? '订单已失效' : a.statusLabel,
+                  label: expired
+                      ? l10n.appointmentOrderExpired
+                      : _appointmentStatusLabel(l10n, a.status),
                   bg: tagBg,
                   fg: tagFg,
                 ),
@@ -1118,7 +1155,7 @@ class _AppointmentCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              _infoLine(a),
+              _infoLine(a, l10n),
               style: TextStyle(
                 fontSize: 13,
                 color: expired
@@ -1129,7 +1166,7 @@ class _AppointmentCard extends StatelessWidget {
             if (a.status == 'booked' || a.status == 'checked_in') ...[
               const SizedBox(height: 2),
               Text(
-                '预约码 ${a.code}',
+                l10n.homeCode(a.code),
                 style: const TextStyle(
                   fontSize: 11,
                   color: LiveColors.textTertiary,
@@ -1147,21 +1184,21 @@ class _AppointmentCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFFE4E4E8), width: 1),
                 ),
-                child: const Column(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '订单已失效',
-                      style: TextStyle(
+                      l10n.appointmentOrderExpired,
+                      style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: LiveColors.textSecondary,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      '已超过预约时间，无法再核销',
-                      style: TextStyle(
+                      l10n.appointmentExpiredDesc,
+                      style: const TextStyle(
                         fontSize: 11,
                         color: LiveColors.textTertiary,
                       ),
@@ -1181,21 +1218,21 @@ class _AppointmentCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFFDDC8FF), width: 1),
                 ),
-                child: const Column(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '等待门店确认',
-                      style: TextStyle(
+                      l10n.appointmentWaitingConfirm,
+                      style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF6D28D9),
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      '预约已提交，门店确认后即可到店核销',
-                      style: TextStyle(
+                      l10n.appointmentWaitingDesc,
+                      style: const TextStyle(
                         fontSize: 11,
                         color: LiveColors.textSecondary,
                       ),
@@ -1248,7 +1285,7 @@ class _AppointmentCard extends StatelessWidget {
                             ),
                             child: Center(
                               child: Text(
-                                '到店核销',
+                                l10n.appointmentToCheckIn,
                                 style: const TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
@@ -1260,9 +1297,9 @@ class _AppointmentCard extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 6),
-                      const Text(
-                        '出示预约码，店员扫码或输入验证码开始体验',
-                        style: TextStyle(
+                      Text(
+                        l10n.appointmentShowCode,
+                        style: const TextStyle(
                           fontSize: 11,
                           color: LiveColors.textSecondary,
                         ),
@@ -1279,9 +1316,9 @@ class _AppointmentCard extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: GestureDetector(
                     onTap: onCancel,
-                    child: const Text(
-                      '取消预约',
-                      style: TextStyle(
+                    child: Text(
+                      l10n.appointmentCancel,
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: LiveColors.danger,
@@ -1299,7 +1336,7 @@ class _AppointmentCard extends StatelessWidget {
             if (a.status == 'completed' || a.status == 'cancelled') ...[
               const SizedBox(height: 2),
               Text(
-                _payLine(a),
+                _payLine(a, l10n),
                 style: const TextStyle(
                   fontSize: 11,
                   color: LiveColors.textTertiary,
@@ -1311,7 +1348,7 @@ class _AppointmentCard extends StatelessWidget {
               Align(
                 alignment: Alignment.centerRight,
                 child: _ActionButton(
-                  label: _actionLabel(a),
+                  label: _actionLabel(a, l10n),
                   onTap: onAction,
                 ),
               ),
@@ -1322,40 +1359,48 @@ class _AppointmentCard extends StatelessWidget {
     );
   }
 
-  String _actionLabel(Appointment a) => switch (a.status) {
-        'checked_in' => '查看二维码',
-        'completed' => '再次预约',
-        'cancelled' => '再次预约',
-        _ => '查看详情',
+  String _actionLabel(Appointment a, AppLocalizations l10n) => switch (a.status) {
+        'checked_in' => l10n.appointmentViewQr,
+        'completed' => l10n.appointmentBookAgain,
+        'cancelled' => l10n.appointmentBookAgain,
+        _ => l10n.appointmentDetail,
       };
 
-  String _payLine(Appointment a) {
+  String _payLine(Appointment a, AppLocalizations l10n) {
     final paid = a.amount > 0
-        ? '到店支付 \$${fmtPrice(a.amount)}'
-        : '到店支付 \$0（会员免费）';
-    return '${a.statusLabel} · $paid';
+        ? l10n.appointmentPayAtStore('\$${fmtPrice(a.amount)}')
+        : l10n.appointmentPayMemberFree;
+    return '${_appointmentStatusLabel(l10n, a.status)} · $paid';
   }
 
-  String _infoLine(Appointment a) {
+  String _infoLine(Appointment a, AppLocalizations l10n) {
     final date = DateTime.tryParse(a.date);
     final week = date == null
         ? ''
-        : '周${'一二三四五六日'[date.weekday - 1]}';
+        : switch (date.weekday) {
+            1 => l10n.weekdayMon,
+            2 => l10n.weekdayTue,
+            3 => l10n.weekdayWed,
+            4 => l10n.weekdayThu,
+            5 => l10n.weekdayFri,
+            6 => l10n.weekdaySat,
+            _ => l10n.weekdaySun,
+          };
     final table = a.tableLabel.isNotEmpty ? ' · ${a.tableLabel}' : '';
     return '${a.date} $week ${a.startTime}-${a.endTime}$table'
-        '${_durationLabel(a)} · ${a.peopleCount} 人';
+        '${_durationLabel(a, l10n)} · ${l10n.appointmentPeople(a.peopleCount)}';
   }
 }
 
 /// 预约时长描述：套餐名 / 小时数 / 全天不限时。
-String _durationLabel(Appointment a) {
+String _durationLabel(Appointment a, AppLocalizations l10n) {
   if (a.type == 'activity') return '';
-  if (a.bookingType == 'all_day') return ' · 全天不限时';
+  if (a.bookingType == 'all_day') return ' · ${l10n.bookingTypeAllDay}';
   if (a.bookingType == 'package' && a.packageName.isNotEmpty) {
     return ' · ${a.packageName}';
   }
   if (a.durationHours != null && a.durationHours! > 0) {
-    return ' · ${a.durationHours} 小时';
+    return ' · ${l10n.bookingTypeHours(a.durationHours!)}';
   }
   return '';
 }
@@ -1609,24 +1654,28 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       child: FutureBuilder<Appointment>(
         future: _future,
         builder: (context, snap) {
+          final l10n = context.l10n;
           if (snap.hasError) {
             return Column(
               children: [
-                const LiveAppBar(title: '预约详情'),
+                LiveAppBar(title: l10n.appointmentDetailTitle),
                 Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _reload)),
               ],
             );
           }
           if (!snap.hasData) {
-            return const Column(
-              children: [LiveAppBar(title: '预约详情'), Expanded(child: LoadingView())],
+            return Column(
+              children: [
+                LiveAppBar(title: l10n.appointmentDetailTitle),
+                const Expanded(child: LoadingView()),
+              ],
             );
           }
           final a = snap.data!;
           final expired = a.status == 'booked' && a.isExpired();
           return Column(
             children: [
-              const LiveAppBar(title: '预约详情'),
+              LiveAppBar(title: l10n.appointmentDetailTitle),
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.all(18),
@@ -1638,22 +1687,22 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                           color: const Color(0xFFF3E8FF),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Column(
+                        child: Column(
                           children: [
-                            Icon(Icons.schedule, size: 36, color: Color(0xFF7C3AED)),
-                            SizedBox(height: 8),
+                            const Icon(Icons.schedule, size: 36, color: Color(0xFF7C3AED)),
+                            const SizedBox(height: 8),
                             Text(
-                              '等待门店确认',
-                              style: TextStyle(
+                              l10n.appointmentWaitingConfirm,
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                                 color: Color(0xFF6D28D9),
                               ),
                             ),
-                            SizedBox(height: 6),
+                            const SizedBox(height: 6),
                             Text(
-                              '预约已提交，门店确认后即可到店核销',
-                              style: TextStyle(
+                              l10n.appointmentWaitingDesc,
+                              style: const TextStyle(
                                 fontSize: 12,
                                 color: LiveColors.textSecondary,
                               ),
@@ -1670,7 +1719,10 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                         ),
                         child: Column(
                           children: [
-                            const Text('核销码', style: TextStyle(fontSize: 12, color: LiveColors.brand)),
+                            Text(
+                              l10n.appointmentCheckInCode,
+                              style: const TextStyle(fontSize: 12, color: LiveColors.brand),
+                            ),
                             const SizedBox(height: 4),
                             SelectableText(
                               a.code,
@@ -1682,7 +1734,10 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            Text(expired ? '订单已失效' : a.statusLabel,
+                            Text(
+                              expired
+                                  ? l10n.appointmentOrderExpired
+                                  : _appointmentStatusLabel(l10n, a.status),
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
@@ -1694,29 +1749,36 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                         ),
                       ),
                     const SizedBox(height: 18),
-                    const Text(
-                      '预约进度',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
+                    Text(
+                      l10n.appointmentProgress,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
                     ),
                     const SizedBox(height: 12),
                     _ProgressStepper(status: a.status),
                     const SizedBox(height: 22),
-                    const Text(
-                      '订单信息',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
+                    Text(
+                      l10n.appointmentInfo,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
                     ),
                     const SizedBox(height: 6),
-                    _DetailRow('预约项目', a.title),
-                    _DetailRow('预约时间', '${a.date} ${a.startTime}-${a.endTime}'),
-                    _DetailRow('人数', '${a.peopleCount} 人'),
-                    if (a.tableLabel.isNotEmpty) _DetailRow('桌位', a.tableLabel),
+                    _DetailRow(l10n.appointmentItem, a.title),
+                    _DetailRow(
+                      l10n.appointmentTime,
+                      '${a.date} ${a.startTime}-${a.endTime}',
+                    ),
+                    _DetailRow(
+                      l10n.appointmentPeopleCountLabel,
+                      l10n.appointmentPeople(a.peopleCount),
+                    ),
+                    if (a.tableLabel.isNotEmpty)
+                      _DetailRow(l10n.appointmentTable, a.tableLabel),
                     // ── 线上支付（暂不接入）：支付方式 / 支付状态 / 优惠券，先注释 ──
                     // _DetailRow('支付方式', a.payMethod == 'wechat' ? '微信支付' : a.payMethod == 'alipay' ? '支付宝' : a.payMethod),
                     // _DetailRow('支付状态', a.payStatus == 'paid' ? '已支付' : '未支付'),
-                    _DetailRow('付款方式', '到店核销后付款'),
-                    _DetailRow('金额', '\$${a.amount.toStringAsFixed(2)}'),
+                    _DetailRow(l10n.appointmentPayMethod, l10n.appointmentPayOffline),
+                    _DetailRow(l10n.appointmentAmount, '\$${a.amount.toStringAsFixed(2)}'),
                     // if (a.couponDiscount > 0) _DetailRow('优惠券', '${a.couponTitle} -\$${a.couponDiscount.toStringAsFixed(2)}'),
-                    if (a.note.isNotEmpty) _DetailRow('备注', a.note),
+                    if (a.note.isNotEmpty) _DetailRow(l10n.appointmentNote, a.note),
                     if (a.status == 'booked' ||
                         a.status == 'checked_in' ||
                         a.status == 'in_service') ...[
@@ -1725,18 +1787,18 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                         children: [
                           Expanded(
                             child: OutlineButton(
-                              label: '复制',
+                              label: l10n.commonCopy,
                               height: 42,
                               onTap: () {
                                 Clipboard.setData(ClipboardData(text: a.code));
-                                showLiveSnack(context, '预约码已复制');
+                                showLiveSnack(context, l10n.appointmentCodeCopied);
                               },
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: PrimaryButton(
-                              label: '扫码核销',
+                              label: l10n.appointmentCheckInScan,
                               height: 42,
                               onTap: expired
                                   ? null
@@ -1755,7 +1817,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                     const SizedBox(height: 16),
                     if (a.status == 'pending' || a.status == 'booked')
                       PrimaryButton(
-                        label: '取消预约',
+                        label: l10n.appointmentCancel,
                         textColor: LiveColors.danger,
                         loading: _acting,
                         onTap: _acting ? null : _cancel,
@@ -1777,8 +1839,6 @@ class _ProgressStepper extends StatelessWidget {
 
   final String status;
 
-  static const _labels = ['待确认', '待核销', '已核销', '已完成'];
-
   int get _current => switch (status) {
         'pending' => 0,
         'booked' => 1,
@@ -1790,9 +1850,16 @@ class _ProgressStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final labels = [
+      l10n.appointmentStatusPending,
+      l10n.appointmentStatusBooked,
+      l10n.appointmentStatusCheckedIn,
+      l10n.appointmentStatusCompleted,
+    ];
     return Row(
       children: [
-        for (var i = 0; i < _labels.length; i++) ...[
+        for (var i = 0; i < labels.length; i++) ...[
           if (i > 0)
             Expanded(
               child: Container(
@@ -1835,7 +1902,7 @@ class _ProgressStepper extends StatelessWidget {
               ),
               const SizedBox(height: 5),
               Text(
-                _labels[i],
+                labels[i],
                 style: TextStyle(
                   fontSize: 10.6,
                   color: i <= _current
@@ -1895,7 +1962,10 @@ class _QrCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Text('到店出示二维码核销', style: TextStyle(fontSize: 13, color: LiveColors.textSecondary)),
+                          Text(
+                            context.l10n.appointmentShowQr,
+                            style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
+                          ),
           const SizedBox(height: 12),
           QrImageView(
             data: appointment.code,
@@ -1907,7 +1977,7 @@ class _QrCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            '核销码 ${appointment.code}',
+            context.l10n.appointmentQrCode(appointment.code),
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: LiveColors.textPrimary),
           ),
         ],
@@ -1994,7 +2064,7 @@ class CheckinQrScreen extends StatelessWidget {
     return LivePage(
       child: Column(
         children: [
-          const LiveAppBar(title: '到店核销'),
+          LiveAppBar(title: context.l10n.appointmentToCheckIn),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(24),
@@ -2403,14 +2473,17 @@ class _CheckinFlowScreenState extends State<CheckinFlowScreen> {
           if (snap.hasError) {
             return Column(
               children: [
-                const LiveAppBar(title: '到店核销'),
+                LiveAppBar(title: context.l10n.appointmentToCheckIn),
                 Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
               ],
             );
           }
           if (!snap.hasData) {
-            return const Column(
-              children: [LiveAppBar(title: '到店核销'), Expanded(child: LoadingView())],
+            return Column(
+              children: [
+                LiveAppBar(title: context.l10n.appointmentToCheckIn),
+                const Expanded(child: LoadingView()),
+              ],
             );
           }
           final list = snap.data!;
@@ -2423,7 +2496,7 @@ class _CheckinFlowScreenState extends State<CheckinFlowScreen> {
           return Column(
             children: [
               LiveAppBar(
-                title: '到店核销',
+                title: context.l10n.appointmentToCheckIn,
                 // 输入核销码入口暂不开放，先隐藏
                 // actions: [
                 //   TextButton(
@@ -2441,9 +2514,12 @@ class _CheckinFlowScreenState extends State<CheckinFlowScreen> {
                   padding: const EdgeInsets.all(18),
                   children: [
                     if (active.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 120),
-                        child: EmptyView(text: '暂无待核销预约', icon: Icons.qr_code_scanner_outlined),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 120),
+                        child: EmptyView(
+                          text: context.l10n.appointmentPendingOnly,
+                          icon: Icons.qr_code_scanner_outlined,
+                        ),
                       )
                     else
                       ...active.map(
@@ -2540,7 +2616,9 @@ class _ExperienceCard extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           PrimaryButton(
-            label: appointment.status == 'booked' ? '扫码核销' : '查看二维码',
+            label: appointment.status == 'booked'
+                ? context.l10n.appointmentCheckInScan
+                : context.l10n.appointmentViewQr,
             height: 46,
             onTap: onScan,
           ),

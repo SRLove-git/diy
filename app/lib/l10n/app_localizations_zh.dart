@@ -797,7 +797,49 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appointmentCancel => '取消预约';
 
   @override
+  String get appointmentCancelDesc => '取消后该时段名额将释放，确定取消吗？';
+
+  @override
+  String get appointmentCancelConfirm => '确认取消';
+
+  @override
   String get appointmentCancelled => '预约已取消';
+
+  @override
+  String get appointmentBookingType => '预约方式';
+
+  @override
+  String get appointmentOriginalPrice => '原价';
+
+  @override
+  String get appointmentCoupon => '优惠券';
+
+  @override
+  String get appointmentPayable => '应付金额';
+
+  @override
+  String get appointmentViewQr => '查看二维码';
+
+  @override
+  String appointmentPayAtStore(String amount) {
+    return '到店支付 $amount';
+  }
+
+  @override
+  String get appointmentPayMemberFree => '到店支付 \$0（会员免费）';
+
+  @override
+  String bookingTypeHours(int hours) {
+    return '$hours 小时';
+  }
+
+  @override
+  String bookingTypePackage(String name, int hours) {
+    return '$name · $hours 小时';
+  }
+
+  @override
+  String get bookingTypeAllDay => '全天不限时';
 
   @override
   String get appointmentBookSuccess => '预约成功';
@@ -831,6 +873,38 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appointmentTime => '预约时间';
+
+  @override
+  String get appointmentPeopleCountLabel => '人数';
+
+  @override
+  String get appointmentNoOnlinePay => '无需线上支付，预约成功后到店出示核销码，核销后线下付款';
+
+  @override
+  String appointmentSurchargeLabel(int pct) {
+    return '周末/节假日加价 $pct%';
+  }
+
+  @override
+  String get discountMember => '会员优惠';
+
+  @override
+  String get discountGroup => '同行优惠';
+
+  @override
+  String get discountMemberGroup => '会员/同行优惠';
+
+  @override
+  String get commonPackage => '套餐';
+
+  @override
+  String get activitySession => '活动场次';
+
+  @override
+  String get activityBooking => '活动预约';
+
+  @override
+  String get storeBooking => '门店预约';
 
   @override
   String appointmentPeople(int count) {
@@ -880,7 +954,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appointmentClockOutTitle => '结束体验';
 
   @override
-  String get appointmentClockOutDesc => '点击确认下钟后将停止计时';
+  String get appointmentClockOutDesc => '下钟后将停止计时并生成完成记录，确认结束本次体验吗？';
 
   @override
   String get appointmentClockOutConfirm => '确认下钟';
