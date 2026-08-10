@@ -502,6 +502,90 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memberOpenRenew => '开通 / 续费';
 
   @override
+  String get memberBenefitPrice => '会员专属价';
+
+  @override
+  String get memberBenefitPriceDesc => '预约与到店享会员价，最高省 \$20/次';
+
+  @override
+  String get memberBenefitActivity => '专属活动';
+
+  @override
+  String get memberBenefitActivityDesc => '会员限定活动与双倍积分';
+
+  @override
+  String get memberBenefitCoupon => '每月优惠券';
+
+  @override
+  String get memberBenefitCouponDesc => '每月自动发放专属优惠券';
+
+  @override
+  String get memberBenefitBirthday => '生日礼遇';
+
+  @override
+  String get memberBenefitBirthdayDesc => '生日当月免费体验一次';
+
+  @override
+  String get memberAgreementHint => '会员权益与规则详见《会员服务协议》';
+
+  @override
+  String memberCurrent(String level) {
+    return '当前：$level';
+  }
+
+  @override
+  String memberLevel(String level) {
+    return '手作会员 · $level';
+  }
+
+  @override
+  String get memberValidUntil => '有效期至';
+
+  @override
+  String get memberStatusActive => '有效';
+
+  @override
+  String memberRemainingDays(int days) {
+    return '剩余 $days 天';
+  }
+
+  @override
+  String get memberWalletTitle => '卡包 · 优惠券';
+
+  @override
+  String get memberExclusiveExperience => '会员专属体验';
+
+  @override
+  String get memberMonthlyOnce => '每月 1 次 ›';
+
+  @override
+  String get memberMoreCoupons => '领取更多优惠券';
+
+  @override
+  String get memberClaimed => '领取成功';
+
+  @override
+  String get memberCouponCenter => '领券中心';
+
+  @override
+  String get memberClaimAll => '一键领取全部';
+
+  @override
+  String get memberNoCoupons => '暂无优惠券，去领券中心看看';
+
+  @override
+  String get memberNoCouponsAvailable => '暂无可领取的优惠券';
+
+  @override
+  String get memberTabUnused => '未使用';
+
+  @override
+  String get memberTabUsed => '已使用';
+
+  @override
+  String get memberTabExpired => '已过期';
+
+  @override
   String get memberNotOpened => '未开通';
 
   @override

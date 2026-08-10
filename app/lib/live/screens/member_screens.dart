@@ -3,17 +3,19 @@ import 'package:flutter/material.dart';
 import '../../api/api_client.dart';
 import '../../api/models.dart';
 import '../../api/services.dart';
+import '../../l10n/app_localizations.dart';
+import '../../l10n/l10n_ext.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
 
 /// 会员权益列表（对齐 Pixso 09-会员中心）。
-const _benefits = [
-  (Icons.account_balance_wallet_outlined, '会员专属价', '预约与到店享会员价，最高省 \$20/次'),
-  (Icons.card_giftcard_outlined, '专属活动', '会员限定活动与双倍积分'),
-  (Icons.confirmation_number_outlined, '每月优惠券', '每月自动发放专属优惠券'),
-  (Icons.local_fire_department_outlined, '生日礼遇', '生日当月免费体验一次'),
-];
+List<(IconData, String, String)> _benefitsOf(AppLocalizations l10n) => [
+      (Icons.account_balance_wallet_outlined, l10n.memberBenefitPrice, l10n.memberBenefitPriceDesc),
+      (Icons.card_giftcard_outlined, l10n.memberBenefitActivity, l10n.memberBenefitActivityDesc),
+      (Icons.confirmation_number_outlined, l10n.memberBenefitCoupon, l10n.memberBenefitCouponDesc),
+      (Icons.local_fire_department_outlined, l10n.memberBenefitBirthday, l10n.memberBenefitBirthdayDesc),
+    ];
 
 class MemberCenterScreen extends StatefulWidget {
   const MemberCenterScreen({super.key});
@@ -66,25 +68,30 @@ class _MemberCenterScreenState extends State<MemberCenterScreen> {
       child: FutureBuilder(
         future: _future,
         builder: (context, snap) {
+          final l10n = context.l10n;
           if (snap.hasError) {
             return Column(
               children: [
-                const LiveAppBar(title: '会员中心'),
+                LiveAppBar(title: l10n.memberCenterTitle),
                 Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
               ],
             );
           }
           if (!snap.hasData) {
-            return const Column(
-              children: [LiveAppBar(title: '会员中心'), Expanded(child: LoadingView())],
+            return Column(
+              children: [
+                LiveAppBar(title: l10n.memberCenterTitle),
+                const Expanded(child: LoadingView()),
+              ],
             );
           }
           final data = snap.data!;
           final pendingOrders =
               data.orders.where((o) => o.status == 'pending').toList();
+          final benefits = _benefitsOf(l10n);
           return Column(
             children: [
-              const LiveAppBar(title: '会员中心'),
+                LiveAppBar(title: l10n.memberCenterTitle),
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async => _retry(),
@@ -129,7 +136,7 @@ class _MemberCenterScreenState extends State<MemberCenterScreen> {
                         ),
                       ],
                       // 会员权益（对齐 Pixso 09-会员中心）
-                      const _SectionTitle(title: '会员权益'),
+                      _SectionTitle(title: l10n.memberBenefits),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -142,16 +149,16 @@ class _MemberCenterScreenState extends State<MemberCenterScreen> {
                         ),
                         child: Column(
                           children: [
-                            for (var i = 0; i < _benefits.length; i++) ...[
+                            for (var i = 0; i < benefits.length; i++) ...[
                               if (i > 0)
                                 const Divider(
                                   height: 1,
                                   color: LiveColors.divider,
                                 ),
                               _BenefitRow(
-                                icon: _benefits[i].$1,
-                                title: _benefits[i].$2,
-                                desc: _benefits[i].$3,
+                                icon: benefits[i].$1,
+                                title: benefits[i].$2,
+                                desc: benefits[i].$3,
                               ),
                             ],
                           ],
@@ -159,9 +166,9 @@ class _MemberCenterScreenState extends State<MemberCenterScreen> {
                       ),
                       // 开通 / 续费（对齐 Pixso 09-会员中心）
                       _SectionTitle(
-                        title: '开通 / 续费',
+                        title: l10n.memberOpenRenew,
                         more: data.membership.isActive
-                            ? '当前：${data.membership.levelName}'
+                            ? l10n.memberCurrent(data.membership.levelName)
                             : null,
                       ),
                       Row(
@@ -186,10 +193,10 @@ class _MemberCenterScreenState extends State<MemberCenterScreen> {
                         ],
                       ),
                       const SizedBox(height: 20),
-                      const Center(
+                      Center(
                         child: Text(
-                          '会员权益与规则详见《会员服务协议》',
-                          style: TextStyle(
+                          l10n.memberAgreementHint,
+                          style: const TextStyle(
                             fontSize: 11,
                             color: LiveColors.textTertiary,
                           ),
@@ -239,6 +246,7 @@ class _MembershipCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final active = membership.isActive;
     final remaining = active && membership.expireAt != null
         ? membership.expireAt!.difference(DateTime.now()).inDays
@@ -319,7 +327,7 @@ class _MembershipCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '手作会员 · ${membership.levelName}',
+                              l10n.memberLevel(membership.levelName),
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -347,9 +355,9 @@ class _MembershipCard extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text(
-                        '有效期至',
-                        style: TextStyle(
+                      Text(
+                        l10n.memberValidUntil,
+                        style: const TextStyle(
                           fontSize: 11,
                           color: _goldText,
                         ),
@@ -372,15 +380,15 @@ class _MembershipCard extends StatelessWidget {
                 children: [
                   _CardTag(
                     label: active
-                        ? '有效'
+                        ? l10n.memberStatusActive
                         : membership.status == 'expired'
-                            ? '已过期'
-                            : '未开通',
+                            ? l10n.memberExpired
+                            : l10n.memberNotOpened,
                     active: active,
                   ),
                   if (active) ...[
                     const SizedBox(width: 8),
-                    _CardTag(label: '剩余 $remaining 天', active: true),
+                    _CardTag(label: l10n.memberRemainingDays(remaining), active: true),
                   ],
                 ],
               ),
@@ -732,6 +740,7 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     if (_submitted) {
       return MemberOrderSubmittedView(
         planName: widget.plan.name,
@@ -742,7 +751,7 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
     return LivePage(
       child: Column(
         children: [
-          const LiveAppBar(title: '开通会员'),
+          LiveAppBar(title: l10n.memberPurchaseTitle),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(18),
@@ -750,8 +759,10 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
                   Text(widget.plan.name,
                       style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: LiveColors.textPrimary)),
                   const SizedBox(height: 6),
-                  Text('${widget.plan.durationDays} 天有效期',
-                      style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary)),
+                  Text(
+                    l10n.memberPurchaseDays(widget.plan.durationDays),
+                    style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
+                  ),
                   const SizedBox(height: 18),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -779,22 +790,25 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text('支付明细', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  Text(
+                    l10n.memberPayDetails,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
                   const SizedBox(height: 8),
                   _PurchaseRow(
-                    label: '套餐原价',
+                    label: l10n.memberOriginalPrice,
                     value: '\$${widget.plan.originalPrice.toStringAsFixed(2)}',
                     strikethrough: widget.plan.originalPrice > widget.plan.price,
                   ),
                   if (widget.plan.originalPrice > widget.plan.price)
                     _PurchaseRow(
-                      label: '限时优惠',
+                      label: l10n.memberDiscount,
                       value: '-\$${(widget.plan.originalPrice - widget.plan.price).toStringAsFixed(2)}',
                       valueColor: LiveColors.success,
                     ),
                   const Divider(height: 20, color: LiveColors.divider),
                   _PurchaseRow(
-                    label: '实付金额',
+                    label: l10n.memberPayAmount,
                     value: '\$${widget.plan.price.toStringAsFixed(2)}',
                     bold: true,
                   ),
@@ -805,15 +819,15 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
                       color: LiveColors.brandLight,
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.storefront_outlined,
+                        const Icon(Icons.storefront_outlined,
                             size: 18, color: LiveColors.brand),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            '线上下单，到店支付：提交订单后到店支付会员费用即可开通',
-                            style: TextStyle(
+                            l10n.memberOfflinePayHint,
+                            style: const TextStyle(
                               fontSize: 12.5,
                               color: LiveColors.textSecondary,
                               height: 1.5,
@@ -825,7 +839,7 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
                   ),
                   const SizedBox(height: 24),
                   PrimaryButton(
-                    label: '提交订单',
+                    label: l10n.memberSubmitOrder,
                     color: Colors.black,
                     textColor: Colors.white,
                     loading: _loading,
@@ -833,14 +847,14 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
                   ),
                   const SizedBox(height: 12),
                   OutlineButton(
-                    label: '再想想',
+                    label: l10n.memberThinkAgain,
                     onTap: () => Navigator.of(context).pop(false),
                   ),
                   const SizedBox(height: 14),
-                  const Text(
-                    '提交订单即代表同意《会员服务协议》',
+                  Text(
+                    l10n.memberAgreeTerms,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 11, color: LiveColors.textTertiary),
+                    style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -867,6 +881,7 @@ class MemberOrderSubmittedView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return LivePage(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -875,9 +890,9 @@ class MemberOrderSubmittedView extends StatelessWidget {
             const Spacer(),
             const Icon(Icons.check_circle, size: 84, color: LiveColors.success),
             const SizedBox(height: 16),
-            const Text(
-              '订单已提交',
-              style: TextStyle(
+            Text(
+              l10n.memberOrderSubmitted,
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
                 color: LiveColors.textPrimary,
@@ -885,7 +900,7 @@ class MemberOrderSubmittedView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '$planName · $durationDays 天',
+              '$planName · ${l10n.memberPurchaseDays(durationDays)}',
               style: const TextStyle(
                 fontSize: 13,
                 color: LiveColors.textSecondary,
@@ -898,30 +913,30 @@ class MemberOrderSubmittedView extends StatelessWidget {
                 color: const Color(0xFFF3E8FF),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Column(
+              child: Column(
                 children: [
-                  Icon(Icons.schedule, size: 32, color: Color(0xFF7C3AED)),
-                  SizedBox(height: 8),
+                  const Icon(Icons.schedule, size: 32, color: Color(0xFF7C3AED)),
+                  const SizedBox(height: 8),
                   Text(
-                    '等待门店确认',
-                    style: TextStyle(
+                    l10n.memberWaitingConfirm,
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF6D28D9),
                     ),
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   Text(
-                    '到店支付会员费用后，由门店确认开通\n开通后即可享受会员权益',
+                    l10n.memberOrderSubmittedDesc,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: LiveColors.textSecondary),
+                    style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
                   ),
                 ],
               ),
             ),
             const Spacer(),
             PrimaryButton(
-              label: '完成',
+              label: l10n.commonDone,
               color: Colors.black,
               textColor: Colors.white,
               onTap: onDone,
@@ -999,6 +1014,7 @@ class _CouponsScreenState extends State<CouponsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return LivePage(
       child: FutureBuilder<List<Coupon>>(
         future: _future,
@@ -1006,14 +1022,17 @@ class _CouponsScreenState extends State<CouponsScreen> {
           if (snap.hasError) {
             return Column(
               children: [
-                const LiveAppBar(title: '卡包 · 优惠券'),
+                LiveAppBar(title: l10n.memberWalletTitle),
                 Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
               ],
             );
           }
           if (!snap.hasData) {
-            return const Column(
-              children: [LiveAppBar(title: '卡包 · 优惠券'), Expanded(child: LoadingView())],
+            return Column(
+              children: [
+                LiveAppBar(title: l10n.memberWalletTitle),
+                const Expanded(child: LoadingView()),
+              ],
             );
           }
           final all = snap.data!;
@@ -1030,7 +1049,7 @@ class _CouponsScreenState extends State<CouponsScreen> {
           return Column(
             children: [
               LiveAppBar(
-                title: '卡包 · 优惠券',
+                title: l10n.memberWalletTitle,
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.add_circle_outline, color: LiveColors.brand),
@@ -1044,7 +1063,7 @@ class _CouponsScreenState extends State<CouponsScreen> {
               ),
               Expanded(
                 child: list.isEmpty
-                    ? const EmptyView(text: '暂无优惠券，去领券中心看看')
+                    ? EmptyView(text: l10n.memberNoCoupons)
                     : RefreshIndicator(
                         onRefresh: () async => _retry(),
                         child: ListView.separated(
@@ -1058,13 +1077,13 @@ class _CouponsScreenState extends State<CouponsScreen> {
               const Divider(height: 1, color: LiveColors.divider),
               _QuickEntry(
                 icon: Icons.workspace_premium_outlined,
-                label: '会员专属体验',
-                value: '每月 1 次 ›',
+                label: l10n.memberExclusiveExperience,
+                value: l10n.memberMonthlyOnce,
                 onTap: () => LiveRoutes.push(context, RoutePaths.memberCenter),
               ),
               _QuickEntry(
                 icon: Icons.redeem_outlined,
-                label: '领取更多优惠券',
+                label: l10n.memberMoreCoupons,
                 value: '',
                 onTap: () => LiveRoutes.push(context, RoutePaths.memberCouponCenter),
               ),
@@ -1084,7 +1103,12 @@ class _CouponTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = [('unused', '可用'), ('used', '已使用'), ('expired', '已过期')];
+    final l10n = context.l10n;
+    final tabs = [
+      ('unused', l10n.memberTabUnused),
+      ('used', l10n.memberTabUsed),
+      ('expired', l10n.memberTabExpired),
+    ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
       child: Row(
@@ -1191,7 +1215,7 @@ class _CouponCenterScreenState extends State<CouponCenterScreen> {
     try {
       await MemberService.instance.receive(c.id);
       if (mounted) {
-        showLiveSnack(context, '领取成功');
+        showLiveSnack(context, context.l10n.memberClaimed);
         _retry();
       }
     } on ApiException catch (e) {
@@ -1203,6 +1227,7 @@ class _CouponCenterScreenState extends State<CouponCenterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return LivePage(
       child: FutureBuilder<List<Coupon>>(
         future: _future,
@@ -1210,23 +1235,26 @@ class _CouponCenterScreenState extends State<CouponCenterScreen> {
           if (snap.hasError) {
             return Column(
               children: [
-                const LiveAppBar(title: '领券中心'),
+                LiveAppBar(title: l10n.memberCouponCenter),
                 Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
               ],
             );
           }
           if (!snap.hasData) {
-            return const Column(
-              children: [LiveAppBar(title: '领券中心'), Expanded(child: LoadingView())],
+            return Column(
+              children: [
+                LiveAppBar(title: l10n.memberCouponCenter),
+                const Expanded(child: LoadingView()),
+              ],
             );
           }
           final list = snap.data!;
           return Column(
             children: [
-              const LiveAppBar(title: '领券中心'),
+              LiveAppBar(title: l10n.memberCouponCenter),
               Expanded(
                 child: list.isEmpty
-                    ? const EmptyView(text: '暂无可领取的优惠券')
+                    ? EmptyView(text: l10n.memberNoCouponsAvailable)
                     : RefreshIndicator(
                         onRefresh: () async => _retry(),
                         child: ListView.separated(
@@ -1247,7 +1275,7 @@ class _CouponCenterScreenState extends State<CouponCenterScreen> {
                     children: [
                       Expanded(
                         child: PrimaryButton(
-                          label: '一键领取全部',
+                          label: l10n.memberClaimAll,
                           onTap: () async {
                             for (final c in list.where((x) => !x.received)) {
                               await _receive(c);

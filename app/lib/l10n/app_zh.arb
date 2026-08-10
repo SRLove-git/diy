@@ -211,6 +211,53 @@
   "memberCenterTitle": "会员中心",
   "memberBenefits": "会员权益",
   "memberOpenRenew": "开通 / 续费",
+  "memberBenefitPrice": "会员专属价",
+  "memberBenefitPriceDesc": "预约与到店享会员价，最高省 $20/次",
+  "memberBenefitActivity": "专属活动",
+  "memberBenefitActivityDesc": "会员限定活动与双倍积分",
+  "memberBenefitCoupon": "每月优惠券",
+  "memberBenefitCouponDesc": "每月自动发放专属优惠券",
+  "memberBenefitBirthday": "生日礼遇",
+  "memberBenefitBirthdayDesc": "生日当月免费体验一次",
+  "memberAgreementHint": "会员权益与规则详见《会员服务协议》",
+  "memberCurrent": "当前：{level}",
+  "@memberCurrent": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "memberLevel": "手作会员 · {level}",
+  "@memberLevel": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "memberValidUntil": "有效期至",
+  "memberStatusActive": "有效",
+  "memberRemainingDays": "剩余 {days} 天",
+  "@memberRemainingDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "memberWalletTitle": "卡包 · 优惠券",
+  "memberExclusiveExperience": "会员专属体验",
+  "memberMonthlyOnce": "每月 1 次 ›",
+  "memberMoreCoupons": "领取更多优惠券",
+  "memberClaimed": "领取成功",
+  "memberCouponCenter": "领券中心",
+  "memberClaimAll": "一键领取全部",
+  "memberNoCoupons": "暂无优惠券，去领券中心看看",
+  "memberNoCouponsAvailable": "暂无可领取的优惠券",
+  "memberTabUnused": "未使用",
+  "memberTabUsed": "已使用",
+  "memberTabExpired": "已过期",
   "memberNotOpened": "未开通",
   "memberExpired": "已过期",
   "memberPendingHint": "有 {count} 笔会员开通申请待门店确认，到店支付费用后将为你开通",

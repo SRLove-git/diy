@@ -510,6 +510,94 @@ class AppLocalizationsEn extends AppLocalizations {
   String get memberOpenRenew => 'Open / Renew';
 
   @override
+  String get memberBenefitPrice => 'Member Pricing';
+
+  @override
+  String get memberBenefitPriceDesc =>
+      'Member prices for bookings and in-store, save up to \$20/time';
+
+  @override
+  String get memberBenefitActivity => 'Exclusive Activities';
+
+  @override
+  String get memberBenefitActivityDesc =>
+      'Member-only activities and double points';
+
+  @override
+  String get memberBenefitCoupon => 'Monthly Coupons';
+
+  @override
+  String get memberBenefitCouponDesc => 'Exclusive coupons issued monthly';
+
+  @override
+  String get memberBenefitBirthday => 'Birthday Gift';
+
+  @override
+  String get memberBenefitBirthdayDesc =>
+      'One free experience in your birthday month';
+
+  @override
+  String get memberAgreementHint =>
+      'See the Membership Service Agreement for benefits and rules';
+
+  @override
+  String memberCurrent(String level) {
+    return 'Current: $level';
+  }
+
+  @override
+  String memberLevel(String level) {
+    return 'Membership · $level';
+  }
+
+  @override
+  String get memberValidUntil => 'Valid until';
+
+  @override
+  String get memberStatusActive => 'Active';
+
+  @override
+  String memberRemainingDays(int days) {
+    return '$days days left';
+  }
+
+  @override
+  String get memberWalletTitle => 'Wallet · Coupons';
+
+  @override
+  String get memberExclusiveExperience => 'Member Exclusive Experience';
+
+  @override
+  String get memberMonthlyOnce => '1 per month ›';
+
+  @override
+  String get memberMoreCoupons => 'Get more coupons';
+
+  @override
+  String get memberClaimed => 'Claimed';
+
+  @override
+  String get memberCouponCenter => 'Coupon Center';
+
+  @override
+  String get memberClaimAll => 'Claim All';
+
+  @override
+  String get memberNoCoupons => 'No coupons yet, visit the coupon center';
+
+  @override
+  String get memberNoCouponsAvailable => 'No coupons available';
+
+  @override
+  String get memberTabUnused => 'Unused';
+
+  @override
+  String get memberTabUsed => 'Used';
+
+  @override
+  String get memberTabExpired => 'Expired';
+
+  @override
   String get memberNotOpened => 'Not opened';
 
   @override

@@ -1058,6 +1058,162 @@ abstract class AppLocalizations {
   /// **'开通 / 续费'**
   String get memberOpenRenew;
 
+  /// No description provided for @memberBenefitPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'会员专属价'**
+  String get memberBenefitPrice;
+
+  /// No description provided for @memberBenefitPriceDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'预约与到店享会员价，最高省 \$20/次'**
+  String get memberBenefitPriceDesc;
+
+  /// No description provided for @memberBenefitActivity.
+  ///
+  /// In zh, this message translates to:
+  /// **'专属活动'**
+  String get memberBenefitActivity;
+
+  /// No description provided for @memberBenefitActivityDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'会员限定活动与双倍积分'**
+  String get memberBenefitActivityDesc;
+
+  /// No description provided for @memberBenefitCoupon.
+  ///
+  /// In zh, this message translates to:
+  /// **'每月优惠券'**
+  String get memberBenefitCoupon;
+
+  /// No description provided for @memberBenefitCouponDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'每月自动发放专属优惠券'**
+  String get memberBenefitCouponDesc;
+
+  /// No description provided for @memberBenefitBirthday.
+  ///
+  /// In zh, this message translates to:
+  /// **'生日礼遇'**
+  String get memberBenefitBirthday;
+
+  /// No description provided for @memberBenefitBirthdayDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'生日当月免费体验一次'**
+  String get memberBenefitBirthdayDesc;
+
+  /// No description provided for @memberAgreementHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'会员权益与规则详见《会员服务协议》'**
+  String get memberAgreementHint;
+
+  /// No description provided for @memberCurrent.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前：{level}'**
+  String memberCurrent(String level);
+
+  /// No description provided for @memberLevel.
+  ///
+  /// In zh, this message translates to:
+  /// **'手作会员 · {level}'**
+  String memberLevel(String level);
+
+  /// No description provided for @memberValidUntil.
+  ///
+  /// In zh, this message translates to:
+  /// **'有效期至'**
+  String get memberValidUntil;
+
+  /// No description provided for @memberStatusActive.
+  ///
+  /// In zh, this message translates to:
+  /// **'有效'**
+  String get memberStatusActive;
+
+  /// No description provided for @memberRemainingDays.
+  ///
+  /// In zh, this message translates to:
+  /// **'剩余 {days} 天'**
+  String memberRemainingDays(int days);
+
+  /// No description provided for @memberWalletTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'卡包 · 优惠券'**
+  String get memberWalletTitle;
+
+  /// No description provided for @memberExclusiveExperience.
+  ///
+  /// In zh, this message translates to:
+  /// **'会员专属体验'**
+  String get memberExclusiveExperience;
+
+  /// No description provided for @memberMonthlyOnce.
+  ///
+  /// In zh, this message translates to:
+  /// **'每月 1 次 ›'**
+  String get memberMonthlyOnce;
+
+  /// No description provided for @memberMoreCoupons.
+  ///
+  /// In zh, this message translates to:
+  /// **'领取更多优惠券'**
+  String get memberMoreCoupons;
+
+  /// No description provided for @memberClaimed.
+  ///
+  /// In zh, this message translates to:
+  /// **'领取成功'**
+  String get memberClaimed;
+
+  /// No description provided for @memberCouponCenter.
+  ///
+  /// In zh, this message translates to:
+  /// **'领券中心'**
+  String get memberCouponCenter;
+
+  /// No description provided for @memberClaimAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'一键领取全部'**
+  String get memberClaimAll;
+
+  /// No description provided for @memberNoCoupons.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无优惠券，去领券中心看看'**
+  String get memberNoCoupons;
+
+  /// No description provided for @memberNoCouponsAvailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无可领取的优惠券'**
+  String get memberNoCouponsAvailable;
+
+  /// No description provided for @memberTabUnused.
+  ///
+  /// In zh, this message translates to:
+  /// **'未使用'**
+  String get memberTabUnused;
+
+  /// No description provided for @memberTabUsed.
+  ///
+  /// In zh, this message translates to:
+  /// **'已使用'**
+  String get memberTabUsed;
+
+  /// No description provided for @memberTabExpired.
+  ///
+  /// In zh, this message translates to:
+  /// **'已过期'**
+  String get memberTabExpired;
+
   /// No description provided for @memberNotOpened.
   ///
   /// In zh, this message translates to:
