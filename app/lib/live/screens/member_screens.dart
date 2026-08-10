@@ -597,7 +597,7 @@ class _PlanCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text.rich(
               TextSpan(
-                text: '\$${plan.price.toStringAsFixed(0)}',
+                text: '\$${fmtPrice(plan.price)}',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -606,7 +606,7 @@ class _PlanCard extends StatelessWidget {
                 children: [
                   if (plan.originalPrice > plan.price)
                     TextSpan(
-                      text: '  \$${plan.originalPrice.toStringAsFixed(0)}',
+                      text: '  \$${fmtPrice(plan.originalPrice)}',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
@@ -1022,7 +1022,7 @@ class _CouponCard extends StatelessWidget {
         child: Row(
           children: [
             Text(
-              '\$${coupon.amount.toStringAsFixed(0)}',
+              '\$${fmtPrice(coupon.amount)}',
               style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: LiveColors.brand),
             ),
             const SizedBox(width: 14),

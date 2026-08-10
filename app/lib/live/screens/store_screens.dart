@@ -200,7 +200,7 @@ class _StoreCard extends StatelessWidget {
                       // ),
                       const Spacer(),
                       Text(
-                        '\$${store.price.toStringAsFixed(0)}/时·人',
+                        '\$${fmtPrice(store.price)}/时·人',
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -583,10 +583,10 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      '按小时 \$${store.price.toStringAsFixed(2)}/人/小时'
-                      '${store.memberPrice != null && store.memberPrice! > 0 ? '　会员 \$${store.memberPrice!.toStringAsFixed(2)}' : store.memberPrice == 0 ? '　会员免费' : ''}'
-                      '${store.groupPrice != null ? '　同行 \$${store.groupPrice!.toStringAsFixed(2)}' : ''}'
-                      '${store.allDayPrice != null ? '　全天 \$${store.allDayPrice!.toStringAsFixed(2)}/人' : ''}',
+                      '按小时 \$${fmtPrice(store.price)}/人/小时'
+                      '${store.memberPrice != null && store.memberPrice! > 0 ? '　会员 \$${fmtPrice(store.memberPrice!)}' : store.memberPrice == 0 ? '　会员免费' : ''}'
+                      '${store.groupPrice != null ? '　同行 \$${fmtPrice(store.groupPrice!)}' : ''}'
+                      '${store.allDayPrice != null ? '　全天 \$${fmtPrice(store.allDayPrice!)}/人' : ''}',
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
                     ),
                     const SizedBox(height: 20),
@@ -646,7 +646,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                           runSpacing: 10,
                           children: store.packages.map((p) {
                             return _ChoiceChip(
-                              label: '${p.name} · \$${p.price.toStringAsFixed(0)}/人',
+                              label: '${p.name} · \$${fmtPrice(p.price)}/人',
                               selected: _package?.id == p.id,
                               onTap: () => setState(() {
                                 _package = p;
@@ -889,7 +889,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
           ),
           const SizedBox(width: 10),
           Text(
-            '\$${unit.toStringAsFixed(0)}/人',
+            '\$${fmtPrice(unit)}/人',
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,

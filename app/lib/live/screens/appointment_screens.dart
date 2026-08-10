@@ -1248,7 +1248,7 @@ class _AppointmentCard extends StatelessWidget {
 
   String _payLine(Appointment a) {
     final paid = a.amount > 0
-        ? '到店支付 \$${a.amount.toStringAsFixed(0)}'
+        ? '到店支付 \$${fmtPrice(a.amount)}'
         : '到店支付 \$0（会员免费）';
     return '${a.statusLabel} · $paid';
   }

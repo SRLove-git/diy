@@ -126,7 +126,7 @@ class _ActivityCard extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  activity.price > 0 ? '\$${activity.price.toStringAsFixed(0)}/人' : '免费',
+                  activity.price > 0 ? '\$${fmtPrice(activity.price)}/人' : '免费',
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: LiveColors.brand),
                 ),
                 if (activity.bookable) ...[

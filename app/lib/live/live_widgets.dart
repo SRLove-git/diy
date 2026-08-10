@@ -6,6 +6,12 @@ import 'live_theme.dart';
 
 /// 实时页面共享组件
 
+/// 价格显示：整数不带小数（68 → 68），非整数保留 1 位小数（9.9 → 9.9）。
+String fmtPrice(double value) {
+  final v = value.isFinite ? value : 0;
+  return v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+}
+
 class LivePage extends StatelessWidget {
   const LivePage({
     super.key,
