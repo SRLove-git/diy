@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart' hide Page;
 import 'package:image_picker/image_picker.dart';
 
@@ -1072,6 +1074,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _locationCtrl = TextEditingController();
   final _birthdayCtrl = TextEditingController();
   String _avatar = '';
+  /// 刚选择的头像本地字节：立即预览，上传完成后仍保留到保存/离开页面，
+  /// 避免预览依赖网络图加载（上传后不显示的问题）。
+  Uint8List? _avatarPreview;
   String _gender = 'secret';
   bool _saving = false;
 
@@ -1111,11 +1116,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
       if (picked == null) return;
       final bytes = await picked.readAsBytes();
+      // 先本地预览，保证选完立刻显示
+      if (mounted) setState(() => _avatarPreview = bytes);
       final url = await UploadService.instance.uploadImage(bytes, picked.name, folder: 'avatar');
+      // 上传成功后记录正式 URL（保存时写入资料）；预览继续用本地字节，
+      // 不受网络加载/缓存时序影响
       if (mounted) setState(() => _avatar = url);
     } on ApiException catch (e) {
+      if (mounted) setState(() => _avatarPreview = null);
       if (mounted) showLiveSnack(context, e.message);
     } catch (e) {
+      if (mounted) setState(() => _avatarPreview = null);
       if (mounted) showLiveSnack(context, '选择头像失败：$e');
     }
   }
@@ -1311,11 +1322,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               child: SizedBox(
                                 width: 90,
                                 height: 90,
-                                child: Avatar(
-                                  url: _avatar,
-                                  name: _nicknameCtrl.text.isEmpty ? '我' : _nicknameCtrl.text,
-                                  size: 90,
-                                ),
+                                child: _avatarPreview != null
+                                    ? Image.memory(
+                                        _avatarPreview!,
+                                        width: 90,
+                                        height: 90,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Avatar(
+                                        url: _avatar,
+                                        name: _nicknameCtrl.text.isEmpty ? '我' : _nicknameCtrl.text,
+                                        size: 90,
+                                      ),
                               ),
                             ),
                           ),
