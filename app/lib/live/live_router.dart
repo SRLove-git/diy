@@ -51,7 +51,7 @@ final GoRouter appRouter = GoRouter(
   routes: [
     GoRoute(
       path: RoutePaths.splash,
-      builder: (_, __) => const LiveHost(
+      builder: (_, _) => const LiveHost(
         child: Center(
           child: CircularProgressIndicator(color: LiveColors.brand),
         ),
@@ -60,28 +60,28 @@ final GoRouter appRouter = GoRouter(
     // ===== 登录 / 注册 =====
     GoRoute(
       path: RoutePaths.login,
-      builder: (_, __) =>
-          LiveHost(child: const LoginScreen(), resizeToAvoidBottomInset: false),
+      builder: (_, _) =>
+          LiveHost(resizeToAvoidBottomInset: false, child: const LoginScreen()),
     ),
     GoRoute(
       path: RoutePaths.loginRegister,
-      builder: (_, __) => LiveHost(
-        child: const RegisterScreen(),
+      builder: (_, _) => LiveHost(
         resizeToAvoidBottomInset: false,
+        child: const RegisterScreen(),
       ),
     ),
     GoRoute(
       path: RoutePaths.loginForgot,
-      builder: (_, __) => LiveHost(
-        child: const ForgotPasswordScreen(),
+      builder: (_, _) => LiveHost(
         resizeToAvoidBottomInset: false,
+        child: const ForgotPasswordScreen(),
       ),
     ),
     GoRoute(
       path: RoutePaths.loginVerify,
-      builder: (_, __) => LiveHost(
-        child: const VerifyCodeScreen(),
+      builder: (_, _) => LiveHost(
         resizeToAvoidBottomInset: false,
+        child: const VerifyCodeScreen(),
       ),
     ),
     // ===== 底部 5 Tab（保活） =====
@@ -128,7 +128,7 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: RoutePaths.home,
-              builder: (_, __) => const HomeScreen(),
+              builder: (_, _) => const HomeScreen(),
             ),
           ],
         ),
@@ -161,7 +161,7 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: RoutePaths.profile,
-              builder: (_, __) => const ProfileScreen(),
+              builder: (_, _) => const ProfileScreen(),
             ),
           ],
         ),
@@ -171,14 +171,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: RoutePaths.search,
       // 搜索页有输入框：键盘弹出时页面不压缩，键盘覆盖下半部分。
-      builder: (_, __) => LiveHost(
-        child: const SearchScreen(),
+      builder: (_, _) => LiveHost(
         resizeToAvoidBottomInset: false,
+        child: const SearchScreen(),
       ),
     ),
     GoRoute(
       path: RoutePaths.notifications,
-      builder: (_, __) => LiveHost(child: const NotificationsScreen()),
+      builder: (_, _) => LiveHost(child: const NotificationsScreen()),
     ),
     GoRoute(
       path: RoutePaths.viewer,
@@ -206,49 +206,49 @@ final GoRouter appRouter = GoRouter(
     // ===== 帖子 =====
     GoRoute(
       path: RoutePaths.postPublish,
-      builder: (_, __) => LiveHost(
-        child: const PostPublishScreen(),
+      builder: (_, _) => LiveHost(
         resizeToAvoidBottomInset: false,
+        child: const PostPublishScreen(),
       ),
     ),
     GoRoute(
       path: RoutePaths.postPublishSuccess,
       builder: (_, s) => LiveHost(
-        child: PostPublishSuccessScreen(post: s.extra as Post),
         resizeToAvoidBottomInset: false,
+        child: PostPublishSuccessScreen(post: s.extra as Post),
       ),
     ),
     GoRoute(
       path: RoutePaths.postDetail,
       builder: (_, s) => LiveHost(
-        child: PostDetailScreen(postId: _id(s, 'id')),
         resizeToAvoidBottomInset: false,
+        child: PostDetailScreen(postId: _id(s, 'id')),
       ),
     ),
     // ===== 视频 =====
     GoRoute(
       path: RoutePaths.videoSearch,
-      builder: (_, __) => LiveHost(
-        child: const VideoSearchScreen(),
+      builder: (_, _) => LiveHost(
         resizeToAvoidBottomInset: false,
+        child: const VideoSearchScreen(),
       ),
     ),
     GoRoute(
       path: RoutePaths.videoCapture,
-      builder: (_, __) => LiveHost(child: const CaptureScreen()),
+      builder: (_, _) => LiveHost(child: const CaptureScreen()),
     ),
     GoRoute(
       path: RoutePaths.videoPublish,
       builder: (_, s) => LiveHost(
-        child: VideoPublishScreen(initialCover: s.extra as String),
         resizeToAvoidBottomInset: false,
+        child: VideoPublishScreen(initialCover: s.extra as String),
       ),
     ),
     GoRoute(
       path: RoutePaths.videoMusic,
-      builder: (_, __) => LiveHost(
-        child: const MusicPickerScreen(),
+      builder: (_, _) => LiveHost(
         resizeToAvoidBottomInset: false,
+        child: const MusicPickerScreen(),
       ),
     ),
     GoRoute(
@@ -263,8 +263,8 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: RoutePaths.videoDetail,
       builder: (_, s) => LiveHost(
-        child: VideoDetailScreen(videoId: _id(s, 'id')),
         resizeToAvoidBottomInset: false,
+        child: VideoDetailScreen(videoId: _id(s, 'id')),
       ),
     ),
     // ===== 聊天 =====
@@ -304,55 +304,55 @@ final GoRouter appRouter = GoRouter(
       // 群设置页会弹「修改群名称」输入框：键盘弹出时页面不压缩，
       // 键盘覆盖下半部分（与登录页一致），避免页面缩小出现上下分层。
       builder: (_, s) => LiveHost(
-        child: GroupSettingsScreen(groupId: _id(s, 'id')),
         resizeToAvoidBottomInset: false,
+        child: GroupSettingsScreen(groupId: _id(s, 'id')),
       ),
     ),
     GoRoute(
       path: RoutePaths.chatGroupManage,
       builder: (_, s) => LiveHost(
-        child: GroupMemberManageScreen(groupId: _id(s, 'id')),
         resizeToAvoidBottomInset: false,
+        child: GroupMemberManageScreen(groupId: _id(s, 'id')),
       ),
     ),
     GoRoute(
       path: RoutePaths.chatBlocks,
-      builder: (_, __) => LiveHost(child: const BlocksScreen()),
+      builder: (_, _) => LiveHost(child: const BlocksScreen()),
     ),
     GoRoute(
       path: RoutePaths.chatAddFriend,
-      builder: (_, __) => LiveHost(
-        child: const AddFriendScreen(),
+      builder: (_, _) => LiveHost(
         resizeToAvoidBottomInset: false,
+        child: const AddFriendScreen(),
       ),
     ),
     // ===== 活动 =====
     GoRoute(
       path: RoutePaths.activityList,
-      builder: (_, __) => LiveHost(child: const ActivityListScreen()),
+      builder: (_, _) => LiveHost(child: const ActivityListScreen()),
     ),
     GoRoute(
       path: RoutePaths.activityDetail,
       builder: (_, s) => LiveHost(
-        child: ActivityDetailScreen(activityId: _id(s, 'id')),
         resizeToAvoidBottomInset: false,
+        child: ActivityDetailScreen(activityId: _id(s, 'id')),
       ),
     ),
     // ===== 门店 / 预约 =====
     GoRoute(
       path: RoutePaths.storeList,
-      builder: (_, __) => LiveHost(child: const StoreListScreen()),
+      builder: (_, _) => LiveHost(child: const StoreListScreen()),
     ),
     GoRoute(
       path: RoutePaths.storeSearch,
-      builder: (_, __) => LiveHost(
-        child: const StoreSearchScreen(),
+      builder: (_, _) => LiveHost(
         resizeToAvoidBottomInset: false,
+        child: const StoreSearchScreen(),
       ),
     ),
     GoRoute(
       path: RoutePaths.storeCheckin,
-      builder: (_, __) => LiveHost(child: const CheckinFlowScreen()),
+      builder: (_, _) => LiveHost(child: const CheckinFlowScreen()),
     ),
     GoRoute(
       path: RoutePaths.storeTableSelect,
@@ -392,7 +392,7 @@ final GoRouter appRouter = GoRouter(
         endTime: (m['endTime'] as String?) ?? '',
         durationHours: (m['durationHours'] as int?) ?? 0,
         packageName: (m['packageName'] as String?) ?? '',
-        packageId: (m['packageId'] as int?) ?? null,
+        packageId: (m['packageId'] as int?),
         packagePrice: (m['packagePrice'] as num?)?.toDouble(),
         session: m['session'] as ActivitySession?,
         tableIds: ((m['tableIds'] as List?) ?? const <int>[]).cast<int>(),
@@ -411,20 +411,20 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: RoutePaths.appointmentCheckinQr,
       builder: (_, s) => LiveHost(
-        child: CheckinQrScreen(appointment: s.extra as Appointment),
         resizeToAvoidBottomInset: false,
+        child: CheckinQrScreen(appointment: s.extra as Appointment),
       ),
     ),
     GoRoute(
       path: RoutePaths.appointmentServiceEnd,
       builder: (_, s) => LiveHost(
-        child: ServiceEndScreen(appointment: s.extra as Appointment),
         resizeToAvoidBottomInset: false,
+        child: ServiceEndScreen(appointment: s.extra as Appointment),
       ),
     ),
     GoRoute(
       path: RoutePaths.appointmentMy,
-      builder: (_, __) => LiveHost(child: const MyAppointmentsScreen()),
+      builder: (_, _) => LiveHost(child: const MyAppointmentsScreen()),
     ),
     GoRoute(
       path: RoutePaths.appointmentDetail,
@@ -435,15 +435,15 @@ final GoRouter appRouter = GoRouter(
     // ===== 会员 =====
     GoRoute(
       path: RoutePaths.memberCenter,
-      builder: (_, __) => LiveHost(child: const MemberCenterScreen()),
+      builder: (_, _) => LiveHost(child: const MemberCenterScreen()),
     ),
     GoRoute(
       path: RoutePaths.memberCoupons,
-      builder: (_, __) => LiveHost(child: const CouponsScreen()),
+      builder: (_, _) => LiveHost(child: const CouponsScreen()),
     ),
     GoRoute(
       path: RoutePaths.memberCouponCenter,
-      builder: (_, __) => LiveHost(child: const CouponCenterScreen()),
+      builder: (_, _) => LiveHost(child: const CouponCenterScreen()),
     ),
     GoRoute(
       path: RoutePaths.memberPurchase,
@@ -454,22 +454,22 @@ final GoRouter appRouter = GoRouter(
     // ===== 个人 =====
     GoRoute(
       path: RoutePaths.profileEdit,
-      builder: (_, __) => LiveHost(
-        child: const EditProfileScreen(),
+      builder: (_, _) => LiveHost(
         resizeToAvoidBottomInset: false,
+        child: const EditProfileScreen(),
       ),
     ),
     GoRoute(
       path: RoutePaths.profileSettings,
-      builder: (_, __) => LiveHost(child: const SettingsScreen()),
+      builder: (_, _) => LiveHost(child: const SettingsScreen()),
     ),
     GoRoute(
       path: RoutePaths.profileLiked,
-      builder: (_, __) => LiveHost(child: const LikedFavoritesScreen()),
+      builder: (_, _) => LiveHost(child: const LikedFavoritesScreen()),
     ),
     GoRoute(
       path: RoutePaths.profileHistory,
-      builder: (_, __) => LiveHost(child: const WatchHistoryScreen()),
+      builder: (_, _) => LiveHost(child: const WatchHistoryScreen()),
     ),
   ],
 );

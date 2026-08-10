@@ -30,7 +30,7 @@ class LivePage extends StatelessWidget {
     final content = Column(
       children: [
         Expanded(child: child),
-        if (bottomBar != null) bottomBar!,
+        ?bottomBar,
       ],
     );
     return Scaffold(
@@ -251,7 +251,7 @@ class OutlineButton extends StatelessWidget {
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
           foregroundColor: color,
-          side: BorderSide(color: color.withOpacity(0.35)),
+          side: BorderSide(color: color.withValues(alpha: 0.35)),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
@@ -341,7 +341,7 @@ class Avatar extends StatelessWidget {
               width: size,
               height: size,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (_, _, _) => Container(
                 width: size,
                 height: size,
                 color: LiveColors.brandLight,
@@ -385,7 +385,7 @@ class NetImage extends StatelessWidget {
         fit: fit,
         loadingBuilder: (_, child, progress) =>
             progress == null ? child : Container(color: placeholderColor),
-        errorBuilder: (_, __, ___) => Container(
+        errorBuilder: (_, _, _) => Container(
           color: placeholderColor,
           alignment: Alignment.center,
           child: const Icon(Icons.broken_image_outlined, color: LiveColors.textTertiary, size: 28),
@@ -487,8 +487,8 @@ class TagChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: outlined ? Colors.transparent : color.withOpacity(0.1),
-        border: outlined ? Border.all(color: color.withOpacity(0.5)) : null,
+        color: outlined ? Colors.transparent : color.withValues(alpha: 0.1),
+        border: outlined ? Border.all(color: color.withValues(alpha: 0.5)) : null,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(

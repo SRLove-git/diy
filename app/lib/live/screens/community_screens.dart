@@ -101,7 +101,7 @@ class _CommunityHomeScreenState extends State<CommunityHomeScreen> {
                   child: ListView.separated(
                     padding: const EdgeInsets.all(18),
                     itemCount: posts.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 14),
+                    separatorBuilder: (_, _) => const SizedBox(height: 14),
                     itemBuilder: (_, i) => PostCard(
                       post: posts[i],
                       onTap: () => LiveRoutes.pushId(
@@ -313,11 +313,11 @@ class PostCard extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                _ActionIcon(Icons.favorite_border, '${fmtCount(post.likeCount)}'),
+                _ActionIcon(Icons.favorite_border, fmtCount(post.likeCount)),
                 const SizedBox(width: 16),
-                _ActionIcon(Icons.chat_bubble_outline, '${fmtCount(post.commentCount)}'),
+                _ActionIcon(Icons.chat_bubble_outline, fmtCount(post.commentCount)),
                 const SizedBox(width: 16),
-                _ActionIcon(Icons.star_border, '${fmtCount(post.collectCount)}'),
+                _ActionIcon(Icons.star_border, fmtCount(post.collectCount)),
                 const Spacer(),
                 Text('浏览 ${fmtCount(post.viewCount)}',
                     style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary)),

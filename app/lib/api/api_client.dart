@@ -161,7 +161,7 @@ class ApiClient {
         field,
         bytes,
         filename: filename,
-        contentType: contentType == null ? null : http_media_type(contentType),
+        contentType: contentType == null ? null : mediaTypeFromString(contentType),
       ));
       final streamed = await _client.send(req);
       return http.Response.fromStream(streamed);
@@ -169,7 +169,7 @@ class ApiClient {
   }
 }
 
-http.MediaType http_media_type(String value) {
+http.MediaType mediaTypeFromString(String value) {
   final parts = value.split('/');
   return http.MediaType(parts.first, parts.last);
 }

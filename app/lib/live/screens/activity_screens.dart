@@ -56,7 +56,7 @@ class _ActivityListScreenState extends State<ActivityListScreen> {
                         child: ListView.separated(
                           padding: const EdgeInsets.all(18),
                           itemCount: list.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          separatorBuilder: (_, _) => const SizedBox(height: 12),
                           itemBuilder: (_, i) => _ActivityCard(
                             activity: list[i],
                             onTap: () => LiveRoutes.pushId(

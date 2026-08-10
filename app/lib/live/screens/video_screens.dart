@@ -639,7 +639,7 @@ class _CommentSheetState extends State<_CommentSheet> {
                           : ListView.separated(
                               padding: const EdgeInsets.symmetric(horizontal: 18),
                               itemCount: _comments.length,
-                              separatorBuilder: (_, __) =>
+                              separatorBuilder: (_, _) =>
                                   const Divider(height: 1, color: LiveColors.divider),
                               itemBuilder: (_, i) => _VideoCommentTile(
                                 comment: _comments[i],
@@ -772,12 +772,12 @@ class _ReelCard extends StatelessWidget {
                     children: [
                       const Icon(Icons.favorite, size: 14, color: LiveColors.danger),
                       const SizedBox(width: 2),
-                      Text('${fmtCount(video.likeCount)}',
+                      Text(fmtCount(video.likeCount),
                           style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary)),
                       const SizedBox(width: 12),
                       const Icon(Icons.chat_bubble_outline, size: 14, color: LiveColors.textSecondary),
                       const SizedBox(width: 2),
-                      Text('${fmtCount(video.commentCount)}',
+                      Text(fmtCount(video.commentCount),
                           style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary)),
                       const Spacer(),
                       Text('播放 ${fmtCount(video.viewCount)}',
@@ -1056,7 +1056,7 @@ class _VideoDetailScreenState extends State<VideoDetailScreen> {
                                       children: [
                                         const Icon(Icons.share_outlined, size: 19, color: LiveColors.textSecondary),
                                         const SizedBox(width: 4),
-                                        Text('${fmtCount(_video!.shareCount)}',
+                                        Text(fmtCount(_video!.shareCount),
                                             style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary)),
                                       ],
                                     ),
@@ -1639,7 +1639,7 @@ class _DetailLikeButton extends StatelessWidget {
           Icon(liked ? Icons.favorite : Icons.favorite_border,
               size: 19, color: liked ? LiveColors.danger : LiveColors.textSecondary),
           const SizedBox(width: 4),
-          Text('${fmtCount(count)}',
+          Text(fmtCount(count),
               style: TextStyle(fontSize: 13, color: liked ? LiveColors.danger : LiveColors.textSecondary)),
         ],
       ),
@@ -1901,7 +1901,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withOpacity(0.55)],
+                  colors: [Colors.transparent, Colors.black.withValues(alpha: 0.55)],
                 ),
               ),
               child: SafeArea(
@@ -1975,9 +1975,9 @@ class _NavIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.black.withOpacity(0.45),
+      color: Colors.black.withValues(alpha: 0.45),
       shape: CircleBorder(
-        side: BorderSide(color: Colors.white.withOpacity(0.5), width: 1),
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.5), width: 1),
       ),
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -2042,7 +2042,7 @@ class _CaptureThumb extends StatelessWidget {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.14),
+            color: Colors.white.withValues(alpha: 0.14),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: Colors.white54, size: 22),
@@ -2770,7 +2770,7 @@ class _VideoSearchScreenState extends State<VideoSearchScreen> {
     return ListView.separated(
       padding: const EdgeInsets.all(18),
       itemCount: list.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 14),
+      separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (_, i) => _ReelCard(
         video: list[i],
         onTap: () => LiveRoutes.pushId(

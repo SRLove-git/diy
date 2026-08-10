@@ -217,19 +217,19 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                   children: [
                                     _DetailAction(
                                       icon: _liked ? Icons.favorite : Icons.favorite_border,
-                                      label: '${fmtCount(_post!.likeCount)}',
+                                      label: fmtCount(_post!.likeCount),
                                       color: _liked ? LiveColors.danger : LiveColors.textSecondary,
                                       onTap: _toggleLike,
                                     ),
                                     _DetailAction(
                                       icon: _collected ? Icons.star : Icons.star_border,
-                                      label: '${fmtCount(_post!.collectCount)}',
+                                      label: fmtCount(_post!.collectCount),
                                       color: _collected ? LiveColors.warning : LiveColors.textSecondary,
                                       onTap: _toggleCollect,
                                     ),
                                     _DetailAction(
                                       icon: Icons.share_outlined,
-                                      label: '${fmtCount(_post!.shareCount)}',
+                                      label: fmtCount(_post!.shareCount),
                                       onTap: _share,
                                     ),
                                     const Spacer(),
@@ -1348,7 +1348,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             : ListView.separated(
                                 padding: const EdgeInsets.all(18),
                                 itemCount: _users.length,
-                                separatorBuilder: (_, __) => const Divider(height: 1, color: LiveColors.divider),
+                                separatorBuilder: (_, _) => const Divider(height: 1, color: LiveColors.divider),
                                 itemBuilder: (_, i) => _UserRow(
                                   user: _users[i],
                                   onTap: () => LiveRoutes.pushId(
@@ -1363,7 +1363,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             : ListView.separated(
                                 padding: const EdgeInsets.all(18),
                                 itemCount: _posts.length,
-                                separatorBuilder: (_, __) => const SizedBox(height: 14),
+                                separatorBuilder: (_, _) => const SizedBox(height: 14),
                                 itemBuilder: (_, i) => PostCard(
                                   post: _posts[i],
                                   onTap: () => LiveRoutes.pushId(
@@ -1730,14 +1730,14 @@ class _SelectedPhoto {
   bool sameAsset(AssetEntity a) => _asset?.id == a.id;
 
   Future<List<int>> bytes() async {
-    if (_xfile != null) return _xfile!.readAsBytes();
+    if (_xfile != null) return _xfile.readAsBytes();
     final f = await _asset!.originFile;
     return f?.readAsBytes() ?? <int>[];
   }
 
   String get filename {
     if (_xfile != null) {
-      final name = _xfile!.name;
+      final name = _xfile.name;
       return name.isEmpty
           ? 'post_${DateTime.now().millisecondsSinceEpoch}.jpg'
           : name;
@@ -2052,7 +2052,7 @@ class _PhotoPickerSheetState extends State<PhotoPickerSheet> {
                                 decoration: BoxDecoration(
                                   color: selected
                                       ? const Color(0xFF141414)
-                                      : Colors.white.withOpacity(0.92),
+                                      : Colors.white.withValues(alpha: 0.92),
                                   shape: BoxShape.circle,
                                   border: selected
                                       ? null

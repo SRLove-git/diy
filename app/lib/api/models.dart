@@ -1,4 +1,5 @@
 /// 服务端返回的数据模型（字段与 NestJS 实体/接口对齐）。
+library;
 
 num? _num(dynamic v) {
   if (v is num) return v;

@@ -79,7 +79,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               await NotificationService.instance.read(id);
                               _retry();
                             } on ApiException catch (e) {
-                              if (mounted) showLiveSnack(context, e.message);
+                              if (context.mounted) {
+                                showLiveSnack(context, e.message);
+                              }
                             }
                           },
                         ),

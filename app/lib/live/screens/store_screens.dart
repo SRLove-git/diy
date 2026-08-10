@@ -81,7 +81,7 @@ class _StoreListScreenState extends State<StoreListScreen> {
                         child: ListView.separated(
                           padding: const EdgeInsets.all(18),
                           itemCount: filtered.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          separatorBuilder: (_, _) => const SizedBox(height: 12),
                           itemBuilder: (_, i) => _StoreCard(
                             store: filtered[i],
                             onTap: () => LiveRoutes.pushId(
@@ -146,7 +146,7 @@ class _StoreCard extends StatelessWidget {
           border: Border.all(color: LiveColors.divider),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -454,7 +454,7 @@ class _StoreSearchScreenState extends State<StoreSearchScreen> {
                         : ListView.separated(
                             padding: const EdgeInsets.all(18),
                             itemCount: _filtered.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            separatorBuilder: (_, _) => const SizedBox(height: 12),
                             itemBuilder: (_, i) => _StoreCard(
                               store: _filtered[i],
                               onTap: () => LiveRoutes.pushId(
@@ -914,7 +914,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: dates.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
           final d = dates[i];
           final date = DateTime.parse(d);

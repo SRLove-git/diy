@@ -224,8 +224,8 @@ class _MembershipCard extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    Colors.white.withOpacity(0.38),
-                    Colors.white.withOpacity(0),
+                    Colors.white.withValues(alpha: 0.38),
+                    Colors.white.withValues(alpha: 0),
                   ],
                 ),
               ),
@@ -934,7 +934,7 @@ class _CouponsScreenState extends State<CouponsScreen> {
                         child: ListView.separated(
                           padding: const EdgeInsets.all(18),
                           itemCount: list.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          separatorBuilder: (_, _) => const SizedBox(height: 10),
                           itemBuilder: (_, i) => _CouponCard(coupon: list[i]),
                         ),
                       ),
@@ -1116,7 +1116,7 @@ class _CouponCenterScreenState extends State<CouponCenterScreen> {
                         child: ListView.separated(
                           padding: const EdgeInsets.all(18),
                           itemCount: list.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          separatorBuilder: (_, _) => const SizedBox(height: 10),
                           itemBuilder: (_, i) {
                             final c = list[i];
                             return _CouponCard(coupon: c);

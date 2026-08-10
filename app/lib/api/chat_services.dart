@@ -47,7 +47,7 @@ class ChatService {
       body: {
         'content': content,
         'contentType': contentType,
-        if (replyToId != null) 'replyToId': replyToId,
+        'replyToId': ?replyToId,
       },
     ) as Map<String, dynamic>;
     return ChatMessage.fromJson(data);
@@ -153,7 +153,7 @@ class GroupService {
       body: {
         'content': content,
         'contentType': contentType,
-        if (replyToId != null) 'replyToId': replyToId,
+        'replyToId': ?replyToId,
       },
     ) as Map<String, dynamic>;
     return ChatMessage.fromJson(data);

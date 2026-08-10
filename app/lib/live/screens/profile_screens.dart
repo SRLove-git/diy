@@ -272,7 +272,7 @@ class _ProfileHeader extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Think Origin${joinYear != null ? ' ${joinYear} 年 ${joinMonth ?? ''} 月入驻' : ''}'
+          'Think Origin${joinYear != null ? ' $joinYear 年 ${joinMonth ?? ''} 月入驻' : ''}'
           '${user.location.isNotEmpty ? ' · ${user.location}' : ''}',
           textAlign: TextAlign.center,
           maxLines: 1,
@@ -556,7 +556,7 @@ class _WorksGrid extends StatelessWidget {
                         const Icon(Icons.favorite, size: 11, color: Colors.white),
                         const SizedBox(width: 2),
                         Text(
-                          '${fmtCount(p.likeCount)}',
+                          fmtCount(p.likeCount),
                           style: const TextStyle(
                             fontSize: 10,
                             color: Colors.white,
@@ -643,10 +643,10 @@ class _ProfileMenuButton extends StatelessWidget {
         context: context,
         barrierDismissible: true,
         barrierLabel: '我的服务',
-        barrierColor: Colors.black.withOpacity(0.35),
+        barrierColor: Colors.black.withValues(alpha: 0.35),
         transitionDuration: const Duration(milliseconds: 220),
-        pageBuilder: (_, __, ___) => const ProfileMenuScreen(),
-        transitionBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => const ProfileMenuScreen(),
+        transitionBuilder: (_, animation, _, child) {
           final t = CurvedAnimation(
             parent: animation,
             curve: Curves.easeOutCubic,
@@ -940,7 +940,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                             children: [
                                               StatRow(
                                                 label: '关注',
-                                                value: '${fmtCount(_status!.followingCount)}',
+                                                value: fmtCount(_status!.followingCount),
                                                 onTap: () => LiveRoutes.push(
                                                   context,
                                                   RoutePaths.userFollows,
@@ -950,7 +950,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                               const SizedBox(width: 20),
                                               StatRow(
                                                 label: '粉丝',
-                                                value: '${fmtCount(_status!.followerCount)}',
+                                                value: fmtCount(_status!.followerCount),
                                                 onTap: () => LiveRoutes.push(
                                                   context,
                                                   RoutePaths.userFollows,
@@ -2010,7 +2010,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
-    if (ok == true) await LiveRoutes.logout(context);
+    if (ok == true && mounted) await LiveRoutes.logout(context);
   }
 
   @override
@@ -2494,7 +2494,7 @@ class _FollowScreenState extends State<FollowScreen> {
                         : ListView.separated(
                             padding: const EdgeInsets.all(18),
                             itemCount: _users.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1, color: LiveColors.divider),
+                            separatorBuilder: (_, _) => const Divider(height: 1, color: LiveColors.divider),
                             itemBuilder: (_, i) {
                               final u = _users[i];
                               return Padding(

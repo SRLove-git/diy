@@ -366,9 +366,8 @@ class _SectionHeader extends StatelessWidget {
     required this.title,
     this.badge,
     this.more,
-    this.trailing,
     this.onMore,
-  });
+  }) : trailing = null;
 
   final String title;
   final String? badge;
