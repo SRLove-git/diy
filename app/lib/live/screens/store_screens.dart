@@ -1442,6 +1442,10 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                                       'packageName': widget.package?.name ?? '',
                                       'packageId': widget.package?.id,
                                       'packagePrice': widget.package?.price,
+                                      'packageMemberPrice':
+                                          widget.package?.memberPrice,
+                                      'packageGroupPrice':
+                                          widget.package?.groupPrice,
                                       'tableIds': _selected.toList(),
                                       'tableLabel': _selectedTables
                                           .map((t) => t.name)

@@ -224,6 +224,8 @@ class AppointmentConfirmScreen extends StatefulWidget {
     this.packageName = '',
     this.packageId,
     this.packagePrice,
+    this.packageMemberPrice,
+    this.packageGroupPrice,
     this.session,
     this.tableIds = const <int>[],
     this.tableLabel = '',
@@ -242,6 +244,8 @@ class AppointmentConfirmScreen extends StatefulWidget {
   final String packageName;
   final int? packageId;
   final double? packagePrice;
+  final double? packageMemberPrice;
+  final double? packageGroupPrice;
   final ActivitySession? session;
   final List<int> tableIds;
   final String tableLabel;
@@ -257,6 +261,18 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
   // Coupon? _selected;
   // String _payMethod = 'wechat';
   bool _loading = false;
+  bool _isMember = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 获取预订人会员状态，用于计价预览（会员价 / 多人同行价）
+    MemberService.instance.myMembership().then((m) {
+      if (mounted && m.isActive) setState(() => _isMember = true);
+    }).catchError((_) {
+      // 会员状态获取失败时按非会员预览，最终金额以服务端结算为准
+    });
+  }
 
   // @override
   // void initState() {
@@ -271,14 +287,8 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
   //   }).catchError((_) {});
   // }
 
-  double get _basePrice {
-    if (widget.type == 'activity') {
-      return widget.activity?.price ?? 0;
-    }
-    return _unitPrice;
-  }
-
-  double get _unitPrice {
+  /// 门市单价（原价基准，元/人，含时长）
+  double get _normalPrice {
     if (widget.type == 'activity') return widget.activity?.price ?? 0;
     final store = widget.store;
     if (store == null) return 0;
@@ -288,17 +298,80 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
     if (widget.bookingType == 'all_day') {
       return store.allDayPrice ?? store.price * widget.durationHours;
     }
-    final member = store.memberPrice;
-    if (member != null && member >= 0) return member * widget.durationHours;
     return store.price * widget.durationHours;
   }
 
-  double get _originalSubtotal => _basePrice * widget.peopleCount;
-  double get _subtotal => _unitPrice * widget.peopleCount;
-  double get _memberDiscount => _originalSubtotal - _subtotal;
+  /// 会员单价（元/人）
+  double get _memberUnit {
+    final store = widget.store;
+    if (store == null || widget.type == 'activity') return _normalPrice;
+    if (widget.bookingType == 'package') {
+      return widget.packageMemberPrice ?? _normalPrice;
+    }
+    if (widget.bookingType == 'all_day') {
+      return store.allDayMemberPrice ?? _normalPrice;
+    }
+    return (store.memberPrice ?? store.price) * widget.durationHours;
+  }
+
+  /// 多人同行单价（元/人）
+  double get _groupUnit {
+    final store = widget.store;
+    if (store == null || widget.type == 'activity') return _normalPrice;
+    if (widget.bookingType == 'package') {
+      return widget.packageGroupPrice ?? _normalPrice;
+    }
+    if (widget.bookingType == 'all_day') {
+      return store.allDayGroupPrice ?? _normalPrice;
+    }
+    return (store.groupPrice ?? store.price) * widget.durationHours;
+  }
+
+  /// 实际单人单价：同行 ≥2 人按多人价，单人按会员价（会员）或门市价
+  double get _unitPrice {
+    if (widget.type == 'activity') return _normalPrice;
+    if (widget.peopleCount >= 2) return _groupUnit;
+    return _isMember ? _memberUnit : _normalPrice;
+  }
+
+  /// 优惠前小计（不含周末加价）：会员预订人按会员价 1 人，其余同行按多人价
+  double get _subtotalBase {
+    final n = widget.peopleCount;
+    if (widget.type == 'activity') return _normalPrice * n;
+    if (n >= 2 && _isMember) return _memberUnit + _groupUnit * (n - 1);
+    return _unitPrice * n;
+  }
+
+  /// 周末/节假日是否加价（与服务端一致：周六/周日按配置百分比上浮）
+  bool get _weekendSurcharge {
+    final pct = widget.store?.weekendSurchargePercent ?? 0;
+    if (pct <= 0) return false;
+    final wd = DateTime.tryParse(widget.date)?.weekday ?? 1;
+    return wd == 6 || wd == 7;
+  }
+
+  double get _surchargeRate =>
+      _weekendSurcharge
+          ? (100 + (widget.store?.weekendSurchargePercent ?? 0)) / 100
+          : 1;
+
+  /// 原价（门市价 × 人数，不含周末加价）
+  double get _originalBase => _normalPrice * widget.peopleCount;
+  /// 会员/同行优惠（门市小计 − 实际小计）
+  double get _discountBase => _originalBase - _subtotalBase;
+  /// 周末加价金额（实际小计 × 加价比例）
+  double get _surchargeAmount => _subtotalBase * (_surchargeRate - 1);
   // ── 线上支付（暂不接入）：优惠券抵扣固定为 0 ──
   double get _discount => 0;
-  double get _total => (_subtotal - _discount).clamp(0, double.infinity);
+  double get _total =>
+      (_subtotalBase + _surchargeAmount - _discount)
+          .clamp(0, double.infinity);
+
+  String get _discountLabel {
+    if (widget.type == 'activity') return '会员优惠';
+    if (widget.peopleCount >= 2) return _isMember ? '会员/同行优惠' : '同行优惠';
+    return '会员优惠';
+  }
 
   String get _title {
     if (widget.type == 'activity') return widget.activity?.title ?? '活动预约';
@@ -436,11 +509,11 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
                   ),
                 ),
                 const Divider(height: 32, color: LiveColors.divider),
-                _PriceRow(label: '原价', value: '¥${_originalSubtotal.toStringAsFixed(2)}'),
-                if (_memberDiscount > 0)
+                _PriceRow(label: '原价', value: '¥${_originalBase.toStringAsFixed(2)}'),
+                if (_discountBase > 0)
                   _PriceRow(
-                    label: '会员优惠',
-                    value: '-¥${_memberDiscount.toStringAsFixed(2)}',
+                    label: _discountLabel,
+                    value: '-¥${_discountBase.toStringAsFixed(2)}',
                     valueColor: LiveColors.success,
                   ),
                 if (_discount > 0)
@@ -448,6 +521,12 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
                     label: '优惠券',
                     value: '-¥${_discount.toStringAsFixed(2)}',
                     valueColor: LiveColors.success,
+                  ),
+                if (_weekendSurcharge)
+                  _PriceRow(
+                    label:
+                        '周末/节假日加价 ${widget.store?.weekendSurchargePercent ?? 0}%',
+                    value: '+¥${_surchargeAmount.toStringAsFixed(2)}',
                   ),
                 const Divider(height: 22, color: LiveColors.divider),
                 _PriceRow(
