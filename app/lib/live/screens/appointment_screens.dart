@@ -709,6 +709,9 @@ class AppointmentSuccessScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 门店预约下单即待核销：成功页直接展示核销码；
+    // 活动场次预约仍需门店确认：展示等待门店确认提示。
+    final pending = appointment.status == 'pending';
     // 预约成功后返回（系统返回手势/按钮）直接回首页，避免退回下单流程。
     return PopScope(
       canPop: false,
@@ -723,9 +726,9 @@ class AppointmentSuccessScreen extends StatelessWidget {
               const SizedBox(height: 60),
               const Icon(Icons.check_circle, size: 84, color: LiveColors.success),
               const SizedBox(height: 16),
-              const Text(
-                '预约已提交',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
+              Text(
+                pending ? '预约已提交' : '预约成功',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
               ),
               const SizedBox(height: 8),
               Text(
@@ -736,29 +739,56 @@ class AppointmentSuccessScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3E8FF),
+                  color: pending
+                      ? const Color(0xFFF3E8FF)
+                      : LiveColors.brandLight,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Column(
-                  children: [
-                    const Icon(Icons.schedule, size: 32, color: Color(0xFF7C3AED)),
-                    const SizedBox(height: 8),
-                    const Text(
-                      '等待门店确认',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF6D28D9),
+                child: pending
+                    ? const Column(
+                        children: [
+                          Icon(Icons.schedule, size: 32, color: Color(0xFF7C3AED)),
+                          SizedBox(height: 8),
+                          Text(
+                            '等待门店确认',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF6D28D9),
+                            ),
+                          ),
+                          SizedBox(height: 10),
+                          Text(
+                            '预约已提交，门店在管理端确认后\n到店出示预约码即可核销体验',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 12, color: LiveColors.textSecondary),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          const Text(
+                            '核销码',
+                            style: TextStyle(fontSize: 12, color: LiveColors.brand),
+                          ),
+                          const SizedBox(height: 6),
+                          SelectableText(
+                            appointment.code,
+                            style: const TextStyle(
+                              fontSize: 40,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 6,
+                              color: LiveColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            '到店出示此码即可核销体验，核销后线下付款',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 12, color: LiveColors.textSecondary),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      '预约已提交，门店在管理端确认后\n到店出示预约码即可核销体验',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
-                    ),
-                  ],
-                ),
               ),
               const Spacer(),
               PrimaryButton(
