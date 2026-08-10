@@ -155,7 +155,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   late Future<Activity> _future;
   ActivitySession? _session;
   final _noteCtrl = TextEditingController();
-  int _people = 2;
+  int _people = 1;
 
   @override
   void initState() {

@@ -934,7 +934,7 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
   List<StoreTable> _tables = [];
   Map<int, TableAvailability> _avail = {};
   final Set<int> _selected = {};
-  int _people = 2;
+  int _people = 1;
   bool _loading = true;
   String? _error;
   bool _isMember = false;
