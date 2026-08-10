@@ -19,7 +19,6 @@ class StoreListScreen extends StatefulWidget {
 
 class _StoreListScreenState extends State<StoreListScreen> {
   late Future<List<Store>> _future;
-  String _filter = 'all'; // all / bookable / member
 
   @override
   void initState() {
@@ -49,13 +48,6 @@ class _StoreListScreenState extends State<StoreListScreen> {
             );
           }
           final stores = snap.data!;
-          final filtered = stores.where((s) {
-            return switch (_filter) {
-              'bookable' => s.slots.isNotEmpty,
-              'member' => s.memberPrice != null,
-              _ => true,
-            };
-          }).toList();
           return Column(
             children: [
               LiveAppBar(
@@ -67,28 +59,21 @@ class _StoreListScreenState extends State<StoreListScreen> {
                   ),
                 ],
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 4, 18, 10),
-                child: _StoreFilterChips(
-                  current: _filter,
-                  onChanged: (f) => setState(() => _filter = f),
-                ),
-              ),
               Expanded(
-                child: filtered.isEmpty
+                child: stores.isEmpty
                     ? const EmptyView(text: '暂无门店，请先到管理后台添加')
                     : RefreshIndicator(
                         onRefresh: () async => _retry(),
                         child: ListView.separated(
                           padding: const EdgeInsets.all(18),
-                          itemCount: filtered.length,
+                          itemCount: stores.length,
                           separatorBuilder: (_, _) => const SizedBox(height: 12),
                           itemBuilder: (_, i) => _StoreCard(
-                            store: filtered[i],
+                            store: stores[i],
                             onTap: () => LiveRoutes.pushId(
                               context,
                               RoutePaths.storeDetail,
-                              filtered[i].id,
+                              stores[i].id,
                             ),
                           ),
                         ),
@@ -230,72 +215,6 @@ class _StoreCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// 门店筛选：全部 / 可预约 / 会员价
-class _StoreFilterChips extends StatelessWidget {
-  const _StoreFilterChips({required this.current, required this.onChanged});
-
-  final String current;
-  final ValueChanged<String> onChanged;
-
-  static const _tabs = [
-    ('all', '全部'),
-    ('bookable', '可预约'),
-    ('member', '会员价'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: LiveColors.card,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          for (final t in _tabs)
-            Expanded(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                height: 34,
-                margin: const EdgeInsets.symmetric(horizontal: 1),
-                decoration: BoxDecoration(
-                  color: current == t.$1 ? Colors.white : Colors.transparent,
-                  borderRadius: BorderRadius.circular(17),
-                  boxShadow: current == t.$1
-                      ? const [
-                          BoxShadow(
-                            color: Color(0x14000000),
-                            blurRadius: 4,
-                            offset: Offset(0, 1),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: InkWell(
-                  onTap: () => onChanged(t.$1),
-                  borderRadius: BorderRadius.circular(17),
-                  child: Center(
-                    child: Text(
-                      t.$2,
-                      style: TextStyle(
-                        fontSize: 12.6,
-                        fontWeight: current == t.$1 ? FontWeight.w700 : FontWeight.w400,
-                        color: current == t.$1
-                            ? LiveColors.textPrimary
-                            : LiveColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }
