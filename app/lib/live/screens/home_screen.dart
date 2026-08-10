@@ -189,11 +189,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               children: [
                 const _TopBar(),
                 // 「拼豆」板块：入口卡（预约 / 到店 / 会员套餐）
-                _SectionHeader(
+                 _SectionHeader(
                   title: '拼豆',
                   badge: '人气手作',
-                  more: '查看全部 ›',
-                  onMore: () => LiveRoutes.push(context, RoutePaths.activityList),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 18),
