@@ -1316,11 +1316,23 @@ abstract class AppLocalizations {
   /// **'门店列表'**
   String get storeListTitle;
 
+  /// No description provided for @storeBookNow.
+  ///
+  /// In zh, this message translates to:
+  /// **'立即预约'**
+  String get storeBookNow;
+
   /// No description provided for @storeSearchPlaceholder.
   ///
   /// In zh, this message translates to:
   /// **'搜索门店'**
   String get storeSearchPlaceholder;
+
+  /// No description provided for @storeSearchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索门店名称 / 地址'**
+  String get storeSearchHint;
 
   /// No description provided for @storeEmpty.
   ///
@@ -1328,11 +1340,113 @@ abstract class AppLocalizations {
   /// **'暂无门店，请先到管理后台添加'**
   String get storeEmpty;
 
+  /// No description provided for @storeDetailTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'门店详情'**
+  String get storeDetailTitle;
+
   /// No description provided for @storeBookingTitle.
   ///
   /// In zh, this message translates to:
   /// **'预约'**
   String get storeBookingTitle;
+
+  /// No description provided for @storeBookingTypeHourly.
+  ///
+  /// In zh, this message translates to:
+  /// **'按小时'**
+  String get storeBookingTypeHourly;
+
+  /// No description provided for @storeBookingTypePackage.
+  ///
+  /// In zh, this message translates to:
+  /// **'时长套餐'**
+  String get storeBookingTypePackage;
+
+  /// No description provided for @storeBookingTypeTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择预约方式'**
+  String get storeBookingTypeTitle;
+
+  /// No description provided for @storeStartTimeAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'开始时间（营业 {hours}）'**
+  String storeStartTimeAt(String hours);
+
+  /// No description provided for @storeNoPackages.
+  ///
+  /// In zh, this message translates to:
+  /// **'门店暂未配置时长套餐'**
+  String get storeNoPackages;
+
+  /// No description provided for @storeSelectPackage.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择套餐'**
+  String get storeSelectPackage;
+
+  /// No description provided for @storePackagePerPerson.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name} · {price}/人'**
+  String storePackagePerPerson(String name, String price);
+
+  /// No description provided for @storeAllDay.
+  ///
+  /// In zh, this message translates to:
+  /// **'全天不限时'**
+  String get storeAllDay;
+
+  /// No description provided for @storeAllDayDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'营业时间（{hours}）内不限时长，到店扫码即开始计时'**
+  String storeAllDayDesc(String hours);
+
+  /// No description provided for @storeNextSelectTable.
+  ///
+  /// In zh, this message translates to:
+  /// **'下一步 · 选择桌位'**
+  String get storeNextSelectTable;
+
+  /// No description provided for @storeMemberGroupLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'会员+同行 \$'**
+  String get storeMemberGroupLabel;
+
+  /// No description provided for @storeGroupLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'同行价 \$'**
+  String get storeGroupLabel;
+
+  /// No description provided for @storeUnitLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'单价 \$'**
+  String get storeUnitLabel;
+
+  /// No description provided for @storePerPerson.
+  ///
+  /// In zh, this message translates to:
+  /// **' / 人 × {count}'**
+  String storePerPerson(int count);
+
+  /// No description provided for @storeMemberPlus.
+  ///
+  /// In zh, this message translates to:
+  /// **' + \${price}×{count}'**
+  String storeMemberPlus(String price, int count);
+
+  /// No description provided for @storeSurchargeHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'含周末/节假日加价 {pct}%'**
+  String storeSurchargeHint(int pct);
 
   /// No description provided for @storePeopleCount.
   ///
@@ -1367,7 +1481,7 @@ abstract class AppLocalizations {
   /// No description provided for @storeConfirmOrder.
   ///
   /// In zh, this message translates to:
-  /// **'提交预约'**
+  /// **'确认预约'**
   String get storeConfirmOrder;
 
   /// No description provided for @appointmentMyTitle.

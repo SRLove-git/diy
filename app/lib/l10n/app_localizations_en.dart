@@ -656,13 +656,82 @@ class AppLocalizationsEn extends AppLocalizations {
   String get storeListTitle => 'Stores';
 
   @override
+  String get storeBookNow => 'Book Now';
+
+  @override
   String get storeSearchPlaceholder => 'Search stores';
+
+  @override
+  String get storeSearchHint => 'Search stores by name / address';
 
   @override
   String get storeEmpty => 'No stores yet, please add them in the admin panel';
 
   @override
+  String get storeDetailTitle => 'Store Details';
+
+  @override
   String get storeBookingTitle => 'Book';
+
+  @override
+  String get storeBookingTypeHourly => 'Hourly';
+
+  @override
+  String get storeBookingTypePackage => 'Package';
+
+  @override
+  String get storeBookingTypeTitle => 'Choose booking type';
+
+  @override
+  String storeStartTimeAt(String hours) {
+    return 'Start time (open $hours)';
+  }
+
+  @override
+  String get storeNoPackages => 'No packages configured yet';
+
+  @override
+  String get storeSelectPackage => 'Select package';
+
+  @override
+  String storePackagePerPerson(String name, String price) {
+    return '$name · $price/person';
+  }
+
+  @override
+  String get storeAllDay => 'All-day';
+
+  @override
+  String storeAllDayDesc(String hours) {
+    return 'Unlimited time within opening hours ($hours); scan to start';
+  }
+
+  @override
+  String get storeNextSelectTable => 'Next · Select table';
+
+  @override
+  String get storeMemberGroupLabel => 'Member+Group \$';
+
+  @override
+  String get storeGroupLabel => 'Group \$';
+
+  @override
+  String get storeUnitLabel => 'Unit \$';
+
+  @override
+  String storePerPerson(int count) {
+    return ' / person × $count';
+  }
+
+  @override
+  String storeMemberPlus(String price, int count) {
+    return ' + \$$price×$count';
+  }
+
+  @override
+  String storeSurchargeHint(int pct) {
+    return 'Includes $pct% weekend/holiday surcharge';
+  }
 
   @override
   String get storePeopleCount => 'Guests';
@@ -680,7 +749,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get storeSelectTable => 'Select table';
 
   @override
-  String get storeConfirmOrder => 'Submit booking';
+  String get storeConfirmOrder => 'Confirm Booking';
 
   @override
   String get appointmentMyTitle => 'My Appointments';

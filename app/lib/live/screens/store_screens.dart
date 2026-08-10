@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../api/api_client.dart';
 import '../../api/models.dart';
 import '../../api/services.dart';
+import '../../l10n/l10n_ext.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
@@ -37,21 +38,24 @@ class _StoreListScreenState extends State<StoreListScreen> {
           if (snap.hasError) {
             return Column(
               children: [
-                const LiveAppBar(title: '门店列表'),
+                LiveAppBar(title: context.l10n.storeListTitle),
                 Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
               ],
             );
           }
           if (!snap.hasData) {
-            return const Column(
-              children: [LiveAppBar(title: '门店列表'), Expanded(child: LoadingView())],
+            return Column(
+              children: [
+                LiveAppBar(title: context.l10n.storeListTitle),
+                const Expanded(child: LoadingView()),
+              ],
             );
           }
           final stores = snap.data!;
           return Column(
             children: [
               LiveAppBar(
-                title: '门店列表',
+                title: context.l10n.storeListTitle,
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.search, color: LiveColors.textPrimary),
@@ -200,7 +204,7 @@ class _StoreCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: PrimaryButton(
-                          label: '立即预约',
+                          label: context.l10n.storeBookNow,
                           height: 40,
                           borderRadius: 12,
                           color: Colors.black,
@@ -308,7 +312,7 @@ class _StoreSearchScreenState extends State<StoreSearchScreen> {
               controller: _query,
               autofocus: true,
               decoration: InputDecoration(
-                hintText: '搜索门店名称 / 地址',
+                hintText: context.l10n.storeSearchHint,
                 prefixIcon: const Icon(Icons.search, color: LiveColors.textTertiary),
                 suffixIcon: _query.text.isNotEmpty
                     ? IconButton(
@@ -445,6 +449,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return LivePage(
       child: FutureBuilder<Store>(
         future: _future,
@@ -452,20 +457,23 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
           if (snap.hasError) {
             return Column(
               children: [
-                const LiveAppBar(title: '门店详情'),
+                LiveAppBar(title: l10n.storeDetailTitle),
                 Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
               ],
             );
           }
           if (!snap.hasData) {
-            return const Column(
-              children: [LiveAppBar(title: '门店详情'), Expanded(child: LoadingView())],
+            return Column(
+              children: [
+                LiveAppBar(title: l10n.storeDetailTitle),
+                const Expanded(child: LoadingView()),
+              ],
             );
           }
           final store = snap.data!;
           return Column(
             children: [
-              const LiveAppBar(title: '门店详情'),
+              LiveAppBar(title: l10n.storeDetailTitle),
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.all(18),
@@ -513,15 +521,15 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                     const _StepTitle('1', '选择日期'),
                     _datesRow(store),
                     const SizedBox(height: 18),
-                    const _StepTitle('2', '选择预约方式'),
+                    _StepTitle('2', l10n.storeBookingTypeTitle),
                     Wrap(
                       spacing: 10,
                       runSpacing: 10,
                       children: [
                         for (final t in [
-                          ('hourly', '按小时'),
-                          ('package', '时长套餐'),
-                          ('all_day', '全天不限时'),
+                          ('hourly', l10n.storeBookingTypeHourly),
+                          ('package', l10n.storeBookingTypePackage),
+                          ('all_day', l10n.storeAllDay),
                         ])
                           _ChoiceChip(
                             label: t.$2,
@@ -539,7 +547,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                       _hoursSelector(store),
                       const SizedBox(height: 16),
                       Text(
-                        '开始时间（营业 ${store.businessHours}）',
+                        l10n.storeStartTimeAt(store.businessHours),
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -550,10 +558,10 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                       _startTimeChips(store, _hours),
                     ] else if (_bookingType == 'package') ...[
                       if (store.packages.isEmpty)
-                        const EmptyView(text: '门店暂未配置时长套餐')
+                        EmptyView(text: l10n.storeNoPackages)
                       else ...[
                         Text(
-                          '选择套餐',
+                          l10n.storeSelectPackage,
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -566,7 +574,10 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                           runSpacing: 10,
                           children: store.packages.map((p) {
                             return _ChoiceChip(
-                              label: '${p.name} · \$${fmtPrice(p.price)}/人',
+                              label: l10n.storePackagePerPerson(
+                                p.name,
+                                '\$${fmtPrice(p.price)}',
+                              ),
                               selected: _package?.id == p.id,
                               onTap: () => setState(() {
                                 _package = p;
@@ -579,7 +590,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                         if (_package != null) ...[
                           const SizedBox(height: 16),
                           Text(
-                            '开始时间（营业 ${store.businessHours}）',
+                            l10n.storeStartTimeAt(store.businessHours),
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -591,9 +602,9 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                         ],
                       ],
                     ] else ...[
-                      const Text(
-                        '全天不限时',
-                        style: TextStyle(
+                      Text(
+                        l10n.storeAllDay,
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: LiveColors.textPrimary,
@@ -601,7 +612,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        '营业时间（${store.businessHours}）内不限时长，到店扫码即开始计时',
+                        l10n.storeAllDayDesc(store.businessHours),
                         style: const TextStyle(
                           fontSize: 12,
                           color: LiveColors.textSecondary,
@@ -614,7 +625,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                     ],
                     const SizedBox(height: 26),
                     PrimaryButton(
-                      label: '下一步 · 选择桌位',
+                      label: l10n.storeNextSelectTable,
                       color: Colors.black,
                       textColor: Colors.white,
                       onTap: _canNext(store)
@@ -1108,11 +1119,12 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final store = widget.store;
     return LivePage(
       child: Column(
         children: [
-          const LiveAppBar(title: '选择桌位'),
+          LiveAppBar(title: l10n.storeSelectTable),
           Expanded(
             child: _loading
                 ? const LoadingView()
@@ -1150,7 +1162,10 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                           const SizedBox(height: 18),
                           Row(
                             children: [
-                              const Text('选择桌位', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                              Text(
+                                l10n.storeSelectTable,
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                              ),
                               const Spacer(),
                               const Text(
                                 '自动推荐最优组合',
@@ -1266,7 +1281,10 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                             ),
                           ],
                           const SizedBox(height: 18),
-                          const Text('到店人数', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                          Text(
+                            l10n.storePeopleCount,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                          ),
                           const SizedBox(height: 10),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -1341,8 +1359,10 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                             children: [
                               Text(
                                 _people >= 2 && _isMember
-                                    ? '会员+同行 \$'
-                                    : (_people >= 2 ? '同行价 \$' : '单价 \$'),
+                                    ? l10n.storeMemberGroupLabel
+                                    : (_people >= 2
+                                        ? l10n.storeGroupLabel
+                                        : l10n.storeUnitLabel),
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: LiveColors.textSecondary,
@@ -1357,8 +1377,11 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                               ),
                               Text(
                                 _people >= 2 && _isMember
-                                    ? ' + \$${_groupUnit.toStringAsFixed(1)}×${_people - 1}'
-                                    : ' / 人 × $_people',
+                                    ? l10n.storeMemberPlus(
+                                        _groupUnit.toStringAsFixed(1),
+                                        _people - 1,
+                                      )
+                                    : l10n.storePerPerson(_people),
                                 style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
                               ),
                               const Spacer(),
@@ -1377,7 +1400,9 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                             Align(
                               alignment: Alignment.centerRight,
                               child: Text(
-                                '含周末/节假日加价 ${widget.store.weekendSurchargePercent}%',
+                                l10n.storeSurchargeHint(
+                                  widget.store.weekendSurchargePercent,
+                                ),
                                 style: const TextStyle(
                                   fontSize: 11,
                                   color: LiveColors.textTertiary,
@@ -1387,7 +1412,7 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                           ],
                           const SizedBox(height: 20),
                           PrimaryButton(
-                            label: '确认预约',
+                            label: l10n.storeConfirmOrder,
                             color: Colors.black,
                             textColor: Colors.white,
                             onTap: _selected.isEmpty || !_capacityOk

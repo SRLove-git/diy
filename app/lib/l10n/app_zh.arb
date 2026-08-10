@@ -289,15 +289,82 @@
   "memberWaitingConfirm": "等待门店确认",
   "memberOrderSubmittedDesc": "到店支付会员费用后，由门店确认开通\n开通后即可享受会员权益",
   "storeListTitle": "门店列表",
+  "storeBookNow": "立即预约",
   "storeSearchPlaceholder": "搜索门店",
+  "storeSearchHint": "搜索门店名称 / 地址",
   "storeEmpty": "暂无门店，请先到管理后台添加",
+  "storeDetailTitle": "门店详情",
   "storeBookingTitle": "预约",
+  "storeBookingTypeHourly": "按小时",
+  "storeBookingTypePackage": "时长套餐",
+  "storeBookingTypeTitle": "选择预约方式",
+  "storeStartTimeAt": "开始时间（营业 {hours}）",
+  "@storeStartTimeAt": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "storeNoPackages": "门店暂未配置时长套餐",
+  "storeSelectPackage": "选择套餐",
+  "storePackagePerPerson": "{name} · {price}/人",
+  "@storePackagePerPerson": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "storeAllDay": "全天不限时",
+  "storeAllDayDesc": "营业时间（{hours}）内不限时长，到店扫码即开始计时",
+  "@storeAllDayDesc": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "storeNextSelectTable": "下一步 · 选择桌位",
+  "storeMemberGroupLabel": "会员+同行 $",
+  "storeGroupLabel": "同行价 $",
+  "storeUnitLabel": "单价 $",
+  "storePerPerson": " / 人 × {count}",
+  "@storePerPerson": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "storeMemberPlus": " + ${price}×{count}",
+  "@storeMemberPlus": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "storeSurchargeHint": "含周末/节假日加价 {pct}%",
+  "@storeSurchargeHint": {
+    "placeholders": {
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
   "storePeopleCount": "到店人数",
   "storeUnitPrice": "单价",
   "storeGroupPrice": "同行价",
   "storeMemberPrice": "会员",
   "storeSelectTable": "选择桌位",
-  "storeConfirmOrder": "提交预约",
+  "storeConfirmOrder": "确认预约",
   "appointmentMyTitle": "我的预约",
   "appointmentTabAll": "全部",
   "appointmentTabBooked": "待核销",

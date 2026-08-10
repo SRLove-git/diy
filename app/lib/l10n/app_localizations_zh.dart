@@ -641,13 +641,82 @@ class AppLocalizationsZh extends AppLocalizations {
   String get storeListTitle => '门店列表';
 
   @override
+  String get storeBookNow => '立即预约';
+
+  @override
   String get storeSearchPlaceholder => '搜索门店';
+
+  @override
+  String get storeSearchHint => '搜索门店名称 / 地址';
 
   @override
   String get storeEmpty => '暂无门店，请先到管理后台添加';
 
   @override
+  String get storeDetailTitle => '门店详情';
+
+  @override
   String get storeBookingTitle => '预约';
+
+  @override
+  String get storeBookingTypeHourly => '按小时';
+
+  @override
+  String get storeBookingTypePackage => '时长套餐';
+
+  @override
+  String get storeBookingTypeTitle => '选择预约方式';
+
+  @override
+  String storeStartTimeAt(String hours) {
+    return '开始时间（营业 $hours）';
+  }
+
+  @override
+  String get storeNoPackages => '门店暂未配置时长套餐';
+
+  @override
+  String get storeSelectPackage => '选择套餐';
+
+  @override
+  String storePackagePerPerson(String name, String price) {
+    return '$name · $price/人';
+  }
+
+  @override
+  String get storeAllDay => '全天不限时';
+
+  @override
+  String storeAllDayDesc(String hours) {
+    return '营业时间（$hours）内不限时长，到店扫码即开始计时';
+  }
+
+  @override
+  String get storeNextSelectTable => '下一步 · 选择桌位';
+
+  @override
+  String get storeMemberGroupLabel => '会员+同行 \$';
+
+  @override
+  String get storeGroupLabel => '同行价 \$';
+
+  @override
+  String get storeUnitLabel => '单价 \$';
+
+  @override
+  String storePerPerson(int count) {
+    return ' / 人 × $count';
+  }
+
+  @override
+  String storeMemberPlus(String price, int count) {
+    return ' + \$$price×$count';
+  }
+
+  @override
+  String storeSurchargeHint(int pct) {
+    return '含周末/节假日加价 $pct%';
+  }
 
   @override
   String get storePeopleCount => '到店人数';
@@ -665,7 +734,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get storeSelectTable => '选择桌位';
 
   @override
-  String get storeConfirmOrder => '提交预约';
+  String get storeConfirmOrder => '确认预约';
 
   @override
   String get appointmentMyTitle => '我的预约';
