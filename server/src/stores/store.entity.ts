@@ -84,6 +84,16 @@ export class Store {
   })
   memberPrice: number | null;
 
+  /** 多人同行价（元/人/小时）：同行 ≥2 人且非会员时按此价计费 */
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: decimal,
+  })
+  groupPrice: number | null;
+
   /** 全天不限时价格（元/人）；null 表示未配置（按营业时长 × 小时单价计算） */
   @Column({
     type: 'decimal',
@@ -93,6 +103,30 @@ export class Store {
     transformer: decimal,
   })
   allDayPrice: number | null;
+
+  /** 全天不限时会员价（元/人） */
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: decimal,
+  })
+  allDayMemberPrice: number | null;
+
+  /** 全天不限时多人同行价（元/人） */
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: decimal,
+  })
+  allDayGroupPrice: number | null;
+
+  /** 周末/节假日加价百分比（如 10 表示加收 10%），0 表示不加价 */
+  @Column({ default: 0 })
+  weekendSurchargePercent: number;
 
   @Column({ length: 50, default: '09:00-21:00' })
   businessHours: string;

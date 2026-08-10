@@ -43,6 +43,32 @@ export class StorePackage {
   })
   price: number;
 
+  /** 套餐会员价（元/人）；null 表示无会员价（按门市价） */
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (v: number) => v,
+      from: (v: string) => Number(v),
+    },
+  })
+  memberPrice: number | null;
+
+  /** 套餐多人同行价（元/人）；null 表示无多人价（按门市价） */
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (v: number) => v,
+      from: (v: string) => Number(v),
+    },
+  })
+  groupPrice: number | null;
+
   @Column({ default: true })
   enabled: boolean;
 

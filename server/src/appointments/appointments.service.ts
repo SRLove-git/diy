@@ -118,12 +118,6 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   }
 
-  /** 按小时单价（元/人/小时）：会员且配置会员价时用会员价 */
-  private hourlyUnitPrice(isMember: boolean, store: Store): number {
-    if (isMember && store.memberPrice != null) return store.memberPrice;
-    return store.price ?? 39.9;
-  }
-
   /** 校验核销时间：仅限预约当天、预约结束前。
    *  先到先得：可提前到店扫码开始计时；不因迟到顺延（结束时间固定为预约时段）。 */
   private assertCheckInTime(appt: Appointment): void {
@@ -266,23 +260,22 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     let durationHours: number;
     let packageId: number | null = null;
     let packageName = '';
-    let unitPrice: number; // 单人整单价格（非小时价）
-    let originalUnit: number;
+    // 各档位单人价格（元/人，按整单时长折算）：门市价 / 会员价 / 多人同行价
+    let normalPrice: number;
+    let memberPrice: number;
+    let groupPrice: number;
 
     if (bookingType === 'all_day') {
       // 全天不限时：营业开始 ~ 营业结束，结束时间固定
       startTime = range.start;
       endTime = range.end;
       durationHours = Math.max(1, Math.round((closeMin - openMin) / 60));
-      const hourly = this.hourlyUnitPrice(isMember, store);
-      unitPrice =
-        store.allDayPrice != null
-          ? centsToYuan(yuanToCents(store.allDayPrice))
-          : centsToYuan(yuanToCents(hourly) * durationHours);
-      originalUnit =
-        store.allDayPrice != null
-          ? centsToYuan(yuanToCents(store.allDayPrice))
-          : centsToYuan(yuanToCents(store.price ?? 39.9) * durationHours);
+      const fallback = centsToYuan(
+        yuanToCents(store.price ?? 39.9) * durationHours,
+      );
+      normalPrice = store.allDayPrice ?? fallback;
+      memberPrice = store.allDayMemberPrice ?? normalPrice;
+      groupPrice = store.allDayGroupPrice ?? normalPrice;
     } else if (bookingType === 'package') {
       // 时长套餐：选择套餐 + 开始时间
       if (dto.packageId == null) {
@@ -302,8 +295,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       durationHours = pkg.hours;
       startTime = dto.startTime;
       endTime = this.formatMinutes(this.minutes(startTime) + pkg.hours * 60);
-      unitPrice = pkg.price;
-      originalUnit = pkg.price;
+      normalPrice = pkg.price;
+      memberPrice = pkg.memberPrice ?? pkg.price;
+      groupPrice = pkg.groupPrice ?? pkg.price;
     } else {
       // 按小时：开始时间 + 时长（1 小时起）
       if (!dto.startTime) {
@@ -317,11 +311,17 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       endTime = this.formatMinutes(
         this.minutes(startTime) + durationHours * 60,
       );
-      const hourly = this.hourlyUnitPrice(isMember, store);
-      unitPrice = centsToYuan(yuanToCents(hourly) * durationHours);
-      originalUnit = centsToYuan(
+      normalPrice = centsToYuan(
         yuanToCents(store.price ?? 39.9) * durationHours,
       );
+      memberPrice =
+        store.memberPrice != null
+          ? centsToYuan(yuanToCents(store.memberPrice) * durationHours)
+          : normalPrice;
+      groupPrice =
+        store.groupPrice != null
+          ? centsToYuan(yuanToCents(store.groupPrice) * durationHours)
+          : normalPrice;
     }
 
     // 预约时段必须落在营业时间内且不跨天
@@ -347,11 +347,30 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    // 金额计算统一走整数分，避免浮点误差
-    const amount = centsToYuan(yuanToCents(unitPrice) * dto.peopleCount);
-    const originalAmount = centsToYuan(
-      yuanToCents(originalUnit) * dto.peopleCount,
-    );
+    // 金额计算统一走整数分；多人同行 / 会员混合 / 周末加价在此结算
+    const people = dto.peopleCount;
+    const isGroup = people >= 2;
+    let amountCents: number;
+    if (isGroup) {
+      // 同行 ≥2 人：预订人（已知会员身份）按会员价结算，其余人按多人同行价
+      amountCents = isMember
+        ? yuanToCents(memberPrice) + yuanToCents(groupPrice) * (people - 1)
+        : yuanToCents(groupPrice) * people;
+    } else {
+      amountCents = yuanToCents(isMember ? memberPrice : normalPrice) * people;
+    }
+    let originalAmountCents = yuanToCents(normalPrice) * people;
+
+    // 周末/节假日加价：所有档位统一上浮 weekendSurchargePercent%
+    const weekday = new Date(`${dto.date}T00:00:00`).getDay();
+    const surcharge = store.weekendSurchargePercent ?? 0;
+    if ((weekday === 0 || weekday === 6) && surcharge > 0) {
+      const rate = 100 + surcharge;
+      amountCents = Math.round((amountCents * rate) / 100);
+      originalAmountCents = Math.round((originalAmountCents * rate) / 100);
+    }
+    const amount = centsToYuan(amountCents);
+    const originalAmount = centsToYuan(originalAmountCents);
 
     // 1) Redis 分布式锁：串行化同一组桌位同日的创建请求
     const lockKey = `booking:lock:${dto.storeId}:${[...requestedIds]

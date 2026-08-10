@@ -33,8 +33,8 @@ const tableDrafts = ref<Record<number, { name: string; capacity: number; enabled
 // 时长套餐管理
 const showPackages = ref(false)
 const packages = ref<StorePackage[]>([])
-const newPackage = ref({ name: '', hours: 5, price: 0, enabled: true })
-const packageDrafts = ref<Record<number, { name: string; hours: number; price: number; enabled: boolean }>>({})
+const newPackage = ref({ name: '', hours: 5, price: 0, memberPrice: null as number | null, groupPrice: null as number | null, enabled: true })
+const packageDrafts = ref<Record<number, { name: string; hours: number; price: number; memberPrice: number | null; groupPrice: number | null; enabled: boolean }>>({})
 
 const err = ref('')
 
@@ -59,7 +59,11 @@ function openCreate() {
     phone: '',
     price: 39.9,
     memberPrice: null,
+    groupPrice: null,
     allDayPrice: null,
+    allDayMemberPrice: null,
+    allDayGroupPrice: null,
+    weekendSurchargePercent: 0,
     enabled: true,
   }
   isEdit.value = false
@@ -84,8 +88,19 @@ async function saveStore() {
       price: form.value.price,
       memberPrice:
         form.value.memberPrice == null ? undefined : form.value.memberPrice,
+      groupPrice:
+        form.value.groupPrice == null ? undefined : form.value.groupPrice,
       allDayPrice:
         form.value.allDayPrice == null ? undefined : form.value.allDayPrice,
+      allDayMemberPrice:
+        form.value.allDayMemberPrice == null
+          ? undefined
+          : form.value.allDayMemberPrice,
+      allDayGroupPrice:
+        form.value.allDayGroupPrice == null
+          ? undefined
+          : form.value.allDayGroupPrice,
+      weekendSurchargePercent: form.value.weekendSurchargePercent ?? 0,
       enabled: form.value.enabled,
     }
     if (isEdit.value) await storeApi.update(form.value.id!, payload)
@@ -234,7 +249,7 @@ function openPackageManager(s: Store) {
   packages.value = [...(s.packages ?? [])].sort(
     (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
   )
-  newPackage.value = { name: '', hours: 5, price: 0, enabled: true }
+  newPackage.value = { name: '', hours: 5, price: 0, memberPrice: null, groupPrice: null, enabled: true }
   packageDrafts.value = {}
   showPackages.value = true
 }
@@ -244,7 +259,7 @@ async function addPackage() {
   try {
     const { data } = await storeApi.addPackage(currentStore.value!.id, newPackage.value)
     packages.value.push(data)
-    newPackage.value = { name: '', hours: 5, price: 0, enabled: true }
+    newPackage.value = { name: '', hours: 5, price: 0, memberPrice: null, groupPrice: null, enabled: true }
   } catch (e: any) {
     alert(e?.response?.data?.message ?? '添加失败')
   }
@@ -255,6 +270,8 @@ function editPackage(p: StorePackage) {
     name: p.name,
     hours: p.hours,
     price: p.price,
+    memberPrice: p.memberPrice ?? null,
+    groupPrice: p.groupPrice ?? null,
     enabled: p.enabled,
   }
 }
@@ -344,10 +361,19 @@ onMounted(load)
         <div class="row">
           <label>门市价（元/人）<input v-model.number="form.price" type="number" min="0" step="0.1" /></label>
           <label>会员价（元/人，0 = 会员免费）<input v-model.number="form.memberPrice" type="number" min="0" step="0.1" /></label>
+          <label>多人同行价（元/人）<input v-model.number="form.groupPrice" type="number" min="0" step="0.1" /></label>
         </div>
         <label>
           全天不限时价（元/人，留空 = 按营业时长 × 小时价）
           <input v-model.number="form.allDayPrice" type="number" min="0" step="0.1" />
+        </label>
+        <div class="row">
+          <label>全天会员价（元/人）<input v-model.number="form.allDayMemberPrice" type="number" min="0" step="0.1" /></label>
+          <label>全天多人价（元/人）<input v-model.number="form.allDayGroupPrice" type="number" min="0" step="0.1" /></label>
+        </div>
+        <label>
+          周末/节假日加价（%，0 = 不加价）
+          <input v-model.number="form.weekendSurchargePercent" type="number" min="0" max="100" />
         </label>
         <label>营业时间<input v-model="form.businessHours" placeholder="如 10:00-22:00" /></label>
         <label>联系电话<input v-model="form.phone" /></label>
@@ -463,13 +489,15 @@ onMounted(load)
           用户预约时可选择「按小时 / 时长套餐 / 全天不限时」；套餐价为元/人。
         </p>
         <table class="grid">
-          <thead><tr><th>套餐名</th><th>时长（小时）</th><th>价格（元/人）</th><th>状态</th><th>操作</th></tr></thead>
+          <thead><tr><th>套餐名</th><th>时长（小时）</th><th>价格（元/人）</th><th>会员价</th><th>多人同行价</th><th>状态</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="p in packages" :key="p.id">
               <template v-if="packageDrafts[p.id]">
                 <td><input v-model="packageDrafts[p.id].name" /></td>
                 <td><input v-model.number="packageDrafts[p.id].hours" type="number" min="1" /></td>
                 <td><input v-model.number="packageDrafts[p.id].price" type="number" min="0" step="0.1" /></td>
+                <td><input v-model.number="packageDrafts[p.id].memberPrice" type="number" min="0" step="0.1" /></td>
+                <td><input v-model.number="packageDrafts[p.id].groupPrice" type="number" min="0" step="0.1" /></td>
                 <td><label><input v-model="packageDrafts[p.id].enabled" type="checkbox" /> 启用</label></td>
                 <td class="ops">
                   <button class="primary" @click="savePackage(p)">保存</button>
@@ -480,6 +508,8 @@ onMounted(load)
                 <td>{{ p.name }}</td>
                 <td>{{ p.hours }} 小时</td>
                 <td>¥{{ p.price }}</td>
+                <td>{{ p.memberPrice != null ? '¥' + p.memberPrice : '-' }}</td>
+                <td>{{ p.groupPrice != null ? '¥' + p.groupPrice : '-' }}</td>
                 <td>
                   <span class="tag" :class="p.enabled ? 'tag-on' : 'tag-off'">
                     {{ p.enabled ? '启用' : '停用' }}
@@ -491,13 +521,15 @@ onMounted(load)
                 </td>
               </template>
             </tr>
-            <tr v-if="packages.length === 0"><td colspan="5" class="empty">暂无套餐，可添加如「5 小时套餐」「6 小时套餐」</td></tr>
+            <tr v-if="packages.length === 0"><td colspan="7" class="empty">暂无套餐，可添加如「5 小时套餐」「6 小时套餐」</td></tr>
           </tbody>
         </table>
         <div class="row">
           <input v-model="newPackage.name" placeholder="套餐名，如 5 小时套餐" />
           <input v-model.number="newPackage.hours" type="number" min="1" placeholder="时长（小时）" />
           <input v-model.number="newPackage.price" type="number" min="0" step="0.1" placeholder="价格（元/人）" />
+          <input v-model.number="newPackage.memberPrice" type="number" min="0" step="0.1" placeholder="会员价" />
+          <input v-model.number="newPackage.groupPrice" type="number" min="0" step="0.1" placeholder="多人价" />
           <button class="primary" @click="addPackage">添加</button>
         </div>
         <div class="actions">

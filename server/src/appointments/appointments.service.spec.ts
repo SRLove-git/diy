@@ -17,6 +17,17 @@ function timeStr(offsetMs: number): string {
   ).padStart(2, '0')}`;
 }
 
+/** 下一个周六或周日的日期（用于周末加价测试） */
+function nextWeekendDate(): string {
+  const d = new Date();
+  while (d.getDay() !== 6 && d.getDay() !== 0) {
+    d.setDate(d.getDate() + 1);
+  }
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`;
+}
+
 function buildService() {
   const appointments = {
     createQueryBuilder: jest.fn(),
@@ -83,6 +94,7 @@ function buildService() {
     appointments,
     stores,
     tables,
+    packages,
     memberships,
     redis,
     userCouponRepo,
@@ -309,6 +321,139 @@ describe('AppointmentsService', () => {
       expect(count).toBe(1);
       expect(expired.status).toBe('completed');
       expect(m.appointments.save).toHaveBeenCalledWith(expired);
+    });
+  });
+
+  describe('createStore 计价规则（多人/会员/周末加价）', () => {
+    function setup(store: Record<string, unknown>) {
+      const m = buildService();
+      m.stores.findOneBy.mockResolvedValue({
+        id: 1,
+        name: '门店A',
+        businessHours: '10:00-21:00',
+        price: 9.9,
+        memberPrice: 8,
+        groupPrice: 9,
+        allDayPrice: 49.9,
+        allDayMemberPrice: 39.9,
+        allDayGroupPrice: 45,
+        weekendSurchargePercent: 10,
+        ...store,
+      });
+      m.tables.find.mockResolvedValue([{ id: 1, name: 'A1', capacity: 8 }]);
+      m.memberships.findOneBy.mockResolvedValue(null);
+      m.redis.set.mockResolvedValue('OK');
+      m.em.find.mockResolvedValue([]);
+      m.em.findOne.mockResolvedValue(null);
+      m.em.create.mockImplementation(
+        (_cls: unknown, data: Record<string, unknown>) => ({
+          status: 'booked',
+          ...data,
+        }),
+      );
+      m.em.save.mockImplementation((x: unknown) => Promise.resolve(x));
+      return m;
+    }
+
+    it('同行 2 人按小时：非会员按多人同行价结算', async () => {
+      const m = setup({});
+      const result = (await m.svc.create(7, {
+        ...baseDto,
+        peopleCount: 2,
+        startTime: '10:00',
+        durationHours: 1,
+      } as never)) as { amount: number; originalAmount: number };
+
+      // 9 × 2 = 18；原价 9.9 × 2 = 19.8
+      expect(result.amount).toBe(18);
+      expect(result.originalAmount).toBe(19.8);
+    });
+
+    it('同行含会员：预订人按会员价，其余人按多人同行价', async () => {
+      const m = setup({});
+      m.memberships.findOneBy.mockResolvedValue({
+        expireAt: new Date(Date.now() + 86400_000),
+      });
+      const result = (await m.svc.create(7, {
+        ...baseDto,
+        peopleCount: 2,
+        startTime: '10:00',
+        durationHours: 1,
+      } as never)) as { amount: number };
+
+      // 会员 8 + 同行 9 = 17
+      expect(result.amount).toBe(17);
+    });
+
+    it('周末加价：周六所有档位上浮 10%', async () => {
+      const m = setup({});
+      const result = (await m.svc.create(7, {
+        ...baseDto,
+        date: nextWeekendDate(),
+        peopleCount: 1,
+        startTime: '10:00',
+        durationHours: 1,
+      } as never)) as { amount: number; originalAmount: number };
+
+      // 单人门市 9.9 × 1.1 = 10.89
+      expect(result.amount).toBe(10.89);
+      expect(result.originalAmount).toBe(10.89);
+    });
+
+    it('套餐：多人按套餐同行价，会员按套餐会员价', async () => {
+      const m = setup({});
+      m.packages.findOneBy.mockResolvedValue({
+        id: 1,
+        storeId: 1,
+        name: '6小时畅玩套餐',
+        hours: 6,
+        price: 39.9,
+        memberPrice: 32,
+        groupPrice: 36,
+        enabled: true,
+      });
+      m.em.findOne.mockResolvedValue(null);
+
+      const group = (await m.svc.create(7, {
+        ...baseDto,
+        bookingType: 'package',
+        packageId: 1,
+        peopleCount: 2,
+        startTime: '10:00',
+      } as never)) as { amount: number };
+      expect(group.amount).toBe(72); // 36 × 2
+
+      m.memberships.findOneBy.mockResolvedValue({
+        expireAt: new Date(Date.now() + 86400_000),
+      });
+      const member = (await m.svc.create(7, {
+        ...baseDto,
+        bookingType: 'package',
+        packageId: 1,
+        peopleCount: 1,
+        startTime: '11:00',
+      } as never)) as { amount: number };
+      expect(member.amount).toBe(32);
+    });
+
+    it('全天不限时：多人按全天多人价，会员按全天会员价', async () => {
+      const m = setup({});
+      const group = (await m.svc.create(7, {
+        ...baseDto,
+        bookingType: 'all_day',
+        peopleCount: 2,
+      } as never)) as { amount: number };
+      expect(group.amount).toBe(90); // 45 × 2
+
+      m.memberships.findOneBy.mockResolvedValue({
+        expireAt: new Date(Date.now() + 86400_000),
+      });
+      const member = (await m.svc.create(7, {
+        ...baseDto,
+        bookingType: 'all_day',
+        peopleCount: 1,
+      } as never)) as { amount: number };
+      expect(member.amount).toBe(39.9);
     });
   });
 });

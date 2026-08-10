@@ -53,11 +53,36 @@ export class CreateStoreDto {
   @Min(0)
   memberPrice?: number;
 
+  /** 多人同行价（元/人/小时） */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  groupPrice?: number;
+
   /** 全天不限时价格（元/人）；不填时按营业时长 × 小时单价计算 */
   @IsOptional()
   @IsNumber()
   @Min(0)
   allDayPrice?: number;
+
+  /** 全天不限时会员价（元/人） */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  allDayMemberPrice?: number;
+
+  /** 全天不限时多人同行价（元/人） */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  allDayGroupPrice?: number;
+
+  /** 周末/节假日加价百分比（0-100），0 表示不加价 */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  weekendSurchargePercent?: number;
 
   @IsOptional()
   @IsString()
@@ -117,6 +142,16 @@ export class CreatePackageDto {
   @IsNumber()
   @Min(0)
   price: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  memberPrice?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  groupPrice?: number;
 
   @IsOptional()
   enabled?: boolean;

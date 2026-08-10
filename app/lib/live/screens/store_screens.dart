@@ -580,6 +580,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                     Text(
                       '按小时 ¥${store.price.toStringAsFixed(2)}/人/小时'
                       '${store.memberPrice != null && store.memberPrice! > 0 ? '　会员 ¥${store.memberPrice!.toStringAsFixed(2)}' : store.memberPrice == 0 ? '　会员免费' : ''}'
+                      '${store.groupPrice != null ? '　同行 ¥${store.groupPrice!.toStringAsFixed(2)}' : ''}'
                       '${store.allDayPrice != null ? '　全天 ¥${store.allDayPrice!.toStringAsFixed(2)}/人' : ''}',
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
                     ),
@@ -1046,19 +1047,49 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
     return w.isFree(widget.startTime, widget.endTime);
   }
 
-  /// 单人价格（含时长；实际以服务端会员价计算为准，此处为预览）
+  /// 单人价格（含时长；实际以服务端结算为准，此处为预览）。
+  /// 同行 ≥2 人按多人同行价；单人按会员价（有配置时）或门市价。
   double get _unitPrice {
     final store = widget.store;
+    final group = _people >= 2;
     if (widget.bookingType == 'package') {
-      return widget.package?.price ?? 0;
+      final p = widget.package;
+      if (p == null) return 0;
+      if (group && p.groupPrice != null) return p.groupPrice!;
+      if (p.memberPrice != null) return p.memberPrice!;
+      return p.price;
     }
     if (widget.bookingType == 'all_day') {
+      if (group && store.allDayGroupPrice != null) {
+        return store.allDayGroupPrice!;
+      }
+      if (store.allDayMemberPrice != null) return store.allDayMemberPrice!;
       return store.allDayPrice ?? store.price * widget.durationHours;
+    }
+    if (group && store.groupPrice != null) {
+      return store.groupPrice! * widget.durationHours;
     }
     final rate = store.memberPrice != null && store.memberPrice! >= 0
         ? store.memberPrice!
         : store.price;
     return rate * widget.durationHours;
+  }
+
+  /// 周末/节假日是否加价（预览，与服务端一致：周六/周日按配置百分比上浮）
+  bool get _weekendSurcharge {
+    final pct = widget.store.weekendSurchargePercent;
+    if (pct <= 0) return false;
+    final wd = DateTime.tryParse(widget.date)?.weekday ?? 1;
+    return wd == 6 || wd == 7;
+  }
+
+  /// 预估总额 = 单价 × 人数（周末加价时上浮）
+  double get _totalPrice {
+    final base = _unitPrice * _people;
+    if (_weekendSurcharge) {
+      return base * (100 + widget.store.weekendSurchargePercent) / 100;
+    }
+    return base;
   }
 
   String get _bookingLabel {
@@ -1354,7 +1385,13 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                           const SizedBox(height: 22),
                           Row(
                             children: [
-                              const Text('会员价 ¥', style: TextStyle(fontSize: 13, color: LiveColors.textSecondary)),
+                              Text(
+                                _people >= 2 ? '同行价 ¥' : '单价 ¥',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: LiveColors.textSecondary,
+                                ),
+                              ),
                               Text(
                                 _unitPrice.toStringAsFixed(1),
                                 style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
@@ -1362,7 +1399,7 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                               Text(' / 人 × $_people', style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary)),
                               const Spacer(),
                               Text(
-                                '¥${(_unitPrice * _people).toStringAsFixed(1)}',
+                                '¥${_totalPrice.toStringAsFixed(1)}',
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
@@ -1371,6 +1408,19 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                               ),
                             ],
                           ),
+                          if (_weekendSurcharge) ...[
+                            const SizedBox(height: 4),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                '含周末/节假日加价 ${widget.store.weekendSurchargePercent}%',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: LiveColors.textTertiary,
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 20),
                           PrimaryButton(
                             label: '确认预约',

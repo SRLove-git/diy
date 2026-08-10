@@ -9,7 +9,11 @@ export interface Store {
   phone: string
   price: number
   memberPrice?: number | null
+  groupPrice?: number | null
   allDayPrice?: number | null
+  allDayMemberPrice?: number | null
+  allDayGroupPrice?: number | null
+  weekendSurchargePercent?: number
   enabled: boolean
   tables?: StoreTable[]
   slots?: TimeSlot[]
@@ -35,6 +39,8 @@ export interface StorePackage {
   name: string
   hours: number
   price: number
+  memberPrice?: number | null
+  groupPrice?: number | null
   enabled: boolean
   sortOrder?: number
 }

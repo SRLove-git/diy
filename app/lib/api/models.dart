@@ -133,7 +133,11 @@ class Store {
     this.images = const [],
     this.price = 0,
     this.memberPrice,
+    this.groupPrice,
     this.allDayPrice,
+    this.allDayMemberPrice,
+    this.allDayGroupPrice,
+    this.weekendSurchargePercent = 0,
     this.businessHours = '',
     this.phone = '',
     this.tables = const [],
@@ -150,7 +154,11 @@ class Store {
   final List<String> images;
   final double price;
   final double? memberPrice;
+  final double? groupPrice;
   final double? allDayPrice;
+  final double? allDayMemberPrice;
+  final double? allDayGroupPrice;
+  final int weekendSurchargePercent;
   final String businessHours;
   final String phone;
   final List<StoreTable> tables;
@@ -169,7 +177,12 @@ class Store {
         images: (json['images'] as List?)?.map((e) => e.toString()).toList() ?? const [],
         price: (json['price'] as num?)?.toDouble() ?? 0,
         memberPrice: (json['memberPrice'] as num?)?.toDouble(),
+        groupPrice: (json['groupPrice'] as num?)?.toDouble(),
         allDayPrice: (json['allDayPrice'] as num?)?.toDouble(),
+        allDayMemberPrice: (json['allDayMemberPrice'] as num?)?.toDouble(),
+        allDayGroupPrice: (json['allDayGroupPrice'] as num?)?.toDouble(),
+        weekendSurchargePercent:
+            (json['weekendSurchargePercent'] as num?)?.toInt() ?? 0,
         businessHours: json['businessHours'] as String? ?? '',
         phone: json['phone'] as String? ?? '',
         tables: (json['tables'] as List?)
@@ -194,6 +207,8 @@ class StorePackage {
     required this.name,
     required this.hours,
     required this.price,
+    this.memberPrice,
+    this.groupPrice,
     this.enabled = true,
   });
 
@@ -201,6 +216,8 @@ class StorePackage {
   final String name;
   final int hours;
   final double price;
+  final double? memberPrice;
+  final double? groupPrice;
   final bool enabled;
 
   factory StorePackage.fromJson(Map<String, dynamic> json) => StorePackage(
@@ -208,6 +225,8 @@ class StorePackage {
         name: json['name'] as String? ?? '',
         hours: (json['hours'] as num?)?.toInt() ?? 0,
         price: (json['price'] as num?)?.toDouble() ?? 0,
+        memberPrice: (json['memberPrice'] as num?)?.toDouble(),
+        groupPrice: (json['groupPrice'] as num?)?.toDouble(),
         enabled: json['enabled'] as bool? ?? true,
       );
 }
