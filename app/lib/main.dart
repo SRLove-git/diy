@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'api/auth_store.dart';
 import 'api/realtime.dart';
 import 'interactive/prototype_app.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 强制竖屏锁定（Android/iOS 生效；与原生配置双保险）
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
   // 恢复登录态；未完成前由路由 redirect 停留在 Splash。
   AuthStore.instance.restore().then((_) {
     RealtimeService.instance.start();
