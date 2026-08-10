@@ -39,6 +39,7 @@ const totalPages = computed(() => Math.ceil(total.value / pageSize) || 1)
 
 const statusTabs = [
   { value: '', label: '全部' },
+  { value: 'pending', label: '待确认' },
   { value: 'booked', label: '待核销' },
   { value: 'checked_in', label: '已核销' },
   { value: 'in_service', label: '服务中' },
@@ -47,6 +48,7 @@ const statusTabs = [
 ]
 
 const statusLabels: Record<string, string> = {
+  pending: '待确认',
   booked: '待核销',
   checked_in: '已核销',
   in_service: '服务中',
@@ -55,6 +57,7 @@ const statusLabels: Record<string, string> = {
 }
 
 const statusColors: Record<string, string> = {
+  pending: '#8B5CF6',
   booked: '#E8633A',
   checked_in: '#E6A23C',
   in_service: '#2E9E5B',
@@ -110,9 +113,10 @@ function goPage(p: number) {
 
 async function operate(
   order: Appointment,
-  action: 'checkin' | 'clockin' | 'clockout',
+  action: 'confirm' | 'checkin' | 'clockin' | 'clockout',
 ) {
   const prompts = {
+    confirm: `确认预约码 ${order.code} 的预约？确认后顾客可到店核销。`,
     checkin: `确认核销预约码 ${order.code}？核销即上钟，订单将进入服务中并开始计时。`,
     clockin: `确认预约码 ${order.code} 开始上钟？`,
     clockout: `确认预约码 ${order.code} 下钟？`,
@@ -121,6 +125,7 @@ async function operate(
 
   operatingId.value = order.id
   try {
+    if (action === 'confirm') await appointmentApi.adminConfirm(order.id)
     if (action === 'checkin') await appointmentApi.adminCheckIn(order.id)
     if (action === 'clockin') await appointmentApi.clockIn(order.id)
     if (action === 'clockout') await appointmentApi.clockOut(order.id)
@@ -439,6 +444,14 @@ onUnmounted(() => {
           <td>{{ formatDuration(o.serviceStartTime, durationEnd(o)) }}</td>
           <td class="actions">
             <button
+              v-if="o.status === 'pending'"
+              class="btn btn-sm btn-success"
+              :disabled="operatingId !== null"
+              @click="operate(o, 'confirm')"
+            >
+              {{ operatingId === o.id ? '确认中…' : '确认' }}
+            </button>
+            <button
               v-if="o.status === 'booked'"
               class="btn btn-sm btn-success"
               :disabled="operatingId !== null"
@@ -463,7 +476,7 @@ onUnmounted(() => {
               {{ operatingId === o.id ? '处理中…' : '下钟' }}
             </button>
             <button
-              v-if="o.status === 'booked' || o.status === 'checked_in'"
+              v-if="o.status === 'pending' || o.status === 'booked' || o.status === 'checked_in'"
               class="btn btn-sm btn-cancel"
               :disabled="operatingId !== null"
               @click="openCancel(o)"

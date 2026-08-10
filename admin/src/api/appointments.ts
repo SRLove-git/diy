@@ -28,7 +28,7 @@ export interface Appointment {
   endTime: string
   peopleCount: number
   code: string
-  status: 'booked' | 'checked_in' | 'in_service' | 'completed' | 'cancelled'
+  status: 'pending' | 'booked' | 'checked_in' | 'in_service' | 'completed' | 'cancelled'
   note: string
   checkInTime: string | null
   serviceStartTime: string | null
@@ -62,6 +62,10 @@ export const appointmentApi = {
   /** 管理端按订单核销 */
   adminCheckIn: (id: number) =>
     http.post<Appointment>(`/admin/appointments/${id}/checkin`),
+
+  /** 管理端确认预约（待确认 → 待核销） */
+  adminConfirm: (id: number) =>
+    http.post<Appointment>(`/admin/appointments/${id}/confirm`),
 
   /** 管理端输入核销码核销（核销即上钟） */
   checkInByCode: (code: string) =>
