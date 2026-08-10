@@ -483,6 +483,7 @@ class StoreDetailScreen extends StatefulWidget {
 
 class _StoreDetailScreenState extends State<StoreDetailScreen> {
   late Future<Store> _future;
+  bool _isMember = false;
   String? _date;
   String _bookingType = 'hourly'; // hourly / package / all_day
   int _hours = 1;
@@ -493,6 +494,10 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
   void initState() {
     super.initState();
     _future = StoreService.instance.detail(widget.storeId);
+    // 会员状态影响计价预览（会员价），与服务端结算一致
+    MemberService.instance.myMembership().then((m) {
+      if (mounted && m.isActive) setState(() => _isMember = true);
+    }).catchError((_) {});
   }
 
   void _retry() => setState(() {
@@ -897,12 +902,20 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
   }
 
   double _previewUnitPrice(Store store, int hours) {
-    if (_bookingType == 'package') return _package?.price ?? 0;
+    if (_bookingType == 'package') {
+      final p = _package;
+      if (p == null) return 0;
+      if (_isMember && p.memberPrice != null) return p.memberPrice!;
+      return p.price;
+    }
     if (_bookingType == 'all_day') {
+      if (_isMember && store.allDayMemberPrice != null) {
+        return store.allDayMemberPrice!;
+      }
       return store.allDayPrice ??
           (store.price * ((_selectedHours(store) == 0 ? 1 : _selectedHours(store))));
     }
-    final rate = store.memberPrice != null && store.memberPrice! >= 0
+    final rate = _isMember && store.memberPrice != null && store.memberPrice! >= 0
         ? store.memberPrice!
         : store.price;
     return rate * hours;
@@ -1004,11 +1017,16 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
   int _people = 2;
   bool _loading = true;
   String? _error;
+  bool _isMember = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+    // 会员状态影响计价预览（会员价 / 会员+同行混合结算），与服务端一致
+    MemberService.instance.myMembership().then((m) {
+      if (mounted && m.isActive) setState(() => _isMember = true);
+    }).catchError((_) {});
   }
 
   Future<void> _load() async {
@@ -1047,32 +1065,46 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
     return w.isFree(widget.startTime, widget.endTime);
   }
 
-  /// 单人价格（含时长；实际以服务端结算为准，此处为预览）。
-  /// 同行 ≥2 人按多人同行价；单人按会员价（有配置时）或门市价。
-  double get _unitPrice {
+  /// 门市单价（元/人，含时长）
+  double get _normalUnit {
     final store = widget.store;
-    final group = _people >= 2;
     if (widget.bookingType == 'package') {
-      final p = widget.package;
-      if (p == null) return 0;
-      if (group && p.groupPrice != null) return p.groupPrice!;
-      if (p.memberPrice != null) return p.memberPrice!;
-      return p.price;
+      return widget.package?.price ?? store.price * widget.durationHours;
     }
     if (widget.bookingType == 'all_day') {
-      if (group && store.allDayGroupPrice != null) {
-        return store.allDayGroupPrice!;
-      }
-      if (store.allDayMemberPrice != null) return store.allDayMemberPrice!;
       return store.allDayPrice ?? store.price * widget.durationHours;
     }
-    if (group && store.groupPrice != null) {
-      return store.groupPrice! * widget.durationHours;
+    return store.price * widget.durationHours;
+  }
+
+  /// 会员单价（元/人，含时长）
+  double get _memberUnit {
+    final store = widget.store;
+    if (widget.bookingType == 'package') {
+      return widget.package?.memberPrice ?? _normalUnit;
     }
-    final rate = store.memberPrice != null && store.memberPrice! >= 0
-        ? store.memberPrice!
-        : store.price;
-    return rate * widget.durationHours;
+    if (widget.bookingType == 'all_day') {
+      return store.allDayMemberPrice ?? _normalUnit;
+    }
+    return (store.memberPrice ?? store.price) * widget.durationHours;
+  }
+
+  /// 多人同行单价（元/人，含时长）
+  double get _groupUnit {
+    final store = widget.store;
+    if (widget.bookingType == 'package') {
+      return widget.package?.groupPrice ?? _normalUnit;
+    }
+    if (widget.bookingType == 'all_day') {
+      return store.allDayGroupPrice ?? _normalUnit;
+    }
+    return (store.groupPrice ?? store.price) * widget.durationHours;
+  }
+
+  /// 单人单价：会员按会员价，否则门市价；同行 ≥2 人按多人同行价
+  double get _unitPrice {
+    if (_people >= 2) return _groupUnit;
+    return _isMember ? _memberUnit : _normalUnit;
   }
 
   /// 周末/节假日是否加价（预览，与服务端一致：周六/周日按配置百分比上浮）
@@ -1085,7 +1117,10 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
 
   /// 预估总额 = 单价 × 人数（周末加价时上浮）
   double get _totalPrice {
-    final base = _unitPrice * _people;
+    final n = _people;
+    final base = n >= 2 && _isMember
+        ? _memberUnit + _groupUnit * (n - 1)
+        : _unitPrice * n;
     if (_weekendSurcharge) {
       return base * (100 + widget.store.weekendSurchargePercent) / 100;
     }
@@ -1386,17 +1421,27 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                           Row(
                             children: [
                               Text(
-                                _people >= 2 ? '同行价 \$' : '单价 \$',
+                                _people >= 2 && _isMember
+                                    ? '会员+同行 \$'
+                                    : (_people >= 2 ? '同行价 \$' : '单价 \$'),
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: LiveColors.textSecondary,
                                 ),
                               ),
                               Text(
-                                _unitPrice.toStringAsFixed(1),
+                                (_people >= 2 && _isMember
+                                        ? _memberUnit
+                                        : _unitPrice)
+                                    .toStringAsFixed(1),
                                 style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
                               ),
-                              Text(' / 人 × $_people', style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary)),
+                              Text(
+                                _people >= 2 && _isMember
+                                    ? ' + \$${_groupUnit.toStringAsFixed(1)}×${_people - 1}'
+                                    : ' / 人 × $_people',
+                                style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
+                              ),
                               const Spacer(),
                               Text(
                                 '\$${_totalPrice.toStringAsFixed(1)}',
