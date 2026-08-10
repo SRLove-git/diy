@@ -133,12 +133,60 @@
   "homeStoreSection": "拼豆",
   "homeStoreSectionBadge": "人气手作",
   "homeBookNow": "预约",
+  "homeBookNowDesc": "附近门店 / 活动",
   "homeCheckIn": "到店",
+  "homeCheckInDesc": "核销 · 上钟",
   "homeMember": "会员套餐",
+  "homeMemberDesc": "权益 · 优惠",
+  "homeComingSoon": "敬请期待",
+  "homeComingSoonMore": "更多活动敬请期待",
+  "homeActivitySection": "活动推荐",
+  "homeViewAll": "查看全部 ›",
+  "homeNoActivities": "暂无活动，敬请期待",
   "homeWaitingConfirm": "待确认",
+  "homeWaitingChip": "等待确认",
   "homeWaitingStoreConfirm": "等待门店确认",
+  "homeCode": "预约码 {code}",
+  "@homeCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
   "homeOrderExpired": "订单已失效",
   "homeToCheckIn": "到店核销",
+  "homeStartedAt": "{date} {time} 上钟{duration}",
+  "@homeStartedAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "homeAllDaySuffix": " · 全天不限时",
+  "homeHourSuffix": " · {hours} 小时",
+  "@homeHourSuffix": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "commonLoadFailed": "加载失败",
+  "weekdayMon": "周一",
+  "weekdayTue": "周二",
+  "weekdayWed": "周三",
+  "weekdayThu": "周四",
+  "weekdayFri": "周五",
+  "weekdaySat": "周六",
+  "weekdaySun": "周日",
   "memberCenterTitle": "会员中心",
   "memberBenefits": "会员权益",
   "memberOpenRenew": "开通 / 续费",

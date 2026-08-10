@@ -752,11 +752,23 @@ abstract class AppLocalizations {
   /// **'预约'**
   String get homeBookNow;
 
+  /// No description provided for @homeBookNowDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'附近门店 / 活动'**
+  String get homeBookNowDesc;
+
   /// No description provided for @homeCheckIn.
   ///
   /// In zh, this message translates to:
   /// **'到店'**
   String get homeCheckIn;
+
+  /// No description provided for @homeCheckInDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'核销 · 上钟'**
+  String get homeCheckInDesc;
 
   /// No description provided for @homeMember.
   ///
@@ -764,17 +776,65 @@ abstract class AppLocalizations {
   /// **'会员套餐'**
   String get homeMember;
 
+  /// No description provided for @homeMemberDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'权益 · 优惠'**
+  String get homeMemberDesc;
+
+  /// No description provided for @homeComingSoon.
+  ///
+  /// In zh, this message translates to:
+  /// **'敬请期待'**
+  String get homeComingSoon;
+
+  /// No description provided for @homeComingSoonMore.
+  ///
+  /// In zh, this message translates to:
+  /// **'更多活动敬请期待'**
+  String get homeComingSoonMore;
+
+  /// No description provided for @homeActivitySection.
+  ///
+  /// In zh, this message translates to:
+  /// **'活动推荐'**
+  String get homeActivitySection;
+
+  /// No description provided for @homeViewAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看全部 ›'**
+  String get homeViewAll;
+
+  /// No description provided for @homeNoActivities.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无活动，敬请期待'**
+  String get homeNoActivities;
+
   /// No description provided for @homeWaitingConfirm.
   ///
   /// In zh, this message translates to:
   /// **'待确认'**
   String get homeWaitingConfirm;
 
+  /// No description provided for @homeWaitingChip.
+  ///
+  /// In zh, this message translates to:
+  /// **'等待确认'**
+  String get homeWaitingChip;
+
   /// No description provided for @homeWaitingStoreConfirm.
   ///
   /// In zh, this message translates to:
   /// **'等待门店确认'**
   String get homeWaitingStoreConfirm;
+
+  /// No description provided for @homeCode.
+  ///
+  /// In zh, this message translates to:
+  /// **'预约码 {code}'**
+  String homeCode(String code);
 
   /// No description provided for @homeOrderExpired.
   ///
@@ -787,6 +847,72 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'到店核销'**
   String get homeToCheckIn;
+
+  /// No description provided for @homeStartedAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'{date} {time} 上钟{duration}'**
+  String homeStartedAt(String date, String time, String duration);
+
+  /// No description provided for @homeAllDaySuffix.
+  ///
+  /// In zh, this message translates to:
+  /// **' · 全天不限时'**
+  String get homeAllDaySuffix;
+
+  /// No description provided for @homeHourSuffix.
+  ///
+  /// In zh, this message translates to:
+  /// **' · {hours} 小时'**
+  String homeHourSuffix(int hours);
+
+  /// No description provided for @commonLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载失败'**
+  String get commonLoadFailed;
+
+  /// No description provided for @weekdayMon.
+  ///
+  /// In zh, this message translates to:
+  /// **'周一'**
+  String get weekdayMon;
+
+  /// No description provided for @weekdayTue.
+  ///
+  /// In zh, this message translates to:
+  /// **'周二'**
+  String get weekdayTue;
+
+  /// No description provided for @weekdayWed.
+  ///
+  /// In zh, this message translates to:
+  /// **'周三'**
+  String get weekdayWed;
+
+  /// No description provided for @weekdayThu.
+  ///
+  /// In zh, this message translates to:
+  /// **'周四'**
+  String get weekdayThu;
+
+  /// No description provided for @weekdayFri.
+  ///
+  /// In zh, this message translates to:
+  /// **'周五'**
+  String get weekdayFri;
+
+  /// No description provided for @weekdaySat.
+  ///
+  /// In zh, this message translates to:
+  /// **'周六'**
+  String get weekdaySat;
+
+  /// No description provided for @weekdaySun.
+  ///
+  /// In zh, this message translates to:
+  /// **'周日'**
+  String get weekdaySun;
 
   /// No description provided for @memberCenterTitle.
   ///

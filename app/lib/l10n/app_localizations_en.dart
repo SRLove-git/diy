@@ -351,22 +351,91 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeBookNow => 'Book';
 
   @override
+  String get homeBookNowDesc => 'Nearby stores / activities';
+
+  @override
   String get homeCheckIn => 'Check in';
+
+  @override
+  String get homeCheckInDesc => 'Check in · Start';
 
   @override
   String get homeMember => 'Membership';
 
   @override
+  String get homeMemberDesc => 'Benefits · Deals';
+
+  @override
+  String get homeComingSoon => 'Coming Soon';
+
+  @override
+  String get homeComingSoonMore => 'More activities coming soon';
+
+  @override
+  String get homeActivitySection => 'Activities';
+
+  @override
+  String get homeViewAll => 'View all ›';
+
+  @override
+  String get homeNoActivities => 'No activities yet';
+
+  @override
   String get homeWaitingConfirm => 'Pending';
 
   @override
+  String get homeWaitingChip => 'Waiting';
+
+  @override
   String get homeWaitingStoreConfirm => 'Waiting for store confirmation';
+
+  @override
+  String homeCode(String code) {
+    return 'Code $code';
+  }
 
   @override
   String get homeOrderExpired => 'Order expired';
 
   @override
   String get homeToCheckIn => 'Check in';
+
+  @override
+  String homeStartedAt(String date, String time, String duration) {
+    return '$date $time started$duration';
+  }
+
+  @override
+  String get homeAllDaySuffix => ' · all-day pass';
+
+  @override
+  String homeHourSuffix(int hours) {
+    return ' · $hours h';
+  }
+
+  @override
+  String get commonLoadFailed => 'Failed to load';
+
+  @override
+  String get weekdayMon => 'Mon';
+
+  @override
+  String get weekdayTue => 'Tue';
+
+  @override
+  String get weekdayWed => 'Wed';
+
+  @override
+  String get weekdayThu => 'Thu';
+
+  @override
+  String get weekdayFri => 'Fri';
+
+  @override
+  String get weekdaySat => 'Sat';
+
+  @override
+  String get weekdaySun => 'Sun';
 
   @override
   String get memberCenterTitle => 'Membership';

@@ -6,6 +6,8 @@ import '../../api/api_client.dart';
 import '../../api/chat_services.dart';
 import '../../api/models.dart';
 import '../../api/services.dart';
+import '../../l10n/app_localizations.dart';
+import '../../l10n/l10n_ext.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
@@ -135,6 +137,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       child: FutureBuilder(
         future: _future,
         builder: (context, snap) {
+          final l10n = context.l10n;
           if (snap.hasError) {
             return Column(
               children: [
@@ -143,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   child: ErrorView(
                     message: snap.error is ApiException
                         ? (snap.error as ApiException).message
-                        : '加载失败',
+                        : l10n.commonLoadFailed,
                     onRetry: _retry,
                   ),
                 ),
@@ -191,8 +194,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 const _TopBar(),
                 // 「拼豆」板块：入口卡（预约 / 到店 / 会员套餐）
                  _SectionHeader(
-                  title: '拼豆',
-                  badge: '人气手作',
+                  title: l10n.homeStoreSection,
+                  badge: l10n.homeStoreSectionBadge,
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -250,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 ],
                 // 「敬请期待」模块：标题在左上角（同拼豆模块），下方为占位框
-                _SectionHeader(title: '敬请期待'),
+                _SectionHeader(title: l10n.homeComingSoon),
                 Padding(
                   // 与拼豆模块卡片同宽
                   padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -264,9 +267,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: LiveColors.divider),
                     ),
-                    child: const Text(
-                      '更多活动敬请期待',
-                      style: TextStyle(
+                    child: Text(
+                      l10n.homeComingSoonMore,
+                      style: const TextStyle(
                         fontSize: 13,
                         color: LiveColors.textTertiary,
                       ),
@@ -275,8 +278,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
                 // 「活动推荐」板块
                 _SectionHeader(
-                  title: '活动推荐',
-                  more: '查看全部 ›',
+                  title: l10n.homeActivitySection,
+                  more: l10n.homeViewAll,
                   onMore: () => LiveRoutes.push(context, RoutePaths.activityList),
                 ),
                 if (data.activities.isNotEmpty)
@@ -285,9 +288,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     child: _ActivityGrid(activities: data.activities),
                   )
                 else
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 18),
-                    child: EmptyView(text: '暂无活动，敬请期待'),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    child: EmptyView(text: l10n.homeNoActivities),
                   ),
                 const SizedBox(height: 12),
               ],
@@ -440,37 +443,37 @@ class _EntryCardsRow extends StatelessWidget {
 
   final void Function(String key) onTap;
 
-  static const _entries = [
-    (
-      key: 'appoint',
-      icon: Icons.pin_drop_outlined,
-      title: '预约',
-      desc: '附近门店 / 活动',
-    ),
-    (
-      key: 'checkin',
-      icon: Icons.qr_code_scanner,
-      title: '到店',
-      desc: '核销 · 上钟',
-    ),
-    (
-      key: 'member',
-      icon: Icons.card_membership,
-      title: '会员套餐',
-      desc: '权益 · 优惠',
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final entries = [
+      (
+        key: 'appoint',
+        icon: Icons.pin_drop_outlined,
+        title: l10n.homeBookNow,
+        desc: l10n.homeBookNowDesc,
+      ),
+      (
+        key: 'checkin',
+        icon: Icons.qr_code_scanner,
+        title: l10n.homeCheckIn,
+        desc: l10n.homeCheckInDesc,
+      ),
+      (
+        key: 'member',
+        icon: Icons.card_membership,
+        title: l10n.homeMember,
+        desc: l10n.homeMemberDesc,
+      ),
+    ];
     return Row(
       children: [
-        for (var i = 0; i < _entries.length; i++) ...[
+        for (var i = 0; i < entries.length; i++) ...[
           if (i > 0) const SizedBox(width: 10),
           Expanded(
             child: _EntryCard(
-              entry: _entries[i],
-              onTap: () => onTap(_entries[i].key),
+              entry: entries[i],
+              onTap: () => onTap(entries[i].key),
             ),
           ),
         ],
@@ -554,13 +557,22 @@ class _HomeOrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final a = appointment;
     final expired = a.status == 'booked' && a.isExpired();
     final pending = a.status == 'pending';
     final date = DateTime.tryParse(a.date);
     final week = date == null
         ? ''
-        : '周${'一二三四五六日'[date.weekday - 1]}';
+        : switch (date.weekday) {
+            1 => l10n.weekdayMon,
+            2 => l10n.weekdayTue,
+            3 => l10n.weekdayWed,
+            4 => l10n.weekdayThu,
+            5 => l10n.weekdayFri,
+            6 => l10n.weekdaySat,
+            _ => l10n.weekdaySun,
+          };
     final table = a.tableLabel.isNotEmpty ? ' · ${a.tableLabel}' : '';
     return InkWell(
       onTap: onTap,
@@ -608,10 +620,10 @@ class _HomeOrderCard extends StatelessWidget {
                   child: Center(
                     child: Text(
                       expired
-                          ? '订单已失效'
+                          ? l10n.homeOrderExpired
                           : pending
-                              ? '待确认'
-                              : '待核销',
+                              ? l10n.homeWaitingConfirm
+                              : l10n.appointmentStatusBooked,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -629,7 +641,7 @@ class _HomeOrderCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               '${a.date} $week ${a.startTime}-${a.endTime}$table'
-              '${_durationLabel(a)} · ${a.peopleCount} 人',
+              '${_durationLabel(a, l10n)} · ${l10n.appointmentPeople(a.peopleCount)}',
               style: TextStyle(
                 fontSize: 13,
                 color: expired
@@ -642,7 +654,9 @@ class _HomeOrderCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    pending ? '等待门店确认后到店核销' : '预约码 ${a.code}',
+                    pending
+                        ? l10n.homeWaitingStoreConfirm
+                        : l10n.homeCode(a.code),
                     style: TextStyle(
                       fontSize: 11,
                       color: pending
@@ -661,9 +675,9 @@ class _HomeOrderCard extends StatelessWidget {
                       color: const Color(0xFFE4E4E8),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Text(
-                      '订单已失效',
-                      style: TextStyle(
+                    child: Text(
+                      l10n.homeOrderExpired,
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: LiveColors.textSecondary,
@@ -681,9 +695,9 @@ class _HomeOrderCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: const Color(0xFFDDC8FF)),
                     ),
-                    child: const Text(
-                      '等待确认',
-                      style: TextStyle(
+                    child: Text(
+                      l10n.homeWaitingChip,
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF7C3AED),
@@ -700,9 +714,9 @@ class _HomeOrderCard extends StatelessWidget {
                       color: const Color(0xFF141414),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Text(
-                      '到店核销',
-                      style: TextStyle(
+                    child: Text(
+                      l10n.homeToCheckIn,
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
@@ -727,6 +741,7 @@ class _HomeServiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final a = appointment;
     return Container(
       padding: const EdgeInsets.all(14),
@@ -762,7 +777,7 @@ class _HomeServiceCard extends StatelessWidget {
                 ),
                 child: Center(
                   child: Text(
-                    '服务中',
+                    l10n.appointmentStatusInService,
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -775,7 +790,11 @@ class _HomeServiceCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${a.date} ${a.startTime} 上钟${_durationLabel(a)}',
+            l10n.homeStartedAt(
+              a.date,
+              a.startTime,
+              _durationLabel(a, l10n),
+            ),
             style: const TextStyle(
               fontSize: 13,
               color: LiveColors.textSecondary,
@@ -790,14 +809,14 @@ class _HomeServiceCard extends StatelessWidget {
 }
 
 /// 预约时长描述（与预约卡片一致）。
-String _durationLabel(Appointment a) {
+String _durationLabel(Appointment a, AppLocalizations l10n) {
   if (a.type == 'activity') return '';
-  if (a.bookingType == 'all_day') return ' · 全天不限时';
+  if (a.bookingType == 'all_day') return l10n.homeAllDaySuffix;
   if (a.bookingType == 'package' && a.packageName.isNotEmpty) {
     return ' · ${a.packageName}';
   }
   if (a.durationHours != null && a.durationHours! > 0) {
-    return ' · ${a.durationHours} 小时';
+    return l10n.homeHourSuffix(a.durationHours!);
   }
   return '';
 }

@@ -343,22 +343,91 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeBookNow => '预约';
 
   @override
+  String get homeBookNowDesc => '附近门店 / 活动';
+
+  @override
   String get homeCheckIn => '到店';
+
+  @override
+  String get homeCheckInDesc => '核销 · 上钟';
 
   @override
   String get homeMember => '会员套餐';
 
   @override
+  String get homeMemberDesc => '权益 · 优惠';
+
+  @override
+  String get homeComingSoon => '敬请期待';
+
+  @override
+  String get homeComingSoonMore => '更多活动敬请期待';
+
+  @override
+  String get homeActivitySection => '活动推荐';
+
+  @override
+  String get homeViewAll => '查看全部 ›';
+
+  @override
+  String get homeNoActivities => '暂无活动，敬请期待';
+
+  @override
   String get homeWaitingConfirm => '待确认';
 
   @override
+  String get homeWaitingChip => '等待确认';
+
+  @override
   String get homeWaitingStoreConfirm => '等待门店确认';
+
+  @override
+  String homeCode(String code) {
+    return '预约码 $code';
+  }
 
   @override
   String get homeOrderExpired => '订单已失效';
 
   @override
   String get homeToCheckIn => '到店核销';
+
+  @override
+  String homeStartedAt(String date, String time, String duration) {
+    return '$date $time 上钟$duration';
+  }
+
+  @override
+  String get homeAllDaySuffix => ' · 全天不限时';
+
+  @override
+  String homeHourSuffix(int hours) {
+    return ' · $hours 小时';
+  }
+
+  @override
+  String get commonLoadFailed => '加载失败';
+
+  @override
+  String get weekdayMon => '周一';
+
+  @override
+  String get weekdayTue => '周二';
+
+  @override
+  String get weekdayWed => '周三';
+
+  @override
+  String get weekdayThu => '周四';
+
+  @override
+  String get weekdayFri => '周五';
+
+  @override
+  String get weekdaySat => '周六';
+
+  @override
+  String get weekdaySun => '周日';
 
   @override
   String get memberCenterTitle => '会员中心';
