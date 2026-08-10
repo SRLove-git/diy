@@ -663,7 +663,6 @@ class MemberPurchaseScreen extends StatefulWidget {
 
 class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
   bool _loading = false;
-  String _payMethod = 'wechat';
 
   Future<void> _purchase() async {
     setState(() => _loading = true);
@@ -741,57 +740,33 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
                     bold: true,
                   ),
                   const SizedBox(height: 18),
-                  const Text('支付方式', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => setState(() => _payMethod = 'wechat'),
-                          child: Row(
-                            children: [
-                              Icon(
-                                _payMethod == 'wechat'
-                                    ? Icons.radio_button_checked
-                                    : Icons.radio_button_unchecked,
-                                size: 18,
-                                color: _payMethod == 'wechat'
-                                    ? LiveColors.brand
-                                    : LiveColors.textTertiary,
-                              ),
-                              const SizedBox(width: 8),
-                              const Text('微信支付',
-                                  style: TextStyle(fontSize: 14, color: LiveColors.textPrimary)),
-                            ],
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: LiveColors.brandLight,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.storefront_outlined,
+                            size: 18, color: LiveColors.brand),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '线上下单，到店支付：提交订单后到店支付会员费用即可开通',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: LiveColors.textSecondary,
+                              height: 1.5,
+                            ),
                           ),
                         ),
-                      ),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => setState(() => _payMethod = 'alipay'),
-                          child: Row(
-                            children: [
-                              Icon(
-                                _payMethod == 'alipay'
-                                    ? Icons.radio_button_checked
-                                    : Icons.radio_button_unchecked,
-                                size: 18,
-                                color: _payMethod == 'alipay'
-                                    ? LiveColors.brand
-                                    : LiveColors.textTertiary,
-                              ),
-                              const SizedBox(width: 8),
-                              const Text('支付宝',
-                                  style: TextStyle(fontSize: 14, color: LiveColors.textPrimary)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 24),
                   PrimaryButton(
-                    label: '确认开通',
+                    label: '提交订单',
                     color: Colors.black,
                     textColor: Colors.white,
                     loading: _loading,
@@ -804,7 +779,7 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
                   ),
                   const SizedBox(height: 14),
                   const Text(
-                    '支付即代表同意《会员服务协议》，开通后立即生效',
+                    '提交订单即代表同意《会员服务协议》',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 11, color: LiveColors.textTertiary),
                   ),
