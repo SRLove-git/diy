@@ -636,3 +636,151 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 }
+
+/// 修改登录密码（设置-账号与安全）：原密码 + 新密码 + 确认新密码。
+class ChangePasswordScreen extends StatefulWidget {
+  const ChangePasswordScreen({super.key});
+
+  @override
+  State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
+}
+
+class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
+  final _oldCtrl = TextEditingController();
+  final _newCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
+  bool _loading = false;
+  bool _obscureOld = true;
+  bool _obscureNew = true;
+
+  @override
+  void dispose() {
+    for (final c in [_oldCtrl, _newCtrl, _confirmCtrl]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final old = _oldCtrl.text;
+    final next = _newCtrl.text;
+    if (old.isEmpty) {
+      showLiveSnack(context, '请输入原密码');
+      return;
+    }
+    if (next.length < 6) {
+      showLiveSnack(context, '新密码至少 6 位');
+      return;
+    }
+    if (next != _confirmCtrl.text) {
+      showLiveSnack(context, '两次输入的新密码不一致');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      await AuthService.instance
+          .changePassword(oldPassword: old, newPassword: next);
+      if (!mounted) return;
+      showLiveSnack(context, '密码修改成功');
+      Navigator.of(context).pop();
+    } on ApiException catch (e) {
+      if (mounted) showLiveSnack(context, e.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LivePage(
+      resizeToAvoidBottomInset: false,
+      child: Column(
+        children: [
+          const LiveAppBar(title: '修改密码'),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '修改登录密码',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: LiveColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '验证原密码后设置新密码，下次登录请使用新密码',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: LiveColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  TextField(
+                    controller: _oldCtrl,
+                    obscureText: _obscureOld,
+                    maxLength: 32,
+                    decoration: InputDecoration(
+                      hintText: '原密码',
+                      counterText: '',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureOld
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: LiveColors.textTertiary,
+                        ),
+                        onPressed: () =>
+                            setState(() => _obscureOld = !_obscureOld),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _newCtrl,
+                    obscureText: _obscureNew,
+                    maxLength: 32,
+                    decoration: InputDecoration(
+                      hintText: '新密码（6-32 位）',
+                      counterText: '',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureNew
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: LiveColors.textTertiary,
+                        ),
+                        onPressed: () =>
+                            setState(() => _obscureNew = !_obscureNew),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _confirmCtrl,
+                    obscureText: true,
+                    maxLength: 32,
+                    decoration: const InputDecoration(
+                      hintText: '确认新密码',
+                      counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  PrimaryButton(
+                    label: '确认修改',
+                    onTap: _loading ? null : _submit,
+                    loading: _loading,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

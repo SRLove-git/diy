@@ -63,6 +63,17 @@ class AuthService {
     });
   }
 
+  /// 修改登录密码（登录态下，需校验原密码）
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) {
+    return ApiClient.instance.post('/auth/change-password', body: {
+      if (oldPassword.isNotEmpty) 'oldPassword': oldPassword,
+      'newPassword': newPassword,
+    });
+  }
+
   Future<User> me() async {
     final data = await ApiClient.instance.get('/auth/me') as Map<String, dynamic>;
     return User.fromJson(data);

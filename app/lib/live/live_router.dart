@@ -466,6 +466,13 @@ final GoRouter appRouter = GoRouter(
       builder: (_, _) => LiveHost(child: const SettingsScreen()),
     ),
     GoRoute(
+      path: RoutePaths.profileChangePassword,
+      builder: (_, _) => LiveHost(
+        resizeToAvoidBottomInset: false,
+        child: const ChangePasswordScreen(),
+      ),
+    ),
+    GoRoute(
       path: RoutePaths.profileLiked,
       builder: (_, _) => LiveHost(child: const LikedFavoritesScreen()),
     ),

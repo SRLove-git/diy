@@ -1969,7 +1969,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _logout() async {
     // 对齐 Pixso 39-弹窗-退出登录确认：
     // 遮罩 + 居中白色圆角 22 对话框 + 灰底取消 / 红底退出登录。
-    final ok = await showDialog<bool>(
+    final ok = await _showConfirmDialog(
+      title: '退出登录',
+      desc: '退出后需要重新登录，才能查看消息、预约和会员信息，确定退出吗？',
+      actionLabel: '退出登录',
+    );
+    if (ok == true && mounted) await LiveRoutes.logout(context);
+  }
+
+  /// 切换账号：先弹窗确认，再退出当前账号返回登录页。
+  Future<void> _switchAccount() async {
+    final ok = await _showConfirmDialog(
+      title: '切换账号',
+      desc: '切换账号将退出当前账号并返回登录页，需要重新登录后才能继续，确定切换吗？',
+      actionLabel: '切换账号',
+    );
+    if (ok == true && mounted) await LiveRoutes.logout(context);
+  }
+
+  Future<bool?> _showConfirmDialog({
+    required String title,
+    required String desc,
+    required String actionLabel,
+  }) {
+    return showDialog<bool>(
       context: context,
       barrierColor: const Color(0x6B141414),
       builder: (dialogContext) => Center(
@@ -1983,19 +2006,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                '退出登录',
-                style: TextStyle(
+              Text(
+                title,
+                style: const TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
                   color: LiveColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 10),
-              const Text(
-                '退出后需要重新登录，才能查看消息、预约和会员信息，确定退出吗？',
+              Text(
+                desc,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 13,
                   height: 1.5,
                   color: LiveColors.textSecondary,
@@ -2015,7 +2038,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: _DialogButton(
-                      label: '退出登录',
+                      label: actionLabel,
                       backgroundColor: const Color(0xFFFF3B30),
                       textColor: Colors.white,
                       onTap: () => Navigator.pop(dialogContext, true),
@@ -2028,7 +2051,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
-    if (ok == true && mounted) await LiveRoutes.logout(context);
   }
 
   @override
@@ -2065,7 +2087,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       chevron: true,
                       onTap: () => LiveRoutes.push(
                         context,
-                        RoutePaths.loginForgot,
+                        RoutePaths.profileChangePassword,
                       ),
                     ),
                     // 登录设备前期暂不开放，已隐藏
@@ -2079,7 +2101,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: '切换账号',
                       subtitle: '登录其他账号',
                       chevron: true,
-                      onTap: () => LiveRoutes.logout(context),
+                      onTap: _switchAccount,
                     ),
                   ],
                 ),

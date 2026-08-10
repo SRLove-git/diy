@@ -63,6 +63,7 @@ class RoutePaths {
   static const memberPurchase = '/member/purchase';
   static const profileEdit = '/profile/edit';
   static const profileSettings = '/profile/settings';
+  static const profileChangePassword = '/profile/change-password';
   static const profileLiked = '/profile/liked';
   static const profileHistory = '/profile/history';
 }
