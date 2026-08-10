@@ -9,6 +9,7 @@ import {
   type SaveCouponPayload,
   type SavePlanPayload,
 } from '../api/members'
+import { i18n, t } from '../i18n'
 
 const activeTab = ref<'members' | 'orders' | 'plans' | 'coupons'>('members')
 const loading = ref(true)
@@ -120,7 +121,7 @@ function openCreateMember() {
   editingMemberId.value = null
   memberPlanId.value = 0
   memberForm.userId = 0
-  memberForm.levelName = '手作会员'
+  memberForm.levelName = i18n.lang === 'en' ? 'Craft Member' : '手作会员'
   memberForm.expireAt = defaultExpireAt()
   memberDialogOpen.value = true
 }
@@ -149,11 +150,11 @@ function fillExpireFromPlan(planId: number) {
 
 async function saveMember() {
   if (!editingMemberId.value && !memberForm.userId) {
-    alert('请输入用户ID')
+    alert(t('请输入用户ID', 'Please enter the user ID'))
     return
   }
   if (!memberForm.expireAt) {
-    alert('请选择有效期')
+    alert(t('请选择有效期', 'Please choose an expiry date'))
     return
   }
   saving.value = true
@@ -174,7 +175,7 @@ async function saveMember() {
     closeMemberDialog()
     await loadMembers()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '保存失败')
+    alert(e?.response?.data?.message ?? t('保存失败', 'Save failed'))
   } finally {
     saving.value = false
   }
@@ -196,7 +197,7 @@ async function confirmDeleteMember() {
     deleteTarget.value = null
     await loadMembers()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   } finally {
     deleting.value = false
   }
@@ -237,9 +238,19 @@ function goOrdersPage(p: number) {
 }
 
 async function confirmOrder(item: MemberOrder) {
+  const user = item.userNickname || t('用户 #{id}', 'User #{id}', { id: item.userId })
   if (
     !confirm(
-      `确认开通 ${item.userNickname || `用户 #${item.userId}`} 的会员（${item.planName}，${item.durationDays} 天，\$${item.amount}）？确认前请确认已收取到店支付费用。`,
+      t(
+        '确认开通 {user} 的会员（{plan}，{days} 天，${amount}）？确认前请确认已收取到店支付费用。',
+        'Activate membership for {user} ({plan}, {days} days, ${amount})? Please confirm the in-store payment was collected first.',
+        {
+          user,
+          plan: item.planName,
+          days: item.durationDays,
+          amount: item.amount,
+        },
+      ),
     )
   )
     return
@@ -248,21 +259,30 @@ async function confirmOrder(item: MemberOrder) {
     await memberApi.confirmOrder(item.id)
     await loadOrders()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   } finally {
     orderBusyId.value = null
   }
 }
 
 async function cancelOrder(item: MemberOrder) {
-  if (!confirm(`确认取消 ${item.userNickname || `用户 #${item.userId}`} 的会员开通申请？`))
+  const user = item.userNickname || t('用户 #{id}', 'User #{id}', { id: item.userId })
+  if (
+    !confirm(
+      t(
+        '确认取消 {user} 的会员开通申请？',
+        'Cancel the membership application of {user}?',
+        { user },
+      ),
+    )
+  )
     return
   orderBusyId.value = item.id
   try {
     await memberApi.cancelOrder(item.id)
     await loadOrders()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   } finally {
     orderBusyId.value = null
   }
@@ -274,7 +294,7 @@ async function loadAll() {
   try {
     await Promise.all([loadMembers(), loadOrders(), loadPlans(), loadCoupons()])
   } catch (e: any) {
-    error.value = e?.response?.data?.message ?? '加载失败'
+    error.value = e?.response?.data?.message ?? t('加载失败', 'Failed to load')
   } finally {
     loading.value = false
   }
@@ -319,7 +339,7 @@ async function savePlan() {
     closePlanDialog()
     await loadPlans()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '保存失败')
+    alert(e?.response?.data?.message ?? t('保存失败', 'Save failed'))
   } finally {
     saving.value = false
   }
@@ -330,7 +350,7 @@ async function togglePlan(plan: MemberPlan) {
     await memberApi.togglePlan(plan.id, !plan.enabled)
     await loadPlans()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   }
 }
 
@@ -371,7 +391,7 @@ async function saveCoupon() {
     closeCouponDialog()
     await loadCoupons()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '保存失败')
+    alert(e?.response?.data?.message ?? t('保存失败', 'Save failed'))
   } finally {
     saving.value = false
   }
@@ -382,7 +402,7 @@ async function toggleCoupon(coupon: Coupon) {
     await memberApi.toggleCoupon(coupon.id, !coupon.enabled)
     await loadCoupons()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   }
 }
 
@@ -394,7 +414,7 @@ function goPage(nextPage: number) {
 
 function formatTime(value: string) {
   try {
-    return new Date(value).toLocaleString('zh-CN')
+    return new Date(value).toLocaleString(i18n.lang === 'en' ? 'en-US' : 'zh-CN')
   } catch {
     return value
   }
@@ -406,111 +426,135 @@ onMounted(loadAll)
 <template>
   <div class="members-view">
     <div class="toolbar">
-      <h2>会员运营</h2>
+      <h2>{{ $t('会员运营', 'Members') }}</h2>
       <div class="actions">
-        <button class="btn" @click="loadAll">刷新</button>
+        <button class="btn" @click="loadAll">{{ $t('刷新', 'Refresh') }}</button>
       </div>
     </div>
 
     <div class="tabs">
-      <button class="tab" :class="{ active: activeTab === 'members' }" @click="activeTab = 'members'">会员列表</button>
-      <button class="tab" :class="{ active: activeTab === 'orders' }" @click="activeTab = 'orders'">开通申请</button>
-      <button class="tab" :class="{ active: activeTab === 'plans' }" @click="activeTab = 'plans'">套餐管理</button>
-      <button class="tab" :class="{ active: activeTab === 'coupons' }" @click="activeTab = 'coupons'">优惠券管理</button>
+      <button class="tab" :class="{ active: activeTab === 'members' }" @click="activeTab = 'members'">
+        {{ $t('会员列表', 'Members') }}
+      </button>
+      <button class="tab" :class="{ active: activeTab === 'orders' }" @click="activeTab = 'orders'">
+        {{ $t('开通申请', 'Applications') }}
+      </button>
+      <button class="tab" :class="{ active: activeTab === 'plans' }" @click="activeTab = 'plans'">
+        {{ $t('套餐管理', 'Plans') }}
+      </button>
+      <button class="tab" :class="{ active: activeTab === 'coupons' }" @click="activeTab = 'coupons'">
+        {{ $t('优惠券管理', 'Coupons') }}
+      </button>
     </div>
 
-    <div v-if="loading" class="state">加载中…</div>
+    <div v-if="loading" class="state">{{ $t('加载中…', 'Loading…') }}</div>
     <div v-else-if="error" class="state error">{{ error }}</div>
 
     <template v-else>
       <section v-if="activeTab === 'members'" class="panel">
         <div class="section-bar">
-          <div class="hint">开通、调整或删除会员记录；删除后该用户会员资格立即失效</div>
+          <div class="hint">
+            {{ $t('开通、调整或删除会员记录；删除后该用户会员资格立即失效', 'Create, adjust or delete membership records; deleting one revokes the membership immediately.') }}
+          </div>
           <div class="filters">
             <input
               v-model="keyword"
               type="text"
-              placeholder="用户名 / 用户ID / 会员编号"
+              :placeholder="$t('用户名 / 用户ID / 会员编号', 'Username / user ID / member no.')"
               @keyup.enter="doMemberSearch"
             />
-            <button class="btn" @click="doMemberSearch">搜索</button>
-            <button class="btn" @click="openCreateMember">开通会员</button>
+            <button class="btn" @click="doMemberSearch">{{ $t('搜索', 'Search') }}</button>
+            <button class="btn" @click="openCreateMember">{{ $t('开通会员', 'Add member') }}</button>
           </div>
         </div>
-        <div v-if="!members.length" class="state">暂无会员记录</div>
+        <div v-if="!members.length" class="state">
+          {{ $t('暂无会员记录', 'No membership records') }}
+        </div>
         <table v-else class="table">
           <thead>
             <tr>
               <th>ID</th>
-              <th>用户名</th>
-              <th>会员编号</th>
-              <th>等级</th>
-              <th>有效期至</th>
-              <th>状态</th>
-              <th>最近更新</th>
-              <th>操作</th>
+              <th>{{ $t('用户名', 'Username') }}</th>
+              <th>{{ $t('会员编号', 'Member no.') }}</th>
+              <th>{{ $t('等级', 'Level') }}</th>
+              <th>{{ $t('有效期至', 'Expires') }}</th>
+              <th>{{ $t('状态', 'Status') }}</th>
+              <th>{{ $t('最近更新', 'Updated') }}</th>
+              <th>{{ $t('操作', 'Actions') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in members" :key="item.id">
               <td>{{ item.id }}</td>
-              <td>{{ item.userName || `用户 #${item.userId}` }}</td>
+              <td>{{ item.userName || $t('用户 #{id}', 'User #{id}', { id: item.userId }) }}</td>
               <td><code>{{ item.memberNo }}</code></td>
               <td>{{ item.levelName }}</td>
               <td>{{ formatTime(item.expireAt) }}</td>
               <td>
                 <span class="tag" :class="isMemberActive(item) ? 'tag-on' : 'tag-off'">
-                  {{ isMemberActive(item) ? '有效' : '已过期' }}
+                  {{ isMemberActive(item) ? $t('有效', 'Active') : $t('已过期', 'Expired') }}
                 </span>
               </td>
               <td>{{ formatTime(item.updatedAt) }}</td>
               <td class="cell-actions">
-                <button class="btn btn-sm" @click="openEditMember(item)">编辑</button>
-                <button class="btn btn-sm btn-danger" @click="openDeleteMember(item)">删除</button>
+                <button class="btn btn-sm" @click="openEditMember(item)">{{ $t('编辑', 'Edit') }}</button>
+                <button class="btn btn-sm btn-danger" @click="openDeleteMember(item)">
+                  {{ $t('删除', 'Delete') }}
+                </button>
               </td>
             </tr>
           </tbody>
         </table>
         <div v-if="members.length > 0" class="pagination">
-          <button class="btn btn-sm" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
-          <span class="page-info">{{ page }} / {{ totalPages }}（共 {{ total }} 条）</span>
-          <button class="btn btn-sm" :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
+          <button class="btn btn-sm" :disabled="page <= 1" @click="goPage(page - 1)">
+            {{ $t('上一页', 'Prev') }}
+          </button>
+          <span class="page-info">
+            {{ $t('第 {p} / {t} 页（共 {n} 条）', 'Page {p} / {t} ({n} total)', { p: page, t: totalPages, n: total }) }}
+          </span>
+          <button class="btn btn-sm" :disabled="page >= totalPages" @click="goPage(page + 1)">
+            {{ $t('下一页', 'Next') }}
+          </button>
         </div>
       </section>
 
       <section v-if="activeTab === 'orders'" class="panel">
         <div class="section-bar">
-          <div class="hint">用户在 App 提交的开通申请：确认到店收款后点「确认开通」，会员按套餐时长开通/顺延</div>
+          <div class="hint">
+            {{ $t('用户在 App 提交的开通申请：确认到店收款后点「确认开通」，会员按套餐时长开通/顺延', 'Applications submitted in the app: after confirming in-store payment, click "Confirm"; membership starts or extends by the plan duration.') }}
+          </div>
           <div class="filters">
             <input
               v-model="ordersKeyword"
               type="text"
-              placeholder="用户名 / 用户ID"
+              :placeholder="$t('用户名 / 用户ID', 'Username / user ID')"
               @keyup.enter="doOrderSearch"
             />
-            <button class="btn" @click="doOrderSearch">搜索</button>
+            <button class="btn" @click="doOrderSearch">{{ $t('搜索', 'Search') }}</button>
           </div>
         </div>
-        <div v-if="!orders.length" class="state">暂无开通申请</div>
+        <div v-if="!orders.length" class="state">
+          {{ $t('暂无开通申请', 'No applications yet') }}
+        </div>
         <table v-else class="table">
           <thead>
             <tr>
               <th>ID</th>
-              <th>用户</th>
-              <th>套餐</th>
-              <th>时长</th>
-              <th>金额</th>
-              <th>提交时间</th>
-              <th>状态</th>
-              <th>操作</th>
+              <th>{{ $t('用户', 'User') }}</th>
+              <th>{{ $t('套餐', 'Plan') }}</th>
+              <th>{{ $t('时长', 'Duration') }}</th>
+              <th>{{ $t('金额', 'Amount') }}</th>
+              <th>{{ $t('提交时间', 'Submitted') }}</th>
+              <th>{{ $t('状态', 'Status') }}</th>
+              <th>{{ $t('操作', 'Actions') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in orders" :key="item.id">
               <td>{{ item.id }}</td>
-              <td>{{ item.userNickname || `用户 #${item.userId}` }}</td>
+              <td>{{ item.userNickname || $t('用户 #{id}', 'User #{id}', { id: item.userId }) }}</td>
               <td>{{ item.planName }}</td>
-              <td>{{ item.durationDays }} 天</td>
+              <td>{{ $t('{n} 天', '{n} days', { n: item.durationDays }) }}</td>
               <td>${{ item.amount }}</td>
               <td>{{ formatTime(item.createdAt) }}</td>
               <td>
@@ -523,10 +567,10 @@ onMounted(loadAll)
                 >
                   {{
                     item.status === 'pending'
-                      ? '待确认'
+                      ? $t('待确认', 'Pending')
                       : item.status === 'confirmed'
-                        ? '已开通'
-                        : '已取消'
+                        ? $t('已开通', 'Activated')
+                        : $t('已取消', 'Cancelled')
                   }}
                 </span>
               </td>
@@ -537,7 +581,7 @@ onMounted(loadAll)
                   :disabled="orderBusyId !== null"
                   @click="confirmOrder(item)"
                 >
-                  {{ orderBusyId === item.id ? '确认中…' : '确认开通' }}
+                  {{ orderBusyId === item.id ? $t('确认中…', 'Confirming…') : $t('确认开通', 'Confirm') }}
                 </button>
                 <button
                   v-if="item.status === 'pending'"
@@ -545,7 +589,7 @@ onMounted(loadAll)
                   :disabled="orderBusyId !== null"
                   @click="cancelOrder(item)"
                 >
-                  取消
+                  {{ $t('取消', 'Cancel') }}
                 </button>
                 <span v-if="item.status !== 'pending'" class="muted">-</span>
               </td>
@@ -558,58 +602,64 @@ onMounted(loadAll)
             :disabled="ordersPage <= 1"
             @click="goOrdersPage(ordersPage - 1)"
           >
-            上一页
+            {{ $t('上一页', 'Prev') }}
           </button>
-          <span class="page-info">{{ ordersPage }} / {{ ordersTotalPages }}（共 {{ ordersTotal }} 条）</span>
+          <span class="page-info">
+            {{ $t('第 {p} / {t} 页（共 {n} 条）', 'Page {p} / {t} ({n} total)', { p: ordersPage, t: ordersTotalPages, n: ordersTotal }) }}
+          </span>
           <button
             class="btn btn-sm"
             :disabled="ordersPage >= ordersTotalPages"
             @click="goOrdersPage(ordersPage + 1)"
           >
-            下一页
+            {{ $t('下一页', 'Next') }}
           </button>
         </div>
       </section>
 
       <section v-if="activeTab === 'plans'" class="panel">
         <div class="section-bar">
-          <div class="hint">维护会员套餐价格、权益、推荐状态和上下架状态</div>
-          <button class="btn" @click="openCreatePlan">新增套餐</button>
+          <div class="hint">
+            {{ $t('维护会员套餐价格、权益、推荐状态和上下架状态', 'Manage plan prices, benefits, recommendation and listing status.') }}
+          </div>
+          <button class="btn" @click="openCreatePlan">{{ $t('新增套餐', 'New plan') }}</button>
         </div>
         <table class="table">
           <thead>
             <tr>
               <th>ID</th>
-              <th>名称</th>
-              <th>时长</th>
-              <th>售价</th>
-              <th>原价</th>
-              <th>权益</th>
-              <th>角标</th>
-              <th>推荐</th>
-              <th>状态</th>
-              <th>操作</th>
+              <th>{{ $t('名称', 'Name') }}</th>
+              <th>{{ $t('时长', 'Duration') }}</th>
+              <th>{{ $t('售价', 'Price') }}</th>
+              <th>{{ $t('原价', 'Original') }}</th>
+              <th>{{ $t('权益', 'Benefits') }}</th>
+              <th>{{ $t('角标', 'Badge') }}</th>
+              <th>{{ $t('推荐', 'Recommended') }}</th>
+              <th>{{ $t('状态', 'Status') }}</th>
+              <th>{{ $t('操作', 'Actions') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="plan in plans" :key="plan.id">
               <td>{{ plan.id }}</td>
               <td>{{ plan.name }}</td>
-              <td>{{ plan.durationDays }} 天</td>
+              <td>{{ $t('{n} 天', '{n} days', { n: plan.durationDays }) }}</td>
               <td>${{ plan.price }}</td>
               <td>${{ plan.originalPrice }}</td>
-              <td class="multi-line">{{ plan.benefits.join('、') }}</td>
+              <td class="multi-line">
+                {{ plan.benefits.join(i18n.lang === 'en' ? ', ' : '、') }}
+              </td>
               <td>{{ plan.badge || '-' }}</td>
-              <td>{{ plan.recommended ? '是' : '否' }}</td>
+              <td>{{ plan.recommended ? $t('是', 'Yes') : $t('否', 'No') }}</td>
               <td>
                 <span class="tag" :class="plan.enabled ? 'tag-on' : 'tag-off'">
-                  {{ plan.enabled ? '已上架' : '已下架' }}
+                  {{ plan.enabled ? $t('已上架', 'Listed') : $t('已下架', 'Unlisted') }}
                 </span>
               </td>
               <td class="cell-actions">
-                <button class="btn btn-sm" @click="openEditPlan(plan)">编辑</button>
+                <button class="btn btn-sm" @click="openEditPlan(plan)">{{ $t('编辑', 'Edit') }}</button>
                 <button class="btn btn-sm" :class="plan.enabled ? 'btn-danger' : 'btn-success'" @click="togglePlan(plan)">
-                  {{ plan.enabled ? '下架' : '上架' }}
+                  {{ plan.enabled ? $t('下架', 'Unlist') : $t('上架', 'List') }}
                 </button>
               </td>
             </tr>
@@ -619,21 +669,23 @@ onMounted(loadAll)
 
       <section v-if="activeTab === 'coupons'" class="panel">
         <div class="section-bar">
-          <div class="hint">维护优惠券面额、门槛、库存、到期时间和会员限制</div>
-          <button class="btn" @click="openCreateCoupon">新增优惠券</button>
+          <div class="hint">
+            {{ $t('维护优惠券面额、门槛、库存、到期时间和会员限制', 'Manage coupon amounts, thresholds, stock, expiry and member restrictions.') }}
+          </div>
+          <button class="btn" @click="openCreateCoupon">{{ $t('新增优惠券', 'New coupon') }}</button>
         </div>
         <table class="table">
           <thead>
             <tr>
               <th>ID</th>
-              <th>名称</th>
-              <th>面额</th>
-              <th>门槛</th>
-              <th>到期时间</th>
-              <th>库存</th>
-              <th>会员专享</th>
-              <th>状态</th>
-              <th>操作</th>
+              <th>{{ $t('名称', 'Name') }}</th>
+              <th>{{ $t('面额', 'Amount') }}</th>
+              <th>{{ $t('门槛', 'Threshold') }}</th>
+              <th>{{ $t('到期时间', 'Expires') }}</th>
+              <th>{{ $t('库存', 'Stock') }}</th>
+              <th>{{ $t('会员专享', 'Members only') }}</th>
+              <th>{{ $t('状态', 'Status') }}</th>
+              <th>{{ $t('操作', 'Actions') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -644,16 +696,16 @@ onMounted(loadAll)
               <td>{{ coupon.threshold }}</td>
               <td>{{ formatTime(coupon.expireAt) }}</td>
               <td>{{ coupon.stock }}</td>
-              <td>{{ coupon.membersOnly ? '是' : '否' }}</td>
+              <td>{{ coupon.membersOnly ? $t('是', 'Yes') : $t('否', 'No') }}</td>
               <td>
                 <span class="tag" :class="coupon.enabled ? 'tag-on' : 'tag-off'">
-                  {{ coupon.enabled ? '已上架' : '已下架' }}
+                  {{ coupon.enabled ? $t('已上架', 'Listed') : $t('已下架', 'Unlisted') }}
                 </span>
               </td>
               <td class="cell-actions">
-                <button class="btn btn-sm" @click="openEditCoupon(coupon)">编辑</button>
+                <button class="btn btn-sm" @click="openEditCoupon(coupon)">{{ $t('编辑', 'Edit') }}</button>
                 <button class="btn btn-sm" :class="coupon.enabled ? 'btn-danger' : 'btn-success'" @click="toggleCoupon(coupon)">
-                  {{ coupon.enabled ? '下架' : '上架' }}
+                  {{ coupon.enabled ? $t('下架', 'Unlist') : $t('上架', 'List') }}
                 </button>
               </td>
             </tr>
@@ -664,10 +716,10 @@ onMounted(loadAll)
 
     <div v-if="memberDialogOpen" class="modal-overlay" @click.self="closeMemberDialog">
       <div class="modal">
-        <h3>{{ editingMemberId ? '编辑会员' : '开通会员' }}</h3>
+        <h3>{{ editingMemberId ? $t('编辑会员', 'Edit member') : $t('开通会员', 'Add member') }}</h3>
         <div class="form-grid">
           <label>
-            <span>用户ID</span>
+            <span>{{ $t('用户ID', 'User ID') }}</span>
             <input
               v-model.number="memberForm.userId"
               type="number"
@@ -676,41 +728,47 @@ onMounted(loadAll)
             />
           </label>
           <label>
-            <span>会员等级</span>
-            <input v-model="memberForm.levelName" type="text" placeholder="手作会员" />
+            <span>{{ $t('会员等级', 'Membership level') }}</span>
+            <input v-model="memberForm.levelName" type="text" :placeholder="$t('手作会员', 'Craft Member')" />
           </label>
           <label class="full-row">
-            <span>有效期至</span>
+            <span>{{ $t('有效期至', 'Expires') }}</span>
             <input v-model="memberForm.expireAt" type="datetime-local" />
           </label>
         </div>
         <label v-if="!editingMemberId" class="full-row">
-          <span>按套餐开通（快捷填充有效期，仍可手动调整）</span>
+          <span>
+            {{ $t('按套餐开通（快捷填充有效期，仍可手动调整）', 'Activate by plan (auto-fills expiry, still adjustable)') }}
+          </span>
           <select v-model="memberPlanId" @change="fillExpireFromPlan(Number(memberPlanId))">
-            <option value="0">不按套餐，手动选择有效期</option>
+            <option value="0">{{ $t('不按套餐，手动选择有效期', 'No plan; choose expiry manually') }}</option>
             <option v-for="plan in plans" :key="plan.id" :value="plan.id">
-              {{ plan.name }}（{{ plan.durationDays }} 天）
+              {{ $t('{name}（{days} 天）', '{name} ({days} days)', { name: plan.name, days: plan.durationDays }) }}
             </option>
           </select>
         </label>
         <div class="modal-actions">
-          <button class="btn btn-sm" @click="closeMemberDialog">取消</button>
-          <button class="btn btn-sm" :disabled="saving" @click="saveMember">保存</button>
+          <button class="btn btn-sm" @click="closeMemberDialog">{{ $t('取消', 'Cancel') }}</button>
+          <button class="btn btn-sm" :disabled="saving" @click="saveMember">
+            {{ $t('保存', 'Save') }}
+          </button>
         </div>
       </div>
     </div>
 
     <div v-if="deleteTarget" class="modal-overlay" @click.self="cancelDeleteMember">
       <div class="modal">
-        <h3>删除会员记录</h3>
+        <h3>{{ $t('删除会员记录', 'Delete membership record') }}</h3>
         <p class="modal-desc">
-          确认删除会员编号 {{ deleteTarget.memberNo }}（用户ID
-          {{ deleteTarget.userName || `用户 #${deleteTarget.userId}` }}）？删除后该用户会员资格立即失效，操作不可恢复。
+          {{ $t('确认删除会员编号 {no}（用户 {user}）？删除后该用户会员资格立即失效，操作不可恢复。', 'Delete membership {no} (user {user})? The membership will end immediately and this cannot be undone.', {
+            no: deleteTarget.memberNo,
+            user: deleteTarget.userName || $t('用户 #{id}', 'User #{id}', { id: deleteTarget.userId }),
+          }) }}
         </p>
         <div class="modal-actions">
-          <button class="btn btn-sm" @click="cancelDeleteMember">取消</button>
+          <button class="btn btn-sm" @click="cancelDeleteMember">{{ $t('取消', 'Cancel') }}</button>
           <button class="btn btn-sm btn-danger" :disabled="deleting" @click="confirmDeleteMember">
-            {{ deleting ? '删除中…' : '确认删除' }}
+            {{ deleting ? $t('删除中…', 'Deleting…') : $t('确认删除', 'Confirm delete') }}
           </button>
         </div>
       </div>
@@ -718,76 +776,76 @@ onMounted(loadAll)
 
     <div v-if="planDialogOpen" class="modal-overlay" @click.self="closePlanDialog">
       <div class="modal">
-        <h3>{{ editingPlanId ? '编辑套餐' : '新增套餐' }}</h3>
+        <h3>{{ editingPlanId ? $t('编辑套餐', 'Edit plan') : $t('新增套餐', 'New plan') }}</h3>
         <div class="form-grid">
           <label>
-            <span>套餐名称</span>
+            <span>{{ $t('套餐名称', 'Plan name') }}</span>
             <input v-model="planForm.name" type="text" />
           </label>
           <label>
-            <span>时长（天）</span>
+            <span>{{ $t('时长（天）', 'Duration (days)') }}</span>
             <input v-model.number="planForm.durationDays" type="number" min="1" />
           </label>
           <label>
-            <span>售价</span>
+            <span>{{ $t('售价', 'Price') }}</span>
             <input v-model.number="planForm.price" type="number" min="0" step="0.01" />
           </label>
           <label>
-            <span>原价</span>
+            <span>{{ $t('原价', 'Original price') }}</span>
             <input v-model.number="planForm.originalPrice" type="number" min="0" step="0.01" />
           </label>
           <label>
-            <span>角标</span>
-            <input v-model="planForm.badge" type="text" placeholder="推荐 / 最划算" />
+            <span>{{ $t('角标', 'Badge') }}</span>
+            <input v-model="planForm.badge" type="text" :placeholder="$t('推荐 / 最划算', 'Recommended / Best value')" />
           </label>
         </div>
         <label class="full-row">
-          <span>权益列表</span>
-          <textarea v-model="planBenefits" rows="5" placeholder="一行一条权益"></textarea>
+          <span>{{ $t('权益列表', 'Benefits') }}</span>
+          <textarea v-model="planBenefits" rows="5" :placeholder="$t('一行一条权益', 'One benefit per line')"></textarea>
         </label>
         <div class="check-row">
-          <label><input v-model="planForm.recommended" type="checkbox" /> 推荐套餐</label>
-          <label><input v-model="planForm.enabled" type="checkbox" /> 立即上架</label>
+          <label><input v-model="planForm.recommended" type="checkbox" /> {{ $t('推荐套餐', 'Recommended plan') }}</label>
+          <label><input v-model="planForm.enabled" type="checkbox" /> {{ $t('立即上架', 'List now') }}</label>
         </div>
         <div class="modal-actions">
-          <button class="btn btn-sm" @click="closePlanDialog">取消</button>
-          <button class="btn btn-sm" :disabled="saving" @click="savePlan">保存</button>
+          <button class="btn btn-sm" @click="closePlanDialog">{{ $t('取消', 'Cancel') }}</button>
+          <button class="btn btn-sm" :disabled="saving" @click="savePlan">{{ $t('保存', 'Save') }}</button>
         </div>
       </div>
     </div>
 
     <div v-if="couponDialogOpen" class="modal-overlay" @click.self="closeCouponDialog">
       <div class="modal">
-        <h3>{{ editingCouponId ? '编辑优惠券' : '新增优惠券' }}</h3>
+        <h3>{{ editingCouponId ? $t('编辑优惠券', 'Edit coupon') : $t('新增优惠券', 'New coupon') }}</h3>
         <div class="form-grid">
           <label>
-            <span>优惠券名称</span>
+            <span>{{ $t('优惠券名称', 'Coupon name') }}</span>
             <input v-model="couponForm.title" type="text" />
           </label>
           <label>
-            <span>面额文案</span>
-            <input v-model="couponForm.amount" type="text" placeholder="$20 / 8.8 折" />
+            <span>{{ $t('面额文案', 'Amount text') }}</span>
+            <input v-model="couponForm.amount" type="text" :placeholder="$t('$20 / 8.8 折', '$20 / 12% off')" />
           </label>
           <label>
-            <span>使用门槛</span>
-            <input v-model="couponForm.threshold" type="text" placeholder="满 $100 可用" />
+            <span>{{ $t('使用门槛', 'Threshold') }}</span>
+            <input v-model="couponForm.threshold" type="text" :placeholder="$t('满 $100 可用', 'Min. spend $100')" />
           </label>
           <label>
-            <span>库存</span>
+            <span>{{ $t('库存', 'Stock') }}</span>
             <input v-model.number="couponForm.stock" type="number" min="0" />
           </label>
           <label class="full-row">
-            <span>到期时间</span>
+            <span>{{ $t('到期时间', 'Expiry') }}</span>
             <input v-model="couponForm.expireAt" type="datetime-local" />
           </label>
         </div>
         <div class="check-row">
-          <label><input v-model="couponForm.membersOnly" type="checkbox" /> 仅会员可领</label>
-          <label><input v-model="couponForm.enabled" type="checkbox" /> 立即上架</label>
+          <label><input v-model="couponForm.membersOnly" type="checkbox" /> {{ $t('仅会员可领', 'Members only') }}</label>
+          <label><input v-model="couponForm.enabled" type="checkbox" /> {{ $t('立即上架', 'List now') }}</label>
         </div>
         <div class="modal-actions">
-          <button class="btn btn-sm" @click="closeCouponDialog">取消</button>
-          <button class="btn btn-sm" :disabled="saving" @click="saveCoupon">保存</button>
+          <button class="btn btn-sm" @click="closeCouponDialog">{{ $t('取消', 'Cancel') }}</button>
+          <button class="btn btn-sm" :disabled="saving" @click="saveCoupon">{{ $t('保存', 'Save') }}</button>
         </div>
       </div>
     </div>

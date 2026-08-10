@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import jsQR from 'jsqr'
 import { appointmentApi, type Appointment } from '../api/appointments'
 import { storeApi, type Store } from '../api/stores'
+import { t } from '../i18n'
 
 const orders = ref<Appointment[]>([])
 const total = ref(0)
@@ -38,13 +39,13 @@ let refreshTimer: number | undefined
 const totalPages = computed(() => Math.ceil(total.value / pageSize) || 1)
 
 const statusTabs = [
-  { value: '', label: '全部' },
-  { value: 'pending', label: '待确认' },
-  { value: 'booked', label: '待核销' },
-  { value: 'checked_in', label: '已核销' },
-  { value: 'in_service', label: '服务中' },
-  { value: 'completed', label: '已完成' },
-  { value: 'cancelled', label: '已取消' },
+  { value: '', label: '全部', labelEn: 'All' },
+  { value: 'pending', label: '待确认', labelEn: 'Pending' },
+  { value: 'booked', label: '待核销', labelEn: 'To check in' },
+  { value: 'checked_in', label: '已核销', labelEn: 'Checked in' },
+  { value: 'in_service', label: '服务中', labelEn: 'In service' },
+  { value: 'completed', label: '已完成', labelEn: 'Completed' },
+  { value: 'cancelled', label: '已取消', labelEn: 'Cancelled' },
 ]
 
 const statusLabels: Record<string, string> = {
@@ -63,6 +64,19 @@ const statusColors: Record<string, string> = {
   in_service: '#2E9E5B',
   completed: '#8A8A8A',
   cancelled: '#D9453E',
+}
+
+const statusLabelsEn: Record<string, string> = {
+  pending: 'Pending',
+  booked: 'To check in',
+  checked_in: 'Checked in',
+  in_service: 'In service',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+}
+
+function statusLabel(status: string): string {
+  return t(statusLabels[status] ?? status, statusLabelsEn[status] ?? status)
 }
 
 async function loadStores() {
@@ -86,7 +100,7 @@ async function fetchOrders(silent = false) {
     orders.value = data[0]
     total.value = data[1]
   } catch (e: any) {
-    if (!silent) error.value = e?.response?.data?.message ?? '加载失败'
+    if (!silent) error.value = e?.response?.data?.message ?? t('加载失败', 'Failed to load')
   }
 }
 
@@ -116,10 +130,22 @@ async function operate(
   action: 'confirm' | 'checkin' | 'clockin' | 'clockout',
 ) {
   const prompts = {
-    confirm: `确认预约码 ${order.code} 的预约？确认后顾客可到店核销。`,
-    checkin: `确认核销预约码 ${order.code}？核销即上钟，订单将进入服务中并开始计时。`,
-    clockin: `确认预约码 ${order.code} 开始上钟？`,
-    clockout: `确认预约码 ${order.code} 下钟？`,
+    confirm: t(
+      '确认预约码 {code} 的预约？确认后顾客可到店核销。',
+      'Confirm the booking with code {code}? The customer can then check in at the store.',
+      { code: order.code },
+    ),
+    checkin: t(
+      '确认核销预约码 {code}？核销即上钟，订单将进入服务中并开始计时。',
+      'Check in booking {code}? This starts the service and the timer.',
+      { code: order.code },
+    ),
+    clockin: t('确认预约码 {code} 开始上钟？', 'Start service for booking {code}?', {
+      code: order.code,
+    }),
+    clockout: t('确认预约码 {code} 下钟？', 'End service for booking {code}?', {
+      code: order.code,
+    }),
   }
   if (!confirm(prompts[action])) return
 
@@ -131,7 +157,7 @@ async function operate(
     if (action === 'clockout') await appointmentApi.clockOut(order.id)
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   } finally {
     operatingId.value = null
   }
@@ -169,7 +195,10 @@ async function startScanner() {
     scanning.value = true
     scanTimer = window.setInterval(scanFrame, 200)
   } catch {
-    scanError.value = '无法打开摄像头，请检查浏览器权限，或使用手动输入核销码'
+    scanError.value = t(
+      '无法打开摄像头，请检查浏览器权限，或使用手动输入核销码',
+      'Unable to open the camera. Please check browser permissions or enter the code manually.',
+    )
   }
 }
 
@@ -224,7 +253,7 @@ function resetCheckin() {
 async function checkInByCode() {
   const code = checkinCode.value.trim()
   if (!/^\d{6}$/.test(code)) {
-    checkinError.value = '请输入 6 位数字核销码'
+    checkinError.value = t('请输入 6 位数字核销码', 'Please enter the 6-digit check-in code')
     return
   }
   checkinBusy.value = true
@@ -234,7 +263,7 @@ async function checkInByCode() {
     checkinResult.value = result
     await load()
   } catch (e: any) {
-    checkinError.value = e?.response?.data?.message ?? '核销失败'
+    checkinError.value = e?.response?.data?.message ?? t('核销失败', 'Check-in failed')
   } finally {
     checkinBusy.value = false
   }
@@ -256,7 +285,7 @@ async function confirmCancel() {
     cancelTarget.value = null
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   } finally {
     operatingId.value = null
   }
@@ -286,11 +315,11 @@ function durationEnd(o: Appointment): string | null {
 }
 
 function bookingLabel(o: Appointment): string {
-  if (o.type === 'activity') return '活动'
-  if (o.bookingType === 'all_day') return '全天不限时'
+  if (o.type === 'activity') return t('活动', 'Activity')
+  if (o.bookingType === 'all_day') return t('全天不限时', 'All-day')
   if (o.bookingType === 'package' && o.packageName) return o.packageName
-  if (o.durationHours) return `${o.durationHours} 小时`
-  return '按小时'
+  if (o.durationHours) return t('{h} 小时', '{h} h', { h: o.durationHours })
+  return t('按小时', 'Hourly')
 }
 
 function tableLabel(o: Appointment): string {
@@ -331,27 +360,27 @@ onUnmounted(() => {
 <template>
   <div class="orders">
     <div class="toolbar">
-      <h2>预约订单管理</h2>
+      <h2>{{ $t('预约订单管理', 'Appointment Orders') }}</h2>
       <div class="filters">
         <select v-model="statusFilter" @change="applyFilters">
           <option v-for="t in statusTabs" :key="t.value" :value="t.value">
-            {{ t.label }}
+            {{ $t(t.label, t.labelEn) }}
           </option>
         </select>
         <select v-model="storeFilter" @change="applyFilters">
-          <option value="">全部门店</option>
+          <option value="">{{ $t('全部门店', 'All stores') }}</option>
           <option v-for="s in stores" :key="s.id" :value="s.id">{{ s.name }}</option>
         </select>
         <input v-model="dateFilter" type="date" @change="applyFilters" />
         <input
           v-model="keywordFilter"
-          placeholder="搜索用户（用户名/邮箱/昵称）"
+          :placeholder="$t('搜索用户（用户名/邮箱/昵称）', 'Search user (username/email/nickname)')"
           @keyup.enter="applyFilters"
         />
         <input
           v-model="codeFilter"
           class="code-search"
-          placeholder="核销码"
+          :placeholder="$t('核销码', 'Check-in code')"
           maxlength="6"
           @keyup.enter="applyFilters"
         />
@@ -359,40 +388,42 @@ onUnmounted(() => {
           class="btn btn-success checkin-entry"
           @click="openCheckinModal"
         >
-          核销码核销
+          {{ $t('核销码核销', 'Check in by code') }}
         </button>
         <button class="btn btn-success scan-entry" @click="openScanModal">
-          扫码核销
+          {{ $t('扫码核销', 'Scan QR') }}
         </button>
-        <button class="btn" @click="applyFilters">查询</button>
-        <button class="btn" @click="load">刷新</button>
-        <span class="muted auto-hint">自动刷新 30s</span>
+        <button class="btn" @click="applyFilters">{{ $t('查询', 'Search') }}</button>
+        <button class="btn" @click="load">{{ $t('刷新', 'Refresh') }}</button>
+        <span class="muted auto-hint">{{ $t('自动刷新 30s', 'Auto-refresh 30s') }}</span>
       </div>
     </div>
 
-    <div v-if="loading" class="state">加载中…</div>
+    <div v-if="loading" class="state">{{ $t('加载中…', 'Loading…') }}</div>
     <div v-else-if="error" class="state error">{{ error }}</div>
-    <div v-else-if="orders.length === 0" class="state">暂无订单数据</div>
+    <div v-else-if="orders.length === 0" class="state">
+      {{ $t('暂无订单数据', 'No orders yet') }}
+    </div>
 
     <table v-else class="table">
       <thead>
         <tr>
-          <th>预约码</th>
-          <th>用户</th>
-          <th>门店</th>
-          <th>类型/桌位</th>
-          <th>日期</th>
-          <th>时段</th>
-          <th>人数</th>
+          <th>{{ $t('预约码', 'Code') }}</th>
+          <th>{{ $t('用户', 'User') }}</th>
+          <th>{{ $t('门店', 'Store') }}</th>
+          <th>{{ $t('类型/桌位', 'Type/Table') }}</th>
+          <th>{{ $t('日期', 'Date') }}</th>
+          <th>{{ $t('时段', 'Time') }}</th>
+          <th>{{ $t('人数', 'Guests') }}</th>
           <!-- 线下支付，金额/支付列先隐藏 -->
           <!-- <th>金额/支付</th> -->
-          <th>备注</th>
-          <th>状态</th>
-          <th>核销</th>
-          <th>上钟</th>
-          <th>下钟</th>
-          <th>时长</th>
-          <th>操作</th>
+          <th>{{ $t('备注', 'Note') }}</th>
+          <th>{{ $t('状态', 'Status') }}</th>
+          <th>{{ $t('核销', 'Checked in') }}</th>
+          <th>{{ $t('上钟', 'Started') }}</th>
+          <th>{{ $t('下钟', 'Ended') }}</th>
+          <th>{{ $t('时长', 'Duration') }}</th>
+          <th>{{ $t('操作', 'Actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -400,14 +431,16 @@ onUnmounted(() => {
           <td><code>{{ o.code }}</code></td>
           <td>
             <div class="user-cell">
-              <span class="nickname">{{ o.userNickname || `用户 #${o.userId}` }}</span>
+              <span class="nickname">
+                {{ o.userNickname || $t('用户 #{id}', 'User #{id}', { id: o.userId }) }}
+              </span>
               <span v-if="o.userEmail" class="sub">{{ o.userEmail }}</span>
             </div>
           </td>
           <td>{{ o.storeName }}</td>
           <td>
             <span v-if="o.type === 'activity'" class="tag" style="color: #e8633a; border-color: #f3c6b6">
-              活动
+              {{ $t('活动', 'Activity') }}
             </span>
             <span v-else>{{ tableLabel(o) }}</span>
           </td>
@@ -416,7 +449,7 @@ onUnmounted(() => {
             {{ o.startTime }} - {{ o.endTime }}
             <span v-if="o.type !== 'activity'" class="muted">（{{ bookingLabel(o) }}）</span>
           </td>
-          <td>{{ o.peopleCount }} 人</td>
+          <td>{{ $t('{n} 人', '{n} people', { n: o.peopleCount }) }}</td>
           <!-- 线下支付，金额/支付列先隐藏 -->
           <!-- <td>
             <span :style="{ color: o.payStatus === 'paid' ? '#2e9e5b' : '#e6a23c' }">
@@ -435,7 +468,7 @@ onUnmounted(() => {
               class="tag"
               :style="{ color: statusColors[o.status], borderColor: statusColors[o.status] }"
             >
-              {{ statusLabels[o.status] ?? o.status }}
+              {{ statusLabel(o.status) }}
             </span>
           </td>
           <td>{{ formatTime(o.checkInTime) }}</td>
@@ -449,7 +482,7 @@ onUnmounted(() => {
               :disabled="operatingId !== null"
               @click="operate(o, 'confirm')"
             >
-              {{ operatingId === o.id ? '确认中…' : '确认' }}
+              {{ operatingId === o.id ? $t('确认中…', 'Confirming…') : $t('确认', 'Confirm') }}
             </button>
             <button
               v-if="o.status === 'booked'"
@@ -457,7 +490,7 @@ onUnmounted(() => {
               :disabled="operatingId !== null"
               @click="operate(o, 'checkin')"
             >
-              {{ operatingId === o.id ? '核销中…' : '核销' }}
+              {{ operatingId === o.id ? $t('核销中…', 'Checking in…') : $t('核销', 'Check in') }}
             </button>
             <button
               v-if="o.status === 'checked_in'"
@@ -465,7 +498,7 @@ onUnmounted(() => {
               :disabled="operatingId !== null"
               @click="operate(o, 'clockin')"
             >
-              {{ operatingId === o.id ? '处理中…' : '上钟' }}
+              {{ operatingId === o.id ? $t('处理中…', 'Processing…') : $t('上钟', 'Start') }}
             </button>
             <button
               v-if="o.status === 'in_service'"
@@ -473,7 +506,7 @@ onUnmounted(() => {
               :disabled="operatingId !== null"
               @click="operate(o, 'clockout')"
             >
-              {{ operatingId === o.id ? '处理中…' : '下钟' }}
+              {{ operatingId === o.id ? $t('处理中…', 'Processing…') : $t('下钟', 'End') }}
             </button>
             <button
               v-if="o.status === 'pending' || o.status === 'booked' || o.status === 'checked_in'"
@@ -481,7 +514,7 @@ onUnmounted(() => {
               :disabled="operatingId !== null"
               @click="openCancel(o)"
             >
-              取消
+              {{ $t('取消', 'Cancel') }}
             </button>
             <span v-if="o.status === 'completed' || o.status === 'cancelled'" class="muted">-</span>
           </td>
@@ -491,29 +524,39 @@ onUnmounted(() => {
 
     <!-- 分页 -->
     <div v-if="!loading && orders.length > 0" class="pagination">
-      <button class="btn btn-sm" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
-      <span class="page-info">{{ page }} / {{ totalPages }}（共 {{ total }} 条）</span>
-      <button class="btn btn-sm" :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
+      <button class="btn btn-sm" :disabled="page <= 1" @click="goPage(page - 1)">
+        {{ $t('上一页', 'Prev') }}
+      </button>
+      <span class="page-info">
+        {{ $t('第 {p} / {t} 页（共 {n} 条）', 'Page {p} / {t} ({n} total)', { p: page, t: totalPages, n: total }) }}
+      </span>
+      <button class="btn btn-sm" :disabled="page >= totalPages" @click="goPage(page + 1)">
+        {{ $t('下一页', 'Next') }}
+      </button>
     </div>
 
     <!-- 扫码核销弹窗 -->
     <div v-if="showScanModal" class="modal-overlay" @click.self="closeScanModal">
       <div class="modal scan-modal">
-        <h3>扫码核销</h3>
-        <p class="modal-desc">将摄像头对准顾客出示的预约码二维码，识别后自动核销并开始计时。</p>
+        <h3>{{ $t('扫码核销', 'Scan QR to check in') }}</h3>
+        <p class="modal-desc">
+          {{ $t('将摄像头对准顾客出示的预约码二维码，识别后自动核销并开始计时。', 'Point the camera at the customer QR code; it will check in automatically and start the timer.') }}
+        </p>
         <div class="scan-box">
           <video ref="scanVideoEl" autoplay playsinline muted></video>
           <div v-if="scanError" class="scan-error">{{ scanError }}</div>
-          <div v-else-if="scanning" class="scan-tip">正在识别二维码…</div>
+          <div v-else-if="scanning" class="scan-tip">
+            {{ $t('正在识别二维码…', 'Scanning QR code…') }}
+          </div>
         </div>
         <div class="scan-manual">
-          <span class="muted">无法扫码？</span>
+          <span class="muted">{{ $t('无法扫码？', 'Cannot scan?') }}</span>
           <button class="btn btn-sm" @click="closeScanModal(); openCheckinModal()">
-            手动输入核销码
+            {{ $t('手动输入核销码', 'Enter code manually') }}
           </button>
         </div>
         <div class="modal-actions">
-          <button class="btn btn-sm" @click="closeScanModal">取消</button>
+          <button class="btn btn-sm" @click="closeScanModal">{{ $t('取消', 'Cancel') }}</button>
         </div>
       </div>
     </div>
@@ -522,52 +565,56 @@ onUnmounted(() => {
     <div v-if="showCheckinModal" class="modal-overlay" @click.self="closeCheckinModal">
       <div class="modal checkin-modal">
         <template v-if="checkinResult === null">
-          <h3>核销码核销</h3>
+          <h3>{{ $t('核销码核销', 'Check in by code') }}</h3>
           <p class="modal-desc">
-            输入顾客出示的 6 位核销码，核销即上钟开始计时，结束时间固定为预约时段。
+            {{ $t('输入顾客出示的 6 位核销码，核销即上钟开始计时，结束时间固定为预约时段。', 'Enter the 6-digit code shown by the customer. Check-in starts the timer; the end time stays fixed.') }}
           </p>
           <input
             v-model="checkinCode"
             class="checkin-input"
             type="text"
             maxlength="6"
-            placeholder="请输入核销码"
+            :placeholder="$t('请输入核销码', 'Enter check-in code')"
             autofocus
             @keyup.enter="checkInByCode"
           />
           <p v-if="checkinError" class="checkin-error">{{ checkinError }}</p>
           <div class="modal-actions">
-            <button class="btn btn-sm" @click="closeCheckinModal">取消</button>
+            <button class="btn btn-sm" @click="closeCheckinModal">{{ $t('取消', 'Cancel') }}</button>
             <button
               class="btn btn-sm btn-success"
               :disabled="checkinBusy || checkinCode.trim().length !== 6"
               @click="checkInByCode"
             >
-              {{ checkinBusy ? '核销中…' : '立即核销' }}
+              {{ checkinBusy ? $t('核销中…', 'Checking in…') : $t('立即核销', 'Check in now') }}
             </button>
           </div>
         </template>
         <template v-else>
-          <h3>核销成功</h3>
+          <h3>{{ $t('核销成功', 'Checked in') }}</h3>
           <div class="result-info">
-            <p><span class="muted">预约码</span> <code>{{ checkinResult.code }}</code></p>
-            <p><span class="muted">门店</span> {{ checkinResult.storeName }}</p>
+            <p><span class="muted">{{ $t('预约码', 'Code') }}</span> <code>{{ checkinResult.code }}</code></p>
+            <p><span class="muted">{{ $t('门店', 'Store') }}</span> {{ checkinResult.storeName }}</p>
             <p>
-              <span class="muted">桌位 / 人数</span>
-              {{ tableLabel(checkinResult) }} · {{ checkinResult.peopleCount }} 人
+              <span class="muted">{{ $t('桌位 / 人数', 'Table / Guests') }}</span>
+              {{ tableLabel(checkinResult) }} · {{ $t('{n} 人', '{n} people', { n: checkinResult.peopleCount }) }}
             </p>
             <p>
-              <span class="muted">时间</span>
+              <span class="muted">{{ $t('时间', 'Time') }}</span>
               {{ checkinResult.date }} {{ checkinResult.startTime }}-{{ checkinResult.endTime }}
             </p>
             <p>
-              <span class="muted">状态</span>
-              <span class="tag" style="color: #2e9e5b; border-color: #2e9e5b">服务中（已开始计时）</span>
+              <span class="muted">{{ $t('状态', 'Status') }}</span>
+              <span class="tag" style="color: #2e9e5b; border-color: #2e9e5b">
+                {{ $t('服务中（已开始计时）', 'In service (timer started)') }}
+              </span>
             </p>
           </div>
           <div class="modal-actions">
-            <button class="btn btn-sm" @click="resetCheckin">继续核销</button>
-            <button class="btn btn-sm btn-success" @click="closeCheckinModal">完成</button>
+            <button class="btn btn-sm" @click="resetCheckin">{{ $t('继续核销', 'Check in another') }}</button>
+            <button class="btn btn-sm btn-success" @click="closeCheckinModal">
+              {{ $t('完成', 'Done') }}
+            </button>
           </div>
         </template>
       </div>
@@ -575,12 +622,14 @@ onUnmounted(() => {
 
     <div v-if="cancelTarget !== null" class="modal-overlay" @click.self="cancelCancel">
       <div class="modal">
-        <h3>取消预约</h3>
-        <p class="modal-desc">确认取消预约码 {{ cancelTarget.code }}？取消后用户将无法到店核销。</p>
+        <h3>{{ $t('取消预约', 'Cancel booking') }}</h3>
+        <p class="modal-desc">
+          {{ $t('确认取消预约码 {code}？取消后用户将无法到店核销。', 'Cancel booking {code}? The customer will no longer be able to check in.', { code: cancelTarget.code }) }}
+        </p>
         <div class="modal-actions">
-          <button class="btn btn-sm" @click="cancelCancel">关闭</button>
+          <button class="btn btn-sm" @click="cancelCancel">{{ $t('关闭', 'Close') }}</button>
           <button class="btn btn-sm btn-danger" :disabled="operatingId !== null" @click="confirmCancel">
-            确认取消
+            {{ $t('确认取消', 'Confirm cancel') }}
           </button>
         </div>
       </div>

@@ -825,6 +825,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String get storeConfirmOrder => '确认预约';
 
   @override
+  String storePricePerHourShort(String price) {
+    return '$price/时·人';
+  }
+
+  @override
+  String get storeMinHours => '1 小时起';
+
+  @override
+  String storeUnitPerPerson(String price) {
+    return '$price/人';
+  }
+
+  @override
+  String get storeTableInRecommendation => '该桌已在推荐组合中';
+
+  @override
+  String get storeKeepRecommendation => '请保持推荐规格（可切换同规格桌位编号）';
+
+  @override
+  String storeTableCapacity(int count) {
+    return '$count人';
+  }
+
+  @override
+  String get storeTableFull => '满';
+
+  @override
+  String get storeNoTableCombo => '当前时段没有合适的桌位组合，请调整时段或联系门店';
+
+  @override
+  String storeRecommendedTables(String names, int capacity) {
+    return '推荐桌位：$names · 可容纳 $capacity 人';
+  }
+
+  @override
+  String get storeCapacityInsufficient => '容量不足，请再选桌位';
+
+  @override
+  String get storeLoadFailed => '加载失败，请确认后端服务已启动';
+
+  @override
   String get appointmentMyTitle => '我的预约';
 
   @override

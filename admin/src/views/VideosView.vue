@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { videoApi, type Video } from '../api/videos'
+import { i18n, t } from '../i18n'
 
 const videos = ref<Video[]>([])
 const loading = ref(true)
@@ -12,10 +13,10 @@ const removingId = ref<number | null>(null)
 const deletingId = ref<number | null>(null)
 
 const statusTabs = [
-  { value: '', label: '全部' },
-  { value: 'pending', label: '待审核' },
-  { value: 'approved', label: '已通过' },
-  { value: 'rejected', label: '已驳回' },
+  { value: '', label: '全部', labelEn: 'All' },
+  { value: 'pending', label: '待审核', labelEn: 'Pending' },
+  { value: 'approved', label: '已通过', labelEn: 'Approved' },
+  { value: 'rejected', label: '已驳回', labelEn: 'Rejected' },
 ]
 
 const statusLabels: Record<string, string> = {
@@ -30,6 +31,16 @@ const statusColors: Record<string, string> = {
   rejected: '#D9453E',
 }
 
+const statusLabelsEn: Record<string, string> = {
+  pending: 'Pending',
+  approved: 'Approved',
+  rejected: 'Rejected',
+}
+
+function statusLabel(status: string): string {
+  return t(statusLabels[status] ?? status, statusLabelsEn[status] ?? status)
+}
+
 async function load() {
   loading.value = true
   error.value = ''
@@ -39,7 +50,7 @@ async function load() {
     const { data } = await videoApi.list(params)
     videos.value = data[0]
   } catch (e: any) {
-    error.value = e?.response?.data?.message ?? '加载失败'
+    error.value = e?.response?.data?.message ?? t('加载失败', 'Failed to load')
   } finally {
     loading.value = false
   }
@@ -50,7 +61,7 @@ async function approve(id: number) {
     await videoApi.updateStatus(id, 'approved')
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   }
 }
 
@@ -67,7 +78,7 @@ async function confirmReject() {
     rejectReason.value = ''
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   }
 }
 
@@ -87,7 +98,7 @@ async function confirmRemove() {
     removingId.value = null
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   }
 }
 
@@ -106,7 +117,7 @@ async function confirmDelete() {
     deletingId.value = null
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '删除失败')
+    alert(e?.response?.data?.message ?? t('删除失败', 'Delete failed'))
   }
 }
 
@@ -117,14 +128,16 @@ function cancelDelete() {
 function formatTime(t: string): string {
   try {
     const d = new Date(t)
-    return d.toLocaleString('zh-CN')
+    return d.toLocaleString(i18n.lang === 'en' ? 'en-US' : 'zh-CN')
   } catch {
     return t
   }
 }
 
 function mediaType(v: Video): string {
-  return v.photos?.length ? `照片 ${v.photos.length} 张` : '视频'
+  return v.photos?.length
+    ? t('照片 {n} 张', '{n} photos', { n: v.photos.length })
+    : t('视频', 'Video')
 }
 
 onMounted(load)
@@ -133,39 +146,41 @@ onMounted(load)
 <template>
   <div class="videos">
     <div class="toolbar">
-      <h2>视频管理</h2>
+      <h2>{{ $t('视频管理', 'Videos') }}</h2>
       <div class="filters">
         <select v-model="statusFilter" @change="load">
           <option v-for="t in statusTabs" :key="t.value" :value="t.value">
-            {{ t.label }}
+            {{ $t(t.label, t.labelEn) }}
           </option>
         </select>
-        <button class="btn" @click="load">刷新</button>
+        <button class="btn" @click="load">{{ $t('刷新', 'Refresh') }}</button>
       </div>
     </div>
 
-    <div v-if="loading" class="state">加载中…</div>
+    <div v-if="loading" class="state">{{ $t('加载中…', 'Loading…') }}</div>
     <div v-else-if="error" class="state error">{{ error }}</div>
-    <div v-else-if="videos.length === 0" class="state">暂无视频数据</div>
+    <div v-else-if="videos.length === 0" class="state">
+      {{ $t('暂无视频数据', 'No videos yet') }}
+    </div>
 
     <table v-else class="table">
       <thead>
         <tr>
           <th style="width: 60px">ID</th>
-          <th style="width: 80px">用户ID</th>
-          <th style="width: 70px">类型</th>
-          <th style="width: 120px">标题</th>
-          <th>内容</th>
-          <th style="width: 70px">封面</th>
-          <th style="width: 140px">标签</th>
-          <th style="width: 80px">状态</th>
-          <th style="width: 110px">驳回原因</th>
-          <th style="width: 60px">点赞</th>
-          <th style="width: 60px">评论</th>
-          <th style="width: 60px">分享</th>
-          <th style="width: 60px">浏览</th>
-          <th style="width: 150px">发布时间</th>
-          <th style="width: 180px">操作</th>
+          <th style="width: 80px">{{ $t('用户ID', 'User ID') }}</th>
+          <th style="width: 70px">{{ $t('类型', 'Type') }}</th>
+          <th style="width: 120px">{{ $t('标题', 'Title') }}</th>
+          <th>{{ $t('内容', 'Content') }}</th>
+          <th style="width: 70px">{{ $t('封面', 'Cover') }}</th>
+          <th style="width: 140px">{{ $t('标签', 'Tags') }}</th>
+          <th style="width: 80px">{{ $t('状态', 'Status') }}</th>
+          <th style="width: 110px">{{ $t('驳回原因', 'Reject reason') }}</th>
+          <th style="width: 60px">{{ $t('点赞', 'Likes') }}</th>
+          <th style="width: 60px">{{ $t('评论', 'Comments') }}</th>
+          <th style="width: 60px">{{ $t('分享', 'Shares') }}</th>
+          <th style="width: 60px">{{ $t('浏览', 'Views') }}</th>
+          <th style="width: 150px">{{ $t('发布时间', 'Published') }}</th>
+          <th style="width: 180px">{{ $t('操作', 'Actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -184,7 +199,7 @@ onMounted(load)
               v-if="v.cover"
               class="cover"
               :src="v.cover"
-              alt="封面"
+              :alt="$t('封面', 'Cover')"
               @error="($event.target as HTMLImageElement).style.display = 'none'"
             />
             <span v-else class="muted">-</span>
@@ -198,7 +213,7 @@ onMounted(load)
               class="status-tag"
               :style="{ color: statusColors[v.status], borderColor: statusColors[v.status] }"
             >
-              {{ statusLabels[v.status] ?? v.status }}
+              {{ statusLabel(v.status) }}
             </span>
           </td>
           <td>
@@ -216,34 +231,34 @@ onMounted(load)
               class="btn btn-sm btn-success"
               @click="approve(v.id)"
             >
-              通过
+              {{ $t('通过', 'Approve') }}
             </button>
             <button
               v-if="v.status === 'pending'"
               class="btn btn-sm btn-danger"
               @click="openReject(v.id)"
             >
-              驳回
+              {{ $t('驳回', 'Reject') }}
             </button>
             <button
               v-if="v.status === 'approved'"
               class="btn btn-sm btn-danger"
               @click="openRemove(v.id)"
             >
-              下架
+              {{ $t('下架', 'Remove') }}
             </button>
             <button
               v-if="v.status === 'rejected'"
               class="btn btn-sm btn-success"
               @click="approve(v.id)"
             >
-              上架
+              {{ $t('上架', 'Restore') }}
             </button>
             <button
               class="btn btn-sm btn-delete"
               @click="openDelete(v.id)"
             >
-              删除
+              {{ $t('删除', 'Delete') }}
             </button>
           </td>
         </tr>
@@ -253,15 +268,17 @@ onMounted(load)
     <!-- 驳回弹窗 -->
     <div v-if="rejectingId !== null" class="modal-overlay" @click.self="cancelReject">
       <div class="modal">
-        <h3>驳回视频</h3>
+        <h3>{{ $t('驳回视频', 'Reject video') }}</h3>
         <textarea
           v-model="rejectReason"
-          placeholder="请输入驳回原因（选填）"
+          :placeholder="$t('请输入驳回原因（选填）', 'Enter reject reason (optional)')"
           rows="3"
         ></textarea>
         <div class="modal-actions">
-          <button class="btn btn-sm" @click="cancelReject">取消</button>
-          <button class="btn btn-sm btn-danger" @click="confirmReject">确认驳回</button>
+          <button class="btn btn-sm" @click="cancelReject">{{ $t('取消', 'Cancel') }}</button>
+          <button class="btn btn-sm btn-danger" @click="confirmReject">
+            {{ $t('确认驳回', 'Confirm reject') }}
+          </button>
         </div>
       </div>
     </div>
@@ -269,11 +286,15 @@ onMounted(load)
     <!-- 下架确认弹窗 -->
     <div v-if="removingId !== null" class="modal-overlay" @click.self="cancelRemove">
       <div class="modal">
-        <h3>下架视频</h3>
-        <p class="modal-tip">确认下架该视频？下架后信息流和主页中将不再展示。</p>
+        <h3>{{ $t('下架视频', 'Remove video') }}</h3>
+        <p class="modal-tip">
+          {{ $t('确认下架该视频？下架后信息流和主页中将不再展示。', 'Remove this video? It will no longer be shown in feeds and on profiles.') }}
+        </p>
         <div class="modal-actions">
-          <button class="btn btn-sm" @click="cancelRemove">取消</button>
-          <button class="btn btn-sm btn-danger" @click="confirmRemove">确认下架</button>
+          <button class="btn btn-sm" @click="cancelRemove">{{ $t('取消', 'Cancel') }}</button>
+          <button class="btn btn-sm btn-danger" @click="confirmRemove">
+            {{ $t('确认下架', 'Confirm remove') }}
+          </button>
         </div>
       </div>
     </div>
@@ -281,13 +302,15 @@ onMounted(load)
     <!-- 删除确认弹窗 -->
     <div v-if="deletingId !== null" class="modal-overlay" @click.self="cancelDelete">
       <div class="modal">
-        <h3>删除视频</h3>
+        <h3>{{ $t('删除视频', 'Delete video') }}</h3>
         <p class="modal-tip">
-          确认永久删除该作品？删除后不可恢复，其点赞与评论记录将一并清除。
+          {{ $t('确认永久删除该作品？删除后不可恢复，其点赞与评论记录将一并清除。', 'Permanently delete this video? This cannot be undone; its likes and comments will also be removed.') }}
         </p>
         <div class="modal-actions">
-          <button class="btn btn-sm" @click="cancelDelete">取消</button>
-          <button class="btn btn-sm btn-danger" @click="confirmDelete">确认删除</button>
+          <button class="btn btn-sm" @click="cancelDelete">{{ $t('取消', 'Cancel') }}</button>
+          <button class="btn btn-sm btn-danger" @click="confirmDelete">
+            {{ $t('确认删除', 'Confirm delete') }}
+          </button>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { activityApi, type Activity } from '../api/activities'
+import { t } from '../i18n'
 
 const activities = ref<Activity[]>([])
 const loading = ref(true)
@@ -43,7 +44,7 @@ async function load() {
     const { data } = await activityApi.list()
     activities.value = data
   } catch (e: any) {
-    error.value = e?.response?.data?.message ?? '加载失败'
+    error.value = e?.response?.data?.message ?? t('加载失败', 'Failed to load')
   } finally {
     loading.value = false
   }
@@ -91,7 +92,7 @@ function closeForm() {
 
 async function save() {
   if (!form.title.trim() || !form.date.trim()) {
-    alert('标题和活动时间不能为空')
+    alert(t('标题和活动时间不能为空', 'Title and activity time are required'))
     return
   }
   saving.value = true
@@ -111,7 +112,7 @@ async function save() {
     showForm.value = false
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '保存失败')
+    alert(e?.response?.data?.message ?? t('保存失败', 'Save failed'))
   } finally {
     saving.value = false
   }
@@ -132,7 +133,12 @@ function openSessionManager(a: Activity) {
 async function addSession() {
   const a = currentActivity.value
   if (!a || !newSession.date || !newSession.startTime || !newSession.endTime) {
-    alert('请填写场次日期、开始和结束时间')
+    alert(
+      t(
+        '请填写场次日期、开始和结束时间',
+        'Please fill in the session date, start and end time',
+      ),
+    )
     return
   }
   try {
@@ -145,17 +151,26 @@ async function addSession() {
     newSession.startTime = ''
     newSession.endTime = ''
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '添加失败')
+    alert(e?.response?.data?.message ?? t('添加失败', 'Add failed'))
   }
 }
 
 async function removeSession(s: NonNullable<Activity['sessions']>[number]) {
-  if (!confirm(`确认删除场次 ${s.date} ${s.startTime}-${s.endTime}？`)) return
+  if (
+    !confirm(
+      t(
+        '确认删除场次 {date} {start}-{end}？',
+        'Delete session {date} {start}-{end}?',
+        { date: s.date, start: s.startTime, end: s.endTime },
+      ),
+    )
+  )
+    return
   try {
     await activityApi.removeSession(s.id)
     sessionList.value = sessionList.value.filter((x) => x.id !== s.id)
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '删除失败')
+    alert(e?.response?.data?.message ?? t('删除失败', 'Delete failed'))
   }
 }
 
@@ -164,17 +179,26 @@ async function toggle(a: Activity) {
     await activityApi.toggle(a.id, !a.enabled)
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   }
 }
 
 async function removeActivity(a: Activity) {
-  if (!confirm(`确认删除活动「${a.title}」？其下所有场次将一并删除。`)) return
+  if (
+    !confirm(
+      t(
+        '确认删除活动「{title}」？其下所有场次将一并删除。',
+        'Delete activity "{title}"? All its sessions will also be deleted.',
+        { title: a.title },
+      ),
+    )
+  )
+    return
   try {
     await activityApi.remove(a.id)
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '删除失败')
+    alert(e?.response?.data?.message ?? t('删除失败', 'Delete failed'))
   }
 }
 
@@ -190,7 +214,7 @@ async function move(a: Activity, delta: number) {
     ])
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   }
 }
 
@@ -200,31 +224,35 @@ onMounted(load)
 <template>
   <div class="activities">
     <div class="toolbar">
-      <h2>活动管理</h2>
+      <h2>{{ $t('活动管理', 'Activities') }}</h2>
       <div class="filters">
-        <button class="btn" @click="load">刷新</button>
-        <button class="btn btn-primary" @click="openCreate">新增活动</button>
+        <button class="btn" @click="load">{{ $t('刷新', 'Refresh') }}</button>
+        <button class="btn btn-primary" @click="openCreate">
+          {{ $t('新增活动', 'New activity') }}
+        </button>
       </div>
     </div>
 
-    <div v-if="loading" class="state">加载中…</div>
+    <div v-if="loading" class="state">{{ $t('加载中…', 'Loading…') }}</div>
     <div v-else-if="error" class="state error">{{ error }}</div>
-    <div v-else-if="activities.length === 0" class="state">暂无活动，点击「新增活动」创建</div>
+    <div v-else-if="activities.length === 0" class="state">
+      {{ $t('暂无活动，点击「新增活动」创建', 'No activities yet. Click "New activity" to create one.') }}
+    </div>
 
     <table v-else class="table">
       <thead>
         <tr>
           <th style="width: 60px">ID</th>
-          <th>标题</th>
-          <th style="width: 130px">活动时间</th>
-          <th>描述</th>
-          <th style="width: 90px">标签</th>
-          <th style="width: 90px">可预约</th>
-          <th style="width: 110px">价格</th>
-          <th style="width: 80px">会员专属</th>
-          <th style="width: 60px">排序</th>
-          <th style="width: 80px">状态</th>
-          <th style="width: 320px">操作</th>
+          <th>{{ $t('标题', 'Title') }}</th>
+          <th style="width: 130px">{{ $t('活动时间', 'Time') }}</th>
+          <th>{{ $t('描述', 'Description') }}</th>
+          <th style="width: 90px">{{ $t('标签', 'Tag') }}</th>
+          <th style="width: 90px">{{ $t('可预约', 'Bookable') }}</th>
+          <th style="width: 110px">{{ $t('价格', 'Price') }}</th>
+          <th style="width: 80px">{{ $t('会员专属', 'Members only') }}</th>
+          <th style="width: 60px">{{ $t('排序', 'Sort') }}</th>
+          <th style="width: 80px">{{ $t('状态', 'Status') }}</th>
+          <th style="width: 320px">{{ $t('操作', 'Actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -241,37 +269,45 @@ onMounted(load)
             <span v-if="a.tag" class="tag">#{{ a.tag }}</span>
             <span v-else class="muted">-</span>
           </td>
-          <td>{{ a.bookable ? '是' : '否' }}</td>
+          <td>{{ a.bookable ? $t('是', 'Yes') : $t('否', 'No') }}</td>
           <td>
             <template v-if="a.bookable">
-              <span v-if="a.memberPrice != null">会员 {{ a.memberPrice }} / {{ a.price }}</span>
-              <span v-else>{{ a.price }} $/人</span>
+              <span v-if="a.memberPrice != null">
+                {{ $t('会员 {m} / {p}', 'Member {m} / {p}', { m: a.memberPrice, p: a.price }) }}
+              </span>
+              <span v-else>{{ $t('{p} $/人', '{p} $/person', { p: a.price }) }}</span>
             </template>
             <span v-else class="muted">-</span>
           </td>
-          <td>{{ a.membersOnly ? '是' : '否' }}</td>
+          <td>{{ a.membersOnly ? $t('是', 'Yes') : $t('否', 'No') }}</td>
           <td>{{ a.sort }}</td>
           <td>
             <span
               class="status-tag"
               :class="a.enabled ? 'tag-on' : 'tag-off'"
             >
-              {{ a.enabled ? '已上架' : '已下架' }}
+              {{ a.enabled ? $t('已上架', 'Listed') : $t('已下架', 'Unlisted') }}
             </span>
           </td>
           <td class="actions">
-            <button class="btn btn-sm" @click="move(a, -1)" :disabled="a.sort === 0 && a.id === activities[0].id">上移</button>
-            <button class="btn btn-sm" @click="move(a, 1)">下移</button>
-            <button class="btn btn-sm" @click="openSessionManager(a)">场次</button>
-            <button class="btn btn-sm" @click="openEdit(a)">编辑</button>
+            <button class="btn btn-sm" @click="move(a, -1)" :disabled="a.sort === 0 && a.id === activities[0].id">
+              {{ $t('上移', 'Up') }}
+            </button>
+            <button class="btn btn-sm" @click="move(a, 1)">{{ $t('下移', 'Down') }}</button>
+            <button class="btn btn-sm" @click="openSessionManager(a)">
+              {{ $t('场次', 'Sessions') }}
+            </button>
+            <button class="btn btn-sm" @click="openEdit(a)">{{ $t('编辑', 'Edit') }}</button>
             <button
               class="btn btn-sm"
               :class="a.enabled ? 'btn-danger' : 'btn-success'"
               @click="toggle(a)"
             >
-              {{ a.enabled ? '下架' : '上架' }}
+              {{ a.enabled ? $t('下架', 'Unlist') : $t('上架', 'List') }}
             </button>
-            <button class="btn btn-sm btn-danger" @click="removeActivity(a)">删除</button>
+            <button class="btn btn-sm btn-danger" @click="removeActivity(a)">
+              {{ $t('删除', 'Delete') }}
+            </button>
           </td>
         </tr>
       </tbody>
@@ -280,57 +316,59 @@ onMounted(load)
     <!-- 新增/编辑弹窗 -->
     <div v-if="showForm" class="modal-overlay" @click.self="closeForm">
       <div class="modal">
-        <h3>{{ editingId ? '编辑活动' : '新增活动' }}</h3>
+        <h3>{{ editingId ? $t('编辑活动', 'Edit activity') : $t('新增活动', 'New activity') }}</h3>
         <div class="form-grid">
           <label>
-            <span>标题</span>
-            <input v-model="form.title" type="text" placeholder="如 周末拼豆沙龙" />
+            <span>{{ $t('标题', 'Title') }}</span>
+            <input v-model="form.title" type="text" :placeholder="$t('如 周末拼豆沙龙', 'e.g. Weekend Bead Salon')" />
           </label>
           <label>
-            <span>活动时间</span>
-            <input v-model="form.date" type="text" placeholder="如 08-16 14:00 / 08-22 起" />
+            <span>{{ $t('活动时间', 'Activity time') }}</span>
+            <input v-model="form.date" type="text" :placeholder="$t('如 08-16 14:00 / 08-22 起', 'e.g. 08-16 14:00 / from 08-22')" />
           </label>
           <label>
-            <span>标签</span>
-            <input v-model="form.tag" type="text" placeholder="如 限会员 / 早鸟 8 折" />
+            <span>{{ $t('标签', 'Tag') }}</span>
+            <input v-model="form.tag" type="text" :placeholder="$t('如 限会员 / 早鸟 8 折', 'e.g. Members only / Early bird 20% off')" />
           </label>
           <label>
-            <span>活动地址（可预约必填）</span>
-            <input v-model="form.address" type="text" placeholder="如 杭州市西湖区文一西路 1 号" />
+            <span>{{ $t('活动地址（可预约必填）', 'Address (required if bookable)') }}</span>
+            <input v-model="form.address" type="text" :placeholder="$t('如 杭州市西湖区文一西路 1 号', 'e.g. 1 Wenyi West Rd, Xihu, Hangzhou')" />
           </label>
           <label>
-            <span>纬度</span>
+            <span>{{ $t('纬度', 'Latitude') }}</span>
             <input v-model.number="form.lat" type="number" step="0.000001" />
           </label>
           <label>
-            <span>经度</span>
+            <span>{{ $t('经度', 'Longitude') }}</span>
             <input v-model.number="form.lng" type="number" step="0.000001" />
           </label>
           <label>
-            <span>门市价（$/人）</span>
+            <span>{{ $t('门市价（$/人）', 'Regular price ($/person)') }}</span>
             <input v-model.number="form.price" type="number" min="0" step="0.1" />
           </label>
           <label>
-            <span>会员价（$/人，0 = 会员免费）</span>
+            <span>{{ $t('会员价（$/人，0 = 会员免费）', 'Member price ($/person, 0 = free for members)') }}</span>
             <input v-model.number="form.memberPrice" type="number" min="0" step="0.1" />
           </label>
           <label>
-            <span>排序权重</span>
+            <span>{{ $t('排序权重', 'Sort weight') }}</span>
             <input v-model.number="form.sort" type="number" min="0" />
           </label>
           <label class="full-row">
-            <span>描述</span>
-            <textarea v-model="form.desc" rows="3" placeholder="活动详情说明"></textarea>
+            <span>{{ $t('描述', 'Description') }}</span>
+            <textarea v-model="form.desc" rows="3" :placeholder="$t('活动详情说明', 'Activity details')"></textarea>
           </label>
         </div>
         <div class="check-row">
-          <label><input v-model="form.bookable" type="checkbox" /> 可预约（进入预约流程）</label>
-          <label><input v-model="form.membersOnly" type="checkbox" /> 会员专属</label>
-          <label><input v-model="form.enabled" type="checkbox" /> 立即上架</label>
+          <label><input v-model="form.bookable" type="checkbox" /> {{ $t('可预约（进入预约流程）', 'Bookable (enter booking flow)') }}</label>
+          <label><input v-model="form.membersOnly" type="checkbox" /> {{ $t('会员专属', 'Members only') }}</label>
+          <label><input v-model="form.enabled" type="checkbox" /> {{ $t('立即上架', 'List now') }}</label>
         </div>
         <div class="modal-actions">
-          <button class="btn btn-sm" @click="closeForm">取消</button>
-          <button class="btn btn-sm btn-primary" :disabled="saving" @click="save">保存</button>
+          <button class="btn btn-sm" @click="closeForm">{{ $t('取消', 'Cancel') }}</button>
+          <button class="btn btn-sm btn-primary" :disabled="saving" @click="save">
+            {{ $t('保存', 'Save') }}
+          </button>
         </div>
       </div>
     </div>
@@ -339,10 +377,16 @@ onMounted(load)
   <!-- 场次管理 -->
   <div v-if="showSessions" class="modal-overlay" @click.self="showSessions = false">
     <div class="modal wide">
-      <h3>场次管理 · {{ currentActivity?.title }}</h3>
+      <h3>{{ $t('场次管理 · {title}', 'Sessions · {title}', { title: currentActivity?.title ?? '' }) }}</h3>
       <table class="table">
         <thead>
-          <tr><th>日期</th><th>开始</th><th>结束</th><th>名额上限</th><th style="width: 90px">操作</th></tr>
+          <tr>
+            <th>{{ $t('日期', 'Date') }}</th>
+            <th>{{ $t('开始', 'Start') }}</th>
+            <th>{{ $t('结束', 'End') }}</th>
+            <th>{{ $t('名额上限', 'Capacity') }}</th>
+            <th style="width: 90px">{{ $t('操作', 'Actions') }}</th>
+          </tr>
         </thead>
         <tbody>
           <tr v-for="s in sessionList" :key="s.id">
@@ -351,11 +395,15 @@ onMounted(load)
             <td>{{ s.endTime }}</td>
             <td>{{ s.capacity }}</td>
             <td class="actions">
-              <button class="btn btn-sm btn-danger" @click="removeSession(s)">删除</button>
+              <button class="btn btn-sm btn-danger" @click="removeSession(s)">
+                {{ $t('删除', 'Delete') }}
+              </button>
             </td>
           </tr>
           <tr v-if="sessionList.length === 0">
-            <td colspan="5" class="muted">暂无场次，请在下方添加</td>
+            <td colspan="5" class="muted">
+              {{ $t('暂无场次，请在下方添加', 'No sessions yet. Add one below.') }}
+            </td>
           </tr>
         </tbody>
       </table>
@@ -363,11 +411,15 @@ onMounted(load)
         <input v-model="newSession.date" type="date" />
         <input v-model="newSession.startTime" type="time" />
         <input v-model="newSession.endTime" type="time" />
-        <input v-model.number="newSession.capacity" type="number" min="1" placeholder="名额" />
-        <button class="btn btn-sm btn-primary" @click="addSession">添加场次</button>
+        <input v-model.number="newSession.capacity" type="number" min="1" :placeholder="$t('名额', 'Capacity')" />
+        <button class="btn btn-sm btn-primary" @click="addSession">
+          {{ $t('添加场次', 'Add session') }}
+        </button>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-sm btn-primary" @click="showSessions = false">完成</button>
+        <button class="btn btn-sm btn-primary" @click="showSessions = false">
+          {{ $t('完成', 'Done') }}
+        </button>
       </div>
     </div>
   </div>

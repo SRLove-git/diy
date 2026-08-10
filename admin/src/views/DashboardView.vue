@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { dashboardApi, type DashboardOverview, type TrendItem } from '../api/dashboard'
+import { t } from '../i18n'
 
 const overview = ref<DashboardOverview | null>(null)
 const trends = ref<TrendItem[]>([])
@@ -15,7 +16,7 @@ async function load() {
     overview.value = ov
     trends.value = tr
   } catch (e: any) {
-    error.value = e?.response?.data?.message ?? '加载失败'
+    error.value = e?.response?.data?.message ?? t('加载失败', 'Failed to load')
   } finally {
     loading.value = false
   }
@@ -36,33 +37,39 @@ const maxVal = computed(() => {
 <template>
   <div class="dashboard">
     <div class="toolbar">
-      <h2>数据看板</h2>
-      <button class="btn btn-sm" @click="load">刷新</button>
+      <h2>{{ $t('数据看板', 'Dashboard') }}</h2>
+      <button class="btn btn-sm" @click="load">{{ $t('刷新', 'Refresh') }}</button>
     </div>
 
-    <div v-if="loading" class="state">加载中…</div>
+    <div v-if="loading" class="state">{{ $t('加载中…', 'Loading…') }}</div>
     <div v-else-if="error" class="state error">{{ error }}</div>
 
     <template v-else-if="overview">
       <!-- 核心指标卡片 -->
       <section class="cards">
         <div class="card">
-          <div class="card-label">累计用户</div>
+          <div class="card-label">{{ $t('累计用户', 'Total users') }}</div>
           <div class="card-value">{{ overview.users.total.toLocaleString() }}</div>
-          <div class="card-sub">今日新增 {{ overview.users.today }}</div>
+          <div class="card-sub">
+            {{ $t('今日新增 {n}', 'New today {n}', { n: overview.users.today }) }}
+          </div>
         </div>
         <div class="card">
-          <div class="card-label">累计预约</div>
+          <div class="card-label">{{ $t('累计预约', 'Total bookings') }}</div>
           <div class="card-value">{{ overview.appointments.total.toLocaleString() }}</div>
-          <div class="card-sub">今日新增 {{ overview.appointments.today }}</div>
+          <div class="card-sub">
+            {{ $t('今日新增 {n}', 'New today {n}', { n: overview.appointments.today }) }}
+          </div>
         </div>
         <div class="card">
-          <div class="card-label">核销中</div>
+          <div class="card-label">{{ $t('核销中', 'Checked in') }}</div>
           <div class="card-value">{{ overview.appointments.checkedIn }}</div>
-          <div class="card-sub">服务中 {{ overview.appointments.inService }}</div>
+          <div class="card-sub">
+            {{ $t('服务中 {n}', 'In service {n}', { n: overview.appointments.inService }) }}
+          </div>
         </div>
         <div class="card">
-          <div class="card-label">已完成订单</div>
+          <div class="card-label">{{ $t('已完成订单', 'Completed orders') }}</div>
           <div class="card-value">{{ overview.appointments.completed.toLocaleString() }}</div>
         </div>
         <!-- 社区 / Reels 前期暂不开放，相关指标卡先隐藏 -->
@@ -100,14 +107,14 @@ const maxVal = computed(() => {
 
       <!-- 近7天趋势图表 -->
       <section class="chart-section">
-        <h3>近 7 天趋势</h3>
+        <h3>{{ $t('近 7 天趋势', 'Last 7 days trend') }}</h3>
         <div class="chart-table">
           <table class="table">
             <thead>
               <tr>
-                <th>日期</th>
-                <th>新注册</th>
-                <th>新预约</th>
+                <th>{{ $t('日期', 'Date') }}</th>
+                <th>{{ $t('新注册', 'New sign-ups') }}</th>
+                <th>{{ $t('新预约', 'New bookings') }}</th>
                 <!-- <th>新作品</th>
                 <th>点赞</th>
                 <th>评论</th>
@@ -131,13 +138,13 @@ const maxVal = computed(() => {
 
       <!-- 简易柱状图 -->
       <section class="chart-section">
-        <h3>数据趋势图</h3>
+        <h3>{{ $t('数据趋势图', 'Trend chart') }}</h3>
         <div class="bar-chart">
           <div
             v-for="t in trends"
             :key="t.date"
             class="bar-col"
-            :title="`${t.date}: 注册${t.users} | 预约${t.appointments}`"
+            :title="`${t.date}: ${$t('注册', 'Sign-ups')} ${t.users} | ${$t('预约', 'Bookings')} ${t.appointments}`"
           >
             <div class="bar-group">
               <div
@@ -161,8 +168,8 @@ const maxVal = computed(() => {
           </div>
         </div>
         <div class="legend">
-          <span class="legend-item"><i class="dot dot-u"></i> 新注册</span>
-          <span class="legend-item"><i class="dot dot-a"></i> 新预约</span>
+          <span class="legend-item"><i class="dot dot-u"></i> {{ $t('新注册', 'New sign-ups') }}</span>
+          <span class="legend-item"><i class="dot dot-a"></i> {{ $t('新预约', 'New bookings') }}</span>
           <!-- <span class="legend-item"><i class="dot dot-p"></i> 新作品</span>
           <span class="legend-item"><i class="dot dot-v"></i> 短视频</span> -->
         </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { musicApi, type Music } from '../api/musics'
+import { i18n, t } from '../i18n'
 
 const musics = ref<Music[]>([])
 const loading = ref(true)
@@ -24,7 +25,7 @@ async function load() {
     musics.value = data[0]
     total.value = data[1]
   } catch (e: any) {
-    error.value = e?.response?.data?.message ?? '加载失败'
+    error.value = e?.response?.data?.message ?? t('加载失败', 'Failed to load')
   } finally {
     loading.value = false
   }
@@ -142,11 +143,11 @@ function onCoverSelected(e: Event) {
 
 async function saveUpload() {
   if (!formTitle.value.trim()) {
-    alert('请填写歌名')
+    alert(t('请填写歌名', 'Please enter the song title'))
     return
   }
   if (!editingId.value && !audioFile.value) {
-    alert('请选择音频文件')
+    alert(t('请选择音频文件', 'Please choose an audio file'))
     return
   }
   saving.value = true
@@ -176,7 +177,7 @@ async function saveUpload() {
     resetForm()
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '保存失败')
+    alert(e?.response?.data?.message ?? t('保存失败', 'Save failed'))
   } finally {
     saving.value = false
   }
@@ -200,7 +201,7 @@ async function confirmDelete() {
     if (musics.value.length === 1 && page.value > 1) page.value -= 1
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '删除失败')
+    alert(e?.response?.data?.message ?? t('删除失败', 'Delete failed'))
   } finally {
     deleting.value = false
   }
@@ -226,7 +227,7 @@ function formatDuration(seconds: number): string {
 
 function formatTime(t: string): string {
   try {
-    return new Date(t).toLocaleString('zh-CN')
+    return new Date(t).toLocaleString(i18n.lang === 'en' ? 'en-US' : 'zh-CN')
   } catch {
     return t
   }
@@ -238,35 +239,37 @@ onMounted(load)
 <template>
   <div class="music">
     <div class="toolbar">
-      <h2>曲库管理</h2>
+      <h2>{{ $t('曲库管理', 'Music Library') }}</h2>
       <div class="filters">
         <input
           v-model="keyword"
           class="search-input"
-          placeholder="搜索歌名 / 歌手"
+          :placeholder="$t('搜索歌名 / 歌手', 'Search title / artist')"
           @keyup.enter="search"
         />
-        <button class="btn" @click="search">搜索</button>
-        <button class="btn btn-plain" @click="search">刷新</button>
-        <button class="btn" @click="openUpload">上传曲目</button>
+        <button class="btn" @click="search">{{ $t('搜索', 'Search') }}</button>
+        <button class="btn btn-plain" @click="search">{{ $t('刷新', 'Refresh') }}</button>
+        <button class="btn" @click="openUpload">{{ $t('上传曲目', 'Upload track') }}</button>
       </div>
     </div>
 
-    <div v-if="loading" class="state">加载中…</div>
+    <div v-if="loading" class="state">{{ $t('加载中…', 'Loading…') }}</div>
     <div v-else-if="error" class="state error">{{ error }}</div>
-    <div v-else-if="musics.length === 0" class="state">暂无曲目数据</div>
+    <div v-else-if="musics.length === 0" class="state">
+      {{ $t('暂无曲目数据', 'No tracks yet') }}
+    </div>
 
     <table v-else class="table">
       <thead>
         <tr>
           <th style="width: 60px">ID</th>
-          <th style="width: 70px">封面</th>
-          <th style="width: 180px">歌名</th>
-          <th style="width: 140px">歌手</th>
-          <th style="width: 80px">时长</th>
-          <th>试听</th>
-          <th style="width: 150px">创建时间</th>
-          <th style="width: 140px">操作</th>
+          <th style="width: 70px">{{ $t('封面', 'Cover') }}</th>
+          <th style="width: 180px">{{ $t('歌名', 'Title') }}</th>
+          <th style="width: 140px">{{ $t('歌手', 'Artist') }}</th>
+          <th style="width: 80px">{{ $t('时长', 'Duration') }}</th>
+          <th>{{ $t('试听', 'Preview') }}</th>
+          <th style="width: 150px">{{ $t('创建时间', 'Created') }}</th>
+          <th style="width: 140px">{{ $t('操作', 'Actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -277,7 +280,7 @@ onMounted(load)
               v-if="m.cover"
               class="cover"
               :src="toUrl(m.cover)"
-              alt="封面"
+              :alt="$t('封面', 'Cover')"
               @error="($event.target as HTMLImageElement).style.display = 'none'"
             />
             <span v-else class="muted">-</span>
@@ -301,9 +304,9 @@ onMounted(load)
           </td>
           <td>{{ formatTime(m.createdAt) }}</td>
           <td class="actions">
-            <button class="btn btn-sm" @click="openEdit(m)">编辑</button>
+            <button class="btn btn-sm" @click="openEdit(m)">{{ $t('编辑', 'Edit') }}</button>
             <button class="btn btn-sm btn-danger" @click="openDelete(m.id)">
-              删除
+              {{ $t('删除', 'Delete') }}
             </button>
           </td>
         </tr>
@@ -311,17 +314,19 @@ onMounted(load)
     </table>
 
     <div class="pager">
-      <span>共 {{ total }} 首 · 第 {{ page }} / {{ totalPages }} 页</span>
+      <span>
+        {{ $t('共 {n} 首 · 第 {p} / {t} 页', '{n} tracks · Page {p} / {t}', { n: total, p: page, t: totalPages }) }}
+      </span>
       <div class="pager-buttons">
         <button class="btn btn-plain btn-sm" :disabled="page <= 1" @click="prevPage">
-          上一页
+          {{ $t('上一页', 'Prev') }}
         </button>
         <button
           class="btn btn-plain btn-sm"
           :disabled="page >= totalPages"
           @click="nextPage"
         >
-          下一页
+          {{ $t('下一页', 'Next') }}
         </button>
       </div>
     </div>
@@ -329,26 +334,28 @@ onMounted(load)
     <!-- 上传 / 编辑弹窗 -->
     <div v-if="showUpload" class="modal-overlay" @click.self="closeUpload">
       <div class="modal">
-        <h3>{{ editingId ? '编辑曲目' : '上传曲目' }}</h3>
+        <h3>{{ editingId ? $t('编辑曲目', 'Edit track') : $t('上传曲目', 'Upload track') }}</h3>
         <label class="field">
-          <span>歌名 *</span>
-          <input v-model="formTitle" type="text" maxlength="200" placeholder="请输入歌名" />
+          <span>{{ $t('歌名 *', 'Title *') }}</span>
+          <input v-model="formTitle" type="text" maxlength="200" :placeholder="$t('请输入歌名', 'Enter title')" />
         </label>
         <label class="field">
-          <span>歌手</span>
-          <input v-model="formArtist" type="text" maxlength="100" placeholder="请输入歌手 / 作者" />
+          <span>{{ $t('歌手', 'Artist') }}</span>
+          <input v-model="formArtist" type="text" maxlength="100" :placeholder="$t('请输入歌手 / 作者', 'Enter artist / author')" />
         </label>
         <label class="field">
-          <span>时长（秒）</span>
+          <span>{{ $t('时长（秒）', 'Duration (seconds)') }}</span>
           <input
             v-model.number="formDuration"
             type="number"
             min="0"
-            placeholder="选择音频后自动识别"
+            :placeholder="$t('选择音频后自动识别', 'Auto-detected after choosing audio')"
           />
         </label>
         <label class="field">
-          <span>{{ editingId ? '重新上传音频（选填）' : '音频文件 *' }}</span>
+          <span>
+            {{ editingId ? $t('重新上传音频（选填）', 'Re-upload audio (optional)') : $t('音频文件 *', 'Audio file *') }}
+          </span>
           <input
             ref="audioInput"
             type="file"
@@ -365,7 +372,9 @@ onMounted(load)
           ></audio>
         </div>
         <label class="field">
-          <span>{{ editingId ? '重新上传封面（选填）' : '封面（选填）' }}</span>
+          <span>
+            {{ editingId ? $t('重新上传封面（选填）', 'Re-upload cover (optional)') : $t('封面（选填）', 'Cover (optional)') }}
+          </span>
           <input
             ref="coverInput"
             type="file"
@@ -377,15 +386,15 @@ onMounted(load)
           <img
             class="cover-preview"
             :src="coverPreview || toUrl(existingCover)"
-            alt="封面预览"
+            :alt="$t('封面预览', 'Cover preview')"
           />
         </div>
         <div class="modal-actions">
           <button class="btn btn-plain btn-sm" :disabled="saving" @click="closeUpload">
-            取消
+            {{ $t('取消', 'Cancel') }}
           </button>
           <button class="btn btn-sm" :disabled="saving" @click="saveUpload">
-            {{ saving ? '保存中…' : '保存' }}
+            {{ saving ? $t('保存中…', 'Saving…') : $t('保存', 'Save') }}
           </button>
         </div>
       </div>
@@ -394,14 +403,16 @@ onMounted(load)
     <!-- 删除确认弹窗 -->
     <div v-if="deletingId !== null" class="modal-overlay" @click.self="cancelDelete">
       <div class="modal">
-        <h3>删除曲目</h3>
-        <p class="modal-tip">确认删除该曲目？删除后拍摄页选曲将不再展示。</p>
+        <h3>{{ $t('删除曲目', 'Delete track') }}</h3>
+        <p class="modal-tip">
+          {{ $t('确认删除该曲目？删除后拍摄页选曲将不再展示。', 'Delete this track? It will no longer appear in the recorder song picker.') }}
+        </p>
         <div class="modal-actions">
           <button class="btn btn-plain btn-sm" :disabled="deleting" @click="cancelDelete">
-            取消
+            {{ $t('取消', 'Cancel') }}
           </button>
           <button class="btn btn-sm btn-danger" :disabled="deleting" @click="confirmDelete">
-            {{ deleting ? '删除中…' : '确认删除' }}
+            {{ deleting ? $t('删除中…', 'Deleting…') : $t('确认删除', 'Confirm delete') }}
           </button>
         </div>
       </div>

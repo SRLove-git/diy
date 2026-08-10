@@ -2,5 +2,9 @@ import { createApp } from 'vue'
 import './style.css'
 import App from './App.vue'
 import router from './router'
+import { t } from './i18n'
 
-createApp(App).use(router).mount('#app')
+const app = createApp(App)
+app.config.globalProperties.$t = t
+app.use(router)
+app.mount('#app')

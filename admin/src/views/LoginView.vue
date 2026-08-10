@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import http from '../api/http'
 import { auth } from '../stores/auth'
+import { i18n, t } from '../i18n'
 
 const router = useRouter()
 const account = ref('')
@@ -12,11 +13,11 @@ const error = ref('')
 
 async function login() {
   if (!account.value.trim()) {
-    error.value = '请输入用户名或邮箱'
+    error.value = t('请输入用户名或邮箱', 'Enter your username or email')
     return
   }
   if (password.value.length < 6) {
-    error.value = '密码至少 6 位'
+    error.value = t('密码至少 6 位', 'Password must be at least 6 characters')
     return
   }
   loading.value = true
@@ -29,7 +30,8 @@ async function login() {
     auth.setToken(data.accessToken)
     router.push('/stores')
   } catch (e: any) {
-    error.value = e.response?.data?.message || '登录失败'
+    error.value =
+      e.response?.data?.message || t('登录失败', 'Login failed')
   } finally {
     loading.value = false
   }
@@ -38,27 +40,32 @@ async function login() {
 
 <template>
   <div class="login-wrap">
+    <button class="lang-toggle" @click="i18n.toggle()">
+      {{ i18n.lang === 'zh' ? '中文' : 'English' }}
+    </button>
     <form class="login-card" @submit.prevent="login">
-      <h1>Think Origin · 管理后台</h1>
+      <h1>{{ $t('Think Origin · 管理后台', 'Think Origin · Admin') }}</h1>
       <input
         v-model="account"
         type="text"
-        placeholder="用户名 / 邮箱"
+        :placeholder="$t('用户名 / 邮箱', 'Username / Email')"
         maxlength="255"
         autocomplete="username"
       />
       <input
         v-model="password"
         type="password"
-        placeholder="密码"
+        :placeholder="$t('密码', 'Password')"
         maxlength="32"
         autocomplete="current-password"
       />
       <p v-if="error" class="error">{{ error }}</p>
       <button type="submit" :disabled="loading">
-        {{ loading ? '登录中…' : '登录' }}
+        {{ loading ? $t('登录中…', 'Logging in…') : $t('登录', 'Log In') }}
       </button>
-      <p class="hint">开发环境管理员：admin / admin123456</p>
+      <p class="hint">
+        {{ $t('开发环境管理员：admin / admin123456', 'Dev admin: admin / admin123456') }}
+      </p>
     </form>
   </div>
 </template>
@@ -70,6 +77,19 @@ async function login() {
   align-items: center;
   justify-content: center;
   background: #f7f5f2;
+}
+.lang-toggle {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid #eceae6;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }
 .login-card {
   width: 360px;

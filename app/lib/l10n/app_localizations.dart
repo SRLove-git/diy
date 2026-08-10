@@ -1640,6 +1640,72 @@ abstract class AppLocalizations {
   /// **'确认预约'**
   String get storeConfirmOrder;
 
+  /// No description provided for @storePricePerHourShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'{price}/时·人'**
+  String storePricePerHourShort(String price);
+
+  /// No description provided for @storeMinHours.
+  ///
+  /// In zh, this message translates to:
+  /// **'1 小时起'**
+  String get storeMinHours;
+
+  /// No description provided for @storeUnitPerPerson.
+  ///
+  /// In zh, this message translates to:
+  /// **'{price}/人'**
+  String storeUnitPerPerson(String price);
+
+  /// No description provided for @storeTableInRecommendation.
+  ///
+  /// In zh, this message translates to:
+  /// **'该桌已在推荐组合中'**
+  String get storeTableInRecommendation;
+
+  /// No description provided for @storeKeepRecommendation.
+  ///
+  /// In zh, this message translates to:
+  /// **'请保持推荐规格（可切换同规格桌位编号）'**
+  String get storeKeepRecommendation;
+
+  /// No description provided for @storeTableCapacity.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count}人'**
+  String storeTableCapacity(int count);
+
+  /// No description provided for @storeTableFull.
+  ///
+  /// In zh, this message translates to:
+  /// **'满'**
+  String get storeTableFull;
+
+  /// No description provided for @storeNoTableCombo.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前时段没有合适的桌位组合，请调整时段或联系门店'**
+  String get storeNoTableCombo;
+
+  /// No description provided for @storeRecommendedTables.
+  ///
+  /// In zh, this message translates to:
+  /// **'推荐桌位：{names} · 可容纳 {capacity} 人'**
+  String storeRecommendedTables(String names, int capacity);
+
+  /// No description provided for @storeCapacityInsufficient.
+  ///
+  /// In zh, this message translates to:
+  /// **'容量不足，请再选桌位'**
+  String get storeCapacityInsufficient;
+
+  /// No description provided for @storeLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载失败，请确认后端服务已启动'**
+  String get storeLoadFailed;
+
   /// No description provided for @appointmentMyTitle.
   ///
   /// In zh, this message translates to:

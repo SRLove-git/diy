@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { userApi, type User } from '../api/users'
+import { i18n, t } from '../i18n'
 
 const users = ref<User[]>([])
 const total = ref(0)
@@ -25,7 +26,7 @@ async function load() {
     users.value = data[0]
     total.value = data[1]
   } catch (e: any) {
-    error.value = e?.response?.data?.message ?? '加载失败'
+    error.value = e?.response?.data?.message ?? t('加载失败', 'Failed to load')
   } finally {
     loading.value = false
   }
@@ -57,7 +58,7 @@ async function confirmBan() {
     banTarget.value = null
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   }
 }
 
@@ -75,10 +76,10 @@ async function confirmDeleteUser() {
   try {
     await userApi.remove(deleteTarget.value.id)
     deleteTarget.value = null
-    alert('用户已删除')
+    alert(t('用户已删除', 'User deleted'))
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   } finally {
     deleting.value = false
   }
@@ -87,7 +88,7 @@ async function confirmDeleteUser() {
 function formatTime(t: string): string {
   try {
     const d = new Date(t)
-    return d.toLocaleString('zh-CN')
+    return d.toLocaleString(i18n.lang === 'en' ? 'en-US' : 'zh-CN')
   } catch {
     return t
   }
@@ -99,35 +100,37 @@ onMounted(load)
 <template>
   <div class="users">
     <div class="toolbar">
-      <h2>用户管理</h2>
+      <h2>{{ $t('用户管理', 'Users') }}</h2>
       <div class="filters">
         <input
           v-model="search"
           type="text"
-          placeholder="搜索用户名 / 邮箱 / 昵称"
+          :placeholder="$t('搜索用户名 / 邮箱 / 昵称', 'Search username / email / nickname')"
           @keyup.enter="doSearch"
         />
-        <button class="btn" @click="doSearch">搜索</button>
-        <button class="btn" @click="load">刷新</button>
+        <button class="btn" @click="doSearch">{{ $t('搜索', 'Search') }}</button>
+        <button class="btn" @click="load">{{ $t('刷新', 'Refresh') }}</button>
       </div>
     </div>
 
-    <div v-if="loading" class="state">加载中…</div>
+    <div v-if="loading" class="state">{{ $t('加载中…', 'Loading…') }}</div>
     <div v-else-if="error" class="state error">{{ error }}</div>
-    <div v-else-if="users.length === 0" class="state">暂无用户数据</div>
+    <div v-else-if="users.length === 0" class="state">
+      {{ $t('暂无用户数据', 'No users yet') }}
+    </div>
 
     <table v-else class="table">
       <thead>
         <tr>
           <th style="width:60px">ID</th>
-          <th style="width:50px">头像</th>
-          <th>用户名</th>
-          <th>邮箱</th>
-          <th>昵称</th>
-          <th style="width:80px">角色</th>
-          <th style="width:90px">状态</th>
-          <th style="width:150px">注册时间</th>
-          <th style="width:120px">操作</th>
+          <th style="width:50px">{{ $t('头像', 'Avatar') }}</th>
+          <th>{{ $t('用户名', 'Username') }}</th>
+          <th>{{ $t('邮箱', 'Email') }}</th>
+          <th>{{ $t('昵称', 'Nickname') }}</th>
+          <th style="width:80px">{{ $t('角色', 'Role') }}</th>
+          <th style="width:90px">{{ $t('状态', 'Status') }}</th>
+          <th style="width:150px">{{ $t('注册时间', 'Registered') }}</th>
+          <th style="width:120px">{{ $t('操作', 'Actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -138,7 +141,7 @@ onMounted(load)
               v-if="u.avatar"
               class="avatar"
               :src="u.avatar"
-              alt="头像"
+              :alt="$t('头像', 'Avatar')"
               @error="($event.target as HTMLImageElement).style.display = 'none'"
             />
             <span v-else class="muted">-</span>
@@ -148,12 +151,12 @@ onMounted(load)
           <td>{{ u.nickname || '-' }}</td>
           <td>
             <span class="tag" :class="u.role === 'admin' ? 'tag-role-admin' : 'tag-role-user'">
-              {{ u.role === 'admin' ? '管理员' : '用户' }}
+              {{ u.role === 'admin' ? $t('管理员', 'Admin') : $t('用户', 'User') }}
             </span>
           </td>
           <td>
             <span class="tag" :class="u.isBanned ? 'tag-banned' : 'tag-normal'">
-              {{ u.isBanned ? '已封禁' : '正常' }}
+              {{ u.isBanned ? $t('已封禁', 'Banned') : $t('正常', 'Normal') }}
             </span>
           </td>
           <td>{{ formatTime(u.createdAt) }}</td>
@@ -163,13 +166,13 @@ onMounted(load)
               :class="u.isBanned ? 'btn-success' : 'btn-danger'"
               @click="openBan(u)"
             >
-              {{ u.isBanned ? '解封' : '封禁' }}
+              {{ u.isBanned ? $t('解封', 'Unban') : $t('封禁', 'Ban') }}
             </button>
             <button
               class="btn btn-sm btn-danger"
               @click="openDeleteUser(u)"
             >
-              删除用户
+              {{ $t('删除用户', 'Delete user') }}
             </button>
           </td>
         </tr>
@@ -178,25 +181,37 @@ onMounted(load)
 
     <!-- 分页 -->
     <div v-if="!loading && users.length > 0" class="pagination">
-      <button class="btn btn-sm" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
-      <span class="page-info">{{ page }} / {{ totalPages }}（共 {{ total }} 条）</span>
-      <button class="btn btn-sm" :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
+      <button class="btn btn-sm" :disabled="page <= 1" @click="goPage(page - 1)">
+        {{ $t('上一页', 'Prev') }}
+      </button>
+      <span class="page-info">
+        {{ $t('第 {p} / {t} 页（共 {n} 条）', 'Page {p} / {t} ({n} total)', { p: page, t: totalPages, n: total }) }}
+      </span>
+      <button class="btn btn-sm" :disabled="page >= totalPages" @click="goPage(page + 1)">
+        {{ $t('下一页', 'Next') }}
+      </button>
     </div>
 
     <!-- 封禁/解封确认弹窗 -->
     <div v-if="banTarget !== null" class="modal-overlay" @click.self="cancelBan">
       <div class="modal">
-        <h3>{{ banTarget.isBanned ? '解封用户' : '封禁用户' }}</h3>
+        <h3>
+          {{ banTarget.isBanned ? $t('解封用户', 'Unban user') : $t('封禁用户', 'Ban user') }}
+        </h3>
         <p class="modal-desc">
-          {{ banTarget.isBanned ? '确认解封该用户？解封后该用户可正常使用平台。' : '确认封禁该用户？封禁后该用户将无法使用平台功能。' }}
+          {{
+            banTarget.isBanned
+              ? $t('确认解封该用户？解封后该用户可正常使用平台。', 'Unban this user? They can use the platform normally after unbanning.')
+              : $t('确认封禁该用户？封禁后该用户将无法使用平台功能。', 'Ban this user? They will not be able to use the platform after being banned.')
+          }}
         </p>
         <p class="modal-user">
-          {{ banTarget.nickname || banTarget.username || `用户 #${banTarget.id}` }}
+          {{ banTarget.nickname || banTarget.username || $t('用户 #{id}', 'User #{id}', { id: banTarget.id }) }}
         </p>
         <div class="modal-actions">
-          <button class="btn btn-sm" @click="cancelBan">取消</button>
+          <button class="btn btn-sm" @click="cancelBan">{{ $t('取消', 'Cancel') }}</button>
           <button class="btn btn-sm btn-danger" @click="confirmBan">
-            {{ banTarget.isBanned ? '确认解封' : '确认封禁' }}
+            {{ banTarget.isBanned ? $t('确认解封', 'Confirm unban') : $t('确认封禁', 'Confirm ban') }}
           </button>
         </div>
       </div>
@@ -205,21 +220,21 @@ onMounted(load)
     <!-- 删除用户确认弹窗 -->
     <div v-if="deleteTarget !== null" class="modal-overlay" @click.self="cancelDeleteUser">
       <div class="modal">
-        <h3>删除用户</h3>
+        <h3>{{ $t('删除用户', 'Delete user') }}</h3>
         <p class="modal-desc">
-          确认删除该用户账号？其作品、互动、关注、会员、预约、聊天等全部关联数据将一并删除，且不可恢复。
+          {{ $t('确认删除该用户账号？其作品、互动、关注、会员、预约、聊天等全部关联数据将一并删除，且不可恢复。', 'Delete this account? All related data (posts, interactions, follows, membership, bookings, chats) will be deleted permanently.') }}
         </p>
         <p class="modal-user">
-          {{ deleteTarget.nickname || deleteTarget.username || `用户 #${deleteTarget.id}` }}
+          {{ deleteTarget.nickname || deleteTarget.username || $t('用户 #{id}', 'User #{id}', { id: deleteTarget.id }) }}
         </p>
         <div class="modal-actions">
-          <button class="btn btn-sm" @click="cancelDeleteUser">取消</button>
+          <button class="btn btn-sm" @click="cancelDeleteUser">{{ $t('取消', 'Cancel') }}</button>
           <button
             class="btn btn-sm btn-danger"
             :disabled="deleting"
             @click="confirmDeleteUser"
           >
-            {{ deleting ? '删除中…' : '确认删除' }}
+            {{ deleting ? $t('删除中…', 'Deleting…') : $t('确认删除', 'Confirm delete') }}
           </button>
         </div>
       </div>

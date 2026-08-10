@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { auth } from '../stores/auth'
+import { i18n } from '../i18n'
 
 const router = useRouter()
+const route = useRoute()
 
 function logout() {
   auth.clear()
@@ -13,26 +15,38 @@ function logout() {
 <template>
   <div class="layout">
     <aside>
-      <div class="logo">Think Origin · 后台</div>
+      <div class="logo">{{ $t('Think Origin · 后台', 'Think Origin · Admin') }}</div>
       <nav>
-        <RouterLink to="/dashboard">数据看板</RouterLink>
-        <RouterLink to="/stores">门店管理</RouterLink>
-        <RouterLink to="/activities">活动管理</RouterLink>
-        <RouterLink to="/orders">订单管理</RouterLink>
+        <RouterLink to="/dashboard">{{ $t('数据看板', 'Dashboard') }}</RouterLink>
+        <RouterLink to="/stores">{{ $t('门店管理', 'Stores') }}</RouterLink>
+        <RouterLink to="/activities">{{ $t('活动管理', 'Activities') }}</RouterLink>
+        <RouterLink to="/orders">{{ $t('订单管理', 'Orders') }}</RouterLink>
         <!-- 社区 / Reels 前期暂不开放，管理入口先隐藏 -->
-        <!-- <RouterLink to="/posts">社区管理</RouterLink> -->
-        <!-- <RouterLink to="/videos">视频管理</RouterLink> -->
+        <!-- <RouterLink to="/posts">{{ $t('社区管理', 'Posts') }}</RouterLink> -->
+        <!-- <RouterLink to="/videos">{{ $t('视频管理', 'Videos') }}</RouterLink> -->
         <!-- Reels 前期暂不开放，曲库管理入口先隐藏 -->
-        <!-- <RouterLink to="/music">曲库管理</RouterLink> -->
-        <RouterLink to="/users">用户管理</RouterLink>
-        <RouterLink to="/members">会员运营</RouterLink>
-        <RouterLink to="/notifications">通知管理</RouterLink>
+        <!-- <RouterLink to="/music">{{ $t('曲库管理', 'Music') }}</RouterLink> -->
+        <RouterLink to="/users">{{ $t('用户管理', 'Users') }}</RouterLink>
+        <RouterLink to="/members">{{ $t('会员运营', 'Members') }}</RouterLink>
+        <RouterLink to="/notifications">{{ $t('通知管理', 'Notifications') }}</RouterLink>
       </nav>
     </aside>
     <main>
       <header>
-        <span>{{ $route.meta.title || '后台管理' }}</span>
-        <button @click="logout">退出登录</button>
+        <span>
+          {{
+            $t(
+              String(route.meta.title || '后台管理'),
+              String(route.meta.titleEn || 'Admin'),
+            )
+          }}
+        </span>
+        <div class="header-actions">
+          <button class="lang-btn" @click="i18n.toggle()">
+            {{ i18n.lang === 'zh' ? '中文' : 'English' }}
+          </button>
+          <button @click="logout">{{ $t('退出登录', 'Log out') }}</button>
+        </div>
       </header>
       <div class="content">
         <RouterView />
@@ -90,6 +104,14 @@ header button {
   border-radius: 8px;
   padding: 6px 14px;
   cursor: pointer;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lang-btn {
+  font-weight: 600;
 }
 .content {
   padding: 20px;

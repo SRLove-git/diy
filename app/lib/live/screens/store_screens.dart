@@ -1,6 +1,7 @@
 // import 'dart:math' as math; // 地图相关：距离计算用，先注释
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' as intl;
 
 import '../../api/api_client.dart';
 import '../../api/models.dart';
@@ -39,7 +40,7 @@ class _StoreListScreenState extends State<StoreListScreen> {
             return Column(
               children: [
                 LiveAppBar(title: context.l10n.storeListTitle),
-                Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
+                Expanded(child: ErrorView(message: _msg(context, snap.error), onRetry: _retry)),
               ],
             );
           }
@@ -190,7 +191,7 @@ class _StoreCard extends StatelessWidget {
                       // ),
                       const Spacer(),
                       Text(
-                        '\$${fmtPrice(store.price)}/时·人',
+                        context.l10n.storePricePerHourShort('\$${fmtPrice(store.price)}'),
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -458,7 +459,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
             return Column(
               children: [
                 LiveAppBar(title: l10n.storeDetailTitle),
-                Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
+                Expanded(child: ErrorView(message: _msg(context, snap.error), onRetry: _retry)),
               ],
             );
           }
@@ -686,7 +687,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Text(
-            '$_hours 小时',
+            context.l10n.bookingTypeHours(_hours),
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -706,7 +707,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
         ),
         const Spacer(),
         Text(
-          '1 小时起',
+          context.l10n.storeMinHours,
           style: const TextStyle(
             fontSize: 11,
             color: LiveColors.textTertiary,
@@ -823,7 +824,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
           ),
           const SizedBox(width: 10),
           Text(
-            '\$${fmtPrice(unit)}/人',
+            context.l10n.storeUnitPerPerson('\$${fmtPrice(unit)}'),
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
@@ -915,7 +916,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                     ),
                   ),
                   Text(
-                    '${date.month}月',
+                    intl.DateFormat.MMM(context.l10n.localeName).format(date),
                     style: TextStyle(
                       fontSize: 10,
                       color: sel ? Colors.white70 : LiveColors.textTertiary,
@@ -1171,7 +1172,7 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  '$_bookingLabel · 扫码即开始计时，结束时间固定不顺延',
+                                  '$_bookingLabel · ${l10n.storeStartOnScan}',
                                   style: const TextStyle(fontSize: 11.6, color: LiveColors.textTertiary),
                                 ),
                               ],
@@ -1220,7 +1221,7 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                                           if (sel) {
                                             showLiveSnack(
                                               context,
-                                              '该桌已在推荐组合中',
+                                              l10n.storeTableInRecommendation,
                                             );
                                             return;
                                           }
@@ -1233,7 +1234,7 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                                           if (same.isEmpty) {
                                             showLiveSnack(
                                               context,
-                                              '请保持推荐规格（可切换同规格桌位编号）',
+                                              l10n.storeKeepRecommendation,
                                             );
                                             return;
                                           }
@@ -1270,7 +1271,9 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          free ? '${t.capacity}人' : '满',
+                                          free
+                                              ? l10n.storeTableCapacity(t.capacity)
+                                              : l10n.storeTableFull,
                                           style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w600,
@@ -1289,8 +1292,8 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                             ),
                           if (_selected.isEmpty && _tables.isNotEmpty) ...[
                             const SizedBox(height: 14),
-                            const Text(
-                              '当前时段没有合适的桌位组合，请调整时段或联系门店',
+                            Text(
+                              l10n.storeNoTableCombo,
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 12,
@@ -1352,7 +1355,12 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      '推荐桌位：${_selectedTables.map((t) => t.name).join(' + ')} · 可容纳 $_selectedCapacity 人',
+                                      l10n.storeRecommendedTables(
+                                        _selectedTables
+                                            .map((t) => t.name)
+                                            .join(' + '),
+                                        _selectedCapacity,
+                                      ),
                                       style: const TextStyle(
                                         fontSize: 12,
                                         color: LiveColors.textSecondary,
@@ -1360,8 +1368,8 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                                     ),
                                   ),
                                   if (!_capacityOk)
-                                    const Text(
-                                      '容量不足，请再选桌位',
+                                    Text(
+                                      l10n.storeCapacityInsufficient,
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
@@ -1577,5 +1585,5 @@ String _addHours(String start, int hours) {
   return _fmtMin(_minutes(start) + hours * 60);
 }
 
-String _msg(Object? e) =>
-    e is ApiException ? e.message : '加载失败，请确认后端服务已启动';
+String _msg(BuildContext context, Object? e) =>
+    e is ApiException ? e.message : context.l10n.storeLoadFailed;

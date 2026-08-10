@@ -842,6 +842,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String get storeConfirmOrder => 'Confirm Booking';
 
   @override
+  String storePricePerHourShort(String price) {
+    return '$price/hr·person';
+  }
+
+  @override
+  String get storeMinHours => 'From 1 hour';
+
+  @override
+  String storeUnitPerPerson(String price) {
+    return '$price/person';
+  }
+
+  @override
+  String get storeTableInRecommendation =>
+      'This table is already in the recommended combination';
+
+  @override
+  String get storeKeepRecommendation =>
+      'Keep the recommended combination (you can switch to another table of the same size)';
+
+  @override
+  String storeTableCapacity(int count) {
+    return '$count people';
+  }
+
+  @override
+  String get storeTableFull => 'Full';
+
+  @override
+  String get storeNoTableCombo =>
+      'No suitable table combination for this time slot; please adjust the time or contact the store';
+
+  @override
+  String storeRecommendedTables(String names, int capacity) {
+    return 'Recommended: $names · seats $capacity';
+  }
+
+  @override
+  String get storeCapacityInsufficient =>
+      'Not enough capacity, please reselect tables';
+
+  @override
+  String get storeLoadFailed =>
+      'Failed to load, please make sure the backend service is running';
+
+  @override
   String get appointmentMyTitle => 'My Appointments';
 
   @override

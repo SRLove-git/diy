@@ -44,18 +44,18 @@ export class SeedIdolBeadsData1786346100000 implements MigrationInterface {
         )
     `);
 
-    // 6 小时畅玩套餐
+    // 6 小时畅玩套餐（用户端按英语展示：6-Hour Fun Package）
     await queryRunner.query(`
       INSERT INTO \`store_packages\`
         (\`storeId\`, \`name\`, \`hours\`, \`price\`, \`memberPrice\`, \`groupPrice\`,
          \`enabled\`, \`sortOrder\`, \`createdAt\`, \`updatedAt\`)
-      SELECT s.\`id\`, '6小时畅玩套餐', 6, 39.9, 32, 36, 1, 1, NOW(6), NOW(6)
+      SELECT s.\`id\`, '6-Hour Fun Package', 6, 39.9, 32, 36, 1, 1, NOW(6), NOW(6)
       FROM \`stores\` s
       WHERE s.\`name\` = 'IDOL BEADS'
         AND NOT EXISTS (
           SELECT 1 FROM \`store_packages\` p
           JOIN \`stores\` s2 ON p.\`storeId\` = s2.\`id\`
-          WHERE s2.\`name\` = 'IDOL BEADS' AND p.\`name\` = '6小时畅玩套餐'
+          WHERE s2.\`name\` = 'IDOL BEADS' AND p.\`name\` = '6-Hour Fun Package'
         )
     `);
 
@@ -97,7 +97,7 @@ export class SeedIdolBeadsData1786346100000 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `DELETE FROM \`store_packages\` WHERE \`name\` = '6小时畅玩套餐'`,
+      `DELETE FROM \`store_packages\` WHERE \`name\` = '6-Hour Fun Package'`,
     );
     await queryRunner.query(
       `DELETE FROM \`store_tables\` WHERE \`storeId\` IN (SELECT \`id\` FROM \`stores\` WHERE \`name\` = 'IDOL BEADS')`,

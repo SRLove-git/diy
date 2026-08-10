@@ -6,6 +6,7 @@ import {
   type StoreTable,
   type StorePackage,
 } from '../api/stores'
+import { t } from '../i18n'
 
 const stores = ref<Store[]>([])
 const loading = ref(false)
@@ -45,7 +46,7 @@ async function load() {
     const { data } = await storeApi.list()
     stores.value = data
   } catch (e: any) {
-    error.value = e?.response?.data?.message ?? '加载失败'
+    error.value = e?.response?.data?.message ?? t('加载失败', 'Failed to load')
   } finally {
     loading.value = false
   }
@@ -108,7 +109,10 @@ async function saveStore() {
     showForm.value = false
     await load()
   } catch (e: any) {
-    err.value = e.response?.data?.message?.join?.(',') || e.response?.data?.message || '保存失败'
+    err.value =
+      e.response?.data?.message?.join?.(',') ||
+      e.response?.data?.message ||
+      t('保存失败', 'Save failed')
   } finally {
     saving.value = false
   }
@@ -119,17 +123,26 @@ async function toggleStore(s: Store) {
     await storeApi.update(s.id, { enabled: !s.enabled })
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   }
 }
 
 async function removeStore(s: Store) {
-  if (!confirm(`确认删除门店「${s.name}」？其桌位和时段将一并删除。`)) return
+  if (
+    !confirm(
+      t(
+        '确认删除门店「{name}」？其桌位和套餐将一并删除。',
+        'Delete store "{name}"? Its tables and packages will also be deleted.',
+        { name: s.name },
+      ),
+    )
+  )
+    return
   try {
     await storeApi.remove(s.id)
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '删除失败')
+    alert(e?.response?.data?.message ?? t('删除失败', 'Delete failed'))
   }
 }
 
@@ -149,7 +162,7 @@ async function addTable() {
     tables.value.push(data)
     newTable.value = { name: '', capacity: 2, enabled: true }
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '添加失败')
+    alert(e?.response?.data?.message ?? t('添加失败', 'Add failed'))
   }
 }
 
@@ -161,16 +174,16 @@ function editTable(t: StoreTable) {
   }
 }
 
-async function saveTable(t: StoreTable) {
-  const draft = tableDrafts.value[t.id]
+async function saveTable(table: StoreTable) {
+  const draft = tableDrafts.value[table.id]
   if (!draft || !draft.name) return
   try {
-    const { data } = await storeApi.updateTable(t.id, draft)
-    const idx = tables.value.findIndex((x) => x.id === t.id)
+    const { data } = await storeApi.updateTable(table.id, draft)
+    const idx = tables.value.findIndex((x) => x.id === table.id)
     if (idx >= 0) tables.value[idx] = data
-    delete tableDrafts.value[t.id]
+    delete tableDrafts.value[table.id]
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '保存失败')
+    alert(e?.response?.data?.message ?? t('保存失败', 'Save failed'))
   }
 }
 
@@ -178,13 +191,18 @@ function cancelTableEdit(id: number) {
   delete tableDrafts.value[id]
 }
 
-async function removeTable(t: StoreTable) {
-  if (!confirm(`确认删除桌位「${t.name}」？`)) return
+async function removeTable(table: StoreTable) {
+  if (
+    !confirm(
+      t('确认删除桌位「{name}」？', 'Delete table "{name}"?', { name: table.name }),
+    )
+  )
+    return
   try {
-    await storeApi.removeTable(t.id)
-    tables.value = tables.value.filter((x) => x.id !== t.id)
+    await storeApi.removeTable(table.id)
+    tables.value = tables.value.filter((x) => x.id !== table.id)
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '删除失败')
+    alert(e?.response?.data?.message ?? t('删除失败', 'Delete failed'))
   }
 }
 
@@ -261,7 +279,7 @@ async function addPackage() {
     packages.value.push(data)
     newPackage.value = { name: '', hours: 5, price: 0, memberPrice: null, groupPrice: null, enabled: true }
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '添加失败')
+    alert(e?.response?.data?.message ?? t('添加失败', 'Add failed'))
   }
 }
 
@@ -285,7 +303,7 @@ async function savePackage(p: StorePackage) {
     if (idx >= 0) packages.value[idx] = data
     delete packageDrafts.value[p.id]
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '保存失败')
+    alert(e?.response?.data?.message ?? t('保存失败', 'Save failed'))
   }
 }
 
@@ -294,12 +312,15 @@ function cancelPackageEdit(id: number) {
 }
 
 async function removePackage(p: StorePackage) {
-  if (!confirm(`确认删除套餐「${p.name}」？`)) return
+  if (
+    !confirm(t('确认删除套餐「{name}」？', 'Delete package "{name}"?', { name: p.name }))
+  )
+    return
   try {
     await storeApi.removePackage(p.id)
     packages.value = packages.value.filter((x) => x.id !== p.id)
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '删除失败')
+    alert(e?.response?.data?.message ?? t('删除失败', 'Delete failed'))
   }
 }
 
@@ -309,19 +330,24 @@ onMounted(load)
 <template>
   <div class="stores">
     <div class="toolbar">
-      <h2>门店管理</h2>
-      <button class="primary" @click="openCreate">新增门店</button>
+      <h2>{{ $t('门店管理', 'Stores') }}</h2>
+      <button class="primary" @click="openCreate">{{ $t('新增门店', 'New store') }}</button>
     </div>
 
-    <div v-if="loading" class="state">加载中…</div>
+    <div v-if="loading" class="state">{{ $t('加载中…', 'Loading…') }}</div>
     <div v-else-if="error" class="state error">{{ error }}</div>
-    <div v-else-if="stores.length === 0" class="empty">暂无门店，点击「新增门店」开始配置</div>
+    <div v-else-if="stores.length === 0" class="empty">
+      {{ $t('暂无门店，点击「新增门店」开始配置', 'No stores yet. Click "New store" to configure one.') }}
+    </div>
 
     <table v-else class="grid">
       <thead>
         <tr>
-          <th>ID</th><th>名称</th><th>地址</th><th>电话</th><th>营业时间</th>
-          <th>评分</th><th>桌位</th><th>套餐</th><th>状态</th><th>操作</th>
+          <th>ID</th><th>{{ $t('名称', 'Name') }}</th><th>{{ $t('地址', 'Address') }}</th>
+          <th>{{ $t('电话', 'Phone') }}</th><th>{{ $t('营业时间', 'Hours') }}</th>
+          <th>{{ $t('评分', 'Rating') }}</th><th>{{ $t('桌位', 'Tables') }}</th>
+          <th>{{ $t('套餐', 'Packages') }}</th><th>{{ $t('状态', 'Status') }}</th>
+          <th>{{ $t('操作', 'Actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -336,17 +362,17 @@ onMounted(load)
           <td>{{ s.packages?.length ?? 0 }}</td>
           <td>
             <span class="tag" :class="s.enabled ? 'tag-on' : 'tag-off'">
-              {{ s.enabled ? '营业中' : '已停用' }}
+              {{ s.enabled ? $t('营业中', 'Open') : $t('已停用', 'Disabled') }}
             </span>
           </td>
           <td class="ops">
-            <button @click="openEdit(s)">编辑</button>
-            <button @click="openTableManager(s)">桌位</button>
-            <button @click="openPackageManager(s)">套餐</button>
+            <button @click="openEdit(s)">{{ $t('编辑', 'Edit') }}</button>
+            <button @click="openTableManager(s)">{{ $t('桌位', 'Tables') }}</button>
+            <button @click="openPackageManager(s)">{{ $t('套餐', 'Packages') }}</button>
             <button :class="s.enabled ? '' : 'primary'" @click="toggleStore(s)">
-              {{ s.enabled ? '停用' : '启用' }}
+              {{ s.enabled ? $t('停用', 'Disable') : $t('启用', 'Enable') }}
             </button>
-            <button class="danger" @click="removeStore(s)">删除</button>
+            <button class="danger" @click="removeStore(s)">{{ $t('删除', 'Delete') }}</button>
           </td>
         </tr>
       </tbody>
@@ -355,36 +381,38 @@ onMounted(load)
     <!-- 门店新增/编辑 -->
     <div v-if="showForm" class="mask">
       <div class="dialog">
-        <h3>{{ isEdit ? '编辑门店' : '新增门店' }}</h3>
-        <label>门店名称<input v-model="form.name" /></label>
-        <label>地址<input v-model="form.address" /></label>
+        <h3>{{ isEdit ? $t('编辑门店', 'Edit store') : $t('新增门店', 'New store') }}</h3>
+        <label>{{ $t('门店名称', 'Store name') }}<input v-model="form.name" /></label>
+        <label>{{ $t('地址', 'Address') }}<input v-model="form.address" /></label>
         <div class="row">
-          <label>门市价（$/人）<input v-model.number="form.price" type="number" min="0" step="0.1" /></label>
-          <label>会员价（$/人，0 = 会员免费）<input v-model.number="form.memberPrice" type="number" min="0" step="0.1" /></label>
-          <label>多人同行价（$/人）<input v-model.number="form.groupPrice" type="number" min="0" step="0.1" /></label>
+          <label>{{ $t('门市价（$/人）', 'Regular price ($/person)') }}<input v-model.number="form.price" type="number" min="0" step="0.1" /></label>
+          <label>{{ $t('会员价（$/人，0 = 会员免费）', 'Member price ($/person, 0 = free)') }}<input v-model.number="form.memberPrice" type="number" min="0" step="0.1" /></label>
+          <label>{{ $t('多人同行价（$/人）', 'Group price ($/person)') }}<input v-model.number="form.groupPrice" type="number" min="0" step="0.1" /></label>
         </div>
         <label>
-          全天不限时价（$/人，留空 = 按营业时长 × 小时价）
+          {{ $t('全天不限时价（$/人，留空 = 按营业时长 × 小时价）', 'All-day price ($/person, empty = opening hours × hourly rate)') }}
           <input v-model.number="form.allDayPrice" type="number" min="0" step="0.1" />
         </label>
         <div class="row">
-          <label>全天会员价（$/人）<input v-model.number="form.allDayMemberPrice" type="number" min="0" step="0.1" /></label>
-          <label>全天多人价（$/人）<input v-model.number="form.allDayGroupPrice" type="number" min="0" step="0.1" /></label>
+          <label>{{ $t('全天会员价（$/人）', 'All-day member price ($/person)') }}<input v-model.number="form.allDayMemberPrice" type="number" min="0" step="0.1" /></label>
+          <label>{{ $t('全天多人价（$/人）', 'All-day group price ($/person)') }}<input v-model.number="form.allDayGroupPrice" type="number" min="0" step="0.1" /></label>
         </div>
         <label>
-          周末/节假日加价（%，0 = 不加价）
+          {{ $t('周末/节假日加价（%，0 = 不加价）', 'Weekend/holiday surcharge (%, 0 = none)') }}
           <input v-model.number="form.weekendSurchargePercent" type="number" min="0" max="100" />
         </label>
-        <label>营业时间<input v-model="form.businessHours" placeholder="如 10:00-22:00" /></label>
-        <label>联系电话<input v-model="form.phone" /></label>
+        <label>{{ $t('营业时间', 'Business hours') }}<input v-model="form.businessHours" :placeholder="$t('如 10:00-22:00', 'e.g. 10:00-22:00')" /></label>
+        <label>{{ $t('联系电话', 'Phone') }}<input v-model="form.phone" /></label>
         <label class="check-label">
           <input v-model="form.enabled" type="checkbox" />
-          <span>门店营业中（停用后用户端不再展示）</span>
+          <span>{{ $t('门店营业中（停用后用户端不再展示）', 'Store is open (disabled stores are hidden in the app)') }}</span>
         </label>
         <p v-if="err" class="error">{{ err }}</p>
         <div class="actions">
-          <button @click="showForm = false">取消</button>
-          <button class="primary" :disabled="saving" @click="saveStore">保存</button>
+          <button @click="showForm = false">{{ $t('取消', 'Cancel') }}</button>
+          <button class="primary" :disabled="saving" @click="saveStore">
+            {{ $t('保存', 'Save') }}
+          </button>
         </div>
       </div>
     </div>
@@ -392,18 +420,25 @@ onMounted(load)
     <!-- 桌位管理 -->
     <div v-if="showTables" class="mask">
       <div class="dialog wide">
-        <h3>桌位配置 · {{ currentStore?.name }}</h3>
+        <h3>{{ $t('桌位配置 · {name}', 'Table setup · {name}', { name: currentStore?.name ?? '' }) }}</h3>
         <table class="grid">
-          <thead><tr><th>桌位</th><th>容纳人数</th><th>状态</th><th>操作</th></tr></thead>
+          <thead>
+            <tr>
+              <th>{{ $t('桌位', 'Table') }}</th>
+              <th>{{ $t('容纳人数', 'Capacity') }}</th>
+              <th>{{ $t('状态', 'Status') }}</th>
+              <th>{{ $t('操作', 'Actions') }}</th>
+            </tr>
+          </thead>
           <tbody>
             <tr v-for="t in tables" :key="t.id">
               <template v-if="tableDrafts[t.id]">
                 <td><input v-model="tableDrafts[t.id].name" /></td>
                 <td><input v-model.number="tableDrafts[t.id].capacity" type="number" min="1" /></td>
-                <td><label><input v-model="tableDrafts[t.id].enabled" type="checkbox" /> 启用</label></td>
+                <td><label><input v-model="tableDrafts[t.id].enabled" type="checkbox" /> {{ $t('启用', 'Enabled') }}</label></td>
                 <td class="ops">
-                  <button class="primary" @click="saveTable(t)">保存</button>
-                  <button @click="cancelTableEdit(t.id)">取消</button>
+                  <button class="primary" @click="saveTable(t)">{{ $t('保存', 'Save') }}</button>
+                  <button @click="cancelTableEdit(t.id)">{{ $t('取消', 'Cancel') }}</button>
                 </td>
               </template>
               <template v-else>
@@ -411,26 +446,28 @@ onMounted(load)
                 <td>{{ t.capacity }}</td>
                 <td>
                   <span class="tag" :class="t.enabled ? 'tag-on' : 'tag-off'">
-                    {{ t.enabled ? '启用' : '停用' }}
+                    {{ t.enabled ? $t('启用', 'Enabled') : $t('停用', 'Disabled') }}
                   </span>
                 </td>
                 <td class="ops">
-                  <button @click="editTable(t)">编辑</button>
-                  <button class="danger" @click="removeTable(t)">删除</button>
+                  <button @click="editTable(t)">{{ $t('编辑', 'Edit') }}</button>
+                  <button class="danger" @click="removeTable(t)">{{ $t('删除', 'Delete') }}</button>
                 </td>
               </template>
             </tr>
-            <tr v-if="tables.length === 0"><td colspan="4" class="empty">暂无桌位</td></tr>
+            <tr v-if="tables.length === 0">
+              <td colspan="4" class="empty">{{ $t('暂无桌位', 'No tables yet') }}</td>
+            </tr>
           </tbody>
         </table>
         <div class="row">
-          <input v-model="newTable.name" placeholder="桌位名，如 B1" />
-          <input v-model.number="newTable.capacity" type="number" min="1" placeholder="人数" />
-          <label class="check-label"><input v-model="newTable.enabled" type="checkbox" /> 启用</label>
-          <button class="primary" @click="addTable">添加</button>
+          <input v-model="newTable.name" :placeholder="$t('桌位名，如 B1', 'Table name, e.g. B1')" />
+          <input v-model.number="newTable.capacity" type="number" min="1" :placeholder="$t('人数', 'Capacity')" />
+          <label class="check-label"><input v-model="newTable.enabled" type="checkbox" /> {{ $t('启用', 'Enabled') }}</label>
+          <button class="primary" @click="addTable">{{ $t('添加', 'Add') }}</button>
         </div>
         <div class="actions">
-          <button class="primary" @click="showTables = false">完成</button>
+          <button class="primary" @click="showTables = false">{{ $t('完成', 'Done') }}</button>
         </div>
       </div>
     </div>
@@ -484,12 +521,22 @@ onMounted(load)
     <!-- 时长套餐管理 -->
     <div v-if="showPackages" class="mask">
       <div class="dialog wide">
-        <h3>时长套餐配置 · {{ currentStore?.name }}</h3>
+        <h3>{{ $t('时长套餐配置 · {name}', 'Package setup · {name}', { name: currentStore?.name ?? '' }) }}</h3>
         <p class="hint-text">
-          用户预约时可选择「按小时 / 时长套餐 / 全天不限时」；套餐价为$/人。
+          {{ $t('用户预约时可选择「按小时 / 时长套餐 / 全天不限时」；套餐价为$/人。', 'Users can choose Hourly / Package / All-day when booking; package price is $/person.') }}
         </p>
         <table class="grid">
-          <thead><tr><th>套餐名</th><th>时长（小时）</th><th>价格（$/人）</th><th>会员价</th><th>多人同行价</th><th>状态</th><th>操作</th></tr></thead>
+          <thead>
+            <tr>
+              <th>{{ $t('套餐名', 'Package name') }}</th>
+              <th>{{ $t('时长（小时）', 'Duration (h)') }}</th>
+              <th>{{ $t('价格（$/人）', 'Price ($/person)') }}</th>
+              <th>{{ $t('会员价', 'Member price') }}</th>
+              <th>{{ $t('多人同行价', 'Group price') }}</th>
+              <th>{{ $t('状态', 'Status') }}</th>
+              <th>{{ $t('操作', 'Actions') }}</th>
+            </tr>
+          </thead>
           <tbody>
             <tr v-for="p in packages" :key="p.id">
               <template v-if="packageDrafts[p.id]">
@@ -498,42 +545,46 @@ onMounted(load)
                 <td><input v-model.number="packageDrafts[p.id].price" type="number" min="0" step="0.1" /></td>
                 <td><input v-model.number="packageDrafts[p.id].memberPrice" type="number" min="0" step="0.1" /></td>
                 <td><input v-model.number="packageDrafts[p.id].groupPrice" type="number" min="0" step="0.1" /></td>
-                <td><label><input v-model="packageDrafts[p.id].enabled" type="checkbox" /> 启用</label></td>
+                <td><label><input v-model="packageDrafts[p.id].enabled" type="checkbox" /> {{ $t('启用', 'Enabled') }}</label></td>
                 <td class="ops">
-                  <button class="primary" @click="savePackage(p)">保存</button>
-                  <button @click="cancelPackageEdit(p.id)">取消</button>
+                  <button class="primary" @click="savePackage(p)">{{ $t('保存', 'Save') }}</button>
+                  <button @click="cancelPackageEdit(p.id)">{{ $t('取消', 'Cancel') }}</button>
                 </td>
               </template>
               <template v-else>
                 <td>{{ p.name }}</td>
-                <td>{{ p.hours }} 小时</td>
+                <td>{{ $t('{h} 小时', '{h} h', { h: p.hours }) }}</td>
                 <td>${{ p.price }}</td>
                 <td>{{ p.memberPrice != null ? '$' + p.memberPrice : '-' }}</td>
                 <td>{{ p.groupPrice != null ? '$' + p.groupPrice : '-' }}</td>
                 <td>
                   <span class="tag" :class="p.enabled ? 'tag-on' : 'tag-off'">
-                    {{ p.enabled ? '启用' : '停用' }}
+                    {{ p.enabled ? $t('启用', 'Enabled') : $t('停用', 'Disabled') }}
                   </span>
                 </td>
                 <td class="ops">
-                  <button @click="editPackage(p)">编辑</button>
-                  <button class="danger" @click="removePackage(p)">删除</button>
+                  <button @click="editPackage(p)">{{ $t('编辑', 'Edit') }}</button>
+                  <button class="danger" @click="removePackage(p)">{{ $t('删除', 'Delete') }}</button>
                 </td>
               </template>
             </tr>
-            <tr v-if="packages.length === 0"><td colspan="7" class="empty">暂无套餐，可添加如「5 小时套餐」「6 小时套餐」</td></tr>
+            <tr v-if="packages.length === 0">
+              <td colspan="7" class="empty">
+                {{ $t('暂无套餐，可添加如「5 小时套餐」「6 小时套餐」', 'No packages yet, e.g. add a "5-Hour Package" or "6-Hour Package"') }}
+              </td>
+            </tr>
           </tbody>
         </table>
         <div class="row">
-          <input v-model="newPackage.name" placeholder="套餐名，如 5 小时套餐" />
-          <input v-model.number="newPackage.hours" type="number" min="1" placeholder="时长（小时）" />
-          <input v-model.number="newPackage.price" type="number" min="0" step="0.1" placeholder="价格（$/人）" />
-          <input v-model.number="newPackage.memberPrice" type="number" min="0" step="0.1" placeholder="会员价" />
-          <input v-model.number="newPackage.groupPrice" type="number" min="0" step="0.1" placeholder="多人价" />
-          <button class="primary" @click="addPackage">添加</button>
+          <input v-model="newPackage.name" :placeholder="$t('套餐名，如 5 小时套餐', 'Package name, e.g. 5-Hour Package')" />
+          <input v-model.number="newPackage.hours" type="number" min="1" :placeholder="$t('时长（小时）', 'Duration (h)')" />
+          <input v-model.number="newPackage.price" type="number" min="0" step="0.1" :placeholder="$t('价格（$/人）', 'Price ($/person)')" />
+          <input v-model.number="newPackage.memberPrice" type="number" min="0" step="0.1" :placeholder="$t('会员价', 'Member price')" />
+          <input v-model.number="newPackage.groupPrice" type="number" min="0" step="0.1" :placeholder="$t('多人价', 'Group price')" />
+          <button class="primary" @click="addPackage">{{ $t('添加', 'Add') }}</button>
         </div>
         <div class="actions">
-          <button class="primary" @click="showPackages = false">完成</button>
+          <button class="primary" @click="showPackages = false">{{ $t('完成', 'Done') }}</button>
         </div>
       </div>
     </div>

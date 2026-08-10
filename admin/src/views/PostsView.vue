@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { postApi, type Post } from '../api/posts'
+import { i18n, t } from '../i18n'
 
 const posts = ref<Post[]>([])
 const loading = ref(true)
@@ -14,10 +15,10 @@ const previewPost = ref<Post | null>(null)
 const previewIndex = ref(0)
 
 const statusTabs = [
-  { value: '', label: '全部' },
-  { value: 'pending', label: '待审核' },
-  { value: 'approved', label: '已通过' },
-  { value: 'rejected', label: '已驳回' },
+  { value: '', label: '全部', labelEn: 'All' },
+  { value: 'pending', label: '待审核', labelEn: 'Pending' },
+  { value: 'approved', label: '已通过', labelEn: 'Approved' },
+  { value: 'rejected', label: '已驳回', labelEn: 'Rejected' },
 ]
 
 const statusLabels: Record<string, string> = {
@@ -32,6 +33,16 @@ const statusColors: Record<string, string> = {
   rejected: '#D9453E',
 }
 
+const statusLabelsEn: Record<string, string> = {
+  pending: 'Pending',
+  approved: 'Approved',
+  rejected: 'Rejected',
+}
+
+function statusLabel(status: string): string {
+  return t(statusLabels[status] ?? status, statusLabelsEn[status] ?? status)
+}
+
 async function load() {
   loading.value = true
   error.value = ''
@@ -41,7 +52,7 @@ async function load() {
     const { data } = await postApi.list(params)
     posts.value = data[0]
   } catch (e: any) {
-    error.value = e?.response?.data?.message ?? '加载失败'
+    error.value = e?.response?.data?.message ?? t('加载失败', 'Failed to load')
   } finally {
     loading.value = false
   }
@@ -52,7 +63,7 @@ async function approve(id: number) {
     await postApi.updateStatus(id, 'approved')
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   }
 }
 
@@ -69,7 +80,7 @@ async function confirmReject() {
     rejectReason.value = ''
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   }
 }
 
@@ -89,7 +100,7 @@ async function confirmRemove() {
     removingId.value = null
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '操作失败')
+    alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   }
 }
 
@@ -108,7 +119,7 @@ async function confirmDelete() {
     deletingId.value = null
     await load()
   } catch (e: any) {
-    alert(e?.response?.data?.message ?? '删除失败')
+    alert(e?.response?.data?.message ?? t('删除失败', 'Delete failed'))
   }
 }
 
@@ -139,7 +150,7 @@ function nextImage() {
 function formatTime(t: string): string {
   try {
     const d = new Date(t)
-    return d.toLocaleString('zh-CN')
+    return d.toLocaleString(i18n.lang === 'en' ? 'en-US' : 'zh-CN')
   } catch {
     return t
   }
@@ -151,36 +162,38 @@ onMounted(load)
 <template>
   <div class="posts">
     <div class="toolbar">
-      <h2>社区管理</h2>
+      <h2>{{ $t('社区管理', 'Posts') }}</h2>
       <div class="filters">
         <select v-model="statusFilter" @change="load">
           <option v-for="t in statusTabs" :key="t.value" :value="t.value">
-            {{ t.label }}
+            {{ $t(t.label, t.labelEn) }}
           </option>
         </select>
-        <button class="btn" @click="load">刷新</button>
+        <button class="btn" @click="load">{{ $t('刷新', 'Refresh') }}</button>
       </div>
     </div>
 
-    <div v-if="loading" class="state">加载中…</div>
+    <div v-if="loading" class="state">{{ $t('加载中…', 'Loading…') }}</div>
     <div v-else-if="error" class="state error">{{ error }}</div>
-    <div v-else-if="posts.length === 0" class="state">暂无作品数据</div>
+    <div v-else-if="posts.length === 0" class="state">
+      {{ $t('暂无作品数据', 'No posts yet') }}
+    </div>
 
     <table v-else class="table">
       <thead>
         <tr>
           <th style="width: 60px">ID</th>
-          <th style="width: 80px">用户ID</th>
-          <th>内容</th>
-          <th>图片</th>
-          <th>标签</th>
-          <th style="width: 80px">状态</th>
-          <th>驳回原因</th>
-          <th style="width: 80px">点赞</th>
-          <th style="width: 80px">收藏</th>
-          <th style="width: 80px">评论</th>
-          <th style="width: 150px">发布时间</th>
-          <th style="width: 180px">操作</th>
+          <th style="width: 80px">{{ $t('用户ID', 'User ID') }}</th>
+          <th>{{ $t('内容', 'Content') }}</th>
+          <th>{{ $t('图片', 'Images') }}</th>
+          <th>{{ $t('标签', 'Tags') }}</th>
+          <th style="width: 80px">{{ $t('状态', 'Status') }}</th>
+          <th>{{ $t('驳回原因', 'Reject reason') }}</th>
+          <th style="width: 80px">{{ $t('点赞', 'Likes') }}</th>
+          <th style="width: 80px">{{ $t('收藏', 'Collects') }}</th>
+          <th style="width: 80px">{{ $t('评论', 'Comments') }}</th>
+          <th style="width: 150px">{{ $t('发布时间', 'Published') }}</th>
+          <th style="width: 180px">{{ $t('操作', 'Actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -192,7 +205,9 @@ onMounted(load)
           </td>
           <td>
             <span v-if="p.images.length === 0" class="muted">-</span>
-            <button v-else class="img-btn" @click="openPreview(p)">{{ p.images.length }} 张</button>
+            <button v-else class="img-btn" @click="openPreview(p)">
+              {{ $t('{n} 张', '{n} images', { n: p.images.length }) }}
+            </button>
           </td>
           <td>
             <span v-if="p.tags.length === 0" class="muted">-</span>
@@ -203,7 +218,7 @@ onMounted(load)
               class="status-tag"
               :style="{ color: statusColors[p.status], borderColor: statusColors[p.status] }"
             >
-              {{ statusLabels[p.status] ?? p.status }}
+              {{ statusLabel(p.status) }}
             </span>
           </td>
           <td>
@@ -220,34 +235,34 @@ onMounted(load)
               class="btn btn-sm btn-success"
               @click="approve(p.id)"
             >
-              通过
+              {{ $t('通过', 'Approve') }}
             </button>
             <button
               v-if="p.status === 'pending'"
               class="btn btn-sm btn-danger"
               @click="openReject(p.id)"
             >
-              驳回
+              {{ $t('驳回', 'Reject') }}
             </button>
             <button
               v-if="p.status === 'approved'"
               class="btn btn-sm btn-danger"
               @click="openRemove(p.id)"
             >
-              下架
+              {{ $t('下架', 'Remove') }}
             </button>
             <button
               v-if="p.status === 'rejected'"
               class="btn btn-sm btn-success"
               @click="approve(p.id)"
             >
-              上架
+              {{ $t('上架', 'Restore') }}
             </button>
             <button
               class="btn btn-sm btn-delete"
               @click="openDelete(p.id)"
             >
-              删除
+              {{ $t('删除', 'Delete') }}
             </button>
           </td>
         </tr>
@@ -257,15 +272,17 @@ onMounted(load)
     <!-- 驳回弹窗 -->
     <div v-if="rejectingId !== null" class="modal-overlay" @click.self="cancelReject">
       <div class="modal">
-        <h3>驳回作品</h3>
+        <h3>{{ $t('驳回作品', 'Reject post') }}</h3>
         <textarea
           v-model="rejectReason"
-          placeholder="请输入驳回原因（选填）"
+          :placeholder="$t('请输入驳回原因（选填）', 'Enter reject reason (optional)')"
           rows="3"
         ></textarea>
         <div class="modal-actions">
-          <button class="btn btn-sm" @click="cancelReject">取消</button>
-          <button class="btn btn-sm btn-danger" @click="confirmReject">确认驳回</button>
+          <button class="btn btn-sm" @click="cancelReject">{{ $t('取消', 'Cancel') }}</button>
+          <button class="btn btn-sm btn-danger" @click="confirmReject">
+            {{ $t('确认驳回', 'Confirm reject') }}
+          </button>
         </div>
       </div>
     </div>
@@ -273,11 +290,15 @@ onMounted(load)
     <!-- 下架确认弹窗 -->
     <div v-if="removingId !== null" class="modal-overlay" @click.self="cancelRemove">
       <div class="modal">
-        <h3>下架作品</h3>
-        <p class="modal-tip">确认下架该作品？下架后社区中将不再展示。</p>
+        <h3>{{ $t('下架作品', 'Remove post') }}</h3>
+        <p class="modal-tip">
+          {{ $t('确认下架该作品？下架后社区中将不再展示。', 'Remove this post? It will no longer be shown in the community.') }}
+        </p>
         <div class="modal-actions">
-          <button class="btn btn-sm" @click="cancelRemove">取消</button>
-          <button class="btn btn-sm btn-danger" @click="confirmRemove">确认下架</button>
+          <button class="btn btn-sm" @click="cancelRemove">{{ $t('取消', 'Cancel') }}</button>
+          <button class="btn btn-sm btn-danger" @click="confirmRemove">
+            {{ $t('确认下架', 'Confirm remove') }}
+          </button>
         </div>
       </div>
     </div>
@@ -285,13 +306,15 @@ onMounted(load)
     <!-- 删除确认弹窗 -->
     <div v-if="deletingId !== null" class="modal-overlay" @click.self="cancelDelete">
       <div class="modal">
-        <h3>删除作品</h3>
+        <h3>{{ $t('删除作品', 'Delete post') }}</h3>
         <p class="modal-tip">
-          确认永久删除该作品？删除后不可恢复，其点赞、评论与收藏记录将一并清除。
+          {{ $t('确认永久删除该作品？删除后不可恢复，其点赞、评论与收藏记录将一并清除。', 'Permanently delete this post? This cannot be undone; its likes, comments and collects will also be removed.') }}
         </p>
         <div class="modal-actions">
-          <button class="btn btn-sm" @click="cancelDelete">取消</button>
-          <button class="btn btn-sm btn-danger" @click="confirmDelete">确认删除</button>
+          <button class="btn btn-sm" @click="cancelDelete">{{ $t('取消', 'Cancel') }}</button>
+          <button class="btn btn-sm btn-danger" @click="confirmDelete">
+            {{ $t('确认删除', 'Confirm delete') }}
+          </button>
         </div>
       </div>
     </div>
@@ -300,8 +323,10 @@ onMounted(load)
     <div v-if="previewPost !== null" class="modal-overlay" @click.self="closePreview">
       <div class="preview-modal">
         <div class="preview-head">
-          <h3>作品 #{{ previewPost.id }} · {{ previewIndex + 1 }} / {{ previewPost.images.length }}</h3>
-          <button class="btn btn-sm" @click="closePreview">关闭</button>
+          <h3>
+            {{ $t('作品 #{id}', 'Post #{id}', { id: previewPost.id }) }} · {{ previewIndex + 1 }} / {{ previewPost.images.length }}
+          </h3>
+          <button class="btn btn-sm" @click="closePreview">{{ $t('关闭', 'Close') }}</button>
         </div>
         <div class="preview-body">
           <button
@@ -312,7 +337,7 @@ onMounted(load)
           <img
             class="preview-img"
             :src="previewPost.images[previewIndex]"
-            :alt="`作品 ${previewPost.id} 图片 ${previewIndex + 1}`"
+            :alt="$t('作品 {id} 图片 {n}', 'Post {id} image {n}', { id: previewPost.id, n: previewIndex + 1 })"
             @error="($event.target as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect width=%22100%22 height=%22100%22 fill=%22%23f0eeea%22/></svg>'"
           />
           <button
