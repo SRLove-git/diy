@@ -446,6 +446,7 @@ class Appointment {
   }
 
   String get statusLabel => switch (status) {
+        'pending' => '待确认',
         'booked' => '待核销',
         'checked_in' => '已核销',
         'in_service' => '服务中',

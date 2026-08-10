@@ -171,9 +171,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               .where((a) =>
                   a.status == 'checked_in' || a.status == 'in_service')
               .toList();
-          // 未来可核销订单：待核销且未过期，按时间升序
+          // 未来订单：待确认/待核销且未过期，按时间升序
           final upcoming = mergedOrders
-              .where((a) => a.status == 'booked')
+              .where((a) =>
+                  a.status == 'pending' || a.status == 'booked')
               .where((a) => !a.isExpired(now))
               .toList()
             ..sort((x, y) => (x.endDateTime ?? DateTime.now())
@@ -555,6 +556,7 @@ class _HomeOrderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final a = appointment;
     final expired = a.status == 'booked' && a.isExpired();
+    final pending = a.status == 'pending';
     final date = DateTime.tryParse(a.date);
     final week = date == null
         ? ''
@@ -598,18 +600,26 @@ class _HomeOrderCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: expired
                         ? const Color(0xFFECECEF)
-                        : const Color(0xFFFFEBEE),
+                        : pending
+                            ? const Color(0xFFF3E8FF)
+                            : const Color(0xFFFFEBEE),
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: Center(
                     child: Text(
-                      expired ? '订单已失效' : '待核销',
+                      expired
+                          ? '订单已失效'
+                          : pending
+                              ? '待确认'
+                              : '待核销',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: expired
                             ? LiveColors.textSecondary
-                            : const Color(0xFFE53935),
+                            : pending
+                                ? const Color(0xFF7C3AED)
+                                : const Color(0xFFE53935),
                       ),
                     ),
                   ),
@@ -632,10 +642,12 @@ class _HomeOrderCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    '预约码 ${a.code}',
-                    style: const TextStyle(
+                    pending ? '等待门店确认后到店核销' : '预约码 ${a.code}',
+                    style: TextStyle(
                       fontSize: 11,
-                      color: LiveColors.textTertiary,
+                      color: pending
+                          ? const Color(0xFF6D28D9)
+                          : LiveColors.textTertiary,
                     ),
                   ),
                 ),
@@ -655,6 +667,26 @@ class _HomeOrderCard extends StatelessWidget {
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: LiveColors.textSecondary,
+                      ),
+                    ),
+                  )
+                else if (pending)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3E8FF),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFDDC8FF)),
+                    ),
+                    child: const Text(
+                      '等待确认',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF7C3AED),
                       ),
                     ),
                   )

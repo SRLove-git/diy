@@ -718,7 +718,7 @@ class AppointmentSuccessScreen extends StatelessWidget {
             const Icon(Icons.check_circle, size: 84, color: LiveColors.success),
             const SizedBox(height: 16),
             const Text(
-              '预约成功',
+              '预约已提交',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
             ),
             const SizedBox(height: 8),
@@ -730,20 +730,25 @@ class AppointmentSuccessScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: LiveColors.brandLight,
+                color: const Color(0xFFF3E8FF),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
                 children: [
-                  const Text('核销码', style: TextStyle(fontSize: 12, color: LiveColors.brand)),
-                  const SizedBox(height: 6),
-                  SelectableText(
-                    appointment.code,
-                    style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w800, color: LiveColors.textPrimary, letterSpacing: 6),
+                  const Icon(Icons.schedule, size: 32, color: Color(0xFF7C3AED)),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '等待门店确认',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF6D28D9),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    '到店出示此码即可核销体验，核销后线下付款',
+                    '预约已提交，门店在管理端确认后\n到店出示预约码即可核销体验',
+                    textAlign: TextAlign.center,
                     style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
                   ),
                 ],
@@ -878,6 +883,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
 
   static const _tabs = [
     ('all', '全部'),
+    ('pending', '待确认'),
     ('booked', '待核销'),
     ('in_service', '服务中'),
     ('completed', '已完成'),
@@ -951,7 +957,8 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                             final a = list[i];
                             return _AppointmentCard(
                               appointment: a,
-                              onCancel: a.status == 'booked'
+                              onCancel:
+                                  a.status == 'pending' || a.status == 'booked'
                                   ? () => _cancelAppointment(a)
                                   : null,
                               onTap: () => LiveRoutes.pushId(
@@ -960,6 +967,11 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                                 a.id,
                               ),
                               onAction: switch (a.status) {
+                                'pending' => () => LiveRoutes.pushId(
+                                      context,
+                                      RoutePaths.appointmentDetail,
+                                      a.id,
+                                    ),
                                 'booked' => a.isExpired()
                                     ? () {}
                                     : () => LiveRoutes.push(
@@ -1022,6 +1034,7 @@ class _AppointmentCard extends StatelessWidget {
     final (tagBg, tagFg) = expired
         ? (const Color(0xFFECECEF), LiveColors.textSecondary)
         : switch (a.status) {
+            'pending' => (const Color(0xFFF3E8FF), const Color(0xFF7C3AED)),
             'booked' => (const Color(0xFFFFEBEE), const Color(0xFFE53935)),
             'checked_in' => (const Color(0xFFE3F2FD), const Color(0xFF1565C0)),
             'in_service' => (const Color(0xFFE8F5E9), const Color(0xFF2E7D32)),
@@ -1121,6 +1134,40 @@ class _AppointmentCard extends StatelessWidget {
                 ),
               ),
             ],
+            if (a.status == 'pending') ...[
+              const SizedBox(height: 12),
+              // 待确认卡：预约已提交，等待门店确认
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3E8FF),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFDDC8FF), width: 1),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '等待门店确认',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF6D28D9),
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '预约已提交，门店确认后即可到店核销',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: LiveColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (a.status == 'booked' && !expired) ...[
               const SizedBox(height: 12),
               // 到店核销卡：大号预约码 + 到店核销标签（点击进入核销）
@@ -1189,7 +1236,7 @@ class _AppointmentCard extends StatelessWidget {
                 ),
               ),
             ],
-            if (a.status == 'booked') ...[
+            if (a.status == 'pending' || a.status == 'booked') ...[
               if (onCancel != null) ...[
                 const SizedBox(height: 10),
                 Align(
@@ -1548,37 +1595,68 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                 child: ListView(
                   padding: const EdgeInsets.all(18),
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: LiveColors.brandLight,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Column(
-                        children: [
-                          const Text('核销码', style: TextStyle(fontSize: 12, color: LiveColors.brand)),
-                          const SizedBox(height: 4),
-                          SelectableText(
-                            a.code,
-                            style: const TextStyle(
-                              fontSize: 34,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 6,
-                              color: LiveColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(expired ? '订单已失效' : a.statusLabel,
+                    if (a.status == 'pending')
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3E8FF),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Column(
+                          children: [
+                            Icon(Icons.schedule, size: 36, color: Color(0xFF7C3AED)),
+                            SizedBox(height: 8),
+                            Text(
+                              '等待门店确认',
                               style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: expired
-                                    ? LiveColors.textSecondary
-                                    : LiveColors.brand,
-                              )),
-                        ],
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF6D28D9),
+                              ),
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              '预约已提交，门店确认后即可到店核销',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: LiveColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: LiveColors.brandLight,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text('核销码', style: TextStyle(fontSize: 12, color: LiveColors.brand)),
+                            const SizedBox(height: 4),
+                            SelectableText(
+                              a.code,
+                              style: const TextStyle(
+                                fontSize: 34,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 6,
+                                color: LiveColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(expired ? '订单已失效' : a.statusLabel,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: expired
+                                      ? LiveColors.textSecondary
+                                      : LiveColors.brand,
+                                )),
+                          ],
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 18),
                     const Text(
                       '预约进度',
@@ -1603,7 +1681,9 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                     _DetailRow('金额', '\$${a.amount.toStringAsFixed(2)}'),
                     // if (a.couponDiscount > 0) _DetailRow('优惠券', '${a.couponTitle} -\$${a.couponDiscount.toStringAsFixed(2)}'),
                     if (a.note.isNotEmpty) _DetailRow('备注', a.note),
-                    if (a.status != 'completed' && a.status != 'cancelled') ...[
+                    if (a.status == 'booked' ||
+                        a.status == 'checked_in' ||
+                        a.status == 'in_service') ...[
                       const SizedBox(height: 14),
                       Row(
                         children: [
@@ -1635,9 +1715,9 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                       ),
                     ],
                     const SizedBox(height: 16),
-                    _QrCard(appointment: a),
+                    if (a.status != 'pending') _QrCard(appointment: a),
                     const SizedBox(height: 16),
-                    if (a.status == 'booked')
+                    if (a.status == 'pending' || a.status == 'booked')
                       PrimaryButton(
                         label: '取消预约',
                         textColor: LiveColors.danger,
@@ -1655,18 +1735,20 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   }
 }
 
-/// 预约进度：待核销 → 已核销 → 已完成。
+/// 预约进度：待确认 → 待核销 → 已核销 → 已完成。
 class _ProgressStepper extends StatelessWidget {
   const _ProgressStepper({required this.status});
 
   final String status;
 
-  static const _labels = ['待核销', '已核销', '已完成'];
+  static const _labels = ['待确认', '待核销', '已核销', '已完成'];
 
   int get _current => switch (status) {
-        'checked_in' => 1,
-        'in_service' => 1,
-        'completed' => 2,
+        'pending' => 0,
+        'booked' => 1,
+        'checked_in' => 2,
+        'in_service' => 2,
+        'completed' => 3,
         _ => 0,
       };
 

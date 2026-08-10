@@ -118,4 +118,25 @@ void main() {
     expect(a.statusLabel, '待核销');
     expect(a.amount, 39.8);
   });
+
+  test('待确认状态标签', () {
+    final a = Appointment.fromJson({
+      'id': 2,
+      'type': 'store',
+      'userId': 32,
+      'storeName': '拼豆',
+      'tableName': 'A1',
+      'date': '2026-08-10',
+      'startTime': '10:00',
+      'endTime': '11:30',
+      'peopleCount': 2,
+      'code': '654321',
+      'amount': '39.8',
+      'originalAmount': '39.8',
+      'payStatus': 'unpaid',
+      'payMethod': '',
+      'status': 'pending',
+    });
+    expect(a.statusLabel, '待确认');
+  });
 }
