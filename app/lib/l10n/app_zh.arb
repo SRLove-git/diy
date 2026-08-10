@@ -486,8 +486,28 @@
     }
   },
   "activityTitle": "活动",
+  "activityListTitle": "活动专区",
+  "activityDetailTitle": "活动详情",
   "activityBook": "预约活动",
   "activityPeople": "{count} 人",
+  "activityMemberOnly": "限会员",
+  "activityBookable": "可预约",
+  "activityDescPlaceholder": "活动详情敬请期待",
+  "activityPrice": "价格",
+  "activitySelectSession": "选择场次",
+  "activityRemaining": "剩余 {remain}/{capacity}",
+  "@activityRemaining": {
+    "placeholders": {
+      "remain": {
+        "type": "int"
+      },
+      "capacity": {
+        "type": "int"
+      }
+    }
+  },
+  "activityNoteHint": "备注（选填），如：两人同行",
+  "activityNotBookable": "该活动暂不支持线上预约，敬请期待",
   "@activityPeople": {
     "placeholders": {
       "count": {
@@ -497,6 +517,11 @@
   },
   "notificationTitle": "通知",
   "notificationEmpty": "暂无通知",
+  "notificationInteract": "互动",
+  "notificationSystem": "系统消息",
+  "notificationMarkAllRead": "已全部标记为已读",
+  "notificationCommunitySoon": "社区功能暂未开放",
+  "notificationReelsSoon": "Reels 功能暂未开放",
   "notLoggedIn": "请先登录",
   "noStore": "暂无门店",
   "serverError": "网络异常，请稍后重试"

@@ -977,6 +977,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get activityTitle => '活动';
 
   @override
+  String get activityListTitle => '活动专区';
+
+  @override
+  String get activityDetailTitle => '活动详情';
+
+  @override
   String get activityBook => '预约活动';
 
   @override
@@ -985,10 +991,51 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get activityMemberOnly => '限会员';
+
+  @override
+  String get activityBookable => '可预约';
+
+  @override
+  String get activityDescPlaceholder => '活动详情敬请期待';
+
+  @override
+  String get activityPrice => '价格';
+
+  @override
+  String get activitySelectSession => '选择场次';
+
+  @override
+  String activityRemaining(int remain, int capacity) {
+    return '剩余 $remain/$capacity';
+  }
+
+  @override
+  String get activityNoteHint => '备注（选填），如：两人同行';
+
+  @override
+  String get activityNotBookable => '该活动暂不支持线上预约，敬请期待';
+
+  @override
   String get notificationTitle => '通知';
 
   @override
   String get notificationEmpty => '暂无通知';
+
+  @override
+  String get notificationInteract => '互动';
+
+  @override
+  String get notificationSystem => '系统消息';
+
+  @override
+  String get notificationMarkAllRead => '已全部标记为已读';
+
+  @override
+  String get notificationCommunitySoon => '社区功能暂未开放';
+
+  @override
+  String get notificationReelsSoon => 'Reels 功能暂未开放';
 
   @override
   String get notLoggedIn => '请先登录';

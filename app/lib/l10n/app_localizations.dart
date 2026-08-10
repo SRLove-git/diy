@@ -1940,6 +1940,18 @@ abstract class AppLocalizations {
   /// **'活动'**
   String get activityTitle;
 
+  /// No description provided for @activityListTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'活动专区'**
+  String get activityListTitle;
+
+  /// No description provided for @activityDetailTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'活动详情'**
+  String get activityDetailTitle;
+
   /// No description provided for @activityBook.
   ///
   /// In zh, this message translates to:
@@ -1952,6 +1964,54 @@ abstract class AppLocalizations {
   /// **'{count} 人'**
   String activityPeople(int count);
 
+  /// No description provided for @activityMemberOnly.
+  ///
+  /// In zh, this message translates to:
+  /// **'限会员'**
+  String get activityMemberOnly;
+
+  /// No description provided for @activityBookable.
+  ///
+  /// In zh, this message translates to:
+  /// **'可预约'**
+  String get activityBookable;
+
+  /// No description provided for @activityDescPlaceholder.
+  ///
+  /// In zh, this message translates to:
+  /// **'活动详情敬请期待'**
+  String get activityDescPlaceholder;
+
+  /// No description provided for @activityPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'价格'**
+  String get activityPrice;
+
+  /// No description provided for @activitySelectSession.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择场次'**
+  String get activitySelectSession;
+
+  /// No description provided for @activityRemaining.
+  ///
+  /// In zh, this message translates to:
+  /// **'剩余 {remain}/{capacity}'**
+  String activityRemaining(int remain, int capacity);
+
+  /// No description provided for @activityNoteHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'备注（选填），如：两人同行'**
+  String get activityNoteHint;
+
+  /// No description provided for @activityNotBookable.
+  ///
+  /// In zh, this message translates to:
+  /// **'该活动暂不支持线上预约，敬请期待'**
+  String get activityNotBookable;
+
   /// No description provided for @notificationTitle.
   ///
   /// In zh, this message translates to:
@@ -1963,6 +2023,36 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'暂无通知'**
   String get notificationEmpty;
+
+  /// No description provided for @notificationInteract.
+  ///
+  /// In zh, this message translates to:
+  /// **'互动'**
+  String get notificationInteract;
+
+  /// No description provided for @notificationSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统消息'**
+  String get notificationSystem;
+
+  /// No description provided for @notificationMarkAllRead.
+  ///
+  /// In zh, this message translates to:
+  /// **'已全部标记为已读'**
+  String get notificationMarkAllRead;
+
+  /// No description provided for @notificationCommunitySoon.
+  ///
+  /// In zh, this message translates to:
+  /// **'社区功能暂未开放'**
+  String get notificationCommunitySoon;
+
+  /// No description provided for @notificationReelsSoon.
+  ///
+  /// In zh, this message translates to:
+  /// **'Reels 功能暂未开放'**
+  String get notificationReelsSoon;
 
   /// No description provided for @notLoggedIn.
   ///

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../api/api_client.dart';
 import '../../api/chat_services.dart';
 import '../../api/models.dart';
+import '../../l10n/l10n_ext.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
 // import '../live_routes.dart'; // 社区/Reels 前期暂不开放（跳转已注释）
@@ -33,7 +34,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     try {
       await NotificationService.instance.readAll();
       if (mounted) {
-        showLiveSnack(context, '已全部标记为已读');
+        showLiveSnack(context, context.l10n.notificationMarkAllRead);
         _retry();
       }
     } on ApiException catch (e) {
@@ -105,12 +106,12 @@ class _NotificationAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LiveAppBar(
-      title: '通知',
+      title: context.l10n.notificationTitle,
       actions: [
         TextButton(
           onPressed: enabled ? onReadAll : null,
           child: Text(
-            '全部已读',
+            context.l10n.notificationMarkAllRead,
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -140,7 +141,7 @@ class _NotificationList extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
       children: [
         if (interact.isNotEmpty) ...[
-          _SectionHeader(title: '互动', count: interactUnread),
+          _SectionHeader(title: context.l10n.notificationInteract, count: interactUnread),
           const SizedBox(height: 8),
           _Card(
             children: [
@@ -150,7 +151,7 @@ class _NotificationList extends StatelessWidget {
           if (system.isNotEmpty) const SizedBox(height: 23),
         ],
         if (system.isNotEmpty) ...[
-          const _SectionHeader(title: '系统消息'),
+          _SectionHeader(title: context.l10n.notificationSystem),
           const SizedBox(height: 13),
           _Card(
             children: [
@@ -324,15 +325,15 @@ class _NotificationRow extends StatelessWidget {
     switch (n.actionType) {
       case 'post':
         // if (id != null) LiveRoutes.pushId(context, RoutePaths.postDetail, id);
-        showLiveSnack(context, '社区功能暂未开放');
+        showLiveSnack(context, context.l10n.notificationCommunitySoon);
         break;
       case 'video':
         // if (id != null) LiveRoutes.pushId(context, RoutePaths.videoDetail, id);
-        showLiveSnack(context, 'Reels 功能暂未开放');
+        showLiveSnack(context, context.l10n.notificationReelsSoon);
         break;
       case 'user':
         // if (id != null) LiveRoutes.pushId(context, RoutePaths.userDetail, id);
-        showLiveSnack(context, '社区功能暂未开放');
+        showLiveSnack(context, context.l10n.notificationCommunitySoon);
         break;
     }
   }

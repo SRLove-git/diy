@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../api/api_config.dart';
+import '../l10n/l10n_ext.dart';
 import 'live_theme.dart';
 
 /// 实时页面共享组件
@@ -102,13 +103,13 @@ class LiveTabBar extends StatelessWidget {
   final int current;
   final ValueChanged<int>? onTap;
 
-  static const _tabs = [
-    (Icons.home_outlined, Icons.home, '主页'),
-    (Icons.person_outline, Icons.person, '我的'),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final tabs = [
+      (Icons.home_outlined, Icons.home, l10n.tabHome),
+      (Icons.person_outline, Icons.person, l10n.tabProfile),
+    ];
     final bottomInset = MediaQuery.of(context).padding.bottom;
     return SizedBox(
       height: 88 + bottomInset,
@@ -132,7 +133,7 @@ class LiveTabBar extends StatelessWidget {
           ),
           child: Row(
             children: [
-              for (var i = 0; i < _tabs.length; i++)
+              for (var i = 0; i < tabs.length; i++)
                 Expanded(
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
@@ -143,7 +144,7 @@ class LiveTabBar extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          i == current ? _tabs[i].$2 : _tabs[i].$1,
+                          i == current ? tabs[i].$2 : tabs[i].$1,
                           size: 22,
                           color: i == current
                               ? LiveColors.textPrimary
@@ -151,7 +152,7 @@ class LiveTabBar extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          _tabs[i].$3,
+                          tabs[i].$3,
                           style: TextStyle(
                             fontSize: 10.5,
                             fontWeight:
@@ -329,7 +330,8 @@ class Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initial = name.isNotEmpty ? name.characters.first : '手';
+    final initial =
+        name.isNotEmpty ? name.characters.first : context.l10n.profileEditMe;
     return ClipOval(
       child: url.isEmpty
           ? Container(
@@ -406,8 +408,8 @@ class NetImage extends StatelessWidget {
 }
 
 class LoadingView extends StatelessWidget {
-  const LoadingView({super.key, this.text = '加载中…'});
-  final String text;
+  const LoadingView({super.key, this.text});
+  final String? text;
 
   @override
   Widget build(BuildContext context) {
@@ -421,7 +423,10 @@ class LoadingView extends StatelessWidget {
             child: CircularProgressIndicator(strokeWidth: 2.5, color: LiveColors.brand),
           ),
           const SizedBox(height: 12),
-          Text(text, style: const TextStyle(color: LiveColors.textSecondary, fontSize: 13)),
+          Text(
+            text ?? context.l10n.commonLoading,
+            style: const TextStyle(color: LiveColors.textSecondary, fontSize: 13),
+          ),
         ],
       ),
     );
@@ -451,7 +456,7 @@ class ErrorView extends StatelessWidget {
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 16),
-              OutlineButton(label: '重试', onTap: onRetry, height: 40),
+              OutlineButton(label: context.l10n.commonRetry, onTap: onRetry, height: 40),
             ],
           ],
         ),
@@ -461,9 +466,9 @@ class ErrorView extends StatelessWidget {
 }
 
 class EmptyView extends StatelessWidget {
-  const EmptyView({super.key, this.text = '暂无数据', this.icon = Icons.inbox_outlined});
+  const EmptyView({super.key, this.text, this.icon = Icons.inbox_outlined});
 
-  final String text;
+  final String? text;
   final IconData icon;
 
   @override
@@ -474,7 +479,10 @@ class EmptyView extends StatelessWidget {
         children: [
           Icon(icon, size: 42, color: LiveColors.textTertiary),
           const SizedBox(height: 10),
-          Text(text, style: const TextStyle(color: LiveColors.textSecondary, fontSize: 13)),
+            Text(
+              text ?? context.l10n.commonEmpty,
+              style: const TextStyle(color: LiveColors.textSecondary, fontSize: 13),
+            ),
         ],
       ),
     );

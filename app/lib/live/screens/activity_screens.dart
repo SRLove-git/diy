@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../api/api_client.dart';
 import '../../api/models.dart';
 import '../../api/services.dart';
+import '../../l10n/l10n_ext.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
@@ -31,23 +32,27 @@ class _ActivityListScreenState extends State<ActivityListScreen> {
       child: FutureBuilder<List<Activity>>(
         future: _future,
         builder: (context, snap) {
+          final l10n = context.l10n;
           if (snap.hasError) {
             return Column(
               children: [
-                const LiveAppBar(title: '活动专区'),
+                LiveAppBar(title: l10n.activityListTitle),
                 Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
               ],
             );
           }
           if (!snap.hasData) {
-            return const Column(
-              children: [LiveAppBar(title: '活动专区'), Expanded(child: LoadingView())],
+            return Column(
+              children: [
+                LiveAppBar(title: l10n.activityListTitle),
+                const Expanded(child: LoadingView()),
+              ],
             );
           }
           final list = snap.data!;
           return Column(
             children: [
-              const LiveAppBar(title: '活动专区'),
+              LiveAppBar(title: l10n.activityListTitle),
               Expanded(
                 child: list.isEmpty
                     ? const EmptyView(text: '暂无活动')
@@ -84,6 +89,7 @@ class _ActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -101,7 +107,7 @@ class _ActivityCard extends StatelessWidget {
                 if (activity.tag.isNotEmpty) TagChip(label: activity.tag, color: LiveColors.blue),
                 if (activity.membersOnly) ...[
                   const SizedBox(width: 6),
-                  const TagChip(label: '限会员', color: LiveColors.warning),
+                  TagChip(label: l10n.activityMemberOnly, color: LiveColors.warning),
                 ],
                 const Spacer(),
                 Text(
@@ -131,7 +137,10 @@ class _ActivityCard extends StatelessWidget {
                 ),
                 if (activity.bookable) ...[
                   const Spacer(),
-                  const Text('可预约', style: TextStyle(fontSize: 12, color: LiveColors.success)),
+                  Text(
+                    l10n.activityBookable,
+                    style: const TextStyle(fontSize: 12, color: LiveColors.success),
+                  ),
                 ],
               ],
             ),
@@ -180,24 +189,28 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
       child: FutureBuilder<Activity>(
         future: _future,
         builder: (context, snap) {
+          final l10n = context.l10n;
           if (snap.hasError) {
             return Column(
               children: [
-                const LiveAppBar(title: '活动详情'),
+                LiveAppBar(title: l10n.activityDetailTitle),
                 Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
               ],
             );
           }
           if (!snap.hasData) {
-            return const Column(
-              children: [LiveAppBar(title: '活动详情'), Expanded(child: LoadingView())],
+            return Column(
+              children: [
+                LiveAppBar(title: l10n.activityDetailTitle),
+                const Expanded(child: LoadingView()),
+              ],
             );
           }
           final activity = snap.data!;
           final sessions = activity.sessions;
           return Column(
             children: [
-              const LiveAppBar(title: '活动详情'),
+              LiveAppBar(title: l10n.activityDetailTitle),
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.all(18),
@@ -226,14 +239,19 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Text(
-                        activity.desc.isEmpty ? '活动详情敬请期待' : activity.desc,
+                        activity.desc.isEmpty
+                            ? l10n.activityDescPlaceholder
+                            : activity.desc,
                         style: const TextStyle(fontSize: 13, color: LiveColors.textPrimary, height: 1.5),
                       ),
                     ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        const Text('价格', style: TextStyle(fontSize: 14, color: LiveColors.textSecondary)),
+                        Text(
+                          l10n.activityPrice,
+                          style: const TextStyle(fontSize: 14, color: LiveColors.textSecondary),
+                        ),
                         const Spacer(),
                         Text(
                           activity.price > 0 ? '\$${activity.price.toStringAsFixed(2)}/人' : '免费',
@@ -248,7 +266,10 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                     ),
                     const SizedBox(height: 18),
                     if (activity.bookable) ...[
-                      const Text('选择场次', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                      Text(
+                        l10n.activitySelectSession,
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                      ),
                       const SizedBox(height: 10),
                       if (sessions.isEmpty)
                         const EmptyView(text: '暂无可约场次')
@@ -285,7 +306,10 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                                   Text(
                                     full
                                         ? '已满员'
-                                        : '剩余 ${s.remainingCount}/${s.capacity}',
+                                        : l10n.activityRemaining(
+                                            s.remainingCount,
+                                            s.capacity,
+                                          ),
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: full ? LiveColors.danger : LiveColors.textSecondary,
@@ -297,7 +321,10 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                           );
                         }),
                       const SizedBox(height: 14),
-                      const Text('人数', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                      Text(
+                        l10n.appointmentPeopleCountLabel,
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                      ),
                       const SizedBox(height: 10),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -362,13 +389,13 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                       const SizedBox(height: 16),
                       TextField(
                         controller: _noteCtrl,
-                        decoration: const InputDecoration(
-                          hintText: '备注（选填），如：两人同行',
+                        decoration: InputDecoration(
+                          hintText: l10n.activityNoteHint,
                         ),
                       ),
                       const SizedBox(height: 24),
                       PrimaryButton(
-                        label: '立即预约',
+                        label: l10n.storeBookNow,
                         color: Colors.black,
                         textColor: Colors.white,
                         onTap: _session == null
@@ -394,13 +421,13 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                           color: LiveColors.card,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
                             Icon(Icons.info_outline, size: 16, color: LiveColors.textSecondary),
                             SizedBox(width: 8),
                             Expanded(
-                              child: Text('该活动暂不支持线上预约，敬请期待',
-                                  style: TextStyle(fontSize: 13, color: LiveColors.textSecondary)),
+                              child: Text(l10n.activityNotBookable,
+                                  style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary)),
                             ),
                           ],
                         ),

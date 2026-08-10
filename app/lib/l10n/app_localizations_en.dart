@@ -1000,6 +1000,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activityTitle => 'Activities';
 
   @override
+  String get activityListTitle => 'Activities';
+
+  @override
+  String get activityDetailTitle => 'Activity Details';
+
+  @override
   String get activityBook => 'Book activity';
 
   @override
@@ -1008,10 +1014,52 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get activityMemberOnly => 'Members only';
+
+  @override
+  String get activityBookable => 'Bookable';
+
+  @override
+  String get activityDescPlaceholder => 'Activity details coming soon';
+
+  @override
+  String get activityPrice => 'Price';
+
+  @override
+  String get activitySelectSession => 'Select session';
+
+  @override
+  String activityRemaining(int remain, int capacity) {
+    return '$remain/$capacity left';
+  }
+
+  @override
+  String get activityNoteHint => 'Note (optional), e.g. two people';
+
+  @override
+  String get activityNotBookable =>
+      'Online booking not available for this activity yet';
+
+  @override
   String get notificationTitle => 'Notifications';
 
   @override
   String get notificationEmpty => 'No notifications';
+
+  @override
+  String get notificationInteract => 'Interactions';
+
+  @override
+  String get notificationSystem => 'System';
+
+  @override
+  String get notificationMarkAllRead => 'All marked as read';
+
+  @override
+  String get notificationCommunitySoon => 'Community is coming soon';
+
+  @override
+  String get notificationReelsSoon => 'Reels is coming soon';
 
   @override
   String get notLoggedIn => 'Please log in first';
