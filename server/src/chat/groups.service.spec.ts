@@ -45,13 +45,13 @@ describe('GroupsService.myGroups', () => {
       }),
     };
     const service = new GroupsService(
-      groups as any,
-      members as any,
-      messages as any,
-      {} as any,
-      reads as any,
-      users as any,
-      {} as any,
+      groups as never,
+      members as never,
+      messages as never,
+      {} as never,
+      reads as never,
+      users as never,
+      {} as never,
     );
     // myGroups 内部只关心 formatGroup 返回的 unreadCount，这里直接透传
     (

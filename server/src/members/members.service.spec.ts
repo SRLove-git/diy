@@ -81,12 +81,12 @@ describe('MembersService', () => {
       // 第一次查询（是否已有会员）返回 null；确认开通保存后，
       // myMembership 再查时应返回刚创建的会员记录。
       let saved: Record<string, unknown> | null = null;
-      m.memberships.findOneBy.mockImplementation(async () => saved);
+      m.memberships.findOneBy.mockImplementation(() => saved);
       m.memberships.create.mockImplementation((data: unknown) => {
         saved = { ...(data as object) };
         return saved;
       });
-      m.memberships.save.mockImplementation(async (x: unknown) => {
+      m.memberships.save.mockImplementation((x: unknown) => {
         saved = x as Record<string, unknown>;
         return x;
       });

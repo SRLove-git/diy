@@ -34,13 +34,13 @@ describe('ChatService.getMessages', () => {
         .mockResolvedValue({ blockedByMe: false, blockedByPeer: false }),
     };
     return new ChatService(
-      conversations as any,
-      messages as any,
-      {} as any,
-      {} as any,
-      {} as any,
-      blocks as any,
-      {} as any,
+      conversations as never,
+      messages as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      blocks as never,
+      {} as never,
     );
   }
 
@@ -83,13 +83,13 @@ describe('ChatService.getMessages', () => {
       create: jest.fn(),
     };
     const service = new ChatService(
-      conversations as any,
-      messages as any,
-      {} as any,
-      users as any,
-      follows as any,
-      blocks as any,
-      {} as any,
+      conversations as never,
+      messages as never,
+      {} as never,
+      users as never,
+      follows as never,
+      blocks as never,
+      {} as never,
     );
 
     await expect(service.sendMessage(32, 10, 'text', 'hello')).rejects.toThrow(
@@ -103,13 +103,13 @@ describe('ChatService.onlineUserIds', () => {
   function buildService(mgetImpl: jest.Mock) {
     const redis = { mget: mgetImpl };
     return new ChatService(
-      {} as any,
-      {} as any,
-      {} as any,
-      {} as any,
-      {} as any,
-      {} as any,
-      redis as any,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      redis as never,
     );
   }
 

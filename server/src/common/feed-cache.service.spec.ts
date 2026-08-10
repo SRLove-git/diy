@@ -2,7 +2,7 @@ import { FeedCacheService } from './feed-cache.service';
 
 describe('FeedCacheService', () => {
   function buildService(redis: Record<string, jest.Mock>) {
-    return new FeedCacheService(redis as any);
+    return new FeedCacheService(redis as never);
   }
 
   it('按版本 key 写入，TTL 带随机值', async () => {
