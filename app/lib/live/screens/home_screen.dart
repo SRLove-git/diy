@@ -221,11 +221,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             padding: const EdgeInsets.only(bottom: 10),
                             child: _HomeServiceCard(
                               appointment: o,
-                              onTap: () => LiveRoutes.push(
-                                context,
-                                RoutePaths.appointmentServiceEnd,
-                                extra: o,
-                              ),
+                              onTap: () async {
+                                final ok =
+                                    await showClockOutConfirmDialog(context);
+                                if (ok == true && context.mounted) {
+                                  LiveRoutes.push(
+                                    context,
+                                    RoutePaths.appointmentServiceEnd,
+                                    extra: o,
+                                  );
+                                }
+                              },
                             ),
                           ),
                         for (final o in upcoming)

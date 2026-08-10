@@ -90,6 +90,85 @@ Future<bool?> showCancelAppointmentDialog(BuildContext context) {
   );
 }
 
+/// 下钟确认弹窗（对齐取消预约弹窗样式）：
+/// 遮罩 + 312 宽圆角白卡 + 标题 + 说明 + 再想想 / 确认下钟。
+Future<bool?> showClockOutConfirmDialog(BuildContext context) {
+  return showDialog<bool>(
+    context: context,
+    barrierColor: const Color(0x6B141414),
+    builder: (_) => Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 39),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 312),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(22, 26, 22, 0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x38141414),
+                blurRadius: 64,
+                offset: Offset(0, 24),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '结束体验',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF141414),
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                '下钟后将停止计时并生成完成记录，确认结束本次体验吗？',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF8E8E93),
+                  height: 1.6,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, 22, 0, 22),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _DialogActionBtn(
+                        label: '再想想',
+                        backgroundColor: const Color(0xFFF7F7F8),
+                        foregroundColor: const Color(0xFF141414),
+                        onTap: () => Navigator.pop(context, false),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _DialogActionBtn(
+                        label: '确认下钟',
+                        backgroundColor: const Color(0xFFFF3B30),
+                        foregroundColor: Colors.white,
+                        onTap: () => Navigator.pop(context, true),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 /// 弹窗按钮：高 46、圆角 15、字号 15 加粗（对齐设计稿）。
 class _DialogActionBtn extends StatelessWidget {
   const _DialogActionBtn({
@@ -814,11 +893,19 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                                       RoutePaths.appointmentCheckinQr,
                                       extra: a,
                                     ),
-                                'in_service' => () => LiveRoutes.push(
-                                      context,
-                                      RoutePaths.appointmentServiceEnd,
-                                      extra: a,
-                                    ),
+                                'in_service' => () async {
+                                      final ok =
+                                          await showClockOutConfirmDialog(
+                                        context,
+                                      );
+                                      if (ok == true && context.mounted) {
+                                        LiveRoutes.push(
+                                          context,
+                                          RoutePaths.appointmentServiceEnd,
+                                          extra: a,
+                                        );
+                                      }
+                                    },
                                 _ => () => _again(a),
                               },
                             );
