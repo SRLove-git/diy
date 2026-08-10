@@ -24,6 +24,7 @@ import {
   percentOffCents,
   yuanToCents,
 } from '../common/money.util';
+import { isSurchargeDate } from '../common/singapore-holidays';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { Activity } from '../activities/activity.entity';
 import { ActivitySession } from '../activities/activity-session.entity';
@@ -361,10 +362,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     }
     let originalAmountCents = yuanToCents(normalPrice) * people;
 
-    // 周末/节假日加价：所有档位统一上浮 weekendSurchargePercent%
-    const weekday = new Date(`${dto.date}T00:00:00`).getDay();
+    // 周末/节假日加价：周六/周日或新加坡公共假期统一上浮 weekendSurchargePercent%
     const surcharge = store.weekendSurchargePercent ?? 0;
-    if ((weekday === 0 || weekday === 6) && surcharge > 0) {
+    if (isSurchargeDate(dto.date) && surcharge > 0) {
       const rate = 100 + surcharge;
       amountCents = Math.round((amountCents * rate) / 100);
       originalAmountCents = Math.round((originalAmountCents * rate) / 100);
