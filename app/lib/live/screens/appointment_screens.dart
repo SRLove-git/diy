@@ -709,69 +709,76 @@ class AppointmentSuccessScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LivePage(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const SizedBox(height: 60),
-            const Icon(Icons.check_circle, size: 84, color: LiveColors.success),
-            const SizedBox(height: 16),
-            const Text(
-              '预约已提交',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${appointment.title} · ${appointment.date} ${appointment.startTime}',
-              style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
-            ),
-            const SizedBox(height: 28),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3E8FF),
-                borderRadius: BorderRadius.circular(16),
+    // 预约成功后返回（系统返回手势/按钮）直接回首页，避免退回下单流程。
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) LiveRoutes.goHome(context);
+      },
+      child: LivePage(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              const SizedBox(height: 60),
+              const Icon(Icons.check_circle, size: 84, color: LiveColors.success),
+              const SizedBox(height: 16),
+              const Text(
+                '预约已提交',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
               ),
-              child: Column(
-                children: [
-                  const Icon(Icons.schedule, size: 32, color: Color(0xFF7C3AED)),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '等待门店确认',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF6D28D9),
+              const SizedBox(height: 8),
+              Text(
+                '${appointment.title} · ${appointment.date} ${appointment.startTime}',
+                style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
+              ),
+              const SizedBox(height: 28),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3E8FF),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(Icons.schedule, size: 32, color: Color(0xFF7C3AED)),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '等待门店确认',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF6D28D9),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    '预约已提交，门店在管理端确认后\n到店出示预约码即可核销体验',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    Text(
+                      '预约已提交，门店在管理端确认后\n到店出示预约码即可核销体验',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const Spacer(),
-            PrimaryButton(
-              label: '查看预约',
-              color: Colors.black,
-              textColor: Colors.white,
-              onTap: () => LiveRoutes.pushId(
-                context,
-                RoutePaths.appointmentDetail,
-                appointment.id,
+              const Spacer(),
+              PrimaryButton(
+                label: '查看预约',
+                color: Colors.black,
+                textColor: Colors.white,
+                onTap: () => LiveRoutes.pushId(
+                  context,
+                  RoutePaths.appointmentDetail,
+                  appointment.id,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            OutlineButton(
-              label: '返回首页',
-              onTap: () => LiveRoutes.goHome(context),
-            ),
-            const SizedBox(height: 20),
-          ],
+              const SizedBox(height: 12),
+              OutlineButton(
+                label: '返回首页',
+                onTap: () => LiveRoutes.goHome(context),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
