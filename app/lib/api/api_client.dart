@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import 'auth_store.dart';
+import '../l10n/locale_store.dart';
 
 class ApiException implements Exception {
   ApiException(this.message, {this.statusCode});
@@ -25,7 +27,13 @@ class ApiClient {
   bool _refreshing = false;
 
   Map<String, String> _headers({bool json = true, bool auth = true}) {
+    final language =
+        LocaleStore.instance.languageCode ??
+        (PlatformDispatcher.instance.locale.languageCode == 'zh'
+            ? 'zh'
+            : 'en');
     final h = <String, String>{
+      'Accept-Language': language,
       if (json) 'Content-Type': 'application/json',
     };
     final token = AuthStore.instance.accessToken;

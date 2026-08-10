@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AdminGuard } from '../stores/admin.guard';
+import type { NotificationCategory } from './notification.entity';
 import { NotificationsService } from './notifications.service';
 
 /** 管理端：通知管理 + 模板管理（需 admin 角色） */
@@ -28,6 +29,9 @@ export class AdminNotificationsController {
     body: {
       title: string;
       content: string;
+      titleEn?: string;
+      contentEn?: string;
+      category?: NotificationCategory;
       targetType: 'all' | 'role' | 'user';
       targetRole?: 'user' | 'admin';
       targetUserIds?: string;

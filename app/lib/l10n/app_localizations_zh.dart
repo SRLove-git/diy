@@ -223,6 +223,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsGeneral => '通用';
 
   @override
+  String get settingsLanguage => '语言';
+
+  @override
+  String get settingsLanguageSystem => '跟随系统';
+
+  @override
+  String get settingsLanguageChinese => '中文';
+
+  @override
+  String get settingsLanguageEnglish => 'English';
+
+  @override
   String get settingsAbout => '关于';
 
   @override

@@ -2,8 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { ChatGateway } from '../chat/chat.gateway';
+import type { AppLocale } from '../common/i18n';
 import { User } from '../users/user.entity';
-import { Notification, NotificationTarget } from './notification.entity';
+import {
+  Notification,
+  NotificationCategory,
+  NotificationTarget,
+} from './notification.entity';
 import { NotificationRead } from './notification-read.entity';
 import { NotificationTemplate } from './notification-template.entity';
 
@@ -27,6 +32,9 @@ export class NotificationsService {
   async createAndSend(dto: {
     title: string;
     content: string;
+    titleEn?: string;
+    contentEn?: string;
+    category?: NotificationCategory;
     targetType: NotificationTarget;
     targetRole?: 'user' | 'admin';
     targetUserIds?: string;
@@ -36,6 +44,9 @@ export class NotificationsService {
   }): Promise<Notification> {
     const notification = this.notificationRepo.create({
       ...dto,
+      titleEn: dto.titleEn ?? null,
+      contentEn: dto.contentEn ?? null,
+      category: dto.category ?? 'system',
       actionType: dto.actionType ?? null,
       actionId: dto.actionId ?? null,
       channels: dto.channels || 'push',
@@ -99,7 +110,12 @@ export class NotificationsService {
   // ─── 用户端：我的通知 ───
 
   /** 当前用户可见的通知（全体 / 本人角色 / 定向本人），仅已发送 */
-  async myNotifications(userId: number, page = 1, pageSize = 20) {
+  async myNotifications(
+    userId: number,
+    page = 1,
+    pageSize = 20,
+    locale: AppLocale = 'zh',
+  ) {
     const role = await this.resolveRole(userId);
     const applicable = await this.applicableNotifications(userId, role);
     const ids = applicable.map((n) => n.id);
@@ -119,8 +135,9 @@ export class NotificationsService {
     return {
       items: pageItems.map((n) => ({
         id: n.id,
-        title: n.title,
-        content: n.content,
+        title: locale === 'en' && n.titleEn ? n.titleEn : n.title,
+        content: locale === 'en' && n.contentEn ? n.contentEn : n.content,
+        category: n.category,
         channel: n.channels,
         createdAt: n.createdAt,
         sentAt: n.sentAt,

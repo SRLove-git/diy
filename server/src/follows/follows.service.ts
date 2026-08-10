@@ -195,6 +195,9 @@ export class FollowsService {
           const notification = this.notifications.create({
             title: `${nickname} 关注了你`,
             content: '快去 TA 的主页看看吧',
+            titleEn: `${nickname} followed you`,
+            contentEn: 'Check out their profile.',
+            category: 'follow',
             targetType: 'user',
             targetUserIds: String(targetId),
             actionType: 'user',

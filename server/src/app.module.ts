@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
@@ -23,6 +24,7 @@ import { StoresModule } from './stores/stores.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
 import { VideosModule } from './videos/videos.module';
+import { HttpExceptionFilter } from './common/http-exception.filter';
 
 @Module({
   imports: [
@@ -65,6 +67,10 @@ import { VideosModule } from './videos/videos.module';
     ModerationModule,
   ],
   controllers: [AppController, HealthController],
-  providers: [AppService, BootstrapService],
+  providers: [
+    AppService,
+    BootstrapService,
+    { provide: APP_FILTER, useClass: HttpExceptionFilter },
+  ],
 })
 export class AppModule {}

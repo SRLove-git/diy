@@ -7,6 +7,17 @@ import {
 
 export type NotificationTarget = 'all' | 'role' | 'user';
 
+export type NotificationCategory =
+  | 'system'
+  | 'like'
+  | 'comment'
+  | 'reply'
+  | 'collect'
+  | 'follow'
+  | 'booking'
+  | 'activity'
+  | 'member';
+
 @Entity('notifications')
 export class Notification {
   @PrimaryGeneratedColumn()
@@ -19,6 +30,18 @@ export class Notification {
   /** 正文内容 */
   @Column({ type: 'text' })
   content: string;
+
+  /** 英文标题（可选；缺省时展示中文标题） */
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  titleEn: string | null;
+
+  /** 英文正文（可选；缺省时展示中文正文） */
+  @Column({ type: 'text', nullable: true })
+  contentEn: string | null;
+
+  /** 通知分类：用于客户端稳定分组/选图标，不依赖文案关键词 */
+  @Column({ type: 'varchar', length: 20, default: 'system' })
+  category: NotificationCategory;
 
   /** 发送目标类型：all=全体 / role=按角色 / user=指定用户 */
   @Column({ type: 'enum', enum: ['all', 'role', 'user'], default: 'all' })

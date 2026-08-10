@@ -153,4 +153,18 @@ void main() {
     expect(o.amount, 19.9);
     expect(o.statusLabel, '待确认');
   });
+
+  test('通知解析稳定分类与英文文案', () {
+    final n = AppNotification.fromJson({
+      'id': 8,
+      'title': 'Ada liked your post',
+      'content': '"My work" got a like',
+      'category': 'like',
+      'channel': 'push',
+      'read': false,
+    });
+    expect(n.title, 'Ada liked your post');
+    expect(n.category, 'like');
+    expect(n.read, false);
+  });
 }

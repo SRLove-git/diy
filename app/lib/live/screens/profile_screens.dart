@@ -9,6 +9,7 @@ import '../../api/content_services.dart';
 import '../../api/models.dart';
 import '../../api/services.dart';
 import '../../l10n/l10n_ext.dart';
+import '../../l10n/locale_store.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
@@ -2048,6 +2049,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (ok == true && mounted) await LiveRoutes.logout(context);
   }
 
+  String _languageLabel() => switch (LocaleStore.instance.languageCode) {
+        'zh' => context.l10n.settingsLanguageChinese,
+        'en' => context.l10n.settingsLanguageEnglish,
+        _ => context.l10n.settingsLanguageSystem,
+      };
+
+  Future<void> _pickLanguage() async {
+    final l10n = context.l10n;
+    final current = LocaleStore.instance.languageCode;
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: Text(l10n.settingsLanguage),
+        children: [
+          _LanguageOption(
+            label: l10n.settingsLanguageSystem,
+            selected: current == null,
+            onTap: () => Navigator.pop(dialogContext, 'system'),
+          ),
+          _LanguageOption(
+            label: l10n.settingsLanguageChinese,
+            selected: current == 'zh',
+            onTap: () => Navigator.pop(dialogContext, 'zh'),
+          ),
+          _LanguageOption(
+            label: l10n.settingsLanguageEnglish,
+            selected: current == 'en',
+            onTap: () => Navigator.pop(dialogContext, 'en'),
+          ),
+        ],
+      ),
+    );
+    if (selected == null || !mounted) return;
+    await LocaleStore.instance
+        .setLanguage(selected == 'system' ? null : selected);
+    if (mounted) setState(() {});
+  }
+
   Future<bool?> _showConfirmDialog({
     required String title,
     required String desc,
@@ -2178,6 +2217,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       subtitle: l10n.settingsNotificationsSub,
                       value: _notify,
                       onChanged: (v) => setState(() => _notify = v),
+                    ),
+                    const Divider(height: 1, color: LiveColors.divider),
+                    _SettingsInfoRow(
+                      title: l10n.settingsLanguage,
+                      subtitle: _languageLabel(),
+                      chevron: true,
+                      onTap: _pickLanguage,
                     ),
                     // 深色模式 / 隐私设置前期暂不开放，已隐藏
                     // const Divider(height: 1, color: LiveColors.divider),
@@ -2401,6 +2447,42 @@ class _SettingsInfoRow extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 设置页语言选择项。
+class _LanguageOption extends StatelessWidget {
+  const _LanguageOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SimpleDialogOption(
+      onPressed: onTap,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: LiveColors.textPrimary,
+              ),
+            ),
+          ),
+          if (selected)
+            const Icon(Icons.check, size: 18, color: LiveColors.brand),
+        ],
       ),
     );
   }

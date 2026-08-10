@@ -366,25 +366,71 @@ class _IconBox extends StatelessWidget {
   }
 }
 
-const _interactKeys = ['赞', '评论', '收藏', '关注', '回复'];
+const _interactCategories = {'like', 'comment', 'reply', 'collect', 'follow'};
+const _interactKeys = [
+  '赞',
+  '评论',
+  '收藏',
+  '关注',
+  '回复',
+  'liked',
+  'commented',
+  'saved',
+  'followed',
+  'replied',
+];
 
-bool _isInteract(AppNotification n) =>
-    _interactKeys.any((k) => n.title.contains(k) || n.content.contains(k));
+bool _isInteract(AppNotification n) {
+  if (_interactCategories.contains(n.category)) return true;
+  final text = '${n.title}${n.content}'.toLowerCase();
+  return _interactKeys.any((k) => text.contains(k.toLowerCase()));
+}
 
 IconData _iconFor(AppNotification n) {
   final text = '${n.title}${n.content}';
+  switch (n.category) {
+    case 'like':
+      return Icons.favorite;
+    case 'comment':
+    case 'reply':
+      return Icons.chat_bubble;
+    case 'collect':
+      return Icons.bookmark;
+    case 'follow':
+      return Icons.person;
+    case 'booking':
+      return Icons.schedule;
+    case 'member':
+      return Icons.card_giftcard;
+    case 'activity':
+      return Icons.celebration;
+  }
   if (_isInteract(n)) {
-    if (text.contains('赞')) return Icons.favorite;
-    if (text.contains('评论') || text.contains('回复')) return Icons.chat_bubble;
-    if (text.contains('收藏')) return Icons.bookmark;
-    if (text.contains('关注')) return Icons.person;
+    final lower = text.toLowerCase();
+    if (lower.contains('赞') || lower.contains('liked')) return Icons.favorite;
+    if (lower.contains('评论') ||
+        lower.contains('回复') ||
+        lower.contains('commented') ||
+        lower.contains('replied')) {
+      return Icons.chat_bubble;
+    }
+    if (lower.contains('收藏') || lower.contains('saved')) {
+      return Icons.bookmark;
+    }
+    if (lower.contains('关注') || lower.contains('followed')) {
+      return Icons.person;
+    }
     return Icons.favorite;
   }
-  if (text.contains('会员') || text.contains('优惠券') || text.contains('券')) {
+  final lower = text.toLowerCase();
+  if (lower.contains('会员') ||
+      lower.contains('优惠券') ||
+      lower.contains('券') ||
+      lower.contains('member')) {
     return Icons.card_giftcard;
   }
-  if (text.contains('预约')) return Icons.schedule;
-  if (text.contains('审核')) return Icons.diamond;
+  if (lower.contains('预约') || lower.contains('booking')) return Icons.schedule;
+  if (lower.contains('审核') || lower.contains('review')) return Icons.diamond;
   return Icons.campaign;
 }
 

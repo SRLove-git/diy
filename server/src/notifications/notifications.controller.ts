@@ -6,8 +6,11 @@ import {
   ParseIntPipe,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
+import { resolveLocale } from '../common/i18n';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
@@ -22,14 +25,18 @@ export class NotificationsController {
   @Get()
   mine(
     @CurrentUser() user: AuthUser,
+    @Req() req: Request,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe)
     pageSize: number,
   ) {
+    const lang =
+      typeof req.query.lang === 'string' ? req.query.lang : undefined;
     return this.svc.myNotifications(
       user.id,
       Math.max(1, page),
       Math.min(50, Math.max(1, pageSize)),
+      resolveLocale(req.headers['accept-language'], lang),
     );
   }
 

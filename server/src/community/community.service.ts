@@ -21,6 +21,7 @@ import { CreatePostDto, UpdatePostStatusDto } from './post.dto';
 import { CreateCommentDto } from './comment.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ModerationService } from '../moderation/moderation.service';
+import type { NotificationCategory } from '../notifications/notification.entity';
 
 /** 作者简要信息（嵌入列表响应中，避免 N+1 查询） */
 export interface AuthorInfo {
@@ -60,15 +61,31 @@ export class CommunityService {
     ownerId: number;
     title: string;
     content: string;
+    titleEn: string;
+    contentEn: string;
+    category: NotificationCategory;
     actionType: 'post' | 'video' | 'user';
     actionId: number;
   }): Promise<void> {
-    const { actorId, ownerId, title, content, actionType, actionId } = params;
+    const {
+      actorId,
+      ownerId,
+      title,
+      content,
+      titleEn,
+      contentEn,
+      category,
+      actionType,
+      actionId,
+    } = params;
     if (actorId === ownerId) return;
     try {
       await this.notifications.createAndSend({
         title,
         content,
+        titleEn,
+        contentEn,
+        category,
         targetType: 'user',
         targetUserIds: String(ownerId),
         actionType,
@@ -380,6 +397,9 @@ export class CommunityService {
         ownerId: post.userId,
         title: `${nickname} 赞了你的作品`,
         content: `「${post.title || post.content || '作品'}」获赞 +1`,
+        titleEn: `${nickname} liked your post`,
+        contentEn: `"${post.title || post.content || 'Post'}" got a like`,
+        category: 'like',
         actionType: 'post',
         actionId: postId,
       });
@@ -465,6 +485,9 @@ export class CommunityService {
       ownerId: post.userId,
       title: `${nickname} 评论了你`,
       content: `「${dto.content}」`,
+      titleEn: `${nickname} commented on your post`,
+      contentEn: `"${dto.content}"`,
+      category: 'comment',
       actionType: 'post',
       actionId: postId,
     });
@@ -474,6 +497,9 @@ export class CommunityService {
         ownerId: replyToId,
         title: `${nickname} 回复了你`,
         content: `「${dto.content}」`,
+        titleEn: `${nickname} replied to you`,
+        contentEn: `"${dto.content}"`,
+        category: 'reply',
         actionType: 'post',
         actionId: postId,
       });
@@ -615,6 +641,9 @@ export class CommunityService {
         ownerId: post.userId,
         title: `${nickname} 收藏了你的作品`,
         content: `「${post.title || post.content || '作品'}」被收藏`,
+        titleEn: `${nickname} saved your post`,
+        contentEn: `"${post.title || post.content || 'Post'}" was saved`,
+        category: 'collect',
         actionType: 'post',
         actionId: postId,
       });

@@ -925,6 +925,7 @@ class AppNotification {
     required this.id,
     required this.title,
     required this.content,
+    this.category = 'system',
     this.channel = 'push',
     this.createdAt,
     this.sentAt,
@@ -936,6 +937,7 @@ class AppNotification {
   final int id;
   final String title;
   final String content;
+  final String category;
   final String channel;
   final DateTime? createdAt;
   final DateTime? sentAt;
@@ -948,6 +950,7 @@ class AppNotification {
         id: (json['id'] as num?)?.toInt() ?? 0,
         title: json['title'] as String? ?? '',
         content: json['content'] as String? ?? '',
+        category: json['category'] as String? ?? 'system',
         channel: json['channel'] as String? ?? 'push',
         createdAt: json['createdAt'] == null
             ? null
