@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../api/api_client.dart';
 import '../../api/auth_store.dart';
 import '../../api/services.dart';
+import '../../l10n/l10n_ext.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
@@ -36,11 +37,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     final account = _accountCtrl.text.trim();
     if (account.isEmpty) {
-      showLiveSnack(context, '请输入用户名或邮箱');
+      showLiveSnack(context, context.l10n.loginNeedAccount);
       return;
     }
     if (_pwdCtrl.text.length < 6) {
-      showLiveSnack(context, '密码至少 6 位');
+      showLiveSnack(context, context.l10n.passwordMin6);
       return;
     }
     setState(() => _loading = true);
@@ -52,7 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
         userId: r.userId,
       );
       if (!mounted) return;
-      showLiveSnack(context, '登录成功');
+      showLiveSnack(context, context.l10n.loginSuccess);
       // save() 触发 AuthStore notifyListeners -> 路由 redirect 自动跳转首页；
       // 这里不再显式 goHome，避免与 redirect 竞态导致重复 page key 断言。
     } on ApiException catch (e) {
@@ -64,6 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return LivePage(
       // 键盘弹出时不压缩页面高度，键盘直接覆盖在页面之上，
       // 避免出现“登录页变小、键盘在下方”的上下分层效果。
@@ -77,9 +79,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 90),
-                  const Center(
+                  Center(
                     child: Text(
-                      'Think Origin',
+                      l10n.loginTitle,
                       style: TextStyle(
                         fontSize: 30,
                         fontWeight: FontWeight.w800,
@@ -87,18 +89,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  const Center(
+                  Center(
                     child: Text(
-                      '发现手作 · 遇见同好',
-                      style: TextStyle(fontSize: 13, color: LiveColors.textSecondary),
+                      l10n.loginSlogan,
+                      style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
                     ),
                   ),
                   const SizedBox(height: 46),
                   TextField(
                     controller: _accountCtrl,
                     maxLength: 255,
-                    decoration: const InputDecoration(
-                      hintText: '用户名 / 邮箱',
+                    decoration: InputDecoration(
+                      hintText: l10n.loginAccountHint,
                       counterText: '',
                     ),
                   ),
@@ -108,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     obscureText: _obscure,
                     maxLength: 32,
                     decoration: InputDecoration(
-                      hintText: '请输入密码',
+                      hintText: l10n.loginPasswordHint,
                       counterText: '',
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -125,15 +127,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () => LiveRoutes.push(context, RoutePaths.loginForgot),
-                      child: const Text(
-                        '忘记密码？',
-                        style: TextStyle(fontSize: 13, color: LiveColors.textSecondary),
+                      child: Text(
+                        l10n.loginForgotQuestion,
+                        style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
                       ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   PrimaryButton(
-                    label: '登录',
+                    label: l10n.loginButton,
                     color: Colors.black,
                     textColor: Colors.white,
                     borderRadius: 16,
@@ -149,9 +151,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             context,
                             RoutePaths.loginRegister,
                           ),
-                          child: const Text(
-                            '注册新账号',
-                            style: TextStyle(color: LiveColors.textSecondary, fontSize: 14),
+                          child: Text(
+                            l10n.loginRegisterLink,
+                            style: const TextStyle(color: LiveColors.textSecondary, fontSize: 14),
                           ),
                         ),
                       ),
@@ -165,10 +167,10 @@ class _LoginScreenState extends State<LoginScreen> {
           // 协议文字固定在页面底部略上位置，不随内容滚动。
           Padding(
             padding: const EdgeInsets.only(bottom: 28, top: 8),
-            child: const Center(
+            child: Center(
               child: Text(
-                '注册即代表同意《用户协议》和《隐私政策》',
-                style: TextStyle(fontSize: 11, color: LiveColors.textTertiary),
+                l10n.loginAgreeTerms,
+                style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
               ),
             ),
           ),
@@ -231,7 +233,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _sendCode() async {
     if (!_emailOk) {
-      showLiveSnack(context, '请输入正确的邮箱');
+      showLiveSnack(context, context.l10n.needValidEmail);
       return;
     }
     setState(() => _sending = true);
@@ -240,9 +242,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           await AuthService.instance.sendEmailCode(_emailCtrl.text.trim());
       if (!mounted) return;
       if (code != null) {
-        showLiveSnack(context, '验证码已发送（开发环境：$code）');
+        showLiveSnack(context, context.l10n.sendCodeSentDev(code));
       } else {
-        showLiveSnack(context, '验证码已发送');
+        showLiveSnack(context, context.l10n.sendCodeSent);
       }
       _startCountdown();
     } on ApiException catch (e) {
@@ -256,23 +258,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final username = _usernameCtrl.text.trim();
     final email = _emailCtrl.text.trim();
     if (!_usernameReg.hasMatch(username)) {
-      showLiveSnack(context, '用户名需为 2-30 位字母、数字或下划线');
+      showLiveSnack(context, context.l10n.usernameInvalid);
       return;
     }
     if (!_emailOk) {
-      showLiveSnack(context, '请输入正确的邮箱');
+      showLiveSnack(context, context.l10n.needValidEmail);
       return;
     }
     if (_codeCtrl.text.trim().length != 6) {
-      showLiveSnack(context, '请输入 6 位验证码');
+      showLiveSnack(context, context.l10n.needCode6);
       return;
     }
     if (_pwdCtrl.text.length < 6) {
-      showLiveSnack(context, '密码至少 6 位');
+      showLiveSnack(context, context.l10n.passwordMin6);
       return;
     }
     if (_pwdCtrl.text != _confirmCtrl.text) {
-      showLiveSnack(context, '两次输入的密码不一致');
+      showLiveSnack(context, context.l10n.passwordMismatch);
       return;
     }
     setState(() => _loading = true);
@@ -289,7 +291,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         userId: r.userId,
       );
       if (!mounted) return;
-      showLiveSnack(context, '注册成功，欢迎加入 Think Origin');
+      showLiveSnack(context, context.l10n.registerSuccess);
       // save() 触发 AuthStore notifyListeners -> 路由 redirect 自动跳转首页
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -300,6 +302,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return LivePage(
       resizeToAvoidBottomInset: false,
       child: SingleChildScrollView(
@@ -308,25 +311,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 16),
-            const Text(
-              '注册新账号',
-              style: TextStyle(
+            Text(
+              l10n.registerTitle,
+              style: const TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.w700,
                 color: LiveColors.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              '用用户名和密码注册，绑定邮箱用于找回密码',
-              style: TextStyle(fontSize: 13, color: LiveColors.textSecondary),
+            Text(
+              l10n.registerDesc,
+              style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
             ),
             const SizedBox(height: 28),
             TextField(
               controller: _usernameCtrl,
               maxLength: 30,
-              decoration: const InputDecoration(
-                hintText: '用户名（2-30 位字母/数字/下划线）',
+              decoration: InputDecoration(
+                hintText: l10n.registerUsernameHint,
                 counterText: '',
               ),
             ),
@@ -335,7 +338,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: _emailCtrl,
               keyboardType: TextInputType.emailAddress,
               maxLength: 255,
-              decoration: const InputDecoration(hintText: '邮箱（用于绑定和找回密码）', counterText: ''),
+              decoration: InputDecoration(hintText: l10n.registerEmailHintFull, counterText: ''),
             ),
             const SizedBox(height: 12),
             Row(
@@ -345,7 +348,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     controller: _codeCtrl,
                     keyboardType: TextInputType.number,
                     maxLength: 6,
-                    decoration: const InputDecoration(hintText: '邮箱验证码', counterText: ''),
+                    decoration: InputDecoration(hintText: l10n.registerCodeHint, counterText: ''),
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),
                 ),
@@ -363,7 +366,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     child: Text(
-                      _countdown > 0 ? '${_countdown}s 后重发' : '获取验证码',
+                      _countdown > 0
+                          ? l10n.registerResendIn(_countdown)
+                          : l10n.registerSendCode,
                       style: const TextStyle(fontSize: 13),
                     ),
                   ),
@@ -376,7 +381,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               obscureText: _obscure,
               maxLength: 32,
               decoration: InputDecoration(
-                hintText: '设置密码（6-32 位）',
+                hintText: l10n.registerPasswordHint,
                 counterText: '',
                 suffixIcon: IconButton(
                   icon: Icon(
@@ -392,11 +397,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: _confirmCtrl,
               obscureText: true,
               maxLength: 32,
-              decoration: const InputDecoration(hintText: '确认密码', counterText: ''),
+              decoration: InputDecoration(hintText: l10n.registerConfirmHint, counterText: ''),
             ),
             const SizedBox(height: 24),
             PrimaryButton(
-              label: '注册',
+              label: l10n.registerButton,
               onTap: _loading ? null : _register,
               loading: _loading,
             ),
@@ -406,9 +411,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 TextButton(
                   onPressed: () => LiveRoutes.replace(context, RoutePaths.login),
-                  child: const Text(
-                    '已有账号？去登录',
-                    style: TextStyle(color: LiveColors.textSecondary, fontSize: 14),
+                  child: Text(
+                    l10n.registerToLogin,
+                    style: const TextStyle(color: LiveColors.textSecondary, fontSize: 14),
                   ),
                 ),
               ],
@@ -467,7 +472,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Future<void> _sendCode() async {
     if (!_emailOk) {
-      showLiveSnack(context, '请输入正确的邮箱');
+      showLiveSnack(context, context.l10n.needValidEmail);
       return;
     }
     setState(() => _sending = true);
@@ -476,9 +481,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           await AuthService.instance.sendEmailCode(_emailCtrl.text.trim());
       if (!mounted) return;
       if (code != null) {
-        showLiveSnack(context, '验证码已发送（开发环境：$code）');
+        showLiveSnack(context, context.l10n.sendCodeSentDev(code));
       } else {
-        showLiveSnack(context, '验证码已发送');
+        showLiveSnack(context, context.l10n.sendCodeSent);
       }
       _startCountdown();
     } on ApiException catch (e) {
@@ -491,19 +496,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Future<void> _submit() async {
     final email = _emailCtrl.text.trim();
     if (!_emailOk) {
-      showLiveSnack(context, '请输入正确的邮箱');
+      showLiveSnack(context, context.l10n.needValidEmail);
       return;
     }
     if (_codeCtrl.text.trim().length != 6) {
-      showLiveSnack(context, '请输入 6 位验证码');
+      showLiveSnack(context, context.l10n.needCode6);
       return;
     }
     if (_pwdCtrl.text.length < 6) {
-      showLiveSnack(context, '密码至少 6 位');
+      showLiveSnack(context, context.l10n.passwordMin6);
       return;
     }
     if (_pwdCtrl.text != _confirmCtrl.text) {
-      showLiveSnack(context, '两次输入的密码不一致');
+      showLiveSnack(context, context.l10n.passwordMismatch);
       return;
     }
     setState(() => _loading = true);
@@ -514,7 +519,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         password: _pwdCtrl.text,
       );
       if (!mounted) return;
-      showLiveSnack(context, '密码重置成功，请重新登录');
+      showLiveSnack(context, context.l10n.resetPasswordSuccess);
       LiveRoutes.replace(context, RoutePaths.login);
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -525,6 +530,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return LivePage(
       resizeToAvoidBottomInset: false,
       child: SingleChildScrollView(
@@ -533,25 +539,25 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 16),
-            const Text(
-              '忘记密码',
-              style: TextStyle(
+            Text(
+              l10n.forgotTitle,
+              style: const TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.w700,
                 color: LiveColors.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              '通过绑定邮箱验证后设置新密码',
-              style: TextStyle(fontSize: 13, color: LiveColors.textSecondary),
+            Text(
+              l10n.forgotDesc,
+              style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
             ),
             const SizedBox(height: 28),
             TextField(
               controller: _emailCtrl,
               keyboardType: TextInputType.emailAddress,
               maxLength: 255,
-              decoration: const InputDecoration(hintText: '绑定邮箱', counterText: ''),
+              decoration: InputDecoration(hintText: l10n.registerEmailHint, counterText: ''),
             ),
             const SizedBox(height: 12),
             Row(
@@ -561,7 +567,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     controller: _codeCtrl,
                     keyboardType: TextInputType.number,
                     maxLength: 6,
-                    decoration: const InputDecoration(hintText: '邮箱验证码', counterText: ''),
+                    decoration: InputDecoration(hintText: l10n.registerCodeHint, counterText: ''),
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),
                 ),
@@ -579,7 +585,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ),
                     ),
                     child: Text(
-                      _countdown > 0 ? '${_countdown}s' : '获取验证码',
+                      _countdown > 0
+                          ? l10n.registerResendIn(_countdown)
+                          : l10n.registerSendCode,
                       style: const TextStyle(fontSize: 13),
                     ),
                   ),
@@ -592,7 +600,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               obscureText: _obscure,
               maxLength: 32,
               decoration: InputDecoration(
-                hintText: '设置新密码（6-32 位）',
+                hintText: l10n.forgotNewPassword,
                 counterText: '',
                 suffixIcon: IconButton(
                   icon: Icon(
@@ -608,11 +616,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               controller: _confirmCtrl,
               obscureText: true,
               maxLength: 32,
-              decoration: const InputDecoration(hintText: '确认新密码', counterText: ''),
+              decoration: InputDecoration(hintText: l10n.changePasswordConfirm, counterText: ''),
             ),
             const SizedBox(height: 24),
             PrimaryButton(
-              label: '重置密码',
+              label: l10n.forgotResetButton,
               onTap: _loading ? null : _submit,
               loading: _loading,
             ),
@@ -622,9 +630,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               children: [
                 TextButton(
                   onPressed: () => LiveRoutes.replace(context, RoutePaths.login),
-                  child: const Text(
-                    '返回登录',
-                    style: TextStyle(color: LiveColors.textSecondary, fontSize: 14),
+                  child: Text(
+                    l10n.forgotBackToLogin,
+                    style: const TextStyle(color: LiveColors.textSecondary, fontSize: 14),
                   ),
                 ),
               ],
@@ -665,15 +673,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     final old = _oldCtrl.text;
     final next = _newCtrl.text;
     if (old.isEmpty) {
-      showLiveSnack(context, '请输入原密码');
+      showLiveSnack(context, context.l10n.changePasswordNeedOld);
       return;
     }
     if (next.length < 6) {
-      showLiveSnack(context, '新密码至少 6 位');
+      showLiveSnack(context, context.l10n.changePasswordMin);
       return;
     }
     if (next != _confirmCtrl.text) {
-      showLiveSnack(context, '两次输入的新密码不一致');
+      showLiveSnack(context, context.l10n.changePasswordMismatch);
       return;
     }
     setState(() => _loading = true);
@@ -681,7 +689,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       await AuthService.instance
           .changePassword(oldPassword: old, newPassword: next);
       if (!mounted) return;
-      showLiveSnack(context, '密码修改成功');
+      showLiveSnack(context, context.l10n.changePasswordSuccess);
       Navigator.of(context).pop();
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -692,6 +700,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return LivePage(
       resizeToAvoidBottomInset: false,
       child: Column(
@@ -703,18 +712,18 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    '修改登录密码',
-                    style: TextStyle(
+                  Text(
+                    l10n.changePasswordTitle,
+                    style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: LiveColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    '验证原密码后设置新密码，下次登录请使用新密码',
-                    style: TextStyle(
+                  Text(
+                    l10n.changePasswordDesc,
+                    style: const TextStyle(
                       fontSize: 13,
                       color: LiveColors.textSecondary,
                     ),
@@ -725,7 +734,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     obscureText: _obscureOld,
                     maxLength: 32,
                     decoration: InputDecoration(
-                      hintText: '原密码',
+                      hintText: l10n.changePasswordOld,
                       counterText: '',
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -745,7 +754,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     obscureText: _obscureNew,
                     maxLength: 32,
                     decoration: InputDecoration(
-                      hintText: '新密码（6-32 位）',
+                      hintText: l10n.changePasswordNew,
                       counterText: '',
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -764,14 +773,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     controller: _confirmCtrl,
                     obscureText: true,
                     maxLength: 32,
-                    decoration: const InputDecoration(
-                      hintText: '确认新密码',
+                    decoration: InputDecoration(
+                      hintText: l10n.changePasswordConfirm,
                       counterText: '',
                     ),
                   ),
                   const SizedBox(height: 24),
                   PrimaryButton(
-                    label: '确认修改',
+                    label: l10n.changePasswordButton,
                     onTap: _loading ? null : _submit,
                     loading: _loading,
                   ),

@@ -221,8 +221,26 @@ abstract class AppLocalizations {
   /// No description provided for @loginPasswordHint.
   ///
   /// In zh, this message translates to:
-  /// **'密码（6-32 位）'**
+  /// **'请输入密码'**
   String get loginPasswordHint;
+
+  /// No description provided for @loginSlogan.
+  ///
+  /// In zh, this message translates to:
+  /// **'发现手作 · 遇见同好'**
+  String get loginSlogan;
+
+  /// No description provided for @loginForgotQuestion.
+  ///
+  /// In zh, this message translates to:
+  /// **'忘记密码？'**
+  String get loginForgotQuestion;
+
+  /// No description provided for @loginAgreeTerms.
+  ///
+  /// In zh, this message translates to:
+  /// **'注册即代表同意《用户协议》和《隐私政策》'**
+  String get loginAgreeTerms;
 
   /// No description provided for @loginButton.
   ///
@@ -254,6 +272,12 @@ abstract class AppLocalizations {
   /// **'请输入密码'**
   String get loginNeedPassword;
 
+  /// No description provided for @loginSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'登录成功'**
+  String get loginSuccess;
+
   /// No description provided for @registerTitle.
   ///
   /// In zh, this message translates to:
@@ -265,6 +289,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'用户名（2-30 位，字母/数字/下划线）'**
   String get registerUsernameHint;
+
+  /// No description provided for @registerDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'用用户名和密码注册，绑定邮箱用于找回密码'**
+  String get registerDesc;
 
   /// No description provided for @registerEmailHint.
   ///
@@ -283,6 +313,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'获取验证码'**
   String get registerSendCode;
+
+  /// No description provided for @registerResendIn.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count}s 后重发'**
+  String registerResendIn(int count);
 
   /// No description provided for @registerPasswordHint.
   ///
@@ -308,6 +344,66 @@ abstract class AppLocalizations {
   /// **'已有账号？去登录'**
   String get registerToLogin;
 
+  /// No description provided for @registerEmailHintFull.
+  ///
+  /// In zh, this message translates to:
+  /// **'邮箱（用于绑定和找回密码）'**
+  String get registerEmailHintFull;
+
+  /// No description provided for @registerSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'注册成功，欢迎加入 Think Origin'**
+  String get registerSuccess;
+
+  /// No description provided for @needValidEmail.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入正确的邮箱'**
+  String get needValidEmail;
+
+  /// No description provided for @needCode6.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入 6 位验证码'**
+  String get needCode6;
+
+  /// No description provided for @usernameInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'用户名需为 2-30 位字母、数字或下划线'**
+  String get usernameInvalid;
+
+  /// No description provided for @passwordMin6.
+  ///
+  /// In zh, this message translates to:
+  /// **'密码至少 6 位'**
+  String get passwordMin6;
+
+  /// No description provided for @passwordMismatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'两次输入的密码不一致'**
+  String get passwordMismatch;
+
+  /// No description provided for @sendCodeSent.
+  ///
+  /// In zh, this message translates to:
+  /// **'验证码已发送'**
+  String get sendCodeSent;
+
+  /// No description provided for @sendCodeSentDev.
+  ///
+  /// In zh, this message translates to:
+  /// **'验证码已发送（开发环境：{code}）'**
+  String sendCodeSentDev(String code);
+
+  /// No description provided for @resetPasswordSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'密码重置成功，请重新登录'**
+  String get resetPasswordSuccess;
+
   /// No description provided for @forgotTitle.
   ///
   /// In zh, this message translates to:
@@ -332,10 +428,16 @@ abstract class AppLocalizations {
   /// **'返回登录'**
   String get forgotBackToLogin;
 
+  /// No description provided for @forgotNewPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置新密码（6-32 位）'**
+  String get forgotNewPassword;
+
   /// No description provided for @changePasswordTitle.
   ///
   /// In zh, this message translates to:
-  /// **'修改密码'**
+  /// **'修改登录密码'**
   String get changePasswordTitle;
 
   /// No description provided for @changePasswordDesc.
@@ -552,7 +654,7 @@ abstract class AppLocalizations {
   ///
   /// In zh, this message translates to:
   /// **'Think Origin {year} 年 {month} 月入驻'**
-  String profileJoined(Object month, Object year);
+  String profileJoined(String year, String month);
 
   /// No description provided for @profileMemberCenter.
   ///
@@ -720,7 +822,7 @@ abstract class AppLocalizations {
   ///
   /// In zh, this message translates to:
   /// **'有 {count} 笔会员开通申请待门店确认，到店支付费用后将为你开通'**
-  String memberPendingHint(Object count);
+  String memberPendingHint(int count);
 
   /// No description provided for @memberPurchaseTitle.
   ///
@@ -732,7 +834,7 @@ abstract class AppLocalizations {
   ///
   /// In zh, this message translates to:
   /// **'{days} 天有效期'**
-  String memberPurchaseDays(Object days);
+  String memberPurchaseDays(int days);
 
   /// No description provided for @memberPayDetails.
   ///
@@ -1056,7 +1158,7 @@ abstract class AppLocalizations {
   ///
   /// In zh, this message translates to:
   /// **'{count} 人'**
-  String appointmentPeople(Object count);
+  String appointmentPeople(int count);
 
   /// No description provided for @appointmentTable.
   ///
@@ -1176,7 +1278,7 @@ abstract class AppLocalizations {
   ///
   /// In zh, this message translates to:
   /// **'核销码 {code}'**
-  String appointmentQrCode(Object code);
+  String appointmentQrCode(String code);
 
   /// No description provided for @activityTitle.
   ///
@@ -1194,7 +1296,7 @@ abstract class AppLocalizations {
   ///
   /// In zh, this message translates to:
   /// **'{count} 人'**
-  String activityPeople(Object count);
+  String activityPeople(int count);
 
   /// No description provided for @notificationTitle.
   ///

@@ -69,7 +69,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loginAccountHint => '用户名 / 邮箱';
 
   @override
-  String get loginPasswordHint => '密码（6-32 位）';
+  String get loginPasswordHint => '请输入密码';
+
+  @override
+  String get loginSlogan => '发现手作 · 遇见同好';
+
+  @override
+  String get loginForgotQuestion => '忘记密码？';
+
+  @override
+  String get loginAgreeTerms => '注册即代表同意《用户协议》和《隐私政策》';
 
   @override
   String get loginButton => '登录';
@@ -87,10 +96,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loginNeedPassword => '请输入密码';
 
   @override
+  String get loginSuccess => '登录成功';
+
+  @override
   String get registerTitle => '注册';
 
   @override
   String get registerUsernameHint => '用户名（2-30 位，字母/数字/下划线）';
+
+  @override
+  String get registerDesc => '用用户名和密码注册，绑定邮箱用于找回密码';
 
   @override
   String get registerEmailHint => '绑定邮箱';
@@ -100,6 +115,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get registerSendCode => '获取验证码';
+
+  @override
+  String registerResendIn(int count) {
+    return '${count}s 后重发';
+  }
 
   @override
   String get registerPasswordHint => '设置密码（6-32 位）';
@@ -114,6 +134,38 @@ class AppLocalizationsZh extends AppLocalizations {
   String get registerToLogin => '已有账号？去登录';
 
   @override
+  String get registerEmailHintFull => '邮箱（用于绑定和找回密码）';
+
+  @override
+  String get registerSuccess => '注册成功，欢迎加入 Think Origin';
+
+  @override
+  String get needValidEmail => '请输入正确的邮箱';
+
+  @override
+  String get needCode6 => '请输入 6 位验证码';
+
+  @override
+  String get usernameInvalid => '用户名需为 2-30 位字母、数字或下划线';
+
+  @override
+  String get passwordMin6 => '密码至少 6 位';
+
+  @override
+  String get passwordMismatch => '两次输入的密码不一致';
+
+  @override
+  String get sendCodeSent => '验证码已发送';
+
+  @override
+  String sendCodeSentDev(String code) {
+    return '验证码已发送（开发环境：$code）';
+  }
+
+  @override
+  String get resetPasswordSuccess => '密码重置成功，请重新登录';
+
+  @override
   String get forgotTitle => '忘记密码';
 
   @override
@@ -126,7 +178,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get forgotBackToLogin => '返回登录';
 
   @override
-  String get changePasswordTitle => '修改密码';
+  String get forgotNewPassword => '设置新密码（6-32 位）';
+
+  @override
+  String get changePasswordTitle => '修改登录密码';
 
   @override
   String get changePasswordDesc => '验证原密码后设置新密码，下次登录请使用新密码';
@@ -235,7 +290,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get profileMyAppointments => '我的预约';
 
   @override
-  String profileJoined(Object month, Object year) {
+  String profileJoined(String year, String month) {
     return 'Think Origin $year 年 $month 月入驻';
   }
 
@@ -321,7 +376,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memberExpired => '已过期';
 
   @override
-  String memberPendingHint(Object count) {
+  String memberPendingHint(int count) {
     return '有 $count 笔会员开通申请待门店确认，到店支付费用后将为你开通';
   }
 
@@ -329,7 +384,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memberPurchaseTitle => '开通会员';
 
   @override
-  String memberPurchaseDays(Object days) {
+  String memberPurchaseDays(int days) {
     return '$days 天有效期';
   }
 
@@ -493,7 +548,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appointmentTime => '预约时间';
 
   @override
-  String appointmentPeople(Object count) {
+  String appointmentPeople(int count) {
     return '$count 人';
   }
 
@@ -555,7 +610,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appointmentShowQr => '到店出示二维码核销';
 
   @override
-  String appointmentQrCode(Object code) {
+  String appointmentQrCode(String code) {
     return '核销码 $code';
   }
 
@@ -566,7 +621,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get activityBook => '预约活动';
 
   @override
-  String activityPeople(Object count) {
+  String activityPeople(int count) {
     return '$count 人';
   }
 

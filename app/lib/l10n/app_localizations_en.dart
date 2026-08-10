@@ -69,7 +69,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginAccountHint => 'Username / Email';
 
   @override
-  String get loginPasswordHint => 'Password (6-32)';
+  String get loginPasswordHint => 'Enter your password';
+
+  @override
+  String get loginSlogan => 'Discover crafts · Meet makers';
+
+  @override
+  String get loginForgotQuestion => 'Forgot password?';
+
+  @override
+  String get loginAgreeTerms =>
+      'By registering you agree to the User Agreement and Privacy Policy';
 
   @override
   String get loginButton => 'Log In';
@@ -87,11 +97,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginNeedPassword => 'Enter your password';
 
   @override
+  String get loginSuccess => 'Logged in';
+
+  @override
   String get registerTitle => 'Sign Up';
 
   @override
   String get registerUsernameHint =>
       'Username (2-30, letters/digits/underscore)';
+
+  @override
+  String get registerDesc =>
+      'Sign up with username and password; bind an email for recovery';
 
   @override
   String get registerEmailHint => 'Email';
@@ -101,6 +118,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get registerSendCode => 'Send code';
+
+  @override
+  String registerResendIn(int count) {
+    return 'Resend in ${count}s';
+  }
 
   @override
   String get registerPasswordHint => 'Password (6-32)';
@@ -115,6 +137,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get registerToLogin => 'Already have an account? Log in';
 
   @override
+  String get registerEmailHintFull => 'Email (used for binding and recovery)';
+
+  @override
+  String get registerSuccess => 'Welcome to Think Origin!';
+
+  @override
+  String get needValidEmail => 'Enter a valid email';
+
+  @override
+  String get needCode6 => 'Enter the 6-digit code';
+
+  @override
+  String get usernameInvalid =>
+      'Username must be 2-30 letters, digits or underscores';
+
+  @override
+  String get passwordMin6 => 'Password must be at least 6 characters';
+
+  @override
+  String get passwordMismatch => 'Passwords do not match';
+
+  @override
+  String get sendCodeSent => 'Verification code sent';
+
+  @override
+  String sendCodeSentDev(String code) {
+    return 'Verification code sent (dev: $code)';
+  }
+
+  @override
+  String get resetPasswordSuccess => 'Password reset, please log in again';
+
+  @override
   String get forgotTitle => 'Forgot Password';
 
   @override
@@ -125,6 +180,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get forgotBackToLogin => 'Back to login';
+
+  @override
+  String get forgotNewPassword => 'New password (6-32)';
 
   @override
   String get changePasswordTitle => 'Change Password';
@@ -238,7 +296,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileMyAppointments => 'My appointments';
 
   @override
-  String profileJoined(Object month, Object year) {
+  String profileJoined(String year, String month) {
     return 'Think Origin · joined $month/$year';
   }
 
@@ -326,7 +384,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get memberExpired => 'Expired';
 
   @override
-  String memberPendingHint(Object count) {
+  String memberPendingHint(int count) {
     return '$count membership application(s) pending store confirmation. Pay at the store and we will activate it for you';
   }
 
@@ -334,7 +392,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get memberPurchaseTitle => 'Membership';
 
   @override
-  String memberPurchaseDays(Object days) {
+  String memberPurchaseDays(int days) {
     return '$days-day validity';
   }
 
@@ -506,7 +564,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appointmentTime => 'Time';
 
   @override
-  String appointmentPeople(Object count) {
+  String appointmentPeople(int count) {
     return '$count people';
   }
 
@@ -568,7 +626,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appointmentShowQr => 'Show this QR code to check in';
 
   @override
-  String appointmentQrCode(Object code) {
+  String appointmentQrCode(String code) {
     return 'Code $code';
   }
 
@@ -579,7 +637,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activityBook => 'Book activity';
 
   @override
-  String activityPeople(Object count) {
+  String activityPeople(int count) {
     return '$count people';
   }
 
