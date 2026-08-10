@@ -38,10 +38,12 @@ docker compose -f docker/compose.dev.yml up -d
 # 2. 后端（http://localhost:3000/api）
 cd server
 cp .env.example .env   # 首次
+npm install             # 首次
 npm run start:dev
 
 # 3. 管理后台（http://localhost:5173，/api 自动代理到 3000）
 cd admin
+npm install             # 首次（jsqr 等依赖必须在此目录安装）
 npm run dev
 
 # 4. 客户端（需先同意 Xcode license，见下）
