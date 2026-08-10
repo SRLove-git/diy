@@ -3,22 +3,29 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import {
   memberApi,
   type Coupon,
+  type MemberOrder,
   type MemberPlan,
   type Membership,
   type SaveCouponPayload,
   type SavePlanPayload,
 } from '../api/members'
 
-const activeTab = ref<'members' | 'plans' | 'coupons'>('members')
+const activeTab = ref<'members' | 'orders' | 'plans' | 'coupons'>('members')
 const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
 const page = ref(1)
 const total = ref(0)
 const members = ref<Membership[]>([])
+const orders = ref<MemberOrder[]>([])
 const plans = ref<MemberPlan[]>([])
 const coupons = ref<Coupon[]>([])
 const totalPages = computed(() => Math.ceil(total.value / 20) || 1)
+const ordersPage = ref(1)
+const ordersTotal = ref(0)
+const ordersKeyword = ref('')
+const orderBusyId = ref<number | null>(null)
+const ordersTotalPages = computed(() => Math.ceil(ordersTotal.value / 20) || 1)
 
 const keyword = ref('')
 const memberDialogOpen = ref(false)
@@ -209,11 +216,63 @@ async function loadCoupons() {
   coupons.value = data
 }
 
+async function loadOrders() {
+  const { data } = await memberApi.listOrders(
+    ordersPage.value,
+    ordersKeyword.value.trim() || undefined,
+  )
+  orders.value = data[0]
+  ordersTotal.value = data[1]
+}
+
+function doOrderSearch() {
+  ordersPage.value = 1
+  loadOrders()
+}
+
+function goOrdersPage(p: number) {
+  if (p < 1 || p > ordersTotalPages.value) return
+  ordersPage.value = p
+  loadOrders()
+}
+
+async function confirmOrder(item: MemberOrder) {
+  if (
+    !confirm(
+      `确认开通 ${item.userNickname || `用户 #${item.userId}`} 的会员（${item.planName}，${item.durationDays} 天，\$${item.amount}）？确认前请确认已收取到店支付费用。`,
+    )
+  )
+    return
+  orderBusyId.value = item.id
+  try {
+    await memberApi.confirmOrder(item.id)
+    await loadOrders()
+  } catch (e: any) {
+    alert(e?.response?.data?.message ?? '操作失败')
+  } finally {
+    orderBusyId.value = null
+  }
+}
+
+async function cancelOrder(item: MemberOrder) {
+  if (!confirm(`确认取消 ${item.userNickname || `用户 #${item.userId}`} 的会员开通申请？`))
+    return
+  orderBusyId.value = item.id
+  try {
+    await memberApi.cancelOrder(item.id)
+    await loadOrders()
+  } catch (e: any) {
+    alert(e?.response?.data?.message ?? '操作失败')
+  } finally {
+    orderBusyId.value = null
+  }
+}
+
 async function loadAll() {
   loading.value = true
   error.value = ''
   try {
-    await Promise.all([loadMembers(), loadPlans(), loadCoupons()])
+    await Promise.all([loadMembers(), loadOrders(), loadPlans(), loadCoupons()])
   } catch (e: any) {
     error.value = e?.response?.data?.message ?? '加载失败'
   } finally {
@@ -355,6 +414,7 @@ onMounted(loadAll)
 
     <div class="tabs">
       <button class="tab" :class="{ active: activeTab === 'members' }" @click="activeTab = 'members'">会员列表</button>
+      <button class="tab" :class="{ active: activeTab === 'orders' }" @click="activeTab = 'orders'">开通申请</button>
       <button class="tab" :class="{ active: activeTab === 'plans' }" @click="activeTab = 'plans'">套餐管理</button>
       <button class="tab" :class="{ active: activeTab === 'coupons' }" @click="activeTab = 'coupons'">优惠券管理</button>
     </div>
@@ -415,6 +475,99 @@ onMounted(loadAll)
           <button class="btn btn-sm" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
           <span class="page-info">{{ page }} / {{ totalPages }}（共 {{ total }} 条）</span>
           <button class="btn btn-sm" :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
+        </div>
+      </section>
+
+      <section v-if="activeTab === 'orders'" class="panel">
+        <div class="section-bar">
+          <div class="hint">用户在 App 提交的开通申请：确认到店收款后点「确认开通」，会员按套餐时长开通/顺延</div>
+          <div class="filters">
+            <input
+              v-model="ordersKeyword"
+              type="text"
+              placeholder="用户名 / 用户ID"
+              @keyup.enter="doOrderSearch"
+            />
+            <button class="btn" @click="doOrderSearch">搜索</button>
+          </div>
+        </div>
+        <div v-if="!orders.length" class="state">暂无开通申请</div>
+        <table v-else class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>用户</th>
+              <th>套餐</th>
+              <th>时长</th>
+              <th>金额</th>
+              <th>提交时间</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in orders" :key="item.id">
+              <td>{{ item.id }}</td>
+              <td>{{ item.userNickname || `用户 #${item.userId}` }}</td>
+              <td>{{ item.planName }}</td>
+              <td>{{ item.durationDays }} 天</td>
+              <td>${{ item.amount }}</td>
+              <td>{{ formatTime(item.createdAt) }}</td>
+              <td>
+                <span
+                  class="tag"
+                  :class="{
+                    'tag-on': item.status === 'confirmed',
+                    'tag-off': item.status === 'cancelled',
+                  }"
+                >
+                  {{
+                    item.status === 'pending'
+                      ? '待确认'
+                      : item.status === 'confirmed'
+                        ? '已开通'
+                        : '已取消'
+                  }}
+                </span>
+              </td>
+              <td class="cell-actions">
+                <button
+                  v-if="item.status === 'pending'"
+                  class="btn btn-sm btn-success"
+                  :disabled="orderBusyId !== null"
+                  @click="confirmOrder(item)"
+                >
+                  {{ orderBusyId === item.id ? '确认中…' : '确认开通' }}
+                </button>
+                <button
+                  v-if="item.status === 'pending'"
+                  class="btn btn-sm btn-danger"
+                  :disabled="orderBusyId !== null"
+                  @click="cancelOrder(item)"
+                >
+                  取消
+                </button>
+                <span v-if="item.status !== 'pending'" class="muted">-</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-if="orders.length > 0" class="pagination">
+          <button
+            class="btn btn-sm"
+            :disabled="ordersPage <= 1"
+            @click="goOrdersPage(ordersPage - 1)"
+          >
+            上一页
+          </button>
+          <span class="page-info">{{ ordersPage }} / {{ ordersTotalPages }}（共 {{ ordersTotal }} 条）</span>
+          <button
+            class="btn btn-sm"
+            :disabled="ordersPage >= ordersTotalPages"
+            @click="goOrdersPage(ordersPage + 1)"
+          >
+            下一页
+          </button>
         </div>
       </section>
 

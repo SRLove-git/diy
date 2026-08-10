@@ -10,6 +10,21 @@ export interface Membership {
   updatedAt: string
 }
 
+export interface MemberOrder {
+  id: number
+  userId: number
+  userName?: string
+  userEmail?: string
+  userNickname?: string
+  planId: number
+  planName: string
+  durationDays: number
+  amount: string
+  status: 'pending' | 'confirmed' | 'cancelled'
+  createdAt: string
+  confirmedAt: string | null
+}
+
 export interface MemberPlan {
   id: number
   name: string
@@ -79,6 +94,17 @@ export const memberApi = {
   },
   deleteMembership(id: number) {
     return http.delete(`/admin/members/${id}`)
+  },
+  listOrders(page = 1, keyword?: string) {
+    return http.get<[MemberOrder[], number]>('/admin/members/orders', {
+      params: { page, ...(keyword ? { keyword } : {}) },
+    })
+  },
+  confirmOrder(id: number) {
+    return http.post(`/admin/members/orders/${id}/confirm`)
+  },
+  cancelOrder(id: number) {
+    return http.post(`/admin/members/orders/${id}/cancel`)
   },
   listPlans() {
     return http.get<MemberPlan[]>('/admin/members/plans')
