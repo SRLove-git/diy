@@ -287,7 +287,7 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
   //   }).catchError((_) {});
   // }
 
-  /// 门市单价（原价基准，元/人，含时长）
+  /// 门市单价（原价基准，$/人，含时长）
   double get _normalPrice {
     if (widget.type == 'activity') return widget.activity?.price ?? 0;
     final store = widget.store;
@@ -301,7 +301,7 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
     return store.price * widget.durationHours;
   }
 
-  /// 会员单价（元/人）
+  /// 会员单价（$/人）
   double get _memberUnit {
     final store = widget.store;
     if (store == null || widget.type == 'activity') return _normalPrice;
@@ -314,7 +314,7 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
     return (store.memberPrice ?? store.price) * widget.durationHours;
   }
 
-  /// 多人同行单价（元/人）
+  /// 多人同行单价（$/人）
   double get _groupUnit {
     final store = widget.store;
     if (store == null || widget.type == 'activity') return _normalPrice;
@@ -509,29 +509,29 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
                   ),
                 ),
                 const Divider(height: 32, color: LiveColors.divider),
-                _PriceRow(label: '原价', value: '¥${_originalBase.toStringAsFixed(2)}'),
+                _PriceRow(label: '原价', value: '\$${_originalBase.toStringAsFixed(2)}'),
                 if (_discountBase > 0)
                   _PriceRow(
                     label: _discountLabel,
-                    value: '-¥${_discountBase.toStringAsFixed(2)}',
+                    value: '-\$${_discountBase.toStringAsFixed(2)}',
                     valueColor: LiveColors.success,
                   ),
                 if (_discount > 0)
                   _PriceRow(
                     label: '优惠券',
-                    value: '-¥${_discount.toStringAsFixed(2)}',
+                    value: '-\$${_discount.toStringAsFixed(2)}',
                     valueColor: LiveColors.success,
                   ),
                 if (_weekendSurcharge)
                   _PriceRow(
                     label:
                         '周末/节假日加价 ${widget.store?.weekendSurchargePercent ?? 0}%',
-                    value: '+¥${_surchargeAmount.toStringAsFixed(2)}',
+                    value: '+\$${_surchargeAmount.toStringAsFixed(2)}',
                   ),
                 const Divider(height: 22, color: LiveColors.divider),
                 _PriceRow(
                   label: '应付金额',
-                  value: '¥${_total.toStringAsFixed(2)}',
+                  value: '\$${_total.toStringAsFixed(2)}',
                   bold: true,
                 ),
                 const SizedBox(height: 24),
@@ -643,7 +643,7 @@ class _PriceRow extends StatelessWidget {
 //         child: Row(
 //           children: [
 //             Text(
-//               '¥${coupon.amount.toStringAsFixed(0)}',
+//               '\$${coupon.amount.toStringAsFixed(0)}',
 //               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: LiveColors.brand),
 //             ),
 //             const SizedBox(width: 10),
@@ -1248,8 +1248,8 @@ class _AppointmentCard extends StatelessWidget {
 
   String _payLine(Appointment a) {
     final paid = a.amount > 0
-        ? '到店支付 ¥${a.amount.toStringAsFixed(0)}'
-        : '到店支付 ¥0（会员免费）';
+        ? '到店支付 \$${a.amount.toStringAsFixed(0)}'
+        : '到店支付 \$0（会员免费）';
     return '${a.statusLabel} · $paid';
   }
 
@@ -1600,8 +1600,8 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                     // _DetailRow('支付方式', a.payMethod == 'wechat' ? '微信支付' : a.payMethod == 'alipay' ? '支付宝' : a.payMethod),
                     // _DetailRow('支付状态', a.payStatus == 'paid' ? '已支付' : '未支付'),
                     _DetailRow('付款方式', '到店核销后付款'),
-                    _DetailRow('金额', '¥${a.amount.toStringAsFixed(2)}'),
-                    // if (a.couponDiscount > 0) _DetailRow('优惠券', '${a.couponTitle} -¥${a.couponDiscount.toStringAsFixed(2)}'),
+                    _DetailRow('金额', '\$${a.amount.toStringAsFixed(2)}'),
+                    // if (a.couponDiscount > 0) _DetailRow('优惠券', '${a.couponTitle} -\$${a.couponDiscount.toStringAsFixed(2)}'),
                     if (a.note.isNotEmpty) _DetailRow('备注', a.note),
                     if (a.status != 'completed' && a.status != 'cancelled') ...[
                       const SizedBox(height: 14),

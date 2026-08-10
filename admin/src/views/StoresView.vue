@@ -359,17 +359,17 @@ onMounted(load)
         <label>门店名称<input v-model="form.name" /></label>
         <label>地址<input v-model="form.address" /></label>
         <div class="row">
-          <label>门市价（元/人）<input v-model.number="form.price" type="number" min="0" step="0.1" /></label>
-          <label>会员价（元/人，0 = 会员免费）<input v-model.number="form.memberPrice" type="number" min="0" step="0.1" /></label>
-          <label>多人同行价（元/人）<input v-model.number="form.groupPrice" type="number" min="0" step="0.1" /></label>
+          <label>门市价（$/人）<input v-model.number="form.price" type="number" min="0" step="0.1" /></label>
+          <label>会员价（$/人，0 = 会员免费）<input v-model.number="form.memberPrice" type="number" min="0" step="0.1" /></label>
+          <label>多人同行价（$/人）<input v-model.number="form.groupPrice" type="number" min="0" step="0.1" /></label>
         </div>
         <label>
-          全天不限时价（元/人，留空 = 按营业时长 × 小时价）
+          全天不限时价（$/人，留空 = 按营业时长 × 小时价）
           <input v-model.number="form.allDayPrice" type="number" min="0" step="0.1" />
         </label>
         <div class="row">
-          <label>全天会员价（元/人）<input v-model.number="form.allDayMemberPrice" type="number" min="0" step="0.1" /></label>
-          <label>全天多人价（元/人）<input v-model.number="form.allDayGroupPrice" type="number" min="0" step="0.1" /></label>
+          <label>全天会员价（$/人）<input v-model.number="form.allDayMemberPrice" type="number" min="0" step="0.1" /></label>
+          <label>全天多人价（$/人）<input v-model.number="form.allDayGroupPrice" type="number" min="0" step="0.1" /></label>
         </div>
         <label>
           周末/节假日加价（%，0 = 不加价）
@@ -486,10 +486,10 @@ onMounted(load)
       <div class="dialog wide">
         <h3>时长套餐配置 · {{ currentStore?.name }}</h3>
         <p class="hint-text">
-          用户预约时可选择「按小时 / 时长套餐 / 全天不限时」；套餐价为元/人。
+          用户预约时可选择「按小时 / 时长套餐 / 全天不限时」；套餐价为$/人。
         </p>
         <table class="grid">
-          <thead><tr><th>套餐名</th><th>时长（小时）</th><th>价格（元/人）</th><th>会员价</th><th>多人同行价</th><th>状态</th><th>操作</th></tr></thead>
+          <thead><tr><th>套餐名</th><th>时长（小时）</th><th>价格（$/人）</th><th>会员价</th><th>多人同行价</th><th>状态</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="p in packages" :key="p.id">
               <template v-if="packageDrafts[p.id]">
@@ -507,9 +507,9 @@ onMounted(load)
               <template v-else>
                 <td>{{ p.name }}</td>
                 <td>{{ p.hours }} 小时</td>
-                <td>¥{{ p.price }}</td>
-                <td>{{ p.memberPrice != null ? '¥' + p.memberPrice : '-' }}</td>
-                <td>{{ p.groupPrice != null ? '¥' + p.groupPrice : '-' }}</td>
+                <td>${{ p.price }}</td>
+                <td>{{ p.memberPrice != null ? '$' + p.memberPrice : '-' }}</td>
+                <td>{{ p.groupPrice != null ? '$' + p.groupPrice : '-' }}</td>
                 <td>
                   <span class="tag" :class="p.enabled ? 'tag-on' : 'tag-off'">
                     {{ p.enabled ? '启用' : '停用' }}
@@ -527,7 +527,7 @@ onMounted(load)
         <div class="row">
           <input v-model="newPackage.name" placeholder="套餐名，如 5 小时套餐" />
           <input v-model.number="newPackage.hours" type="number" min="1" placeholder="时长（小时）" />
-          <input v-model.number="newPackage.price" type="number" min="0" step="0.1" placeholder="价格（元/人）" />
+          <input v-model.number="newPackage.price" type="number" min="0" step="0.1" placeholder="价格（$/人）" />
           <input v-model.number="newPackage.memberPrice" type="number" min="0" step="0.1" placeholder="会员价" />
           <input v-model.number="newPackage.groupPrice" type="number" min="0" step="0.1" placeholder="多人价" />
           <button class="primary" @click="addPackage">添加</button>

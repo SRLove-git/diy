@@ -126,7 +126,7 @@ class _ActivityCard extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  activity.price > 0 ? '¥${activity.price.toStringAsFixed(0)}/人' : '免费',
+                  activity.price > 0 ? '\$${activity.price.toStringAsFixed(0)}/人' : '免费',
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: LiveColors.brand),
                 ),
                 if (activity.bookable) ...[
@@ -236,12 +236,12 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                         const Text('价格', style: TextStyle(fontSize: 14, color: LiveColors.textSecondary)),
                         const Spacer(),
                         Text(
-                          activity.price > 0 ? '¥${activity.price.toStringAsFixed(2)}/人' : '免费',
+                          activity.price > 0 ? '\$${activity.price.toStringAsFixed(2)}/人' : '免费',
                           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: LiveColors.brand),
                         ),
                         if (activity.memberPrice != null && activity.memberPrice! < activity.price)
                           Text(
-                            '  会员 ¥${activity.memberPrice!.toStringAsFixed(2)}',
+                            '  会员 \$${activity.memberPrice!.toStringAsFixed(2)}',
                             style: const TextStyle(fontSize: 12, color: LiveColors.success),
                           ),
                       ],

@@ -862,7 +862,7 @@ class _ActivityCard extends StatelessWidget {
             ),
             const Spacer(),
             Text(
-              activity.price > 0 ? '¥${activity.price.toStringAsFixed(0)} 起' : '免费',
+              activity.price > 0 ? '\$${activity.price.toStringAsFixed(0)} 起' : '免费',
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,

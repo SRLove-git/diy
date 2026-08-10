@@ -415,7 +415,7 @@ onUnmounted(() => {
           <!-- 线下支付，金额/支付列先隐藏 -->
           <!-- <td>
             <span :style="{ color: o.payStatus === 'paid' ? '#2e9e5b' : '#e6a23c' }">
-              {{ o.payStatus === 'paid' ? '已支付' : '待支付' }} ¥{{ fmtAmount(o.amount) }}
+              {{ o.payStatus === 'paid' ? '已支付' : '待支付' }} ${{ fmtAmount(o.amount) }}
             </span>
             <span v-if="o.payMethod" class="muted">
               （{{ o.payMethod === 'alipay' ? '支付宝' : '微信' }}）

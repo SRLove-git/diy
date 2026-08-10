@@ -443,8 +443,8 @@ onMounted(loadAll)
               <td>{{ plan.id }}</td>
               <td>{{ plan.name }}</td>
               <td>{{ plan.durationDays }} 天</td>
-              <td>¥{{ plan.price }}</td>
-              <td>¥{{ plan.originalPrice }}</td>
+              <td>${{ plan.price }}</td>
+              <td>${{ plan.originalPrice }}</td>
               <td class="multi-line">{{ plan.benefits.join('、') }}</td>
               <td>{{ plan.badge || '-' }}</td>
               <td>{{ plan.recommended ? '是' : '否' }}</td>
@@ -613,11 +613,11 @@ onMounted(loadAll)
           </label>
           <label>
             <span>面额文案</span>
-            <input v-model="couponForm.amount" type="text" placeholder="¥20 / 8.8 折" />
+            <input v-model="couponForm.amount" type="text" placeholder="$20 / 8.8 折" />
           </label>
           <label>
             <span>使用门槛</span>
-            <input v-model="couponForm.threshold" type="text" placeholder="满 ¥100 可用" />
+            <input v-model="couponForm.threshold" type="text" placeholder="满 $100 可用" />
           </label>
           <label>
             <span>库存</span>

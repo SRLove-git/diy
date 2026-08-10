@@ -245,7 +245,7 @@ onMounted(load)
           <td>
             <template v-if="a.bookable">
               <span v-if="a.memberPrice != null">会员 {{ a.memberPrice }} / {{ a.price }}</span>
-              <span v-else>{{ a.price }} 元/人</span>
+              <span v-else>{{ a.price }} $/人</span>
             </template>
             <span v-else class="muted">-</span>
           </td>
@@ -307,11 +307,11 @@ onMounted(load)
             <input v-model.number="form.lng" type="number" step="0.000001" />
           </label>
           <label>
-            <span>门市价（元/人）</span>
+            <span>门市价（$/人）</span>
             <input v-model.number="form.price" type="number" min="0" step="0.1" />
           </label>
           <label>
-            <span>会员价（元/人，0 = 会员免费）</span>
+            <span>会员价（$/人，0 = 会员免费）</span>
             <input v-model.number="form.memberPrice" type="number" min="0" step="0.1" />
           </label>
           <label>

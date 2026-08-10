@@ -9,7 +9,7 @@ import '../live_widgets.dart';
 
 /// 会员权益列表（对齐 Pixso 09-会员中心）。
 const _benefits = [
-  (Icons.account_balance_wallet_outlined, '会员专属价', '预约与到店享会员价，最高省 ¥20/次'),
+  (Icons.account_balance_wallet_outlined, '会员专属价', '预约与到店享会员价，最高省 \$20/次'),
   (Icons.card_giftcard_outlined, '专属活动', '会员限定活动与双倍积分'),
   (Icons.confirmation_number_outlined, '每月优惠券', '每月自动发放专属优惠券'),
   (Icons.local_fire_department_outlined, '生日礼遇', '生日当月免费体验一次'),
@@ -597,7 +597,7 @@ class _PlanCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text.rich(
               TextSpan(
-                text: '¥${plan.price.toStringAsFixed(0)}',
+                text: '\$${plan.price.toStringAsFixed(0)}',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -606,7 +606,7 @@ class _PlanCard extends StatelessWidget {
                 children: [
                   if (plan.originalPrice > plan.price)
                     TextSpan(
-                      text: '  ¥${plan.originalPrice.toStringAsFixed(0)}',
+                      text: '  \$${plan.originalPrice.toStringAsFixed(0)}',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
@@ -725,19 +725,19 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
                   const SizedBox(height: 8),
                   _PurchaseRow(
                     label: '套餐原价',
-                    value: '¥${widget.plan.originalPrice.toStringAsFixed(2)}',
+                    value: '\$${widget.plan.originalPrice.toStringAsFixed(2)}',
                     strikethrough: widget.plan.originalPrice > widget.plan.price,
                   ),
                   if (widget.plan.originalPrice > widget.plan.price)
                     _PurchaseRow(
                       label: '限时优惠',
-                      value: '-¥${(widget.plan.originalPrice - widget.plan.price).toStringAsFixed(2)}',
+                      value: '-\$${(widget.plan.originalPrice - widget.plan.price).toStringAsFixed(2)}',
                       valueColor: LiveColors.success,
                     ),
                   const Divider(height: 20, color: LiveColors.divider),
                   _PurchaseRow(
                     label: '实付金额',
-                    value: '¥${widget.plan.price.toStringAsFixed(2)}',
+                    value: '\$${widget.plan.price.toStringAsFixed(2)}',
                     bold: true,
                   ),
                   const SizedBox(height: 18),
@@ -1022,7 +1022,7 @@ class _CouponCard extends StatelessWidget {
         child: Row(
           children: [
             Text(
-              '¥${coupon.amount.toStringAsFixed(0)}',
+              '\$${coupon.amount.toStringAsFixed(0)}',
               style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: LiveColors.brand),
             ),
             const SizedBox(width: 14),
