@@ -68,6 +68,18 @@ export class ResetPasswordDto extends SendEmailCodeDto {
   password: string;
 }
 
+/** 修改登录密码（登录态下）：需校验原密码 */
+export class ChangePasswordDto {
+  @IsOptional()
+  @IsString()
+  oldPassword?: string;
+
+  @IsString()
+  @MinLength(6, { message: '密码至少 6 位' })
+  @MaxLength(32, { message: '密码最多 32 位' })
+  newPassword: string;
+}
+
 export class RefreshDto {
   @IsString()
   refreshToken: string;

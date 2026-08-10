@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -141,6 +142,27 @@ export class AuthService {
     }
     if (user.isBanned) throw new ForbiddenException('账号已被禁用');
     await this.users.setPasswordHash(user.id, await hashPassword(password));
+    return { sent: true };
+  }
+
+  /** 修改登录密码（登录态下）：校验原密码后写入新密码 */
+  async changePassword(
+    userId: number,
+    oldPassword: string | undefined,
+    newPassword: string,
+  ) {
+    const user = await this.users.findById(userId);
+    if (!user) throw new NotFoundException('用户不存在');
+    if (user.isBanned) throw new ForbiddenException('账号已被禁用');
+    if (user.passwordHash) {
+      if (!oldPassword) {
+        throw new BadRequestException('请输入原密码');
+      }
+      if (!(await verifyPassword(oldPassword, user.passwordHash))) {
+        throw new BadRequestException('原密码不正确');
+      }
+    }
+    await this.users.setPasswordHash(user.id, await hashPassword(newPassword));
     return { sent: true };
   }
 

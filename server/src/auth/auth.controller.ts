@@ -2,6 +2,7 @@ import { Body, Controller, Get, Ip, Post, UseGuards } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import {
+  ChangePasswordDto,
   LoginDto,
   RefreshDto,
   RegisterDto,
@@ -41,6 +42,13 @@ export class AuthController {
   @Post('reset-password')
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.auth.resetPassword(dto.email, dto.emailCode, dto.password);
+  }
+
+  /** 修改登录密码（登录态下）：原密码 + 新密码 */
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  changePassword(@CurrentUser() user: AuthUser, @Body() dto: ChangePasswordDto) {
+    return this.auth.changePassword(user.id, dto.oldPassword, dto.newPassword);
   }
 
   /** 刷新令牌（轮换制） */
