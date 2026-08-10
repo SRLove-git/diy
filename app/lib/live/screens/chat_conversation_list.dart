@@ -108,16 +108,16 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
         if (!mounted) return;
         final ok = await showDialog<bool>(
           context: context,
-          builder: (_) => AlertDialog(
+          builder: (dialogContext) => AlertDialog(
             title: const Text('删除会话', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             content: Text('删除后将清空与「${item.name}」的聊天记录，确定删除吗？'),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(dialogContext, false),
                 child: const Text('取消', style: TextStyle(color: LiveColors.textSecondary)),
               ),
               TextButton(
-                onPressed: () => Navigator.pop(context, true),
+                onPressed: () => Navigator.pop(dialogContext, true),
                 child: const Text('删除', style: TextStyle(color: LiveColors.danger)),
               ),
             ],
@@ -474,7 +474,7 @@ Future<bool?> showDesignConfirmDialog(
     context: context,
     // 遮罩 rgba(20,20,20,.42)，与设计稿一致
     barrierColor: const Color(0x6B141414),
-    builder: (_) => Dialog(
+    builder: (dialogContext) => Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
       insetPadding: const EdgeInsets.symmetric(horizontal: 39),
@@ -535,7 +535,7 @@ Future<bool?> showDesignConfirmDialog(
                         label: '取消',
                         backgroundColor: const Color(0xFFF7F7F8),
                         foregroundColor: const Color(0xFF141414),
-                        onTap: () => Navigator.pop(context, false),
+                        onTap: () => Navigator.pop(dialogContext, false),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -544,7 +544,7 @@ Future<bool?> showDesignConfirmDialog(
                         label: confirmLabel,
                         backgroundColor: confirmColor,
                         foregroundColor: Colors.white,
-                        onTap: () => Navigator.pop(context, true),
+                        onTap: () => Navigator.pop(dialogContext, true),
                       ),
                     ),
                   ],

@@ -200,12 +200,12 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
   Future<void> _leaveOrDissolve() async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('退出群聊'),
         content: const Text('确定要退出该群聊吗？'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('退出')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('退出')),
         ],
       ),
     );
@@ -241,7 +241,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
       final selected = <int>{};
       await showDialog(
         context: context,
-        builder: (_) => StatefulBuilder(
+        builder: (dialogContext) => StatefulBuilder(
           builder: (context, setState) => AlertDialog(
             title: const Text('邀请好友'),
             content: SizedBox(
@@ -265,9 +265,9 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('取消')),
               TextButton(
-                onPressed: () => Navigator.pop(context, selected),
+                onPressed: () => Navigator.pop(dialogContext, selected),
                 child: const Text('邀请'),
               ),
             ],
@@ -290,7 +290,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
     final ctrl = TextEditingController();
     final name = await showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('修改群名称'),
         content: TextField(
           controller: ctrl,
@@ -300,11 +300,11 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('取消'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+            onPressed: () => Navigator.pop(dialogContext, ctrl.text.trim()),
             child: const Text('确定'),
           ),
         ],
@@ -325,16 +325,16 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
   Future<void> _dissolve() async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('解散群聊'),
         content: const Text('解散后所有成员将无法查看该群聊，确定继续吗？'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('取消'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('解散'),
           ),
         ],
@@ -858,7 +858,7 @@ class _GroupMemberManageScreenState extends State<GroupMemberManageScreen> {
       final selected = <int>{};
       await showDialog(
         context: context,
-        builder: (_) => StatefulBuilder(
+        builder: (dialogContext) => StatefulBuilder(
           builder: (context, setState) => AlertDialog(
             title: const Text('邀请好友'),
             content: SizedBox(
@@ -883,11 +883,11 @@ class _GroupMemberManageScreenState extends State<GroupMemberManageScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
                 child: const Text('取消'),
               ),
               TextButton(
-                onPressed: () => Navigator.pop(context, selected),
+                onPressed: () => Navigator.pop(dialogContext, selected),
                 child: const Text('邀请'),
               ),
             ],
@@ -1026,7 +1026,7 @@ class _GroupMemberManageScreenState extends State<GroupMemberManageScreen> {
     final ctrl = TextEditingController();
     final name = await showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('修改群名称'),
         content: TextField(
           controller: ctrl,
@@ -1036,11 +1036,11 @@ class _GroupMemberManageScreenState extends State<GroupMemberManageScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('取消'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+            onPressed: () => Navigator.pop(dialogContext, ctrl.text.trim()),
             child: const Text('确定'),
           ),
         ],
@@ -1141,16 +1141,16 @@ class _GroupMemberManageScreenState extends State<GroupMemberManageScreen> {
     if (!mounted) return;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('群主转让'),
         content: Text('确定将群主转让给 ${target.nickname} 吗？转让后你将变为普通成员。'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('取消'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('转让'),
           ),
         ],
@@ -1175,16 +1175,16 @@ class _GroupMemberManageScreenState extends State<GroupMemberManageScreen> {
   Future<void> _dissolve() async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('解散群聊'),
         content: const Text('解散后所有成员将无法查看该群聊，确定继续吗？'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('取消'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('解散'),
           ),
         ],

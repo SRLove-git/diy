@@ -568,7 +568,7 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
     final ctrl = TextEditingController(text: _location);
     final value = await showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('所在位置'),
         content: TextField(
           controller: ctrl,
@@ -577,11 +577,11 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('取消'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+            onPressed: () => Navigator.pop(dialogContext, ctrl.text.trim()),
             child: const Text('确定'),
           ),
         ],
@@ -595,7 +595,7 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
     final ctrl = TextEditingController(text: _tags);
     final value = await showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('话题'),
         content: TextField(
           controller: ctrl,
@@ -604,11 +604,11 @@ class _PostPublishScreenState extends State<PostPublishScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('取消'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+            onPressed: () => Navigator.pop(dialogContext, ctrl.text.trim()),
             child: const Text('确定'),
           ),
         ],
@@ -1876,7 +1876,7 @@ class _PhotoPickerSheetState extends State<PhotoPickerSheet> {
     if (_selected.isEmpty) return;
     await showDialog<void>(
       context: context,
-      builder: (_) => Dialog.fullscreen(
+      builder: (dialogContext) => Dialog.fullscreen(
         backgroundColor: Colors.black,
         child: Stack(
           children: [
@@ -1905,7 +1905,7 @@ class _PhotoPickerSheetState extends State<PhotoPickerSheet> {
                 alignment: Alignment.topRight,
                 child: IconButton(
                   icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(dialogContext),
                 ),
               ),
             ),

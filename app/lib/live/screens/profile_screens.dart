@@ -1703,16 +1703,16 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
   Future<void> _clear() async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('清空观看历史'),
         content: const Text('确定要清空观看历史吗？'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('取消'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('清空'),
           ),
         ],
@@ -1954,7 +1954,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final ok = await showDialog<bool>(
       context: context,
       barrierColor: const Color(0x6B141414),
-      builder: (_) => Center(
+      builder: (dialogContext) => Center(
         child: Container(
           width: 312,
           padding: const EdgeInsets.fromLTRB(25, 29, 25, 22),
@@ -1991,7 +1991,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       label: '取消',
                       backgroundColor: LiveColors.card,
                       textColor: LiveColors.textPrimary,
-                      onTap: () => Navigator.pop(context, false),
+                      onTap: () => Navigator.pop(dialogContext, false),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -2000,7 +2000,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       label: '退出登录',
                       backgroundColor: const Color(0xFFFF3B30),
                       textColor: Colors.white,
-                      onTap: () => Navigator.pop(context, true),
+                      onTap: () => Navigator.pop(dialogContext, true),
                     ),
                   ),
                 ],

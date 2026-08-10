@@ -17,7 +17,7 @@ Future<bool?> showCancelAppointmentDialog(BuildContext context) {
   return showDialog<bool>(
     context: context,
     barrierColor: const Color(0x6B141414),
-    builder: (_) => Dialog(
+    builder: (dialogContext) => Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
       insetPadding: const EdgeInsets.symmetric(horizontal: 39),
@@ -67,7 +67,7 @@ Future<bool?> showCancelAppointmentDialog(BuildContext context) {
                         label: '再想想',
                         backgroundColor: const Color(0xFFF7F7F8),
                         foregroundColor: const Color(0xFF141414),
-                        onTap: () => Navigator.pop(context, false),
+                        onTap: () => Navigator.pop(dialogContext, false),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -76,7 +76,7 @@ Future<bool?> showCancelAppointmentDialog(BuildContext context) {
                         label: '确认取消',
                         backgroundColor: const Color(0xFFFF3B30),
                         foregroundColor: Colors.white,
-                        onTap: () => Navigator.pop(context, true),
+                        onTap: () => Navigator.pop(dialogContext, true),
                       ),
                     ),
                   ],
@@ -96,7 +96,7 @@ Future<bool?> showClockOutConfirmDialog(BuildContext context) {
   return showDialog<bool>(
     context: context,
     barrierColor: const Color(0x6B141414),
-    builder: (_) => Dialog(
+    builder: (dialogContext) => Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
       insetPadding: const EdgeInsets.symmetric(horizontal: 39),
@@ -146,7 +146,7 @@ Future<bool?> showClockOutConfirmDialog(BuildContext context) {
                         label: '再想想',
                         backgroundColor: const Color(0xFFF7F7F8),
                         foregroundColor: const Color(0xFF141414),
-                        onTap: () => Navigator.pop(context, false),
+                        onTap: () => Navigator.pop(dialogContext, false),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -155,7 +155,7 @@ Future<bool?> showClockOutConfirmDialog(BuildContext context) {
                         label: '确认下钟',
                         backgroundColor: const Color(0xFFFF3B30),
                         foregroundColor: Colors.white,
-                        onTap: () => Navigator.pop(context, true),
+                        onTap: () => Navigator.pop(dialogContext, true),
                       ),
                     ),
                   ],

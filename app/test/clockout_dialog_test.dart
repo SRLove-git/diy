@@ -61,4 +61,39 @@ void main() {
     expect(result, [true]);
     expect(find.text('结束体验'), findsNothing);
   });
+
+  testWidgets('嵌套导航器（Tab 分支）下点“再想想”只关弹窗，不误 pop 外层页面', (tester) async {
+    // 模拟 go_router StatefulShellRoute：页面在嵌套 Navigator 中，
+    // showDialog 默认推到根 Navigator。修复前用外层 context pop 会误弹外层页面。
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Navigator(
+          onGenerateRoute: (_) => MaterialPageRoute<void>(
+            builder: (_) => Scaffold(
+              body: Builder(
+                builder: (outerContext) => Center(
+                  child: TextButton(
+                    onPressed: () => showClockOutConfirmDialog(outerContext),
+                    child: const Text('下钟'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('下钟'), findsOneWidget);
+    await tester.tap(find.text('下钟'));
+    await tester.pumpAndSettle();
+    expect(find.text('结束体验'), findsOneWidget);
+
+    await tester.tap(find.text('再想想'));
+    await tester.pumpAndSettle();
+
+    // 修复后：弹窗关闭、外层页面保留
+    expect(find.text('结束体验'), findsNothing);
+    expect(find.text('下钟'), findsOneWidget);
+  });
 }
