@@ -703,6 +703,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get storeNoStartTimes => 'No start times available for this slot';
 
   @override
+  String get storeStartOnScan =>
+      'Timing starts when you scan at the store; end time is fixed';
+
+  @override
+  String get weekdayToday => 'Today';
+
+  @override
+  String get weekdayTomorrow => 'Tomorrow';
+
+  @override
+  String get storeAutoTables => 'Best combination recommended automatically';
+
+  @override
+  String get storeNoTables => 'No tables available at this store';
+
+  @override
   String storeMemberPrefix(String price) {
     return ' · Member $price';
   }
@@ -850,6 +866,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appointmentStatusPending => 'Pending';
 
   @override
+  String appointmentStatusCurrentLabel(String status) {
+    return 'Current status: $status';
+  }
+
+  @override
   String get appointmentWaitingConfirm => 'Waiting for store confirmation';
 
   @override
@@ -924,6 +945,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appointmentServiceEnd => 'Session Ended';
+
+  @override
+  String get appointmentServiceEndDesc =>
+      'Your session time has been recorded. Hope to see you again!';
+
+  @override
+  String get appointmentStore => 'Store';
+
+  @override
+  String get appointmentTablePeople => 'Table / Guests';
+
+  @override
+  String get appointmentStartTime => 'Started at';
+
+  @override
+  String get appointmentEndTime => 'Ended at';
 
   @override
   String appointmentPayAtStore(String amount) {

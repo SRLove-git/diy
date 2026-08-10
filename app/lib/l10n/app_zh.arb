@@ -317,6 +317,11 @@
   "storeStepDate": "选择日期",
   "storeDuration": "时长",
   "storeNoStartTimes": "该时段已无可约开始时间",
+  "storeStartOnScan": "到店扫码即开始计时，结束时间固定不顺延",
+  "weekdayToday": "今天",
+  "weekdayTomorrow": "明天",
+  "storeAutoTables": "自动推荐最优组合",
+  "storeNoTables": "该门店暂无可用桌位",
   "storeMemberPrefix": "　会员 {price}",
   "@storeMemberPrefix": {
     "placeholders": {
@@ -429,6 +434,14 @@
   "appointmentStatusCompleted": "已完成",
   "appointmentStatusCancelled": "已取消",
   "appointmentStatusPending": "待确认",
+  "appointmentStatusCurrentLabel": "当前状态：{status}",
+  "@appointmentStatusCurrentLabel": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
   "appointmentWaitingConfirm": "等待门店确认",
   "appointmentWaitingDesc": "预约已提交，门店确认后即可到店核销",
   "appointmentCheckInCode": "核销码",
@@ -459,6 +472,11 @@
     }
   },
   "appointmentServiceEnd": "体验结束",
+  "appointmentServiceEndDesc": "已为您记录本次体验时长，欢迎再次光临",
+  "appointmentStore": "门店",
+  "appointmentTablePeople": "桌位 / 人数",
+  "appointmentStartTime": "上钟时间",
+  "appointmentEndTime": "下钟时间",
   "appointmentPayAtStore": "到店支付 {amount}",
   "@appointmentPayAtStore": {
     "placeholders": {

@@ -811,9 +811,9 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
-                  '到店扫码即开始计时，结束时间固定不顺延',
-                  style: TextStyle(
+                Text(
+                  context.l10n.storeStartOnScan,
+                  style: const TextStyle(
                     fontSize: 11,
                     color: LiveColors.textTertiary,
                   ),
@@ -887,7 +887,19 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    i == 0 ? '今天' : i == 1 ? '明天' : '周${'一二三四五六日'[date.weekday - 1]}',
+                    i == 0
+                        ? context.l10n.weekdayToday
+                        : i == 1
+                            ? context.l10n.weekdayTomorrow
+                            : switch (date.weekday) {
+                                1 => context.l10n.weekdayMon,
+                                2 => context.l10n.weekdayTue,
+                                3 => context.l10n.weekdayWed,
+                                4 => context.l10n.weekdayThu,
+                                5 => context.l10n.weekdayFri,
+                                6 => context.l10n.weekdaySat,
+                                _ => context.l10n.weekdaySun,
+                              },
                     style: TextStyle(
                       fontSize: 12,
                       color: sel ? Colors.white : LiveColors.textSecondary,
@@ -1062,9 +1074,12 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
 
   String get _bookingLabel {
     return switch (widget.bookingType) {
-      'package' => '${widget.package?.name ?? '套餐'} · ${widget.durationHours} 小时',
-      'all_day' => '全天不限时',
-      _ => '${widget.durationHours} 小时',
+      'package' => context.l10n.bookingTypePackage(
+          widget.package?.name ?? context.l10n.commonPackage,
+          widget.durationHours,
+        ),
+      'all_day' => context.l10n.bookingTypeAllDay,
+      _ => context.l10n.bookingTypeHours(widget.durationHours),
     };
   }
 
@@ -1170,9 +1185,9 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                               ),
                               const Spacer(),
-                              const Text(
-                                '自动推荐最优组合',
-                                style: TextStyle(
+                              Text(
+                                l10n.storeAutoTables,
+                                style: const TextStyle(
                                   fontSize: 11.5,
                                   color: LiveColors.textTertiary,
                                 ),
@@ -1181,7 +1196,7 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
                           ),
                           const SizedBox(height: 10),
                           if (_tables.isEmpty)
-                            const EmptyView(text: '该门店暂无可用桌位')
+                            EmptyView(text: l10n.storeNoTables)
                           else
                             GridView.builder(
                               shrinkWrap: true,

@@ -2244,20 +2244,20 @@ class _ServiceEndScreenState extends State<ServiceEndScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  '体验结束',
+                Text(
+                  context.l10n.appointmentServiceEnd,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
                     color: LiveColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  '已为您记录本次体验时长，欢迎再次光临',
+                Text(
+                  context.l10n.appointmentServiceEndDesc,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
                     color: LiveColors.textSecondary,
                   ),
@@ -2273,13 +2273,19 @@ class _ServiceEndScreenState extends State<ServiceEndScreen> {
                   ),
                   child: Column(
                     children: [
-                      _DetailRow('门店', a.title),
+                      _DetailRow(context.l10n.appointmentStore, a.title),
                       _DetailRow(
-                        '桌位 / 人数',
-                        '${a.tableLabel.isEmpty ? '--' : a.tableLabel} · ${a.peopleCount} 人',
+                        context.l10n.appointmentTablePeople,
+                        '${a.tableLabel.isEmpty ? '--' : a.tableLabel} · ${context.l10n.appointmentPeople(a.peopleCount)}',
                       ),
-                      _DetailRow('上钟时间', _fmtTime(a.serviceStartTime)),
-                      _DetailRow('下钟时间', _fmtTime(a.serviceEndTime)),
+                      _DetailRow(
+                        context.l10n.appointmentStartTime,
+                        _fmtTime(a.serviceStartTime),
+                      ),
+                      _DetailRow(
+                        context.l10n.appointmentEndTime,
+                        _fmtTime(a.serviceEndTime),
+                      ),
                       const Divider(height: 20, color: LiveColors.divider),
                       Row(
                         children: [
@@ -2589,7 +2595,7 @@ class _ExperienceCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                appointment.statusLabel,
+                _appointmentStatusLabel(context.l10n, appointment.status),
                 style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
               ),
             ],
@@ -2792,7 +2798,9 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
                         child: Text(
-                          '当前状态：${_found!.statusLabel}',
+                          context.l10n.appointmentStatusCurrentLabel(
+                            _appointmentStatusLabel(context.l10n, _found!.status),
+                          ),
                           style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
                         ),
                       ),
@@ -2857,7 +2865,7 @@ class _FoundCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '预约码 ${appointment.code} · ${appointment.statusLabel}',
+            '${context.l10n.homeCode(appointment.code)} · ${_appointmentStatusLabel(context.l10n, appointment.status)}',
             style: const TextStyle(fontSize: 12.6, fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
           ),
         ],

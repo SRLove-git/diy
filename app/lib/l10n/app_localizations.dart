@@ -1400,6 +1400,36 @@ abstract class AppLocalizations {
   /// **'该时段已无可约开始时间'**
   String get storeNoStartTimes;
 
+  /// No description provided for @storeStartOnScan.
+  ///
+  /// In zh, this message translates to:
+  /// **'到店扫码即开始计时，结束时间固定不顺延'**
+  String get storeStartOnScan;
+
+  /// No description provided for @weekdayToday.
+  ///
+  /// In zh, this message translates to:
+  /// **'今天'**
+  String get weekdayToday;
+
+  /// No description provided for @weekdayTomorrow.
+  ///
+  /// In zh, this message translates to:
+  /// **'明天'**
+  String get weekdayTomorrow;
+
+  /// No description provided for @storeAutoTables.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动推荐最优组合'**
+  String get storeAutoTables;
+
+  /// No description provided for @storeNoTables.
+  ///
+  /// In zh, this message translates to:
+  /// **'该门店暂无可用桌位'**
+  String get storeNoTables;
+
   /// No description provided for @storeMemberPrefix.
   ///
   /// In zh, this message translates to:
@@ -1658,6 +1688,12 @@ abstract class AppLocalizations {
   /// **'待确认'**
   String get appointmentStatusPending;
 
+  /// No description provided for @appointmentStatusCurrentLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前状态：{status}'**
+  String appointmentStatusCurrentLabel(String status);
+
   /// No description provided for @appointmentWaitingConfirm.
   ///
   /// In zh, this message translates to:
@@ -1795,6 +1831,36 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'体验结束'**
   String get appointmentServiceEnd;
+
+  /// No description provided for @appointmentServiceEndDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'已为您记录本次体验时长，欢迎再次光临'**
+  String get appointmentServiceEndDesc;
+
+  /// No description provided for @appointmentStore.
+  ///
+  /// In zh, this message translates to:
+  /// **'门店'**
+  String get appointmentStore;
+
+  /// No description provided for @appointmentTablePeople.
+  ///
+  /// In zh, this message translates to:
+  /// **'桌位 / 人数'**
+  String get appointmentTablePeople;
+
+  /// No description provided for @appointmentStartTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'上钟时间'**
+  String get appointmentStartTime;
+
+  /// No description provided for @appointmentEndTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'下钟时间'**
+  String get appointmentEndTime;
 
   /// No description provided for @appointmentPayAtStore.
   ///

@@ -687,6 +687,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get storeNoStartTimes => '该时段已无可约开始时间';
 
   @override
+  String get storeStartOnScan => '到店扫码即开始计时，结束时间固定不顺延';
+
+  @override
+  String get weekdayToday => '今天';
+
+  @override
+  String get weekdayTomorrow => '明天';
+
+  @override
+  String get storeAutoTables => '自动推荐最优组合';
+
+  @override
+  String get storeNoTables => '该门店暂无可用桌位';
+
+  @override
   String storeMemberPrefix(String price) {
     return '　会员 $price';
   }
@@ -834,6 +849,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appointmentStatusPending => '待确认';
 
   @override
+  String appointmentStatusCurrentLabel(String status) {
+    return '当前状态：$status';
+  }
+
+  @override
   String get appointmentWaitingConfirm => '等待门店确认';
 
   @override
@@ -903,6 +923,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appointmentServiceEnd => '体验结束';
+
+  @override
+  String get appointmentServiceEndDesc => '已为您记录本次体验时长，欢迎再次光临';
+
+  @override
+  String get appointmentStore => '门店';
+
+  @override
+  String get appointmentTablePeople => '桌位 / 人数';
+
+  @override
+  String get appointmentStartTime => '上钟时间';
+
+  @override
+  String get appointmentEndTime => '下钟时间';
 
   @override
   String appointmentPayAtStore(String amount) {
