@@ -451,7 +451,8 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
           startTime,
           endTime,
           peopleCount: dto.peopleCount,
-          status: 'pending',
+          // 门店预约直接进入待核销，到店核销即可，无需管理端确认
+          status: 'booked',
           code: await this.generateCode(em),
           note: dto.note ?? '',
           amount: finalAmount,

@@ -95,6 +95,8 @@ function buildService() {
     stores,
     tables,
     packages,
+    activities,
+    activitySessionsRepo,
     memberships,
     redis,
     userCouponRepo,
@@ -131,7 +133,7 @@ describe('AppointmentsService', () => {
       m.em.findOne.mockResolvedValue(null);
       m.em.create.mockImplementation(
         (_cls: unknown, data: Record<string, unknown>) => ({
-          status: 'pending',
+          status: 'booked',
           ...data,
         }),
       );
@@ -139,7 +141,7 @@ describe('AppointmentsService', () => {
 
       const result = await m.svc.create(7, baseDto);
 
-      expect(result.status).toBe('pending');
+      expect(result.status).toBe('booked');
       expect(result.code).toMatch(/^\d{6}$/);
       // 39.9 元/人/小时 × 2 人 × 2 小时 = 159.6
       expect(result.amount).toBe(159.6);
@@ -382,6 +384,52 @@ describe('AppointmentsService', () => {
     });
   });
 
+  describe('createActivity', () => {
+    it('活动场次预约保持待确认（pending），门店预约才直接待核销', async () => {
+      const m = buildService();
+      m.activities.findOneBy.mockResolvedValue({
+        id: 1,
+        title: '拼豆沙龙',
+        price: 39.9,
+        memberPrice: null,
+        enabled: true,
+        bookable: true,
+      });
+      m.activitySessionsRepo.findOneBy.mockResolvedValue({
+        id: 2,
+        activityId: 1,
+        date: dateStr(1),
+        startTime: '10:00',
+        endTime: '12:00',
+        capacity: 20,
+        enabled: true,
+      });
+      m.memberships.findOneBy.mockResolvedValue(null);
+      m.redis.set.mockResolvedValue('OK');
+      m.em.find.mockResolvedValue([]);
+      m.em.create.mockImplementation(
+        (_cls: unknown, data: Record<string, unknown>) => ({
+          status: 'pending',
+          ...data,
+        }),
+      );
+      m.em.save.mockImplementation((x: unknown) => Promise.resolve(x));
+
+      const result = (await m.svc.create(7, {
+        type: 'activity',
+        activityId: 1,
+        activitySessionId: 2,
+        peopleCount: 2,
+        date: dateStr(1),
+        startTime: '10:00',
+        endTime: '12:00',
+      } as never)) as { type: string; status: string };
+
+      expect(result.type).toBe('activity');
+      expect(result.status).toBe('pending');
+    });
+  });
+
   describe('autoClockoutExpired', () => {
     it('只把已过结束时刻的服务中预约置为 completed', async () => {
       const m = buildService();
@@ -448,7 +496,7 @@ describe('AppointmentsService', () => {
         peopleCount: 2,
         startTime: '10:00',
         durationHours: 1,
-      } as never)) as { amount: number; originalAmount: number };
+      })) as { amount: number; originalAmount: number };
 
       // 9 × 2 = 18；原价 9.9 × 2 = 19.8
       expect(result.amount).toBe(18);
@@ -465,7 +513,7 @@ describe('AppointmentsService', () => {
         peopleCount: 2,
         startTime: '10:00',
         durationHours: 1,
-      } as never)) as { amount: number };
+      })) as { amount: number };
 
       // 会员 8 + 同行 9 = 17
       expect(result.amount).toBe(17);
@@ -479,7 +527,7 @@ describe('AppointmentsService', () => {
         peopleCount: 1,
         startTime: '10:00',
         durationHours: 1,
-      } as never)) as { amount: number; originalAmount: number };
+      })) as { amount: number; originalAmount: number };
 
       // 单人门市 9.9 × 1.1 = 10.89
       expect(result.amount).toBe(10.89);
