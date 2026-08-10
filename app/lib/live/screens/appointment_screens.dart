@@ -920,7 +920,6 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
 
   static const _tabs = [
     ('all', '全部'),
-    ('pending', '待确认'),
     ('booked', '待核销'),
     ('in_service', '服务中'),
     ('completed', '已完成'),
