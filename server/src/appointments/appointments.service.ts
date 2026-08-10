@@ -134,7 +134,19 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
    */
   async autoClockoutExpired(): Promise<number> {
     const now = new Date();
-    const expired = await this.appointments.findBy({ status: 'in_service' });
+    const today = this.todayStr();
+    const nowHM = `${String(now.getHours()).padStart(2, '0')}:${String(
+      now.getMinutes(),
+    ).padStart(2, '0')}`;
+    // 只查「预约日已过」或「当天且时段已结束」的服务中预约，走 (status, date, endTime) 索引
+    const expired = await this.appointments
+      .createQueryBuilder('a')
+      .where('a.status = :status', { status: 'in_service' })
+      .andWhere(
+        '(a.date < :today OR (a.date = :today AND a.endTime <= :nowHM))',
+        { today, nowHM },
+      )
+      .getMany();
     let count = 0;
     for (const appt of expired) {
       const end = this.scheduledEnd(appt);
@@ -667,12 +679,19 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  /** 我的预约列表（按时间倒序） */
-  myList(userId: number): Promise<Appointment[]> {
-    return this.appointments.find({
+  /** 我的预约列表（分页，按时间倒序） */
+  async myList(
+    userId: number,
+    page = 1,
+    pageSize = 20,
+  ): Promise<{ items: Appointment[]; total: number }> {
+    const [items, total] = await this.appointments.findAndCount({
       where: { userId },
       order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     });
+    return { items, total };
   }
 
   /** 预约详情（仅本人或核销人） */

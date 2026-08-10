@@ -109,9 +109,13 @@ class AppointmentService {
     return Appointment.fromJson(data);
   }
 
-  Future<List<Appointment>> myList() async {
-    final data = await ApiClient.instance.get('/appointments') as List;
-    return data.map((e) => Appointment.fromJson(e as Map<String, dynamic>)).toList();
+  Future<List<Appointment>> myList({int page = 1, int pageSize = 50}) async {
+    final data = await ApiClient.instance
+        .get('/appointments', query: {'page': page, 'pageSize': pageSize})
+        as Map<String, dynamic>;
+    return (data['items'] as List)
+        .map((e) => Appointment.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<Appointment> detail(int id) async {

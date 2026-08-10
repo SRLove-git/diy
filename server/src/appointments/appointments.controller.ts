@@ -29,8 +29,12 @@ export class AppointmentsController {
   /** 我的预约列表 */
   @Get()
   @UseGuards(JwtAuthGuard)
-  myList(@CurrentUser() user: AuthUser) {
-    return this.appointments.myList(user.id);
+  myList(
+    @CurrentUser() user: AuthUser,
+    @Query('page', new ParseIntPipe({ optional: true })) page?: number,
+    @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize?: number,
+  ) {
+    return this.appointments.myList(user.id, page ?? 1, pageSize ?? 20);
   }
 
   /** 桌位可用性（预约选桌位前查询，返回每桌已占用时段） */
