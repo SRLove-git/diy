@@ -39,7 +39,7 @@ async function login() {
 <template>
   <div class="login-wrap">
     <form class="login-card" @submit.prevent="login">
-      <h1>DIY 手作工坊 · 管理后台</h1>
+      <h1>Think Origin · 管理后台</h1>
       <input
         v-model="account"
         type="text"

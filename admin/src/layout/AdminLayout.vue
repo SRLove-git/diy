@@ -13,7 +13,7 @@ function logout() {
 <template>
   <div class="layout">
     <aside>
-      <div class="logo">DIY 手作工坊 · 后台</div>
+      <div class="logo">Think Origin · 后台</div>
       <nav>
         <RouterLink to="/dashboard">数据看板</RouterLink>
         <RouterLink to="/stores">门店管理</RouterLink>
