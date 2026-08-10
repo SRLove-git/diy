@@ -49,6 +49,12 @@ export class AdminAppointmentsController {
     return this.appointments.adminCheckIn(id, user.id);
   }
 
+  /** 确认预约（店员代操作）：待确认 → 待核销 */
+  @Post(':id/confirm')
+  confirm(@Param('id', ParseIntPipe) id: number) {
+    return this.appointments.adminConfirm(id);
+  }
+
   /** 输入核销码核销（店员代操作）：核销即上钟 */
   @Post('checkin-code')
   checkInByCode(@Body() dto: CheckInDto, @CurrentUser() user: AuthUser) {

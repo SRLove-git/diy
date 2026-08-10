@@ -451,6 +451,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
           startTime,
           endTime,
           peopleCount: dto.peopleCount,
+          status: 'pending',
           code: await this.generateCode(em),
           note: dto.note ?? '',
           amount: finalAmount,
@@ -571,6 +572,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
           startTime: session.startTime,
           endTime: session.endTime,
           peopleCount: dto.peopleCount,
+          status: 'pending',
           code: await this.generateCode(em),
           note: dto.note ?? '',
           amount: finalAmount,
@@ -732,11 +734,11 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     return appt;
   }
 
-  /** 取消预约（仅待核销状态） */
+  /** 取消预约（待确认/待核销状态） */
   async cancel(userId: number, id: number): Promise<Appointment> {
     const appt = await this.detail(userId, id);
-    if (appt.status !== 'booked') {
-      throw new BadRequestException('仅待核销状态的预约可取消');
+    if (appt.status !== 'pending' && appt.status !== 'booked') {
+      throw new BadRequestException('仅待确认或待核销状态的预约可取消');
     }
     appt.status = 'cancelled';
     const saved = await this.appointments.save(appt);
@@ -752,7 +754,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException(
         appt.status === 'cancelled'
           ? '该预约已取消'
-          : '该预约码已核销，不可重复核销',
+          : appt.status === 'pending'
+            ? '该预约待门店确认，确认后方可到店核销'
+            : '该预约码已核销，不可重复核销',
       );
     }
 
@@ -875,12 +879,32 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     ];
   }
 
-  /** 管理端取消预约（仅待核销/已核销状态，服务开始前） */
+  /** 管理端确认预约：pending → booked（确认后才可到店核销） */
+  async adminConfirm(id: number): Promise<Appointment> {
+    const appt = await this.appointments.findOneBy({ id });
+    if (!appt) throw new NotFoundException('预约单不存在');
+    if (appt.status !== 'pending') {
+      throw new BadRequestException('仅待确认状态的预约可确认');
+    }
+    if (appt.date < this.todayStr()) {
+      throw new BadRequestException('预约日期已过，无法确认');
+    }
+    appt.status = 'booked';
+    const saved = await this.appointments.save(appt);
+    this.broadcastAppointment(saved);
+    return saved;
+  }
+
+  /** 管理端取消预约（待确认/待核销/已核销状态，服务开始前） */
   async adminCancel(id: number): Promise<Appointment> {
     const appt = await this.appointments.findOneBy({ id });
     if (!appt) throw new NotFoundException('预约单不存在');
-    if (appt.status !== 'booked' && appt.status !== 'checked_in') {
-      throw new BadRequestException('仅待核销或已核销状态的预约可取消');
+    if (
+      appt.status !== 'pending' &&
+      appt.status !== 'booked' &&
+      appt.status !== 'checked_in'
+    ) {
+      throw new BadRequestException('仅待确认、待核销或已核销状态的预约可取消');
     }
     appt.status = 'cancelled';
     const saved = await this.appointments.save(appt);

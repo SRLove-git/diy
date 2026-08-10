@@ -131,7 +131,7 @@ describe('AppointmentsService', () => {
       m.em.findOne.mockResolvedValue(null);
       m.em.create.mockImplementation(
         (_cls: unknown, data: Record<string, unknown>) => ({
-          status: 'booked',
+          status: 'pending',
           ...data,
         }),
       );
@@ -139,7 +139,7 @@ describe('AppointmentsService', () => {
 
       const result = await m.svc.create(7, baseDto);
 
-      expect(result.status).toBe('booked');
+      expect(result.status).toBe('pending');
       expect(result.code).toMatch(/^\d{6}$/);
       // 39.9 元/人/小时 × 2 人 × 2 小时 = 159.6
       expect(result.amount).toBe(159.6);
@@ -292,6 +292,92 @@ describe('AppointmentsService', () => {
 
       await expect(m.svc.checkIn('123456', 7)).rejects.toThrow(
         BadRequestException,
+      );
+    });
+
+    it('待确认的预约不可核销，提示等待门店确认', async () => {
+      const m = buildService();
+      m.appointments.findOneBy.mockResolvedValue({
+        id: 1,
+        code: '123456',
+        status: 'pending',
+      });
+
+      await expect(m.svc.checkIn('123456', 7)).rejects.toThrow(
+        '该预约待门店确认，确认后方可到店核销',
+      );
+    });
+  });
+
+  describe('cancel', () => {
+    it('待确认状态可取消（下单后未确认前）', async () => {
+      const m = buildService();
+      m.appointments.findOneBy.mockResolvedValue({
+        id: 1,
+        userId: 7,
+        status: 'pending',
+      });
+      m.appointments.save.mockImplementation((x: unknown) =>
+        Promise.resolve(x),
+      );
+
+      const result = await m.svc.cancel(7, 1);
+
+      expect(result.status).toBe('cancelled');
+    });
+
+    it('服务中状态不可取消', async () => {
+      const m = buildService();
+      m.appointments.findOneBy.mockResolvedValue({
+        id: 1,
+        userId: 7,
+        status: 'in_service',
+      });
+
+      await expect(m.svc.cancel(7, 1)).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('adminConfirm', () => {
+    it('pending → booked：确认后才可到店核销', async () => {
+      const m = buildService();
+      m.appointments.findOneBy.mockResolvedValue({
+        id: 1,
+        status: 'pending',
+        date: dateStr(1),
+      });
+      m.appointments.save.mockImplementation((x: unknown) =>
+        Promise.resolve(x),
+      );
+
+      const result = await m.svc.adminConfirm(1);
+
+      expect(result.status).toBe('booked');
+    });
+
+    it('已确认（booked）的预约不可重复确认', async () => {
+      const m = buildService();
+      m.appointments.findOneBy.mockResolvedValue({
+        id: 1,
+        status: 'booked',
+        date: dateStr(1),
+      });
+
+      await expect(m.svc.adminConfirm(1)).rejects.toThrow(
+        '仅待确认状态的预约可确认',
+      );
+    });
+
+    it('预约日期已过不可确认', async () => {
+      const m = buildService();
+      m.appointments.findOneBy.mockResolvedValue({
+        id: 1,
+        status: 'pending',
+        date: dateStr(-2),
+      });
+
+      await expect(m.svc.adminConfirm(1)).rejects.toThrow(
+        '预约日期已过，无法确认',
       );
     });
   });
