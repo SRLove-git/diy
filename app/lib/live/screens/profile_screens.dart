@@ -8,6 +8,7 @@ import '../../api/api_client.dart';
 import '../../api/content_services.dart';
 import '../../api/models.dart';
 import '../../api/services.dart';
+import '../../l10n/l10n_ext.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
@@ -77,11 +78,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return LivePage(
       child: Column(
         children: [
           LiveAppBar(
-            title: '我的',
+            title: l10n.profileTitle,
             actions: [_ProfileMenuButton()],
           ),
           Expanded(
@@ -256,6 +258,7 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final joinYear = user.createdAt?.year;
     final joinMonth = user.createdAt?.month;
     return Column(
@@ -282,8 +285,13 @@ class _ProfileHeader extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Think Origin${joinYear != null ? ' $joinYear 年 ${joinMonth ?? ''} 月入驻' : ''}'
-          '${user.location.isNotEmpty ? ' · ${user.location}' : ''}',
+          joinYear != null
+              ? l10n.profileJoined(
+                  '$joinYear',
+                  '${joinMonth ?? ''}',
+                )
+              : 'Think Origin'
+                  '${user.location.isNotEmpty ? ' · ${user.location}' : ''}',
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -294,7 +302,7 @@ class _ProfileHeader extends StatelessWidget {
           children: [
             Expanded(
               child: PrimaryButton(
-                label: '编辑资料',
+                label: l10n.profileEdit,
                 height: 54,
                 onTap: onEdit,
               ),
@@ -302,7 +310,7 @@ class _ProfileHeader extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: PrimaryButton(
-                label: '我的预约',
+                label: l10n.profileMyAppointments,
                 height: 54,
                 onTap: onOrders,
               ),
@@ -652,7 +660,7 @@ class _ProfileMenuButton extends StatelessWidget {
       onPressed: () => showGeneralDialog<void>(
         context: context,
         barrierDismissible: true,
-        barrierLabel: '我的服务',
+        barrierLabel: context.l10n.profileServices,
         barrierColor: Colors.black.withValues(alpha: 0.35),
         transitionDuration: const Duration(milliseconds: 220),
         pageBuilder: (_, _, _) => const ProfileMenuScreen(),
@@ -680,6 +688,7 @@ class ProfileMenuScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Stack(
@@ -711,9 +720,9 @@ class ProfileMenuScreen extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
-                          '我的服务',
-                          style: TextStyle(
+                        Text(
+                          l10n.profileServices,
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
                             color: LiveColors.textPrimary,
@@ -725,8 +734,8 @@ class ProfileMenuScreen extends StatelessWidget {
                   const Divider(height: 1, color: LiveColors.divider),
                   _MenuEntryTile(
                     icon: Icons.confirmation_number_outlined,
-                    title: '我的卡包',
-                    subtitle: '优惠券 · 会员体验',
+                    title: l10n.profileCardWallet,
+                    subtitle: l10n.profileCardWalletDesc,
                     onTap: () {
                       LiveRoutes.pushAfterPop(context, RoutePaths.memberCoupons);
                     },
@@ -750,26 +759,26 @@ class ProfileMenuScreen extends StatelessWidget {
                   // ),
                   _MenuEntryTile(
                     icon: Icons.receipt_long_outlined,
-                    title: '我的订单',
-                    subtitle: '预约 · 体验记录',
+                    title: l10n.profileCardOrders,
+                    subtitle: l10n.profileCardOrdersDesc,
                     onTap: () {
                       LiveRoutes.pushAfterPop(context, RoutePaths.appointmentMy);
                     },
                   ),
                   _MenuEntryTile(
                     icon: Icons.settings_outlined,
-                    title: '设置',
-                    subtitle: '账号与安全 · 通用',
+                    title: l10n.profileCardSettings,
+                    subtitle: l10n.profileCardSettingsDesc,
                     onTap: () {
                       LiveRoutes.pushAfterPop(context, RoutePaths.profileSettings);
                     },
                   ),
                   const Spacer(),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(20, 0, 20, 28),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
                     child: Text(
-                      '更多服务持续上线',
-                      style: TextStyle(fontSize: 11, color: LiveColors.textTertiary),
+                      l10n.profileMoreComingSoon,
+                      style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
                     ),
                   ),
                 ],
@@ -1156,13 +1165,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _avatarUploading = false;
         });
       }
-      if (mounted) showLiveSnack(context, '选择头像失败：$e');
+      if (mounted) {
+        showLiveSnack(context, '${context.l10n.profileAvatarPickFailed}：$e');
+      }
     }
   }
 
   Future<void> _save() async {
     if (_avatarUploading) {
-      showLiveSnack(context, '头像上传中，请稍候再保存');
+      showLiveSnack(context, context.l10n.profileEditAvatarUploading);
       return;
     }
     setState(() => _saving = true);
@@ -1179,7 +1190,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       };
       final updated = await UserService.instance.updateMe(body);
       if (mounted) {
-        showLiveSnack(context, '保存成功');
+        showLiveSnack(context, context.l10n.profileSaveSuccess);
         // 返回最新用户信息，个人主页立即刷新头像/昵称等
         Navigator.of(context).pop(updated);
       }
@@ -1204,9 +1215,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (final g in [
-              ('secret', '保密'),
-              ('male', '男'),
-              ('female', '女'),
+              ('secret', context.l10n.genderSecret),
+              ('male', context.l10n.genderMale),
+              ('female', context.l10n.genderFemale),
             ])
               ListTile(
                 title: Text(
@@ -1253,20 +1264,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final value = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('所在地', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        title: Text(
+          context.l10n.profileEditLocation,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(hintText: '请输入城市 / 地区'),
+          decoration: InputDecoration(hintText: context.l10n.profileEditLocationHint),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('取消', style: TextStyle(color: LiveColors.textSecondary)),
+            child: Text(
+              context.l10n.commonCancel,
+              style: const TextStyle(color: LiveColors.textSecondary),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
-            child: const Text('确定', style: TextStyle(color: LiveColors.brand)),
+            child: Text(
+              context.l10n.commonOk,
+              style: const TextStyle(color: LiveColors.brand),
+            ),
           ),
         ],
       ),
@@ -1282,6 +1302,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return LivePage(
       // 编辑资料页：键盘弹出时页面不压缩，键盘覆盖下半部分，
       // 避免与登录页相同的上下分层问题。
@@ -1290,7 +1311,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         children: [
           // 顶部导航：返回 + 标题「编辑资料」+ 右侧「保存」按钮（对齐设计稿 28-编辑资料）
           LiveAppBar(
-            title: '编辑资料',
+            title: l10n.profileEditTitle,
             actions: [
               Padding(
                 padding: const EdgeInsets.only(right: 12),
@@ -1309,9 +1330,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : const Text(
-                            '保存',
-                            style: TextStyle(
+                        : Text(
+                            l10n.commonSave,
+                            style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
@@ -1365,7 +1386,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                       )
                                     : Avatar(
                                         url: _avatar,
-                                        name: _nicknameCtrl.text.isEmpty ? '我' : _nicknameCtrl.text,
+                                        name: _nicknameCtrl.text.isEmpty
+                                            ? l10n.profileEditMe
+                                            : _nicknameCtrl.text,
                                         size: 90,
                                       ),
                               ),
@@ -1392,20 +1415,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 const SizedBox(height: 20),
                 // 昵称输入框（灰底圆角 14 高 59）
                 _EditField(
-                  label: '昵称',
+                  label: l10n.profileEditNickname,
                   controller: _nicknameCtrl,
                 ),
                 const SizedBox(height: 12),
                 // 用户名输入框
                 _EditField(
-                  label: '用户名',
+                  label: l10n.profileEditUsername,
                   controller: _usernameCtrl,
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(top: 6),
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
                   child: Text(
-                    '用户名一年内只能修改一次，设置后可用于用户名+密码登录',
-                    style: TextStyle(fontSize: 11, color: LiveColors.textTertiary),
+                    l10n.profileEditUsernameHint,
+                    style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1419,8 +1442,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: TextField(
                     controller: _bioCtrl,
                     maxLines: 3,
-                    decoration: const InputDecoration(
-                      hintText: '简介：拼豆手作爱好者，治愈系手工',
+                    decoration: InputDecoration(
+                      hintText: l10n.profileEditBioHint,
                       hintStyle: TextStyle(fontSize: 15, color: LiveColors.textTertiary),
                       border: InputBorder.none,
                       isDense: true,
@@ -1439,24 +1462,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: Column(
                     children: [
                       _InfoRow(
-                        label: '性别',
+                        label: l10n.profileEditGender,
                         value: switch (_gender) {
-                          'male' => '男',
-                          'female' => '女',
-                          _ => '保密',
+                          'male' => l10n.genderMale,
+                          'female' => l10n.genderFemale,
+                          _ => l10n.genderSecret,
                         },
                         onTap: () => _pickGender(),
                       ),
                       const Divider(height: 1, color: LiveColors.divider),
                       _InfoRow(
-                        label: '生日',
-                        value: _birthdayCtrl.text.isEmpty ? '未设置' : _birthdayCtrl.text,
+                        label: l10n.profileEditBirthday,
+                        value: _birthdayCtrl.text.isEmpty
+                            ? l10n.settingsNotSet
+                            : _birthdayCtrl.text,
                         onTap: () => _pickBirthday(),
                       ),
                       const Divider(height: 1, color: LiveColors.divider),
                       _InfoRow(
-                        label: '所在地',
-                        value: _locationCtrl.text.isEmpty ? '未设置' : _locationCtrl.text,
+                        label: l10n.profileEditLocation,
+                        value: _locationCtrl.text.isEmpty
+                            ? l10n.settingsNotSet
+                            : _locationCtrl.text,
                         onTap: () => _pickLocation(),
                       ),
                     ],
@@ -2004,9 +2031,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // 对齐 Pixso 39-弹窗-退出登录确认：
     // 遮罩 + 居中白色圆角 22 对话框 + 灰底取消 / 红底退出登录。
     final ok = await _showConfirmDialog(
-      title: '退出登录',
-      desc: '退出后需要重新登录，才能查看消息、预约和会员信息，确定退出吗？',
-      actionLabel: '退出登录',
+      title: context.l10n.settingsLogoutConfirmTitle,
+      desc: context.l10n.settingsLogoutConfirmDesc,
+      actionLabel: context.l10n.settingsLogoutAction,
     );
     if (ok == true && mounted) await LiveRoutes.logout(context);
   }
@@ -2014,9 +2041,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// 切换账号：先弹窗确认，再退出当前账号返回登录页。
   Future<void> _switchAccount() async {
     final ok = await _showConfirmDialog(
-      title: '切换账号',
-      desc: '切换账号将退出当前账号并返回登录页，需要重新登录后才能继续，确定切换吗？',
-      actionLabel: '切换账号',
+      title: context.l10n.settingsSwitchConfirmTitle,
+      desc: context.l10n.settingsSwitchConfirmDesc,
+      actionLabel: context.l10n.settingsSwitchAction,
     );
     if (ok == true && mounted) await LiveRoutes.logout(context);
   }
@@ -2063,7 +2090,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Expanded(
                     child: _DialogButton(
-                      label: '取消',
+                      label: context.l10n.commonCancel,
                       backgroundColor: LiveColors.card,
                       textColor: LiveColors.textPrimary,
                       onTap: () => Navigator.pop(dialogContext, false),
@@ -2089,35 +2116,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final email = _user?.email ?? '';
     final username = _user?.username;
     return LivePage(
       child: Column(
         children: [
-          const LiveAppBar(title: '设置'),
+          LiveAppBar(title: l10n.settingsTitle),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(18),
               children: [
                 // 账号与安全
-                const _SettingsTitle('账号与安全', top: 0),
+                _SettingsTitle(l10n.settingsAccountSecurity, top: 0),
                 _SettingsCard(
                   children: [
                     _SettingsInfoRow(
-                      title: '邮箱',
-                      subtitle: email.isEmpty ? '未绑定' : '$email 已绑定',
+                      title: l10n.settingsEmail,
+                      subtitle: email.isEmpty
+                          ? l10n.settingsNotBound
+                          : '$email ${l10n.settingsBound}',
                     ),
                     const Divider(height: 1, color: LiveColors.divider),
                     _SettingsInfoRow(
-                      title: '用户名',
+                      title: l10n.settingsUsername,
                       subtitle: username == null
-                          ? '未设置'
-                          : '$username · 已设置',
+                          ? l10n.settingsNotSet
+                          : '$username · ${l10n.settingsSet}',
                     ),
                     const Divider(height: 1, color: LiveColors.divider),
                     _SettingsInfoRow(
-                      title: '登录密码',
-                      subtitle: '已设置 · 可用密码登录',
+                      title: l10n.settingsLoginPassword,
+                      subtitle: l10n.settingsLoginPasswordSub,
                       chevron: true,
                       onTap: () => LiveRoutes.push(
                         context,
@@ -2132,20 +2162,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     // ),
                     const Divider(height: 1, color: LiveColors.divider),
                     _SettingsInfoRow(
-                      title: '切换账号',
-                      subtitle: '登录其他账号',
+                      title: l10n.settingsSwitchAccount,
+                      subtitle: l10n.settingsSwitchAccountSub,
                       chevron: true,
                       onTap: _switchAccount,
                     ),
                   ],
                 ),
                 // 通用
-                const _SettingsTitle('通用'),
+                _SettingsTitle(l10n.settingsGeneral),
                 _SettingsCard(
                   children: [
                     _SettingsSwitchRow(
-                      title: '消息通知',
-                      subtitle: '互动、系统消息提醒',
+                      title: l10n.settingsNotifications,
+                      subtitle: l10n.settingsNotificationsSub,
                       value: _notify,
                       onChanged: (v) => setState(() => _notify = v),
                     ),
@@ -2167,36 +2197,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     // ),
                   ],
                 ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                   child: Text(
-                    '下拉查看关于与退出登录',
+                    l10n.settingsScrollHint,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 11,
                       color: LiveColors.textTertiary,
                     ),
                   ),
                 ),
                 // 关于
-                const _SettingsTitle('关于'),
+                _SettingsTitle(l10n.settingsAbout),
                 _SettingsCard(
                   children: [
                     _SettingsInfoRow(
-                      title: '版本',
+                      title: l10n.settingsVersion,
                       subtitle: 'Think Origin v1.0.0',
                     ),
                     const Divider(height: 1, color: LiveColors.divider),
                     _SettingsInfoRow(
-                      title: '用户协议',
+                      title: l10n.settingsUserAgreement,
                       chevron: true,
-                      onTap: () => showLiveSnack(context, '用户协议敬请期待'),
+                      onTap: () => showLiveSnack(context, l10n.settingsUserAgreementSoon),
                     ),
                     const Divider(height: 1, color: LiveColors.divider),
                     _SettingsInfoRow(
-                      title: '隐私政策',
+                      title: l10n.settingsPrivacyPolicy,
                       chevron: true,
-                      onTap: () => showLiveSnack(context, '隐私政策敬请期待'),
+                      onTap: () => showLiveSnack(context, l10n.settingsPrivacyPolicySoon),
                     ),
                   ],
                 ),
@@ -2210,10 +2240,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
                       onTap: _logout,
-                      child: const Center(
+                      child: Center(
                         child: Text(
-                          '退出登录',
-                          style: TextStyle(
+                          l10n.settingsLogout,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: LiveColors.danger,

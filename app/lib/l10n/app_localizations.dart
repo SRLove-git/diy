@@ -530,6 +530,12 @@ abstract class AppLocalizations {
   /// **'未绑定'**
   String get settingsNotBound;
 
+  /// No description provided for @settingsBound.
+  ///
+  /// In zh, this message translates to:
+  /// **'已绑定'**
+  String get settingsBound;
+
   /// No description provided for @settingsUsername.
   ///
   /// In zh, this message translates to:
@@ -614,6 +620,30 @@ abstract class AppLocalizations {
   /// **'退出登录'**
   String get settingsLogout;
 
+  /// No description provided for @settingsUserAgreement.
+  ///
+  /// In zh, this message translates to:
+  /// **'用户协议'**
+  String get settingsUserAgreement;
+
+  /// No description provided for @settingsPrivacyPolicy.
+  ///
+  /// In zh, this message translates to:
+  /// **'隐私政策'**
+  String get settingsPrivacyPolicy;
+
+  /// No description provided for @settingsUserAgreementSoon.
+  ///
+  /// In zh, this message translates to:
+  /// **'用户协议敬请期待'**
+  String get settingsUserAgreementSoon;
+
+  /// No description provided for @settingsPrivacyPolicySoon.
+  ///
+  /// In zh, this message translates to:
+  /// **'隐私政策敬请期待'**
+  String get settingsPrivacyPolicySoon;
+
   /// No description provided for @settingsLogoutConfirmTitle.
   ///
   /// In zh, this message translates to:
@@ -632,6 +662,12 @@ abstract class AppLocalizations {
   /// **'退出登录'**
   String get settingsLogoutAction;
 
+  /// No description provided for @settingsScrollHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'下拉查看关于与退出登录'**
+  String get settingsScrollHint;
+
   /// No description provided for @profileTitle.
   ///
   /// In zh, this message translates to:
@@ -649,6 +685,54 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'我的预约'**
   String get profileMyAppointments;
+
+  /// No description provided for @profileCardWallet.
+  ///
+  /// In zh, this message translates to:
+  /// **'我的卡包'**
+  String get profileCardWallet;
+
+  /// No description provided for @profileCardWalletDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'优惠券 · 会员体验'**
+  String get profileCardWalletDesc;
+
+  /// No description provided for @profileCardOrders.
+  ///
+  /// In zh, this message translates to:
+  /// **'我的订单'**
+  String get profileCardOrders;
+
+  /// No description provided for @profileCardOrdersDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'预约 · 体验记录'**
+  String get profileCardOrdersDesc;
+
+  /// No description provided for @profileCardSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置'**
+  String get profileCardSettings;
+
+  /// No description provided for @profileCardSettingsDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号与安全 · 通用'**
+  String get profileCardSettingsDesc;
+
+  /// No description provided for @profileServices.
+  ///
+  /// In zh, this message translates to:
+  /// **'我的服务'**
+  String get profileServices;
+
+  /// No description provided for @profileMoreComingSoon.
+  ///
+  /// In zh, this message translates to:
+  /// **'更多服务持续上线'**
+  String get profileMoreComingSoon;
 
   /// No description provided for @profileJoined.
   ///
@@ -710,6 +794,42 @@ abstract class AppLocalizations {
   /// **'性别'**
   String get profileEditGender;
 
+  /// No description provided for @profileEditBioHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'简介：拼豆手作爱好者，治愈系手工'**
+  String get profileEditBioHint;
+
+  /// No description provided for @profileEditLocationHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入城市 / 地区'**
+  String get profileEditLocationHint;
+
+  /// No description provided for @profileEditMe.
+  ///
+  /// In zh, this message translates to:
+  /// **'我'**
+  String get profileEditMe;
+
+  /// No description provided for @genderMale.
+  ///
+  /// In zh, this message translates to:
+  /// **'男'**
+  String get genderMale;
+
+  /// No description provided for @genderFemale.
+  ///
+  /// In zh, this message translates to:
+  /// **'女'**
+  String get genderFemale;
+
+  /// No description provided for @genderSecret.
+  ///
+  /// In zh, this message translates to:
+  /// **'保密'**
+  String get genderSecret;
+
   /// No description provided for @profileEditAvatarUploading.
   ///
   /// In zh, this message translates to:
@@ -727,6 +847,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'选择头像失败'**
   String get profileAvatarPickFailed;
+
+  /// No description provided for @commonOk.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定'**
+  String get commonOk;
 
   /// No description provided for @homeOrders.
   ///

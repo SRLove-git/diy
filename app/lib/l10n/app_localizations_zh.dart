@@ -229,6 +229,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsNotBound => '未绑定';
 
   @override
+  String get settingsBound => '已绑定';
+
+  @override
   String get settingsUsername => '用户名';
 
   @override
@@ -272,6 +275,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsLogout => '退出登录';
 
   @override
+  String get settingsUserAgreement => '用户协议';
+
+  @override
+  String get settingsPrivacyPolicy => '隐私政策';
+
+  @override
+  String get settingsUserAgreementSoon => '用户协议敬请期待';
+
+  @override
+  String get settingsPrivacyPolicySoon => '隐私政策敬请期待';
+
+  @override
   String get settingsLogoutConfirmTitle => '退出登录';
 
   @override
@@ -281,6 +296,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsLogoutAction => '退出登录';
 
   @override
+  String get settingsScrollHint => '下拉查看关于与退出登录';
+
+  @override
   String get profileTitle => '我的';
 
   @override
@@ -288,6 +306,30 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get profileMyAppointments => '我的预约';
+
+  @override
+  String get profileCardWallet => '我的卡包';
+
+  @override
+  String get profileCardWalletDesc => '优惠券 · 会员体验';
+
+  @override
+  String get profileCardOrders => '我的订单';
+
+  @override
+  String get profileCardOrdersDesc => '预约 · 体验记录';
+
+  @override
+  String get profileCardSettings => '设置';
+
+  @override
+  String get profileCardSettingsDesc => '账号与安全 · 通用';
+
+  @override
+  String get profileServices => '我的服务';
+
+  @override
+  String get profileMoreComingSoon => '更多服务持续上线';
 
   @override
   String profileJoined(String year, String month) {
@@ -322,6 +364,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get profileEditGender => '性别';
 
   @override
+  String get profileEditBioHint => '简介：拼豆手作爱好者，治愈系手工';
+
+  @override
+  String get profileEditLocationHint => '请输入城市 / 地区';
+
+  @override
+  String get profileEditMe => '我';
+
+  @override
+  String get genderMale => '男';
+
+  @override
+  String get genderFemale => '女';
+
+  @override
+  String get genderSecret => '保密';
+
+  @override
   String get profileEditAvatarUploading => '头像上传中，请稍候再保存';
 
   @override
@@ -329,6 +389,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get profileAvatarPickFailed => '选择头像失败';
+
+  @override
+  String get commonOk => '确定';
 
   @override
   String get homeOrders => '我的订单';

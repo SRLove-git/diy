@@ -234,6 +234,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsNotBound => 'Not bound';
 
   @override
+  String get settingsBound => 'Bound';
+
+  @override
   String get settingsUsername => 'Username';
 
   @override
@@ -277,6 +280,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLogout => 'Log Out';
 
   @override
+  String get settingsUserAgreement => 'User Agreement';
+
+  @override
+  String get settingsPrivacyPolicy => 'Privacy Policy';
+
+  @override
+  String get settingsUserAgreementSoon => 'User Agreement coming soon';
+
+  @override
+  String get settingsPrivacyPolicySoon => 'Privacy Policy coming soon';
+
+  @override
   String get settingsLogoutConfirmTitle => 'Log Out';
 
   @override
@@ -287,6 +302,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLogoutAction => 'Log Out';
 
   @override
+  String get settingsScrollHint => 'Scroll down for About and Log Out';
+
+  @override
   String get profileTitle => 'Me';
 
   @override
@@ -294,6 +312,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileMyAppointments => 'My appointments';
+
+  @override
+  String get profileCardWallet => 'My Wallet';
+
+  @override
+  String get profileCardWalletDesc => 'Coupons · Member perks';
+
+  @override
+  String get profileCardOrders => 'My Orders';
+
+  @override
+  String get profileCardOrdersDesc => 'Bookings · History';
+
+  @override
+  String get profileCardSettings => 'Settings';
+
+  @override
+  String get profileCardSettingsDesc => 'Account & security · General';
+
+  @override
+  String get profileServices => 'My Services';
+
+  @override
+  String get profileMoreComingSoon => 'More services coming soon';
 
   @override
   String profileJoined(String year, String month) {
@@ -329,6 +371,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileEditGender => 'Gender';
 
   @override
+  String get profileEditBioHint => 'Bio: bead craft lover, healing handmade';
+
+  @override
+  String get profileEditLocationHint => 'Enter city / region';
+
+  @override
+  String get profileEditMe => 'Me';
+
+  @override
+  String get genderMale => 'Male';
+
+  @override
+  String get genderFemale => 'Female';
+
+  @override
+  String get genderSecret => 'Secret';
+
+  @override
   String get profileEditAvatarUploading =>
       'Uploading avatar, please wait before saving';
 
@@ -337,6 +397,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileAvatarPickFailed => 'Failed to pick avatar';
+
+  @override
+  String get commonOk => 'OK';
 
   @override
   String get homeOrders => 'My Orders';
