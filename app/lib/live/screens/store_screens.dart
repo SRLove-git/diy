@@ -8,6 +8,7 @@ import '../../api/services.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
+import '../singapore_holidays.dart';
 
 class StoreListScreen extends StatefulWidget {
   const StoreListScreen({super.key});
@@ -1107,12 +1108,11 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
     return _isMember ? _memberUnit : _normalUnit;
   }
 
-  /// 周末/节假日是否加价（预览，与服务端一致：周六/周日按配置百分比上浮）
+  /// 周末/节假日是否加价（预览，与服务端一致：周六/周日或新加坡公共假期按配置百分比上浮）
   bool get _weekendSurcharge {
     final pct = widget.store.weekendSurchargePercent;
     if (pct <= 0) return false;
-    final wd = DateTime.tryParse(widget.date)?.weekday ?? 1;
-    return wd == 6 || wd == 7;
+    return isSurchargeDate(widget.date);
   }
 
   /// 预估总额 = 单价 × 人数（周末加价时上浮）

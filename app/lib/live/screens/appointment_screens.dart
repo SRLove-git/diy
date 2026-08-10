@@ -10,6 +10,7 @@ import '../../api/services.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
 import '../live_widgets.dart';
+import '../singapore_holidays.dart';
 
 /// 34-取消预约确认弹窗（对齐 Pixso 34-居中确认）：
 /// 遮罩 + 312 宽圆角白卡 + 标题 + 说明 + 再想想 / 确认取消。
@@ -342,12 +343,11 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
     return _unitPrice * n;
   }
 
-  /// 周末/节假日是否加价（与服务端一致：周六/周日按配置百分比上浮）
+  /// 周末/节假日是否加价（与服务端一致：周六/周日或新加坡公共假期按配置百分比上浮）
   bool get _weekendSurcharge {
     final pct = widget.store?.weekendSurchargePercent ?? 0;
     if (pct <= 0) return false;
-    final wd = DateTime.tryParse(widget.date)?.weekday ?? 1;
-    return wd == 6 || wd == 7;
+    return isSurchargeDate(widget.date);
   }
 
   double get _surchargeRate =>
