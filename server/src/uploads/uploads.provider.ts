@@ -1,6 +1,12 @@
-import { NotImplementedException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
-import { copyFileSync, mkdirSync, renameSync, unlinkSync } from 'fs';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  copyFileSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+} from 'fs';
 import { join } from 'path';
 
 /** 上传结果 */
@@ -46,27 +52,79 @@ export class LocalUploadProvider implements UploadProvider {
 }
 
 /**
- * 对象存储提供者（预留）：接入 OSS/COS 时在此实现上传逻辑，
- * 并在 .env 设置 UPLOAD_PROVIDER=oss 启用。
+ * S3 兼容对象存储（AWS S3 / MinIO / 阿里云 OSS / 腾讯云 COS 等）。
+ *
+ * 配置（.env）：
+ *   UPLOAD_PROVIDER=s3
+ *   S3_ENDPOINT          可选：自定义终端（MinIO/OSS/COS 需要）
+ *   S3_REGION            默认 us-east-1
+ *   S3_BUCKET            必填
+ *   S3_ACCESS_KEY / S3_SECRET_KEY
+ *   S3_PUBLIC_URL_BASE   可选：对外访问域名/CDN（如 https://cdn.example.com），
+ *                        未配置时回退到 bucket 默认域名
+ *   S3_FORCE_PATH_STYLE  可选：MinIO 等需要 true
  */
-export class ObjectStorageProvider implements UploadProvider {
-  readonly name = 'oss';
+export class S3UploadProvider implements UploadProvider {
+  readonly name = 's3';
+  private readonly client: S3Client;
+  private readonly bucket: string;
+  private readonly publicBase: string;
+  private readonly fallbackHost: string;
 
-  async save(): Promise<UploadedFile> {
-    throw new NotImplementedException(
-      '对象存储尚未接入：请配置 UPLOAD_PROVIDER=local，或实现 ObjectStorageProvider',
-    );
+  constructor(config: ConfigService) {
+    this.bucket = config.get<string>('S3_BUCKET', '');
+    if (!this.bucket) {
+      throw new Error('UPLOAD_PROVIDER=s3 时需配置 S3_BUCKET');
+    }
+    const region = config.get<string>('S3_REGION', 'us-east-1');
+    this.publicBase = (
+      config.get<string>('S3_PUBLIC_URL_BASE', '') ?? ''
+    ).replace(/\/+$/, '');
+    this.fallbackHost = `https://${this.bucket}.s3.${region}.amazonaws.com`;
+    this.client = new S3Client({
+      region,
+      endpoint: config.get<string>('S3_ENDPOINT') || undefined,
+      forcePathStyle: config.get<string>('S3_FORCE_PATH_STYLE') === 'true',
+      credentials: {
+        accessKeyId: config.get<string>('S3_ACCESS_KEY', ''),
+        secretAccessKey: config.get<string>('S3_SECRET_KEY', ''),
+      },
+    });
+  }
+
+  async save(file: Express.Multer.File, dir: string): Promise<UploadedFile> {
+    const key = `${dir}/${file.filename}`;
+    const body = readFileSync(file.path);
+    try {
+      await this.client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Body: body,
+          ContentType: file.mimetype || 'application/octet-stream',
+        }),
+      );
+    } finally {
+      // 上传完成（无论成败）清理 multer 临时文件
+      try {
+        unlinkSync(file.path);
+      } catch {
+        /* 忽略清理失败 */
+      }
+    }
+    const base = this.publicBase || this.fallbackHost;
+    return { url: `${base}/${key}` };
   }
 }
 
-/** 依据环境变量创建存储提供者（默认本地磁盘） */
+/** 依据环境变量创建存储提供者（默认本地磁盘；s3 走对象存储） */
 export function createUploadProvider(config: ConfigService): UploadProvider {
   const kind = config.get<string>('UPLOAD_PROVIDER', 'local').toLowerCase();
   switch (kind) {
     case 'local':
       return new LocalUploadProvider();
-    case 'oss':
-      return new ObjectStorageProvider();
+    case 's3':
+      return new S3UploadProvider(config);
     default:
       throw new Error(`未知 UPLOAD_PROVIDER: ${kind}`);
   }
