@@ -2782,7 +2782,8 @@ class _CheckinFlowScreenState extends State<CheckinFlowScreen> {
                 // 输入核销码入口暂不开放，先隐藏
                 // actions: [
                 //   TextButton(
-                //     onPressed: () => LiveRoutes.push(context, RoutePaths.loginVerify),
+                //     onPressed: () =>
+                //         LiveRoutes.push(context, RoutePaths.appointmentCheckinCode),
                 //     child: const Text(
                 //       '输入核销码',
                 //       style: TextStyle(fontSize: 13, color: LiveColors.textPrimary),

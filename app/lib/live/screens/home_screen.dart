@@ -47,10 +47,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // 从后台回到前台时刷新订单，感知店员后台核销
-    if (state == AppLifecycleState.resumed &&
-        (_orders.isNotEmpty || _pendingOrders.isNotEmpty)) {
+    // 从后台回到前台：重新拉取订单与未读数，感知后台期间的核销/上钟/新通知
+    if (state == AppLifecycleState.resumed) {
       _loadOrders();
+      unawaited(
+        NotificationService.instance.unreadCount().catchError((_) => 0),
+      );
     }
   }
 

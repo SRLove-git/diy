@@ -55,15 +55,7 @@ void main() {
     await pumpApp(tester);
     await tester.tap(find.text('注册新账号'));
     await tester.pumpAndSettle();
-    expect(find.text('用用户名和密码注册，绑定邮箱用于找回密码'), findsOneWidget);
-    expect(find.text('获取验证码'), findsOneWidget);
-  });
-
-  testWidgets('进入忘记密码页', (tester) async {
-    await pumpApp(tester);
-    await tester.tap(find.text('忘记密码？'));
-    await tester.pumpAndSettle();
-    expect(find.text('通过绑定邮箱验证后设置新密码'), findsOneWidget);
-    expect(find.text('重置密码'), findsOneWidget);
+    expect(find.text('用用户名和密码注册'), findsOneWidget);
+    expect(find.text('注册并登录'), findsOneWidget);
   });
 }

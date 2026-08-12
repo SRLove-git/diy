@@ -12,7 +12,6 @@ class RoutePaths {
   static const splash = '/splash';
   static const login = '/login';
   static const loginRegister = '/login/register';
-  static const loginVerify = '/login/verify';
 
   // 底部 5 Tab（StatefulShellRoute 分支）
   static const home = '/home';
@@ -54,6 +53,7 @@ class RoutePaths {
   static const appointmentDetail = '/appointment/:id';
   static const appointmentSuccess = '/appointment/success';
   static const appointmentCheckinQr = '/appointment/checkin-qr';
+  static const appointmentCheckinCode = '/appointment/checkin-code';
   static const appointmentServiceEnd = '/appointment/service-end';
   static const appointmentMy = '/appointment/my';
   static const memberCenter = '/member/center';

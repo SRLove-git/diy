@@ -4,11 +4,13 @@ import 'dart:io';
 
 import 'api_config.dart';
 import 'auth_store.dart';
+import 'chat_services.dart';
 import 'models.dart';
 import 'services.dart';
 
 /// 实时推送（WebSocket）：预约状态变更（店员核销 / 上钟 / 下钟）即时通知，
-/// 首页订单无需轮询 / 手动刷新即可更新。
+/// 平台通知（点赞/评论/关注/系统消息）即时刷新未读角标，
+/// 首页无需轮询 / 手动刷新即可更新。
 class RealtimeService {
   RealtimeService._();
 
@@ -69,13 +71,22 @@ class RealtimeService {
     try {
       final map = jsonDecode(raw.toString());
       if (map is! Map<String, dynamic>) return;
-      if (map['type'] != 'appointment') return;
-      final appt = map['appointment'];
-      if (appt is Map<String, dynamic>) {
-        HomeOrdersRefresh.instance.refresh(Appointment.fromJson(appt));
+      switch (map['type']) {
+        case 'appointment':
+          final appt = map['appointment'];
+          if (appt is Map<String, dynamic>) {
+            HomeOrdersRefresh.instance.refresh(Appointment.fromJson(appt));
+          }
+          break;
+        case 'notification':
+          // 平台通知已发送：立即刷新首页未读角标（拉取失败静默）
+          unawaited(
+            NotificationService.instance.unreadCount().catchError((_) => 0),
+          );
+          break;
       }
     } catch (_) {
-      // 解析失败忽略
+      // 解析失败忽略（聊天帧为 msgpack 二进制，非 JSON）
     }
   }
 }

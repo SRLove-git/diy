@@ -64,6 +64,7 @@ interface RemoteEvent {
     | 'read'
     | 'presence'
     | 'notification'
+    | 'appointment'
     | 'groupEvent'
     | 'kick';
   /** 目标用户（各实例按本地连接表判断是否推送） */
@@ -552,13 +553,31 @@ export class ChatGateway
 
   /**
    * 平台通知已创建后广播给目标用户：通知在线客户端刷新未读角标。
+   * 与预约事件一致直接以 JSON 文本发送（区别于聊天 msgpack），并跨实例转发。
    * 离线用户无需实时推送，下次进入首页拉取未读数即可。
    */
   broadcastNotification(userIds: number[]): void {
     if (!userIds?.length) return;
     const payload = { type: 'notification' };
-    for (const uid of userIds) this.sendToUser(uid, payload);
+    for (const uid of userIds) this.sendJsonToUser(uid, payload);
     this.publish({ kind: 'notification', toUserIds: userIds, payload });
+  }
+
+  /** 应用客户端直推：JSON 文本发送（与聊天 msgpack 分开），预约/通知事件共用 */
+  private sendJsonToUser(
+    userId: number,
+    payload: Record<string, unknown>,
+  ): void {
+    const set = this.clients.get(userId);
+    if (!set) return;
+    const data = Buffer.from(JSON.stringify(payload));
+    for (const client of set) {
+      if (client.readyState !== WebSocket.OPEN) continue;
+      client.send(data, (err) => {
+        if (err)
+          console.warn('[ChatGateway] json send error:', err.message);
+      });
+    }
   }
 
   /** 将 Message 实体转为可安全 msgpack 编码的纯对象（Date → ISO 字符串） */
@@ -609,21 +628,13 @@ export class ChatGateway
     });
   }
 
-  /** 预约状态变更推送（核销 / 上钟 / 下钟等）：客户端实时刷新首页订单 */
+  /** 预约状态变更推送（核销 / 上钟 / 下钟等）：客户端实时刷新首页订单。
+   *  与聊天帧不同，直接以 JSON 文本发送；同时跨实例转发，
+   *  保证处理请求的实例与用户连接所在实例不同时也能收到。 */
   sendAppointment(userId: number, appointment: unknown): void {
-    // 该事件只发给本应用客户端，直接以 JSON 文本发送（与聊天 msgpack 分开）
-    const data = Buffer.from(
-      JSON.stringify({ type: 'appointment', appointment }),
-    );
-    const set = this.clients.get(userId);
-    if (!set) return;
-    for (const client of set) {
-      if (client.readyState !== WebSocket.OPEN) continue;
-      client.send(data, (err) => {
-        if (err)
-          console.warn('[ChatGateway] appointment send error:', err.message);
-      });
-    }
+    const payload = { type: 'appointment', appointment };
+    this.sendJsonToUser(userId, payload);
+    this.publish({ kind: 'appointment', toUserIds: [userId], payload });
   }
 
   private sendToUser(userId: number, payload: unknown): void {
@@ -700,7 +711,11 @@ export class ChatGateway
       return;
     }
     for (const uid of ev.toUserIds) {
-      this.sendToUser(uid, ev.payload);
+      if (ev.kind === 'notification' || ev.kind === 'appointment') {
+        this.sendJsonToUser(uid, ev.payload);
+      } else {
+        this.sendToUser(uid, ev.payload);
+      }
     }
   }
 }

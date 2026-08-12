@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../api/auth_store.dart';
+import '../api/chat_services.dart';
 import '../api/models.dart';
 import '../api/services.dart';
 import '../l10n/l10n_ext.dart';
@@ -76,13 +79,6 @@ final GoRouter appRouter = GoRouter(
         child: const RegisterScreen(),
       ),
     ),
-    GoRoute(
-      path: RoutePaths.loginVerify,
-      builder: (_, _) => LiveHost(
-        resizeToAvoidBottomInset: false,
-        child: const VerifyCodeScreen(),
-      ),
-    ),
     // ===== 底部 5 Tab（保活） =====
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) => LiveHost(
@@ -114,6 +110,11 @@ final GoRouter appRouter = GoRouter(
                     // 切回首页时刷新订单，感知店员后台核销（事件驱动，非轮询）
                     if (i == 0) {
                       HomeOrdersRefresh.instance.refresh();
+                      unawaited(
+                        NotificationService.instance
+                            .unreadCount()
+                            .catchError((_) => 0),
+                      );
                     }
                   });
                 },
@@ -414,6 +415,13 @@ final GoRouter appRouter = GoRouter(
       builder: (_, s) => LiveHost(
         resizeToAvoidBottomInset: false,
         child: CheckinQrScreen(appointment: s.extra as Appointment),
+      ),
+    ),
+    GoRoute(
+      path: RoutePaths.appointmentCheckinCode,
+      builder: (_, _) => LiveHost(
+        resizeToAvoidBottomInset: false,
+        child: const VerifyCodeScreen(),
       ),
     ),
     GoRoute(

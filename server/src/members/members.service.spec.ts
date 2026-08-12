@@ -125,7 +125,9 @@ describe('MembersService', () => {
       const result = await m.svc.adminConfirmOrder(1);
 
       const expected = new Date(existingExpire.getTime() + 30 * 86400000);
-      expect(result.expireAt.getTime()).toBe(expected.getTime());
+      // 已确认开通必然返回有效会员记录，expireAt 为 Date（类型联合含 null，此处断言非空）
+      expect(result.expireAt).toBeInstanceOf(Date);
+      expect((result.expireAt as Date).getTime()).toBe(expected.getTime());
     });
 
     it('已确认的申请不可重复确认', async () => {
