@@ -49,6 +49,7 @@ function buildService() {
   const gateway = { sendAppointment: jest.fn() };
   const redis = {
     set: jest.fn(),
+    get: jest.fn(),
     del: jest.fn(),
     incr: jest.fn(),
     expire: jest.fn(),
@@ -56,6 +57,7 @@ function buildService() {
   };
   redis.del.mockResolvedValue(1);
   redis.set.mockResolvedValue('OK');
+  redis.get.mockResolvedValue(null); // availability 缓存默认未命中
   const userCouponRepo: { findOne: jest.Mock; save: jest.Mock } = {
     findOne: jest.fn(),
     save: jest.fn(),
@@ -77,7 +79,9 @@ function buildService() {
   em.query.mockResolvedValue([]); // 默认无时段冲突
   const dataSource = {
     transaction: jest.fn((cb: (manager: typeof em) => unknown) => cb(em)),
+    query: jest.fn(),
   };
+  dataSource.query.mockResolvedValue([]); // availability 默认无占用窗口
 
   const svc = new AppointmentsService(
     appointments as never,
@@ -107,6 +111,7 @@ function buildService() {
     userCouponRepo,
     couponRepo,
     em,
+    dataSource,
   };
 }
 
@@ -330,6 +335,8 @@ describe('AppointmentsService', () => {
       m.appointments.findOneBy.mockResolvedValue({
         id: 1,
         userId: 7,
+        storeId: 3,
+        date: '2026-08-12',
         status: 'pending',
       });
       m.appointments.save.mockImplementation((x: unknown) =>
@@ -339,6 +346,8 @@ describe('AppointmentsService', () => {
       const result = await m.svc.cancel(7, 1);
 
       expect(result.status).toBe('cancelled');
+      // 取消后失效该店该日 availability 缓存
+      expect(m.redis.del).toHaveBeenCalledWith('availability:3:2026-08-12');
     });
 
     it('服务中状态不可取消', async () => {
@@ -350,6 +359,128 @@ describe('AppointmentsService', () => {
       });
 
       await expect(m.svc.cancel(7, 1)).rejects.toThrow(BadRequestException);
+    });
+
+    it('已取消的预约重复取消幂等成功（客户端超时重试场景）', async () => {
+      const m = buildService();
+      m.appointments.findOneBy.mockResolvedValue({
+        id: 1,
+        userId: 7,
+        storeId: 3,
+        date: '2026-08-12',
+        status: 'cancelled',
+      });
+
+      const result = await m.svc.cancel(7, 1);
+
+      expect(result.status).toBe('cancelled');
+      expect(m.appointments.save).not.toHaveBeenCalled();
+      expect(m.redis.del).not.toHaveBeenCalled();
+    });
+
+    it('管理端重复取消已取消的预约幂等成功', async () => {
+      const m = buildService();
+      m.appointments.findOneBy.mockResolvedValue({
+        id: 1,
+        status: 'cancelled',
+      });
+
+      const result = await m.svc.adminCancel(1);
+
+      expect(result.status).toBe('cancelled');
+      expect(m.appointments.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('availability', () => {
+    it('缓存未命中时查库计算，并写入 Redis（TTL 至当日结束）', async () => {
+      const m = buildService();
+      m.stores.findOneBy.mockResolvedValue({ id: 1, enabled: true });
+      m.tables.find.mockResolvedValue([
+        { id: 1, name: 'A1', capacity: 2 },
+        { id: 2, name: 'A2', capacity: 4 },
+      ]);
+      m.dataSource.query.mockResolvedValue([
+        {
+          tableId: 1,
+          startTime: '10:00',
+          endTime: '12:00',
+          status: 'booked',
+        },
+        {
+          tableId: 2,
+          startTime: '14:00',
+          endTime: '15:00',
+          status: 'in_service',
+        },
+      ]);
+
+      const result = await m.svc.availability(1, '2026-08-12');
+
+      expect(result).toHaveLength(2);
+      expect(result[0].bookedWindows).toEqual([
+        { startTime: '10:00', endTime: '12:00', status: 'booked' },
+      ]);
+      expect(m.redis.set).toHaveBeenCalledWith(
+        'availability:1:2026-08-12',
+        expect.any(String),
+        'EX',
+        expect.any(Number),
+      );
+    });
+
+    it('缓存命中时直接返回，不查库', async () => {
+      const m = buildService();
+      m.stores.findOneBy.mockResolvedValue({ id: 1, enabled: true });
+      m.redis.get.mockResolvedValue(
+        JSON.stringify([
+          { id: 1, name: 'A1', capacity: 2, bookedWindows: [] },
+        ]),
+      );
+
+      const result = await m.svc.availability(1, '2026-08-12');
+
+      expect(result).toHaveLength(1);
+      expect(m.tables.find).not.toHaveBeenCalled();
+      expect(m.dataSource.query).not.toHaveBeenCalled();
+    });
+
+    it('传 page/pageSize 返回分页结构，不传保持原数组格式', async () => {
+      const m = buildService();
+      m.stores.findOneBy.mockResolvedValue({ id: 1, enabled: true });
+      m.tables.find.mockResolvedValue([
+        { id: 1, name: 'A1', capacity: 2 },
+        { id: 2, name: 'A2', capacity: 4 },
+        { id: 3, name: 'A3', capacity: 6 },
+      ]);
+
+      const page = await m.svc.availability(1, '2026-08-12', 2, 2);
+      expect(page).toEqual({
+        items: [{ id: 3, name: 'A3', capacity: 6, bookedWindows: [] }],
+        total: 3,
+        page: 2,
+        pageSize: 2,
+      });
+
+      const all = await m.svc.availability(1, '2026-08-12');
+      expect(Array.isArray(all)).toBe(true);
+      expect(all).toHaveLength(3);
+    });
+
+    it('并发缓存未命中时单飞：同一门店/日期只回源计算一次', async () => {
+      const m = buildService();
+      m.stores.findOneBy.mockResolvedValue({ id: 1, enabled: true });
+      m.tables.find.mockResolvedValue([{ id: 1, name: 'A1', capacity: 2 }]);
+      m.dataSource.query.mockResolvedValue([]);
+
+      const [r1, r2] = await Promise.all([
+        m.svc.availability(1, '2026-08-12'),
+        m.svc.availability(1, '2026-08-12'),
+      ]);
+
+      expect(r1).toEqual(r2);
+      expect(m.tables.find).toHaveBeenCalledTimes(1);
+      expect(m.dataSource.query).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -486,6 +617,10 @@ describe('AppointmentsService', () => {
       // 散客无会员身份：多人同行价 25 元/人/小时 × 2 小时 × 2 人 = 100
       expect(result.amount).toBe(100);
       expect(m.redis.del).toHaveBeenCalled(); // 无论成败释放分布式锁
+      // 开台后失效当天该店 availability 缓存
+      expect(m.redis.del).toHaveBeenCalledWith(
+        expect.stringMatching(/^availability:1:/),
+      );
     });
 
     it('与当日已有预约时段重叠时拒绝开台', async () => {

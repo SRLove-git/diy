@@ -31,6 +31,7 @@ export type PayStatus = 'unpaid' | 'paid';
 @Index(['status', 'date', 'endTime']) // 自动下钟轮询：只扫已过期预约，避免全表拉取
 @Index(['userId', 'createdAt']) // 我的预约列表
 @Index(['code'], { unique: true }) // 核销/按码查询：唯一索引加速并兜底重复码
+@Index('IDX_appointment_store_date_status', ['storeId', 'date', 'status']) // 桌位可用性：按门店+日期收窄有效预约扫描
 export class Appointment {
   @PrimaryGeneratedColumn()
   id: number;

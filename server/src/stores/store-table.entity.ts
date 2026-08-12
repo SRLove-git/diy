@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -11,6 +12,7 @@ import { Store } from './store.entity';
 
 /** 门店桌位（工位/操作台）：预约时按人数选择 */
 @Entity('store_tables')
+@Index('IDX_store_tables_store_enabled', ['storeId', 'enabled']) // 桌位可用性：按门店+启用过滤
 export class StoreTable {
   @PrimaryGeneratedColumn()
   id: number;

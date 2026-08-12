@@ -37,13 +37,19 @@ export class AppointmentsController {
     return this.appointments.myList(user.id, page ?? 1, pageSize ?? 20);
   }
 
-  /** 桌位可用性（预约选桌位前查询，返回每桌已占用时段） */
+  /**
+   * 桌位可用性（预约选桌位前查询，返回每桌已占用时段）。
+   * 可选分页：传 page/pageSize 时返回 { items, total, page, pageSize }；
+   * 不传保持原数组格式（全部桌位，兼容现有客户端）。
+   */
   @Get('availability')
   availability(
     @Query('storeId', ParseIntPipe) storeId: number,
     @Query('date') date: string,
+    @Query('page', new ParseIntPipe({ optional: true })) page?: number,
+    @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize?: number,
   ) {
-    return this.appointments.availability(storeId, date);
+    return this.appointments.availability(storeId, date, page, pageSize);
   }
 
   /** 活动场次列表（含剩余名额，预约选场次前查询） */

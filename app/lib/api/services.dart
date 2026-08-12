@@ -115,9 +115,22 @@ class AppointmentService {
     return Appointment.fromJson(data);
   }
 
-  Future<Appointment> cancel(int id) async {
-    final data = await ApiClient.instance.post('/appointments/$id/cancel') as Map<String, dynamic>;
-    return Appointment.fromJson(data);
+  /// 取消预约（幂等）：网络类失败（响应超时/连接中断）自动重试最多 2 次。
+  /// 服务端取消已幂等——重复取消直接返回成功，重试不会报「仅可取消…」，
+  /// 避免「服务端已取消但响应超时 → 客户端放弃 → 残留 booked 单」的连锁问题。
+  Future<Appointment> cancel(int id, {int retries = 2}) async {
+    try {
+      final data = await ApiClient.instance
+          .post('/appointments/$id/cancel') as Map<String, dynamic>;
+      return Appointment.fromJson(data);
+    } on ApiException catch (e) {
+      // statusCode == null：请求未收到 HTTP 响应（超时/断网），
+      // 服务端可能已处理成功，重试安全且能拿到最终状态
+      if (retries > 0 && e.statusCode == null) {
+        return cancel(id, retries: retries - 1);
+      }
+      rethrow;
+    }
   }
 
   Future<Appointment> checkIn(String code) async {

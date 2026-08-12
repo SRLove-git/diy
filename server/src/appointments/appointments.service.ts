@@ -38,11 +38,26 @@ import { UsersService } from '../users/users.service';
 import { Appointment } from './appointment.entity';
 import { CreateAppointmentDto, WalkInDto } from './appointment.dto';
 
+/** 桌位可用性响应项：桌位信息 + 当日已占用时段窗口 */
+type TableAvailabilityItem = {
+  id: number;
+  name: string;
+  capacity: number;
+  bookedWindows: Array<{ startTime: string; endTime: string; status: string }>;
+};
+
 @Injectable()
 export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AppointmentsService.name);
   private autoClockoutTimer: NodeJS.Timeout | null = null;
   private autoClockoutRunning = false;
+  /** 同一 (storeId, date) 缓存回源计算的单飞表：并发未命中只查一次库 */
+  private readonly availabilityInflight = new Map<
+    string,
+    Promise<TableAvailabilityItem[]>
+  >();
+  /** 预约变更计数：回源计算结果只在「计算期间无变更」时才写回缓存，防止旧快照覆盖新数据 */
+  private availabilityEpoch = 0;
 
   constructor(
     @InjectRepository(Appointment)
@@ -74,6 +89,95 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       serviceEndTime: appt.serviceEndTime?.toISOString() ?? null,
       createdAt: appt.createdAt?.toISOString() ?? null,
     });
+  }
+
+  /** availability 缓存 key：某门店某日的桌位占用快照 */
+  private availabilityCacheKey(storeId: number, date: string): string {
+    return `availability:${storeId}:${date}`;
+  }
+
+  /** 兜底 TTL：缓存最迟到当天 23:59:59 后 1 分钟，避免跨天脏数据 */
+  private availabilityCacheTtlSeconds(): number {
+    const now = new Date();
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+    return Math.max(
+      60,
+      Math.round((endOfDay.getTime() - now.getTime()) / 1000) + 60,
+    );
+  }
+
+  /** 预约变更后失效对应门店/日期的桌位可用性缓存（Redis 不可用时静默降级） */
+  private async invalidateAvailability(
+    storeId: number | null,
+    date: string | null,
+  ): Promise<void> {
+    if (storeId == null || !date) return;
+    this.availabilityEpoch++;
+    await this.redis
+      .del(this.availabilityCacheKey(storeId, date))
+      .catch(() => undefined);
+  }
+
+  /**
+   * 回源计算某门店某日的桌位占用快照，并写回 Redis。
+   * epoch 在计算开始时就捕获：若计算期间发生过预约变更（invalidateAvailability），
+   * 说明这份快照可能已过期，跳过写回（本次请求仍可返回，下次请求自然回源）。
+   */
+  private async computeAvailability(
+    storeId: number,
+    date: string,
+    epochAtStart: number,
+  ): Promise<TableAvailabilityItem[]> {
+    const tables = await this.tables.find({
+      where: { storeId, enabled: true },
+      order: { id: 'ASC' },
+    });
+    // 只取占用窗口所需列，SQL 端按一单多桌 JSON 展开（tables 为空时回退 tableId 单桌）。
+    // status 用 IN 枚举有效状态，配合 (storeId, date, status) 索引走范围扫描
+    const taken = await this.dataSource.query(
+      `SELECT COALESCE(t.tid, a.tableId) AS tableId, a.startTime, a.endTime, a.status
+       FROM appointments a
+       LEFT JOIN JSON_TABLE(a.tables, '$[*]' COLUMNS (tid INT PATH '$.id')) t
+         ON a.tables IS NOT NULL AND JSON_LENGTH(a.tables) > 0
+       WHERE a.storeId = ? AND a.date = ?
+         AND a.status IN ('pending', 'booked', 'checked_in', 'in_service')
+       ORDER BY a.startTime ASC`,
+      [storeId, date],
+    );
+    // 按桌位聚合占用窗口（一单多桌：预约的每张桌都算占用）
+    const windowByTable = new Map<
+      number,
+      Array<{ startTime: string; endTime: string; status: string }>
+    >();
+    for (const row of taken) {
+      if (row.tableId == null) continue;
+      const id = Number(row.tableId);
+      if (!windowByTable.has(id)) windowByTable.set(id, []);
+      windowByTable.get(id)!.push({
+        startTime: row.startTime,
+        endTime: row.endTime,
+        status: row.status,
+      });
+    }
+    const items = tables.map((t) => ({
+      id: t.id,
+      name: t.name,
+      capacity: t.capacity,
+      bookedWindows: windowByTable.get(t.id) ?? [],
+    }));
+    // 计算期间无预约变更才写回；写缓存失败只影响命中率，不影响正确性
+    if (epochAtStart === this.availabilityEpoch) {
+      await this.redis
+        .set(
+          this.availabilityCacheKey(storeId, date),
+          JSON.stringify(items),
+          'EX',
+          this.availabilityCacheTtlSeconds(),
+        )
+        .catch(() => undefined);
+    }
+    return items;
   }
 
   /** 启动后周期兜底：预约时段到点后自动下钟（未在读操作中即时结束的预约） */
@@ -156,6 +260,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
         appt.status = 'completed';
         appt.serviceEndTime = end;
         await this.appointments.save(appt);
+        await this.invalidateAvailability(appt.storeId, appt.date);
         count++;
       }
     }
@@ -448,7 +553,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
 
     try {
       // 2) 事务：冲突校验（含 DB 组合索引兜底）+ 预约码生成 + 落库
-      return await this.dataSource.transaction(async (em) => {
+      const saved = await this.dataSource.transaction(async (em) => {
         // 冲突校验：SQL 端按桌位（含一单多桌 JSON 展开）+ 时间段重叠判断，避免整表拉取
         const conflict = await this.findOverlapConflict(
           em,
@@ -518,6 +623,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
         });
         return em.save(appointment);
       });
+      // 3) 落库后失效该店该日 availability 缓存
+      await this.invalidateAvailability(saved.storeId, saved.date);
+      return saved;
     } finally {
       await this.redis.del(lockKey).catch(() => undefined);
     }
@@ -783,19 +891,27 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       appt.status = 'completed';
       appt.serviceEndTime = this.scheduledEnd(appt);
       await this.appointments.save(appt);
+      // 读详情时触发的即时下钟同样会释放桌位，需同步失效 availability 缓存
+      await this.invalidateAvailability(appt.storeId, appt.date);
     }
     return appt;
   }
 
-  /** 取消预约（待确认/待核销状态） */
+  /**
+   * 取消预约（待确认/待核销状态）。
+   * 幂等：已取消的预约直接返回成功，客户端超时后重试不再报 4xx，
+   * 避免「取消已生效但响应超时 → 重试报错 → 残留 booked 单」的连锁问题。
+   */
   async cancel(userId: number, id: number): Promise<Appointment> {
     const appt = await this.detail(userId, id);
+    if (appt.status === 'cancelled') return appt;
     if (appt.status !== 'pending' && appt.status !== 'booked') {
       throw new BadRequestException('仅待确认或待核销状态的预约可取消');
     }
     appt.status = 'cancelled';
     const saved = await this.appointments.save(appt);
     this.broadcastAppointment(saved);
+    await this.invalidateAvailability(saved.storeId, saved.date);
     return saved;
   }
 
@@ -833,6 +949,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     if (operatorId) appt.checkedInBy = operatorId;
     const saved = await this.appointments.save(appt);
     this.broadcastAppointment(saved);
+    await this.invalidateAvailability(saved.storeId, saved.date);
     return saved;
   }
 
@@ -855,6 +972,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     appt.serviceEndTime = this.scheduledEnd(appt);
     const saved = await this.appointments.save(appt);
     this.broadcastAppointment(saved);
+    await this.invalidateAvailability(saved.storeId, saved.date);
     return saved;
   }
 
@@ -875,6 +993,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     appt.serviceEndTime = new Date();
     const saved = await this.appointments.save(appt);
     this.broadcastAppointment(saved);
+    await this.invalidateAvailability(saved.storeId, saved.date);
     return saved;
   }
 
@@ -956,13 +1075,18 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     appt.status = 'booked';
     const saved = await this.appointments.save(appt);
     this.broadcastAppointment(saved);
+    await this.invalidateAvailability(saved.storeId, saved.date);
     return saved;
   }
 
-  /** 管理端取消预约（待确认/待核销/已核销状态，服务开始前） */
+  /**
+   * 管理端取消预约（待确认/待核销/已核销状态，服务开始前）。
+   * 幂等：已取消的预约直接返回成功，店员重复操作/超时重试不报 4xx。
+   */
   async adminCancel(id: number): Promise<Appointment> {
     const appt = await this.appointments.findOneBy({ id });
     if (!appt) throw new NotFoundException('预约单不存在');
+    if (appt.status === 'cancelled') return appt;
     if (
       appt.status !== 'pending' &&
       appt.status !== 'booked' &&
@@ -973,6 +1097,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     appt.status = 'cancelled';
     const saved = await this.appointments.save(appt);
     this.broadcastAppointment(saved);
+    await this.invalidateAvailability(saved.storeId, saved.date);
     return saved;
   }
 
@@ -1002,6 +1127,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     if (operatorId) appt.checkedInBy = operatorId;
     const saved = await this.appointments.save(appt);
     this.broadcastAppointment(saved);
+    await this.invalidateAvailability(saved.storeId, saved.date);
     return saved;
   }
 
@@ -1017,6 +1143,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     appt.serviceEndTime = this.scheduledEnd(appt);
     const saved = await this.appointments.save(appt);
     this.broadcastAppointment(saved);
+    await this.invalidateAvailability(saved.storeId, saved.date);
     return saved;
   }
 
@@ -1031,6 +1158,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     appt.serviceEndTime = new Date();
     const saved = await this.appointments.save(appt);
     this.broadcastAppointment(saved);
+    await this.invalidateAvailability(saved.storeId, saved.date);
     return saved;
   }
 
@@ -1207,60 +1335,78 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
         return em.save(appointment);
       });
       this.broadcastAppointment(saved);
+      await this.invalidateAvailability(saved.storeId, saved.date);
       return saved;
     } finally {
       await this.redis.del(lockKey).catch(() => undefined);
     }
   }
 
-  /** 查询某门店某日桌位可用性：返回每个桌位已占用时段窗口，客户端按预约时段重叠判断 */
-  async availability(storeId: number, date: string) {
+  /**
+   * 查询某门店某日桌位可用性：返回每个桌位已占用时段窗口，客户端按预约时段重叠判断。
+   * - 缓存：Redis cache-aside，key = availability:{storeId}:{date}，TTL 兜底至当日结束；
+   *   预约创建/取消/核销/下钟等变更时按 (storeId, date) 显式失效；
+   * - 分页：传 page/pageSize 时返回 { items, total, page, pageSize }，
+   *   不传保持原数组格式（兼容现有客户端），分页在内存切片（快照已整份缓存）。
+   */
+  async availability(
+    storeId: number,
+    date: string,
+    page?: number,
+    pageSize?: number,
+  ) {
     const store = await this.stores.findOneBy({ id: storeId, enabled: true });
     if (!store) throw new NotFoundException('门店不存在');
 
-    const tables = await this.tables.find({
-      where: { storeId, enabled: true },
-      order: { id: 'ASC' },
-    });
-    // 只取占用窗口所需列，SQL 端按一单多桌 JSON 展开（tables 为空时回退 tableId 单桌）
-    const taken = await this.dataSource.query(
-      `SELECT COALESCE(t.tid, a.tableId) AS tableId, a.startTime, a.endTime, a.status
-       FROM appointments a
-       LEFT JOIN JSON_TABLE(a.tables, '$[*]' COLUMNS (tid INT PATH '$.id')) t
-         ON a.tables IS NOT NULL AND JSON_LENGTH(a.tables) > 0
-       WHERE a.storeId = ? AND a.date = ?
-         AND a.status NOT IN ('cancelled', 'completed')
-       ORDER BY a.startTime ASC`,
-      [storeId, date],
-    );
-    // 按桌位聚合占用窗口（一单多桌：预约的每张桌都算占用）
-    const windowByTable = new Map<
-      number,
-      Array<{ startTime: string; endTime: string; status: string }>
-    >();
-    for (const row of taken) {
-      if (row.tableId == null) continue;
-      const id = Number(row.tableId);
-      if (!windowByTable.has(id)) windowByTable.set(id, []);
-      windowByTable.get(id)!.push({
-        startTime: row.startTime,
-        endTime: row.endTime,
-        status: row.status,
-      });
+    const cacheKey = this.availabilityCacheKey(storeId, date);
+    let items: TableAvailabilityItem[] | null = null;
+
+    // 1) 缓存命中直接返回；未命中回源计算并写回
+    const cached = await this.redis.get(cacheKey).catch(() => null);
+    if (cached != null) {
+      try {
+        const parsed = JSON.parse(cached) as unknown;
+        if (Array.isArray(parsed)) items = parsed as TableAvailabilityItem[];
+      } catch {
+        items = null; // 缓存内容损坏时回源计算
+      }
     }
 
-    return tables.map((t) => ({
-      id: t.id,
-      name: t.name,
-      capacity: t.capacity,
-      bookedWindows: windowByTable.get(t.id) ?? [],
-    }));
+    if (items == null) {
+      // 单飞：同一 key 已有在途回源计算则复用，避免并发未命中把 DB 打满
+      const epochAtStart = this.availabilityEpoch;
+      let inflight = this.availabilityInflight.get(cacheKey);
+      if (!inflight) {
+        inflight = this.computeAvailability(storeId, date, epochAtStart).finally(
+          () => {
+            if (this.availabilityInflight.get(cacheKey) === inflight) {
+              this.availabilityInflight.delete(cacheKey);
+            }
+          },
+        );
+        this.availabilityInflight.set(cacheKey, inflight);
+      }
+      items = await inflight;
+    }
+
+    if (page != null || pageSize != null) {
+      const p = Math.max(1, page ?? 1);
+      const size = Math.min(100, Math.max(1, pageSize ?? 20));
+      const start = (p - 1) * size;
+      return {
+        items: items.slice(start, start + size),
+        total: items.length,
+        page: p,
+        pageSize: size,
+      };
+    }
+    return items;
   }
 
   /**
    * SQL 端时间段重叠冲突检查（含一单多桌：JSON_TABLE 展开 tables 列）。
    * 相比把当日全部预约拉进内存再 JS 判断，这里只返回命中的一行，
-   * 由 (storeId, tableId, date) 与 (status, date, endTime) 索引收窄扫描范围。
+   * 由 (storeId, date, status) 先收窄到「该店该日有效预约」，再在结果上做 JSON 展开。
    * 重叠判定：existing.start < new.end && existing.end > new.start
    */
   private async findOverlapConflict(
@@ -1285,7 +1431,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
        LEFT JOIN JSON_TABLE(a.tables, '$[*]' COLUMNS (tid INT PATH '$.id')) t
          ON a.tables IS NOT NULL AND JSON_LENGTH(a.tables) > 0
        WHERE a.storeId = ? AND a.date = ?
-         AND a.status NOT IN ('cancelled', 'completed')
+         AND a.status IN ('pending', 'booked', 'checked_in', 'in_service')
          AND COALESCE(t.tid, a.tableId) IN (${placeholders})
          AND a.startTime < ? AND a.endTime > ?
        LIMIT 1`,
