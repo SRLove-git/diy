@@ -317,7 +317,7 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
     if (widget.bookingType == 'all_day') {
       return store.allDayPrice ?? store.price * widget.durationHours;
     }
-    return store.price * widget.durationHours;
+    return store.hourlyUnitPrices(widget.durationHours).normal;
   }
 
   /// 会员单价（$/人）
@@ -330,7 +330,9 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
     if (widget.bookingType == 'all_day') {
       return store.allDayMemberPrice ?? _normalPrice;
     }
-    return (store.memberPrice ?? store.price) * widget.durationHours;
+    return store
+        .hourlyUnitPrices(widget.durationHours, memberRate: store.memberPrice)
+        .member;
   }
 
   /// 多人同行单价（$/人）
@@ -343,7 +345,9 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
     if (widget.bookingType == 'all_day') {
       return store.allDayGroupPrice ?? _normalPrice;
     }
-    return (store.groupPrice ?? store.price) * widget.durationHours;
+    return store
+        .hourlyUnitPrices(widget.durationHours, groupRate: store.groupPrice)
+        .group;
   }
 
   /// 实际单人单价：同行 ≥2 人按多人价，单人按会员价（会员）或门市价

@@ -850,10 +850,8 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
       return store.allDayPrice ??
           (store.price * ((_selectedHours(store) == 0 ? 1 : _selectedHours(store))));
     }
-    final rate = _isMember && store.memberPrice != null && store.memberPrice! >= 0
-        ? store.memberPrice!
-        : store.price;
-    return rate * hours;
+    final units = store.hourlyUnitPrices(hours);
+    return _isMember ? units.member : units.normal;
   }
 
   Widget _datesRow(Store store) {
@@ -1021,7 +1019,7 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
     if (widget.bookingType == 'all_day') {
       return store.allDayPrice ?? store.price * widget.durationHours;
     }
-    return store.price * widget.durationHours;
+    return store.hourlyUnitPrices(widget.durationHours).normal;
   }
 
   /// 会员单价（元/人，含时长）
@@ -1033,7 +1031,9 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
     if (widget.bookingType == 'all_day') {
       return store.allDayMemberPrice ?? _normalUnit;
     }
-    return (store.memberPrice ?? store.price) * widget.durationHours;
+    return store
+        .hourlyUnitPrices(widget.durationHours, memberRate: store.memberPrice)
+        .member;
   }
 
   /// 多人同行单价（元/人，含时长）
@@ -1045,7 +1045,9 @@ class _TableSelectScreenState extends State<TableSelectScreen> {
     if (widget.bookingType == 'all_day') {
       return store.allDayGroupPrice ?? _normalUnit;
     }
-    return (store.groupPrice ?? store.price) * widget.durationHours;
+    return store
+        .hourlyUnitPrices(widget.durationHours, groupRate: store.groupPrice)
+        .group;
   }
 
   /// 单人单价：会员按会员价，否则门市价；同行 ≥2 人按多人同行价

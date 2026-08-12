@@ -167,6 +167,36 @@ class Store {
 
   String get cover => images.isNotEmpty ? images.first : '';
 
+  /// 按小时预约的档位单价（元/人，含整段时长）：
+  /// 时长恰好等于套餐时长 → 按套餐价；时长超过套餐 → 套餐价 + 超出小时 × 小时单价；
+  /// 时长小于最小套餐 → 无适用套餐，按普通小时价。
+  ({double normal, double member, double group}) hourlyUnitPrices(
+    int hours, {
+    double? memberRate,
+    double? groupRate,
+  }) {
+    final mRate = memberRate ?? price;
+    final gRate = groupRate ?? price;
+    StorePackage? best;
+    for (final p in packages) {
+      if (!p.enabled || p.hours > hours) continue;
+      if (best == null || p.hours > best.hours) best = p;
+    }
+    if (best == null) {
+      return (
+        normal: price * hours,
+        member: mRate * hours,
+        group: gRate * hours,
+      );
+    }
+    final extra = hours - best.hours;
+    return (
+      normal: best.price + extra * price,
+      member: (best.memberPrice ?? best.price) + extra * mRate,
+      group: (best.groupPrice ?? best.price) + extra * gRate,
+    );
+  }
+
   factory Store.fromJson(Map<String, dynamic> json) => Store(
     id: (json['id'] as num?)?.toInt() ?? 0,
     name: json['name'] as String? ?? '',
