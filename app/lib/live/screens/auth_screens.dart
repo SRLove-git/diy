@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../api/api_client.dart';
 import '../../api/auth_store.dart';
+import '../../api/device_id.dart';
 import '../../api/services.dart';
 import '../../l10n/l10n_ext.dart';
 import '../live_routes.dart';
@@ -222,6 +223,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         username: username,
         email: email,
         password: _pwdCtrl.text,
+        deviceId: await DeviceIdProvider.instance.id(),
       );
       await AuthStore.instance.save(
         accessToken: r.accessToken,

@@ -33,10 +33,12 @@ function buildService() {
     createQueryBuilder: jest.fn(),
     save: jest.fn(),
     findOneBy: jest.fn(),
+    findOne: jest.fn(),
     findAndCount: jest.fn(),
     find: jest.fn(),
     findBy: jest.fn(),
   };
+  appointments.findOne.mockResolvedValue(null); // 默认没有未完成的预约
   const stores = { findOneBy: jest.fn() };
   const tables = { find: jest.fn() };
   const packages = { findOneBy: jest.fn(), find: jest.fn() };
@@ -119,6 +121,15 @@ const baseDto = {
 
 describe('AppointmentsService', () => {
   describe('createStore', () => {
+    it('存在未完成的预约时拒绝再次预约（上一单完成/取消前不能再下单）', async () => {
+      const m = buildService();
+      m.appointments.findOne.mockResolvedValue({ id: 9 });
+
+      await expect(m.svc.create(7, baseDto)).rejects.toThrow(
+        '您有未完成的预约，请先完成或取消后再预约新的时段',
+      );
+    });
+
     it('无冲突时创建预约：金额按整数分计算、生成预约码、释放锁', async () => {
       const m = buildService();
       m.stores.findOneBy.mockResolvedValue({

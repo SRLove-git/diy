@@ -212,6 +212,11 @@ export class UsersService {
     return this.users.find({ where: { id: In(ids) } });
   }
 
+  /** 同一设备（MAC/安装ID）已注册账号数：限制单设备最多 3 个账号 */
+  countByDeviceId(deviceId: string): Promise<number> {
+    return this.users.countBy({ deviceId });
+  }
+
   create(data: Partial<User>): Promise<User> {
     return this.users.save(this.users.create(data));
   }

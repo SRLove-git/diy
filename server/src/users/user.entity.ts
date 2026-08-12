@@ -2,11 +2,13 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
 @Entity('users')
+@Index(['deviceId']) // 防刷号：同一设备（MAC/安装ID）最多注册 3 个账号
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
@@ -61,6 +63,10 @@ export class User {
     },
   })
   birthday: string | null;
+
+  /** 设备标识（MAC/安装ID）：注册时由客户端上报，同一设备最多可注册 3 个账号 */
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  deviceId: string | null;
 
   /** 所在地，空串表示未设置 */
   @Column({ type: 'varchar', length: 60, default: '' })

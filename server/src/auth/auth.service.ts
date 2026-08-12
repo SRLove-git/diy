@@ -12,6 +12,7 @@ import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.module';
+import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 import { hashPassword, verifyPassword } from './password.util';
 import { kickKey } from './session-keys';
@@ -40,6 +41,7 @@ export class AuthService {
     username: string;
     email: string;
     password: string;
+    deviceId?: string;
   }) {
     const username = dto.username.trim();
     const email = dto.email.trim().toLowerCase();
@@ -51,14 +53,57 @@ export class AuthService {
       throw new ConflictException('该邮箱已注册');
     }
 
-    const user = await this.users.create({
+    const user = await this.createUser(
       username,
       email,
-      passwordHash: await hashPassword(dto.password),
-      nickname: username,
-    });
+      dto.password,
+      dto.deviceId?.trim() || null,
+    );
     const tokens = await this.signTokens(user.id);
     return { userId: user.id, isNewUser: true, ...tokens };
+  }
+
+  /**
+   * 建号并自动登录：同一设备（MAC/安装ID）最多注册 3 个账号。
+   * Redis 锁串行化"查重 + 建号"，避免并发注册同时通过校验导致超限。
+   */
+  private async createUser(
+    username: string,
+    email: string,
+    password: string,
+    deviceId: string | null,
+  ): Promise<User> {
+    const passwordHash = await hashPassword(password);
+    if (!deviceId) {
+      return this.users.create({
+        username,
+        email,
+        passwordHash,
+        nickname: username,
+        deviceId: null,
+      });
+    }
+
+    const lockKey = `device:register:lock:${deviceId}`;
+    const acquired = await this.redis.set(lockKey, '1', 'EX', 10, 'NX');
+    if (!acquired) {
+      throw new BadRequestException('注册请求过于频繁，请稍后再试');
+    }
+    try {
+      const used = await this.users.countByDeviceId(deviceId);
+      if (used >= 3) {
+        throw new BadRequestException('同一设备最多注册 3 个账号');
+      }
+      return await this.users.create({
+        username,
+        email,
+        passwordHash,
+        nickname: username,
+        deviceId,
+      });
+    } finally {
+      await this.redis.del(lockKey).catch(() => undefined);
+    }
   }
 
   /** 用户名 / 邮箱 + 密码登录 */

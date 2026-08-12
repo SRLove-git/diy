@@ -13,11 +13,13 @@ class AuthService {
     required String username,
     required String email,
     required String password,
+    String? deviceId,
   }) async {
     final data = await ApiClient.instance.post('/auth/register', body: {
       'username': username,
       'email': email,
       'password': password,
+      if (deviceId != null && deviceId.isNotEmpty) 'deviceId': deviceId,
     }) as Map<String, dynamic>;
     return (
       userId: (data['userId'] as num).toInt(),

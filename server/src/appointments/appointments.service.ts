@@ -172,12 +172,34 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     userId: number,
     dto: CreateAppointmentDto,
   ): Promise<Appointment> {
+    // 防恶意预约：存在未完成的预约（待确认/待核销/服务中）时，不允许创建新预约
+    await this.assertNoActiveAppointment(userId);
     const type = dto.type ?? 'store';
     const isMember = await this.isMemberActive(userId);
     if (type === 'activity') {
       return this.createActivity(userId, dto, isMember);
     }
     return this.createStore(userId, dto, isMember);
+  }
+
+  /**
+   * 一个用户在同一时刻只能有一张未完成的预约单：
+   * 上一单未完成（pending/booked/checked_in/in_service）前，禁止预约下一单。
+   * 已取消或已完成的单不占用名额。
+   */
+  private async assertNoActiveAppointment(userId: number): Promise<void> {
+    const active = await this.appointments.findOne({
+      where: {
+        userId,
+        status: In(['pending', 'booked', 'checked_in', 'in_service']),
+      },
+      select: { id: true },
+    });
+    if (active) {
+      throw new BadRequestException(
+        '您有未完成的预约，请先完成或取消后再预约新的时段',
+      );
+    }
   }
 
   /** 是否有效会员（预约价按会员价计算） */

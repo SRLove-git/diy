@@ -22,6 +22,13 @@ export class RegisterDto {
   @IsEmail({}, { message: '邮箱格式不正确' })
   email: string;
 
+  /** 设备标识（MAC/安装ID）：同一设备最多注册 3 个账号，App 端安装后生成并持久化 */
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(64, { message: '设备标识过长' })
+  deviceId?: string;
+
   @Transform(trim)
   @IsString()
   @MinLength(2, { message: '用户名至少 2 位' })

@@ -68,3 +68,98 @@ describe('AuthService.changePassword', () => {
     ).rejects.toThrow(NotFoundException);
   });
 });
+
+function buildRegisterService() {
+  const redis = {
+    set: jest.fn().mockResolvedValue('OK'),
+    del: jest.fn().mockResolvedValue(1),
+  };
+  const users = {
+    findByUsername: jest.fn().mockResolvedValue(null),
+    findByEmail: jest.fn().mockResolvedValue(null),
+    countByDeviceId: jest.fn().mockResolvedValue(0),
+    create: jest.fn().mockImplementation((data: Record<string, unknown>) =>
+      Promise.resolve({ id: 1, ...data }),
+    ),
+  };
+  const jwt = { signAsync: jest.fn().mockResolvedValue('token') };
+  const config = {
+    get: jest.fn((_key: string, fallback?: unknown) => fallback),
+  };
+  const svc = new AuthService(
+    redis as never,
+    users as never,
+    jwt as never,
+    config as never,
+  );
+  return { svc, users, redis };
+}
+
+describe('AuthService.register（设备账号数限制）', () => {
+  it('未上报设备标识时正常注册', async () => {
+    const m = buildRegisterService();
+    const r = await m.svc.register({
+      username: 'alice',
+      email: 'a@example.com',
+      password: 'pass123',
+    });
+
+    expect(r.userId).toBe(1);
+    expect(m.users.create).toHaveBeenCalledWith(
+      expect.objectContaining({ deviceId: null }),
+    );
+    expect(m.redis.set).not.toHaveBeenCalledWith(
+      expect.stringContaining('device:register:lock:'),
+      '1',
+      'EX',
+      10,
+      'NX',
+    );
+  });
+
+  it('同一设备第 3 个账号仍可注册', async () => {
+    const m = buildRegisterService();
+    m.users.countByDeviceId.mockResolvedValue(2);
+
+    const r = await m.svc.register({
+      username: 'bob',
+      email: 'b@example.com',
+      password: 'pass123',
+      deviceId: 'dev-1',
+    });
+
+    expect(r.userId).toBe(1);
+    expect(m.users.create).toHaveBeenCalledWith(
+      expect.objectContaining({ deviceId: 'dev-1' }),
+    );
+  });
+
+  it('同一设备超过 3 个账号时拒绝注册', async () => {
+    const m = buildRegisterService();
+    m.users.countByDeviceId.mockResolvedValue(3);
+
+    await expect(
+      m.svc.register({
+        username: 'carol',
+        email: 'c@example.com',
+        password: 'pass123',
+        deviceId: 'dev-1',
+      }),
+    ).rejects.toThrow(BadRequestException);
+    expect(m.users.create).not.toHaveBeenCalled();
+  });
+
+  it('同一设备并发注册由 Redis 锁串行化，锁冲突时提示稍后再试', async () => {
+    const m = buildRegisterService();
+    m.redis.set.mockResolvedValue(null);
+
+    await expect(
+      m.svc.register({
+        username: 'dave',
+        email: 'd@example.com',
+        password: 'pass123',
+        deviceId: 'dev-1',
+      }),
+    ).rejects.toThrow('注册请求过于频繁');
+  });
+});
