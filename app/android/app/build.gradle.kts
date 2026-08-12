@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.shoushou.diy_ui_app"
+    namespace = "com.thinkorigin.thinkorigin"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.shoushou.diy_ui_app"
+        applicationId = "com.thinkorigin.thinkorigin"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

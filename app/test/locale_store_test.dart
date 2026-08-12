@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:diy_ui_app/l10n/locale_store.dart';
+import 'package:thinkorigin/l10n/locale_store.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

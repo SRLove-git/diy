@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:diy_ui_app/api/models.dart';
-import 'package:diy_ui_app/live/screens/appointment_screens.dart';
+import 'package:thinkorigin/api/models.dart';
+import 'package:thinkorigin/live/screens/appointment_screens.dart';
 
 import 'l10n_test_utils.dart';
 

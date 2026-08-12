@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:diy_ui_app/live/singapore_holidays.dart';
+import 'package:thinkorigin/live/singapore_holidays.dart';
 
 void main() {
   group('singapore_holidays', () {

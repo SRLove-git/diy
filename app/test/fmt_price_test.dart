@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:diy_ui_app/live/live_widgets.dart';
+import 'package:thinkorigin/live/live_widgets.dart';
 
 void main() {
   test('fmtPrice：非整数保留 1 位小数，整数不带小数', () {

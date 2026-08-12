@@ -1,6 +1,6 @@
 {
-    "name": "diy_ui_app",
-    "short_name": "diy_ui_app",
+    "name": "thinkorigin",
+    "short_name": "thinkorigin",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

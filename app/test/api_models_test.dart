@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:diy_ui_app/api/models.dart';
+import 'package:thinkorigin/api/models.dart';
 
 void main() {
   test('Coupon 解析字符串金额', () {

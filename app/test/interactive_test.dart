@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:diy_ui_app/api/auth_store.dart';
-import 'package:diy_ui_app/interactive/prototype_app.dart';
-import 'package:diy_ui_app/live/live_router.dart';
-import 'package:diy_ui_app/live/live_routes.dart';
+import 'package:thinkorigin/api/auth_store.dart';
+import 'package:thinkorigin/interactive/prototype_app.dart';
+import 'package:thinkorigin/live/live_router.dart';
+import 'package:thinkorigin/live/live_routes.dart';
 
 void main() {
   setUp(() {

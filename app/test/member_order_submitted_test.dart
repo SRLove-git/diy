@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:diy_ui_app/live/screens/member_screens.dart';
+import 'package:thinkorigin/live/screens/member_screens.dart';
 
 import 'l10n_test_utils.dart';
 
