@@ -21,18 +21,20 @@ if [ "$SERVER_ARCH" = "amd64" ] && [ "$LOCAL_ARCH" = "arm64" ]; then
   echo "==> buildx 交叉构建 linux/amd64 ..."
   docker buildx build --platform linux/amd64 --load -t "diy-server:$IMAGE_TAG" server
   docker buildx build --platform linux/amd64 --load -t "diy-admin:$IMAGE_TAG" admin
+  docker buildx build --platform linux/amd64 --load -t "diy-backup:$IMAGE_TAG" docker/backup
 elif [ "$SERVER_ARCH" = "$LOCAL_ARCH" ]; then
   # 同架构：直接用 compose 构建（image 名由环境变量注入）
   echo "==> docker compose build ..."
   SERVER_IMAGE="diy-server:$IMAGE_TAG" ADMIN_IMAGE="diy-admin:$IMAGE_TAG" \
-    docker compose -f docker/compose.prod.yml build server admin
+    BACKUP_IMAGE="diy-backup:$IMAGE_TAG" \
+    docker compose -f docker/compose.prod.yml build server admin backup
 else
   echo "!! 暂不支持 $LOCAL_ARCH → $SERVER_ARCH 的交叉组合，请改用镜像仓库（registry）推送"
   exit 1
 fi
 
 echo "==> docker save + gzip ..."
-docker save "diy-server:$IMAGE_TAG" "diy-admin:$IMAGE_TAG" \
+docker save "diy-server:$IMAGE_TAG" "diy-admin:$IMAGE_TAG" "diy-backup:$IMAGE_TAG" \
   | gzip > "docker/images-$IMAGE_TAG.tar.gz"
 
 echo
@@ -45,5 +47,6 @@ echo "================ 然后在服务器上执行 ================"
 echo "cd /opt/diy"
 echo "docker load -i images-$IMAGE_TAG.tar.gz"
 echo "SERVER_IMAGE=diy-server:$IMAGE_TAG ADMIN_IMAGE=diy-admin:$IMAGE_TAG \\"
+echo "  BACKUP_IMAGE=diy-backup:$IMAGE_TAG \\"
 echo "  docker compose -f docker/compose.prod.yml up -d --no-build --scale server=3"
 echo "===================================================="

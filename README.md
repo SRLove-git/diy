@@ -26,6 +26,8 @@ diy/
 │   ├── compose.dev.yml   # 开发：仅 MySQL + Redis 容器化
 │   ├── compose.test.yml  # 测试：独立实例（13306 / 16379）
 │   └── compose.prod.yml  # 生产：全链路容器化
+│   ├── backup/           # 每日备份服务（cron：MySQL dump + Redis 快照）
+│   └── backups/          # 备份产物目录（不入库）
 └── .github/workflows/ci.yml  # CI：server lint/build/test/e2e + admin build + flutter analyze/test
 ```
 
@@ -80,6 +82,79 @@ npm run migration:revert                                # 回滚最近一次迁�
 | `DB_MIGRATIONS_RUN` | 启动时自动执行数据库迁移（生产默认 true） |
 | `DB_POOL_SIZE` | MySQL 连接池大小（默认 20，按服务器内存与并发调整，需 ≤ MySQL max_connections） |
 | `TRUST_PROXY` | nginx 反代后置 true，让 `req.ip` 取真实客户端 IP（验证码/登录防刷按 IP 限流依赖它） |
+
+### 基础设施配置调优
+
+MySQL / Redis / Nginx 的优化参数集中维护在 `docker/` 下，生产与开发分开，避免命令行参数散落在 compose 里：
+
+| 文件 | 用途 |
+| --- | --- |
+| `docker/mysql/my.cnf` | MySQL 生产配置：连接池 500、InnoDB 缓冲池、慢查询、utf8mb4 等 |
+| `docker/mysql/my-dev.cnf` | MySQL 开发配置（轻量：连接池 200、缓冲池 256M） |
+| `docker/redis/redis.conf` | Redis 生产/开发通用：AOF + RDB 持久化、volatile-lru 淘汰、惰性删除、碎片整理 |
+| `docker/nginx/nginx.conf` | 生产负载均衡（nginx-lb）：gzip、反代头、WebSocket 升级、超时 |
+| `admin/nginx.conf` | 管理后台静态托管：SPA 不缓存 + 哈希资源长缓存、gzip、/api 反代 |
+| `docker/backup/` | 每日备份服务：cron 定时 MySQL dump + Redis RDB 快照，产物在 `docker/backups/` |
+
+按部署机内存调整的关键参数（改完需重建容器生效）：
+
+```bash
+# MySQL innodb_buffer_pool_size 建议物理内存 1/4 ~ 1/2；Redis maxmemory 同理
+# 改完重建（配置只在容器启动时加载）：
+docker compose -f docker/compose.prod.yml up -d --force-recreate mysql redis
+```
+
+扩容 server 副本时，保持 `副本数 × DB_POOL_SIZE ≤ max_connections`（my.cnf 默认 500）。
+
+### 数据库备份与恢复
+
+生产 compose 自带 `backup` 服务：容器内 cron（默认每日 03:00，时区 Asia/Shanghai）执行 MySQL
+`mysqldump` + Redis `--rdb` 快照，gzip 压缩后写入宿主机 `docker/backups/`（与数据卷分离，
+卷损坏不影响备份），默认保留 7 天。容器启动时会先备份一次，健康检查要求最近 48h 内有成功备份：
+
+```bash
+# 手动立即备份
+docker compose -f docker/compose.prod.yml exec backup /backup.sh
+ls -lh docker/backups/
+```
+
+**首次启用备份**：备份使用独立低权限账号（不用 root），需在 MySQL 里创建一次，并把密码写入
+`docker/.env`（`BACKUP_DB_PASSWORD`，可用 `openssl rand -hex 16` 生成）：
+
+```sql
+CREATE USER 'backup'@'%' IDENTIFIED WITH mysql_native_password BY '换成随机密码';
+GRANT SELECT, SHOW VIEW, TRIGGER, EVENT, LOCK TABLES, PROCESS ON *.* TO 'backup'@'%';
+FLUSH PRIVILEGES;
+```
+
+调整保留天数与执行时间（`docker/.env`）：
+
+```bash
+BACKUP_RETENTION_DAYS=14      # 保留 14 天
+BACKUP_CRON=0 2 * * *         # 每日凌晨 2 点
+```
+
+**恢复 MySQL**（备份文件取 `docker/backups/` 下最新的 `mysql-*.sql.gz`）：
+
+```bash
+gunzip -c docker/backups/mysql-<时间戳>.sql.gz | \
+  docker compose -f docker/compose.prod.yml exec -T mysql sh -c \
+  'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" diy'
+```
+
+**恢复 Redis**（先停 redis，替换 RDB 并移开 AOF 让启动时加载快照；
+卷名以 `docker volume ls` 实际为准，本仓库默认 `docker_redis-prod-data`）：
+
+```bash
+docker compose -f docker/compose.prod.yml stop redis
+docker run --rm \
+  -v docker_redis-prod-data:/data \
+  -v "$PWD/docker/backups:/backups:ro" \
+  redis:7-alpine sh -c \
+  'gunzip -c /backups/redis-<时间戳>.rdb.gz > /data/dump.rdb && \
+   mv /data/appendonly.aof /data/appendonly.aof.old 2>/dev/null || true'
+docker compose -f docker/compose.prod.yml start redis
+```
 
 ### 多副本扩容
 

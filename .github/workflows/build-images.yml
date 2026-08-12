@@ -28,10 +28,13 @@ jobs:
       - name: 构建 admin 镜像
         run: docker build -t "diy-admin:$TAG" admin
 
+      - name: 构建 backup 镜像（每日数据库备份）
+        run: docker build -t "diy-backup:$TAG" docker/backup
+
       - name: 打包镜像并生成部署说明
         run: |
           mkdir -p dist
-          docker save "diy-server:$TAG" "diy-admin:$TAG" \
+          docker save "diy-server:$TAG" "diy-admin:$TAG" "diy-backup:$TAG" \
             | gzip > "dist/images-$TAG.tar.gz"
           cat > dist/DEPLOY.txt <<EOF
           ============================================================
@@ -43,10 +46,11 @@ jobs:
 
           2) 服务器上执行：
 
-            cd /opt/diy
-            docker load -i images-$TAG.tar.gz
-            SERVER_IMAGE=diy-server:$TAG ADMIN_IMAGE=diy-admin:$TAG \\
-              docker compose -f docker/compose.prod.yml up -d --no-build --scale server=3
+          cd /opt/diy
+          docker load -i images-$TAG.tar.gz
+          SERVER_IMAGE=diy-server:$TAG ADMIN_IMAGE=diy-admin:$TAG \\
+            BACKUP_IMAGE=diy-backup:$TAG \\
+            docker compose -f docker/compose.prod.yml up -d --no-build --scale server=3
 
           3) 验证：
 

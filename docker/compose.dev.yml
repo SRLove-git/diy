@@ -15,6 +15,8 @@ services:
       - "3306:3306"
     volumes:
       - mysql-dev-data:/var/lib/mysql
+      # 开发轻量调优配置（缓冲池/连接数更小，慢查询阈值放宽到 2s）
+      - ./mysql/my-dev.cnf:/etc/mysql/conf.d/my.cnf:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
       interval: 5s
@@ -27,10 +29,11 @@ services:
       TZ: Asia/Shanghai
     ports:
       - "6379:6379"
-    # 开启 AOF 持久化：重启/重建容器不丢失会话数据（refresh token、验证码等）
-    command: ["redis-server", "--appendonly", "yes"]
+    # 持久化与内存策略集中在 redis.conf（与生产同一份，行为一致）
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     volumes:
       - redis-dev-data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
 
 volumes:
   mysql-dev-data:
