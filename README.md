@@ -81,6 +81,16 @@ npm run migration:revert                                # 回滚最近一次迁�
 | `DB_POOL_SIZE` | MySQL 连接池大小（默认 20，按服务器内存与并发调整，需 ≤ MySQL max_connections） |
 | `TRUST_PROXY` | nginx 反代后置 true，让 `req.ip` 取真实客户端 IP（验证码/登录防刷按 IP 限流依赖它） |
 
+### 多副本扩容
+
+生产 compose 内置 `nginx-lb` 负载均衡入口（外部 3000 端口 → server 各副本，含 `/api`、`/ws` WebSocket、上传与静态资源）。扩容时保持单个 `nginx-lb` 不变，只增加 server 副本：
+
+```bash
+docker compose -f docker/compose.prod.yml up -d --build --scale server=3
+```
+
+注意：副本数 × `DB_POOL_SIZE` 需 ≤ MySQL `max_connections`（compose 已默认放大到 500）；聊天跨实例转发由 Redis pub/sub 承载，扩副本无需改代码。
+
 ## CI
 
 `.github/workflows/ci.yml` 在 push/PR 到 `main` 时自动运行：
