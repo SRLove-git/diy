@@ -4,6 +4,7 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 import type { Request } from 'express';
@@ -12,6 +13,8 @@ import { resolveLocale, translateError, translateErrors } from './i18n';
 /** 统一 HTTP 异常出口：按 Accept-Language / ?lang 返回中英文提示。 */
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpExceptionFilter.name);
+
   constructor(private readonly httpAdapterHost: HttpAdapterHost) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
@@ -53,6 +56,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     const status = HttpStatus.INTERNAL_SERVER_ERROR;
+    // 未捕获异常：记录堆栈，避免 500 在生产环境静默吞掉无法排查
+    this.logger.error(
+      `未捕获异常 ${request.method} ${request.originalUrl}: ${
+        (exception as Error)?.message ?? exception
+      }`,
+      (exception as Error)?.stack,
+    );
     httpAdapter.reply(
       ctx.getResponse(),
       {

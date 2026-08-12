@@ -14,11 +14,13 @@ import { AdminAppointmentsController } from './admin-appointments.controller';
 import { Appointment } from './appointment.entity';
 import { AppointmentsController } from './appointments.controller';
 import { AppointmentsService } from './appointments.service';
+import { AppointmentTable } from './appointment-table.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       Appointment,
+      AppointmentTable,
       Store,
       StoreTable,
       TimeSlot,
