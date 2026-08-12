@@ -137,7 +137,7 @@ export class NotificationsService {
     });
     const readSet = new Set(readRows.map((r) => r.notificationId));
 
-    const unread = await this.unreadCountByWhere(userId, role, where);
+    const unread = await this.unreadCountFor(userId, role);
 
     return {
       items: pageItems.map((n) => ({
@@ -162,7 +162,7 @@ export class NotificationsService {
   /** 未读通知数 */
   async unreadCount(userId: number): Promise<number> {
     const role = await this.resolveRole(userId);
-    return this.unreadCountByWhere(userId, role, this.applicableWhere(userId, role));
+    return this.unreadCountFor(userId, role);
   }
 
   /** 标记单条已读 */
@@ -204,10 +204,9 @@ export class NotificationsService {
         sent: true,
         targetType: 'user',
         // targetUserIds 是逗号分隔的 id 字符串：FIND_IN_SET 精确匹配，避免 LIKE 误匹配（如 5 命中 15）
-        targetUserIds: Raw(
-          (alias) => `FIND_IN_SET(:uid, ${alias}) > 0`,
-          { uid: String(userId) },
-        ),
+        targetUserIds: Raw((alias) => `FIND_IN_SET(:uid, ${alias}) > 0`, {
+          uid: String(userId),
+        }),
       },
     ];
   }
@@ -225,10 +224,9 @@ export class NotificationsService {
   }
 
   /** 未读数 = 可见通知总数 - 其中已读数量 */
-  private async unreadCountByWhere(
+  private async unreadCountFor(
     userId: number,
     role: 'user' | 'admin',
-    where: FindOptionsWhere<Notification>[],
   ): Promise<number> {
     const ids = await this.applicableIds(userId, role);
     if (!ids.length) return 0;

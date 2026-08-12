@@ -22,10 +22,10 @@ export async function runMigrationsWithLock(
   const queryRunner = dataSource.createQueryRunner();
   try {
     await queryRunner.connect();
-    const rows = (await queryRunner.query(
-      'SELECT GET_LOCK(?, ?) AS acquired',
-      [LOCK_NAME, LOCK_TIMEOUT_SECONDS],
-    )) as Array<{ acquired: number }>;
+    const rows = (await queryRunner.query('SELECT GET_LOCK(?, ?) AS acquired', [
+      LOCK_NAME,
+      LOCK_TIMEOUT_SECONDS,
+    ])) as Array<{ acquired: number }>;
     const acquired = Number(rows?.[0]?.acquired);
     if (acquired !== 1) {
       throw new Error(
@@ -44,9 +44,7 @@ export async function runMigrationsWithLock(
     await queryRunner
       .query('SELECT RELEASE_LOCK(?)', [LOCK_NAME])
       .catch((e: unknown) =>
-        logger.warn(
-          `释放迁移锁失败（连接关闭后自动释放）: ${String(e)}`,
-        ),
+        logger.warn(`释放迁移锁失败（连接关闭后自动释放）: ${String(e)}`),
       );
     await queryRunner.release().catch(() => undefined);
   }

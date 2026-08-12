@@ -284,10 +284,11 @@ export class ChatService {
   ): Promise<{ count: number }> {
     await this.findConversationForUser(conversationId, userId);
     const now = new Date();
-    const [countRows] = await this.messages.manager.query(
-      'SELECT COUNT(*) AS cnt FROM messages WHERE conversationId = ?',
-      [conversationId],
-    );
+    const [countRows] = await this.messages.manager.query<
+      Array<{ cnt?: number | string }>
+    >('SELECT COUNT(*) AS cnt FROM messages WHERE conversationId = ?', [
+      conversationId,
+    ]);
     const count = Number(countRows?.cnt ?? 0);
     if (count === 0) return { count: 0 };
     // 一次性 INSERT ... SELECT，避免把会话全部消息 id 拉进内存逐条写状态

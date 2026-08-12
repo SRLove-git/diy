@@ -23,7 +23,6 @@ export class RedisThrottlerStorage implements ThrottlerStorage {
     ttl: number,
     limit: number,
     blockDuration: number,
-    _throttlerName: string,
   ): Promise<ThrottlerStorageRecord> {
     const ttlSec = Math.max(1, Math.ceil(ttl / 1000));
     const blockSec = Math.max(1, Math.ceil(blockDuration / 1000));

@@ -454,12 +454,44 @@ async function startScanner() {
     await video.play()
     scanning.value = true
     scanTimer = window.setInterval(scanFrame, 200)
-  } catch {
-    scanError.value = t(
-      '无法打开摄像头，请检查浏览器权限，或使用手动输入核销码',
-      'Unable to open the camera. Please check browser permissions or enter the code manually.',
+  } catch (e) {
+    scanError.value = cameraErrorText(e)
+  }
+}
+
+/** 区分摄像头打不开的具体原因，给出可执行的提示 */
+function cameraErrorText(err: unknown): string {
+  // HTTP（非 localhost）不是安全来源，浏览器不提供摄像头 API，此时必须先解决访问协议
+  if (!window.isSecureContext) {
+    return t(
+      '当前页面不是安全来源（需 HTTPS 或 localhost），浏览器禁止网页使用摄像头。请用 https:// 访问后台，或使用手动输入核销码。',
+      'This page is not a secure context (HTTPS or localhost is required), so the browser blocks camera access. Open the admin via https:// or enter the code manually.',
     )
   }
+  const name = err instanceof DOMException ? err.name : ''
+  if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+    return t(
+      '摄像头权限被拒绝。请在浏览器地址栏的网站设置中允许摄像头后重试，或使用手动输入核销码。',
+      'Camera permission was denied. Allow camera access in the site settings and retry, or enter the code manually.',
+    )
+  }
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+    return t(
+      '未检测到可用摄像头，请连接摄像头后重试，或使用手动输入核销码。',
+      'No camera found. Connect a camera and retry, or enter the code manually.',
+    )
+  }
+  if (name === 'NotReadableError') {
+    return t(
+      '摄像头被其他程序占用，请关闭占用程序后重试，或使用手动输入核销码。',
+      'The camera is in use by another app. Close it and retry, or enter the code manually.',
+    )
+  }
+  return t(
+    '无法打开摄像头（{reason}），请检查浏览器权限，或使用手动输入核销码',
+    'Unable to open the camera ({reason}). Check browser permissions or enter the code manually.',
+    { reason: name || 'unknown' },
+  )
 }
 
 function scanFrame() {
@@ -473,12 +505,12 @@ function scanFrame() {
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
   const img = ctx.getImageData(0, 0, canvas.width, canvas.height)
   const result = jsQR(img.data, img.width, img.height)
-  // 顾客优惠券二维码内容即 6 位核销码
-  if (result && /^\d{6}$/.test(result.data)) {
+  // 顾客优惠券二维码内容即 6 位数字+字母核销码
+  if (result && /^[A-Z0-9]{6}$/i.test(result.data)) {
     stopScanner()
     showScanModal.value = false
     openRedeemCoupon()
-    redeemCode.value = result.data
+    redeemCode.value = result.data.toUpperCase()
     queryRedeemCode()
   }
 }
@@ -509,10 +541,10 @@ function closeRedeemCoupon() {
 
 async function queryRedeemCode() {
   const code = redeemCode.value.trim()
-  if (!/^\d{6}$/.test(code)) {
+  if (!/^[A-Za-z0-9]{6}$/.test(code)) {
     redeemError.value = t(
-      '请输入 6 位数字核销码',
-      'Please enter the 6-digit code',
+      '请输入 6 位数字或字母核销码',
+      'Please enter the 6-character code',
     )
     return
   }
@@ -1032,14 +1064,15 @@ onUnmounted(() => {
       <div class="modal">
         <h3>{{ $t('核销码核销', 'Redeem by code') }}</h3>
         <p class="modal-desc">
-          {{ $t('输入顾客卡包中的 6 位核销码，先查询确认，再点击核销。', 'Enter the 6-digit code from the customer wallet to confirm, then redeem.') }}
+          {{ $t('输入顾客卡包中的 6 位数字或字母核销码，先查询确认，再点击核销。', 'Enter the 6-character code from the customer wallet to confirm, then redeem.') }}
         </p>
         <div class="redeem-row">
           <input
             v-model="redeemCode"
             type="text"
             maxlength="6"
-            :placeholder="$t('6 位核销码', '6-digit code')"
+            :placeholder="$t('6 位数字或字母核销码', '6-character code')"
+            @input="redeemCode = redeemCode.toUpperCase()"
             @keyup.enter="queryRedeemCode"
           />
           <button class="btn btn-sm" :disabled="redeemQuerying" @click="queryRedeemCode">

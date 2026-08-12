@@ -198,7 +198,7 @@ export class UsersService {
   private async isFulltextReady(): Promise<boolean> {
     if (this.fulltextReady == null) {
       try {
-        const rows = await this.users.manager.query(
+        const rows = await this.users.manager.query<Array<unknown>>(
           `SELECT 1 FROM information_schema.statistics
            WHERE table_schema = DATABASE() AND table_name = 'users' AND index_name = 'ft_users_search'
            LIMIT 1`,

@@ -160,13 +160,17 @@ export class DashboardService {
 
   /** 管理端待处理事项汇总：供左侧栏角标与通知中心使用 */
   async getPendingSummary() {
-    const [pendingAppointments, pendingMemberOrders, pendingPosts, pendingVideos] =
-      await Promise.all([
-        this.appointmentRepo.count({ where: { status: 'pending' } }),
-        this.memberOrderRepo.count({ where: { status: 'pending' } }),
-        this.postRepo.count({ where: { status: 'pending' } }),
-        this.videoRepo.count({ where: { status: 'pending' } }),
-      ]);
+    const [
+      pendingAppointments,
+      pendingMemberOrders,
+      pendingPosts,
+      pendingVideos,
+    ] = await Promise.all([
+      this.appointmentRepo.count({ where: { status: 'pending' } }),
+      this.memberOrderRepo.count({ where: { status: 'pending' } }),
+      this.postRepo.count({ where: { status: 'pending' } }),
+      this.videoRepo.count({ where: { status: 'pending' } }),
+    ]);
 
     return {
       pendingAppointments,

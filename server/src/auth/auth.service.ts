@@ -119,11 +119,7 @@ export class AuthService {
   }
 
   /** 用户名 / 邮箱 + 密码登录 */
-  async login(
-    account: string,
-    password: string,
-    captchaToken?: string,
-  ) {
+  async login(account: string, password: string, captchaToken?: string) {
     if (!(await this.captcha.verify(captchaToken))) {
       throw new BadRequestException('请完成人机验证');
     }

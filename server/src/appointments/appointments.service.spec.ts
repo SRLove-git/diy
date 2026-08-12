@@ -66,10 +66,12 @@ function buildService() {
   const userCouponRepo: {
     findOne: jest.Mock;
     findOneBy: jest.Mock;
+    findBy: jest.Mock;
     save: jest.Mock;
   } = {
     findOne: jest.fn(),
     findOneBy: jest.fn(),
+    findBy: jest.fn(),
     save: jest.fn(),
   };
   const couponRepo: { findOneBy: jest.Mock } = { findOneBy: jest.fn() };
@@ -178,7 +180,7 @@ describe('AppointmentsService', () => {
       const result = await m.svc.create(7, baseDto);
 
       expect(result.status).toBe('booked');
-      expect(result.code).toMatch(/^\d{6}$/);
+      expect(result.code).toMatch(/^[A-Z0-9]{6}$/);
       // 39.9 元/人/小时 × 2 人 × 2 小时 = 159.6
       expect(result.amount).toBe(159.6);
       expect(result.originalAmount).toBe(159.6);
@@ -334,9 +336,7 @@ describe('AppointmentsService', () => {
         endTime,
         scheduledEnd: () => new Date(`${dateStr(0)}T${endTime}:00`),
       });
-      m.appointmentEmRepo.save = jest.fn((x: unknown) =>
-        Promise.resolve(x),
-      );
+      m.appointmentEmRepo.save = jest.fn((x: unknown) => Promise.resolve(x));
 
       const result = await m.svc.checkIn('123456', 7);
 
@@ -361,9 +361,7 @@ describe('AppointmentsService', () => {
         endTime,
         scheduledEnd: () => new Date(`${dateStr(0)}T${endTime}:00`),
       });
-      m.appointmentEmRepo.save = jest.fn((x: unknown) =>
-        Promise.resolve(x),
-      );
+      m.appointmentEmRepo.save = jest.fn((x: unknown) => Promise.resolve(x));
       m.userCouponRepo.findOne.mockResolvedValue({
         id: 9,
         userId: 7,

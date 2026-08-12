@@ -9,7 +9,6 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { randomInt } from 'crypto';
 import Redis from 'ioredis';
 import {
   DataSource,
@@ -24,6 +23,10 @@ import {
   percentOffCents,
   yuanToCents,
 } from '../common/money.util';
+import {
+  generateRedeemCode,
+  normalizeRedeemCode,
+} from '../common/redeem-code.util';
 import { isSurchargeDate } from '../common/singapore-holidays';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { Activity } from '../activities/activity.entity';
@@ -880,6 +883,31 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  /** 批量附加优惠券核销码（列表接口用，避免 N+1 查询） */
+  private async withCouponCodes(
+    items: Appointment[],
+  ): Promise<Array<Appointment & { couponCode: string | null }>> {
+    const ids = Array.from(
+      new Set(
+        items
+          .map((a) => a.userCouponId)
+          .filter((x): x is number => x != null),
+      ),
+    );
+    if (!ids.length) {
+      return items.map((a) => ({ ...a, couponCode: null }));
+    }
+    const owned = await this.userCoupons.findBy({ id: In(ids) });
+    const map = new Map(owned.map((o) => [o.id, o]));
+    return items.map((a) => ({
+      ...a,
+      couponCode:
+        a.userCouponId != null && map.get(a.userCouponId)?.status === 'unused'
+          ? map.get(a.userCouponId)?.code ?? null
+          : null,
+    }));
+  }
+
   /** 解析券额：`¥20` → 现金 20；`8.8 折` → 88% 支付 */
   private parseCouponAmount(raw: string): {
     kind: 'cash' | 'percent';
@@ -947,7 +975,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
-    return { items, total };
+    return { items: await this.withCouponCodes(items), total };
   }
 
   /** 预约详情（仅本人或核销人） */
@@ -991,10 +1019,11 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
    * （上钟时间以扫码时刻为准）。预约绑定了优惠券时，在同一事务内一并核销。
    */
   async checkIn(code: string, operatorId?: number): Promise<Appointment> {
+    const normalized = normalizeRedeemCode(code);
     const saved = await this.dataSource.transaction(async (em) => {
       const apptRepo = em.getRepository(Appointment);
       const appt = await apptRepo.findOne({
-        where: { code },
+        where: { code: normalized },
         lock: { mode: 'pessimistic_write' },
       });
       if (!appt) throw new NotFoundException('预约码无效');
@@ -1089,7 +1118,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
    * 已取消的单同样不可再查询使用。
    */
   async findByCode(code: string): Promise<Appointment> {
-    const appt = await this.appointments.findOneBy({ code });
+    const appt = await this.appointments.findOneBy({
+      code: normalizeRedeemCode(code),
+    });
     if (!appt) throw new NotFoundException('预约码无效');
     if (appt.status === 'cancelled') {
       throw new BadRequestException('该预约已取消');
@@ -1118,7 +1149,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     if (filters?.status) where.status = filters.status as Appointment['status'];
     if (filters?.storeId) where.storeId = parseInt(filters.storeId, 10);
     if (filters?.date) where.date = filters.date;
-    if (filters?.code?.trim()) where.code = filters.code.trim();
+    if (filters?.code?.trim()) {
+      where.code = normalizeRedeemCode(filters.code);
+    }
     if (filters?.keyword?.trim()) {
       const matched = await this.users.findByKeyword(filters.keyword);
       const userIds = matched.map((u) => u.id);
@@ -1578,10 +1611,10 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  /** 生成唯一 6 位数字预约码（重试兜底） */
+  /** 生成唯一 6 位数字+字母预约码（重试兜底） */
   private async generateCode(em: EntityManager): Promise<string> {
     for (let i = 0; i < 5; i++) {
-      const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+      const code = generateRedeemCode();
       const exists = await em.findOne(Appointment, { where: { code } });
       if (!exists) return code;
     }

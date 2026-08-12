@@ -32,9 +32,9 @@ export class SaveCouponDto {
   @IsOptional() @IsBoolean() enabled?: boolean;
 }
 
-/** 输码核销：6 位数字核销码 */
+/** 输码核销：6 位数字+字母核销码 */
 export class RedeemCouponDto {
-  @Matches(/^\d{6}$/, { message: '核销码为 6 位数字' })
+  @Matches(/^[A-Za-z0-9]{6}$/, { message: '核销码为 6 位数字或字母' })
   code: string;
 }
 

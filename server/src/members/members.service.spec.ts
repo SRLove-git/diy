@@ -310,9 +310,7 @@ describe('MembersService', () => {
       const m = buildCouponService();
       m.userCoupons.findOne.mockResolvedValue({ ...unused });
       m.coupons.findOneBy.mockResolvedValue(coupon);
-      m.userCoupons.save.mockImplementation((x: unknown) =>
-        Promise.resolve(x),
-      );
+      m.userCoupons.save.mockImplementation((x: unknown) => Promise.resolve(x));
 
       const result = await m.svc.redeemByCode('123456', 99);
 
@@ -355,9 +353,7 @@ describe('MembersService', () => {
       m.userCoupons.findOneBy.mockResolvedValue({ ...unused });
       m.userCoupons.findOne.mockResolvedValue({ ...unused });
       m.coupons.findOneBy.mockResolvedValue(coupon);
-      m.userCoupons.save.mockImplementation((x: unknown) =>
-        Promise.resolve(x),
-      );
+      m.userCoupons.save.mockImplementation((x: unknown) => Promise.resolve(x));
 
       const result = await m.svc.adminRedeemCoupon(1, 5);
 

@@ -2,9 +2,10 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import jsQR from 'jsqr'
 import { appointmentApi, type Appointment } from '../api/appointments'
+import { memberApi, type UserCoupon } from '../api/members'
 import { storeApi, type Store } from '../api/stores'
 import { refreshPending } from '../stores/pending'
-import { t } from '../i18n'
+import { i18n, t } from '../i18n'
 
 const orders = ref<Appointment[]>([])
 const total = ref(0)
@@ -25,6 +26,13 @@ const checkinBusy = ref(false)
 const checkinResult = ref<Appointment | null>(null)
 const showCheckinModal = ref(false)
 const checkinError = ref('')
+// 优惠券核销（订单页直接核销优惠券）
+const couponRedeemOpen = ref(false)
+const couponRedeemCode = ref('')
+const couponQuerying = ref(false)
+const couponBusy = ref(false)
+const couponResult = ref<UserCoupon | null>(null)
+const couponError = ref('')
 // 扫码核销
 const showScanModal = ref(false)
 const scanError = ref('')
@@ -196,12 +204,44 @@ async function startScanner() {
     await video.play()
     scanning.value = true
     scanTimer = window.setInterval(scanFrame, 200)
-  } catch {
-    scanError.value = t(
-      '无法打开摄像头，请检查浏览器权限，或使用手动输入核销码',
-      'Unable to open the camera. Please check browser permissions or enter the code manually.',
+  } catch (e) {
+    scanError.value = cameraErrorText(e)
+  }
+}
+
+/** 区分摄像头打不开的具体原因，给出可执行的提示 */
+function cameraErrorText(err: unknown): string {
+  // HTTP（非 localhost）不是安全来源，浏览器不提供摄像头 API，此时必须先解决访问协议
+  if (!window.isSecureContext) {
+    return t(
+      '当前页面不是安全来源（需 HTTPS 或 localhost），浏览器禁止网页使用摄像头。请用 https:// 访问后台，或使用手动输入核销码。',
+      'This page is not a secure context (HTTPS or localhost is required), so the browser blocks camera access. Open the admin via https:// or enter the code manually.',
     )
   }
+  const name = err instanceof DOMException ? err.name : ''
+  if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+    return t(
+      '摄像头权限被拒绝。请在浏览器地址栏的网站设置中允许摄像头后重试，或使用手动输入核销码。',
+      'Camera permission was denied. Allow camera access in the site settings and retry, or enter the code manually.',
+    )
+  }
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+    return t(
+      '未检测到可用摄像头，请连接摄像头后重试，或使用手动输入核销码。',
+      'No camera found. Connect a camera and retry, or enter the code manually.',
+    )
+  }
+  if (name === 'NotReadableError') {
+    return t(
+      '摄像头被其他程序占用，请关闭占用程序后重试，或使用手动输入核销码。',
+      'The camera is in use by another app. Close it and retry, or enter the code manually.',
+    )
+  }
+  return t(
+    '无法打开摄像头（{reason}），请检查浏览器权限，或使用手动输入核销码',
+    'Unable to open the camera ({reason}). Check browser permissions or enter the code manually.',
+    { reason: name || 'unknown' },
+  )
 }
 
 function scanFrame() {
@@ -215,12 +255,32 @@ function scanFrame() {
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
   const img = ctx.getImageData(0, 0, canvas.width, canvas.height)
   const result = jsQR(img.data, img.width, img.height)
-  // App 端预约码二维码内容就是 6 位核销码
-  if (result && /^\d{6}$/.test(result.data)) {
+  // App 端预约码/优惠券二维码内容就是 6 位核销码
+  if (result && /^[A-Z0-9]{6}$/i.test(result.data)) {
     stopScanner()
     showScanModal.value = false
-    openCheckinModal()
-    checkinCode.value = result.data
+    handleScannedCode(result.data)
+  }
+}
+
+/** 扫码结果分流：先按优惠券核销码识别，命中则进入优惠券核销，否则按预约码核销 */
+async function handleScannedCode(raw: string) {
+  const code = raw.trim().toUpperCase()
+  try {
+    const { data } = await memberApi.findCouponByCode(code)
+    openCouponRedeem()
+    couponRedeemCode.value = code
+    couponResult.value = data
+  } catch (e: any) {
+    // 400：是优惠券码但已核销/已过期，打开优惠券弹窗展示原因；否则按预约码处理
+    if (e?.response?.status === 400) {
+      openCouponRedeem()
+      couponRedeemCode.value = code
+      couponError.value = e?.response?.data?.message ?? t('查询失败', 'Query failed')
+    } else {
+      openCheckinModal()
+      checkinCode.value = code
+    }
   }
 }
 
@@ -254,8 +314,11 @@ function resetCheckin() {
 
 async function checkInByCode() {
   const code = checkinCode.value.trim()
-  if (!/^\d{6}$/.test(code)) {
-    checkinError.value = t('请输入 6 位数字核销码', 'Please enter the 6-digit check-in code')
+  if (!/^[A-Za-z0-9]{6}$/.test(code)) {
+    checkinError.value = t(
+      '请输入 6 位数字或字母核销码',
+      'Please enter the 6-character check-in code',
+    )
     return
   }
   checkinBusy.value = true
@@ -268,6 +331,58 @@ async function checkInByCode() {
     checkinError.value = e?.response?.data?.message ?? t('核销失败', 'Check-in failed')
   } finally {
     checkinBusy.value = false
+  }
+}
+
+/** 优惠券核销：打开弹窗 */
+function openCouponRedeem() {
+  couponRedeemCode.value = ''
+  couponResult.value = null
+  couponError.value = ''
+  couponRedeemOpen.value = true
+}
+
+function closeCouponRedeem() {
+  couponRedeemOpen.value = false
+  couponRedeemCode.value = ''
+  couponResult.value = null
+  couponError.value = ''
+}
+
+/** 查询优惠券（先确认再核销） */
+async function queryCouponRedeem() {
+  const code = couponRedeemCode.value.trim()
+  if (!/^[A-Za-z0-9]{6}$/.test(code)) {
+    couponError.value = t(
+      '请输入 6 位数字或字母核销码',
+      'Please enter the 6-character code',
+    )
+    return
+  }
+  couponQuerying.value = true
+  couponError.value = ''
+  couponResult.value = null
+  try {
+    const { data } = await memberApi.findCouponByCode(code)
+    couponResult.value = data
+  } catch (e: any) {
+    couponError.value = e?.response?.data?.message ?? t('查询失败', 'Query failed')
+  } finally {
+    couponQuerying.value = false
+  }
+}
+
+async function confirmCouponRedeem() {
+  couponBusy.value = true
+  couponError.value = ''
+  try {
+    couponResult.value = await memberApi.redeemCouponByCode(
+      couponRedeemCode.value.trim(),
+    )
+  } catch (e: any) {
+    couponError.value = e?.response?.data?.message ?? t('核销失败', 'Redeem failed')
+  } finally {
+    couponBusy.value = false
   }
 }
 
@@ -303,9 +418,21 @@ function formatTime(t: string | null): string {
   return `${h}:${m}:${s}`
 }
 
+function formatDateTime(value: string): string {
+  try {
+    return new Date(value).toLocaleString(i18n.lang === 'en' ? 'en-US' : 'zh-CN')
+  } catch {
+    return value
+  }
+}
+
 function formatDuration(s: string | null, e: string | null): string {
   if (!s || !e) return '-'
-  const ms = new Date(e).getTime() - new Date(s).getTime()
+  const start = new Date(s).getTime()
+  const end = new Date(e).getTime()
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return '-'
+  // 服务端/浏览器时钟偏差或异常数据可能让结束早于开始，按 0 处理，避免显示负数
+  const ms = Math.max(0, end - start)
   const h = Math.floor(ms / 3600000).toString().padStart(2, '0')
   const m = (Math.floor(ms / 60000) % 60).toString().padStart(2, '0')
   const sec = (Math.floor(ms / 1000) % 60).toString().padStart(2, '0')
@@ -395,6 +522,9 @@ onUnmounted(() => {
         </button>
         <button class="btn btn-success scan-entry" @click="openScanModal">
           {{ $t('扫码核销', 'Scan QR') }}
+        </button>
+        <button class="btn btn-success coupon-entry" @click="openCouponRedeem">
+          {{ $t('优惠券核销', 'Redeem coupon') }}
         </button>
         <button class="btn" @click="applyFilters">{{ $t('查询', 'Search') }}</button>
         <button class="btn" @click="load">{{ $t('刷新', 'Refresh') }}</button>
@@ -543,7 +673,7 @@ onUnmounted(() => {
       <div class="modal scan-modal">
         <h3>{{ $t('扫码核销', 'Scan QR to check in') }}</h3>
         <p class="modal-desc">
-          {{ $t('将摄像头对准顾客出示的预约码二维码，识别后自动核销并开始计时。', 'Point the camera at the customer QR code; it will check in automatically and start the timer.') }}
+          {{ $t('将摄像头对准顾客出示的预约码或优惠券二维码，识别后自动进入对应的核销流程。', 'Point the camera at the customer booking or coupon QR code; it will start the matching redemption flow automatically.') }}
         </p>
         <div class="scan-box">
           <video ref="scanVideoEl" autoplay playsinline muted></video>
@@ -570,7 +700,7 @@ onUnmounted(() => {
         <template v-if="checkinResult === null">
           <h3>{{ $t('核销码核销', 'Check in by code') }}</h3>
           <p class="modal-desc">
-            {{ $t('输入顾客出示的 6 位核销码，核销即上钟开始计时，结束时间固定为预约时段。', 'Enter the 6-digit code shown by the customer. Check-in starts the timer; the end time stays fixed.') }}
+            {{ $t('输入顾客出示的 6 位数字或字母核销码，核销即上钟开始计时，结束时间固定为预约时段。', 'Enter the 6-character code shown by the customer. Check-in starts the timer; the end time stays fixed.') }}
           </p>
           <input
             v-model="checkinCode"
@@ -579,6 +709,7 @@ onUnmounted(() => {
             maxlength="6"
             :placeholder="$t('请输入核销码', 'Enter check-in code')"
             autofocus
+            @input="checkinCode = checkinCode.toUpperCase()"
             @keyup.enter="checkInByCode"
           />
           <p v-if="checkinError" class="checkin-error">{{ checkinError }}</p>
@@ -625,6 +756,69 @@ onUnmounted(() => {
             </button>
           </div>
         </template>
+      </div>
+    </div>
+
+    <!-- 优惠券核销弹窗：输入优惠券核销码 → 查询确认 → 核销 -->
+    <div v-if="couponRedeemOpen" class="modal-overlay" @click.self="closeCouponRedeem">
+      <div class="modal">
+        <h3>{{ $t('优惠券核销', 'Redeem coupon') }}</h3>
+        <p class="modal-desc">
+          {{ $t('输入顾客卡包中的 6 位数字或字母核销码，先查询确认，再点击核销。', 'Enter the 6-character code from the customer wallet to confirm, then redeem.') }}
+        </p>
+        <div class="redeem-row">
+          <input
+            v-model="couponRedeemCode"
+            type="text"
+            maxlength="6"
+            :placeholder="$t('6 位数字或字母核销码', '6-character code')"
+            @input="couponRedeemCode = couponRedeemCode.toUpperCase()"
+            @keyup.enter="queryCouponRedeem"
+          />
+          <button class="btn btn-sm" :disabled="couponQuerying" @click="queryCouponRedeem">
+            {{ couponQuerying ? $t('查询中…', 'Querying…') : $t('查询', 'Query') }}
+          </button>
+        </div>
+        <p v-if="couponError" class="redeem-error">{{ couponError }}</p>
+        <div v-if="couponResult" class="redeem-result">
+          <div class="redeem-line">
+            <span>{{ $t('用户', 'User') }}</span>
+            <strong>
+              {{ couponResult.userNickname || $t('用户 #{id}', 'User #{id}', { id: couponResult.userId }) }}
+            </strong>
+          </div>
+          <div class="redeem-line">
+            <span>{{ $t('优惠券', 'Coupon') }}</span>
+            <strong>{{ couponResult.couponTitle }}（{{ couponResult.couponAmount }}）</strong>
+          </div>
+          <div class="redeem-line">
+            <span>{{ $t('门槛', 'Threshold') }}</span>
+            <strong>{{ couponResult.couponThreshold }}</strong>
+          </div>
+          <div class="redeem-line">
+            <span>{{ $t('到期时间', 'Expires') }}</span>
+            <strong>{{ formatDateTime(couponResult.expireAt) }}</strong>
+          </div>
+          <div class="redeem-line">
+            <span>{{ $t('状态', 'Status') }}</span>
+            <strong v-if="couponResult.status === 'used'" class="redeem-used">
+              {{ $t('已核销', 'Redeemed') }}
+            </strong>
+            <strong v-else class="redeem-ok">
+              {{ $t('可核销', 'Ready to redeem') }}
+            </strong>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-sm" @click="closeCouponRedeem">{{ $t('取消', 'Cancel') }}</button>
+          <button
+            class="btn btn-sm btn-success"
+            :disabled="couponBusy || !couponResult || couponResult.status === 'used'"
+            @click="confirmCouponRedeem"
+          >
+            {{ couponBusy ? $t('核销中…', 'Redeeming…') : $t('确认核销', 'Confirm redeem') }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -685,6 +879,11 @@ onUnmounted(() => {
   box-shadow: 0 6px 16px rgba(46, 158, 91, 0.3);
 }
 .filters .scan-entry {
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.filters .coupon-entry {
   padding: 9px 18px;
   font-size: 14px;
   font-weight: 600;
@@ -866,6 +1065,50 @@ onUnmounted(() => {
   padding: 8px 12px;
   font-size: 13px;
 }
+.redeem-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+.redeem-row input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 18px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  box-sizing: border-box;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+}
+.redeem-row input:focus {
+  border-color: var(--success);
+  box-shadow: 0 0 0 3px rgba(46, 158, 91, 0.14);
+}
+.redeem-error { color: var(--danger); font-size: 13px; margin: 10px 0 0; }
+.redeem-result {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: var(--surface-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.redeem-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+.redeem-line span { color: var(--text-muted); }
+.redeem-line strong { color: var(--text); text-align: right; }
+.redeem-ok { color: #2e9e5b; }
+.redeem-used { color: #d9453e; }
 .scan-modal .scan-box {
   position: relative;
   margin: 12px 0 10px;

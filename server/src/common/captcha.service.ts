@@ -18,9 +18,7 @@ export class CaptchaService {
   constructor(private readonly config: ConfigService) {}
 
   get provider(): CaptchaProvider {
-    const raw = (
-      this.config.get<string>('CAPTCHA_PROVIDER', '') ?? ''
-    ).trim();
+    const raw = (this.config.get<string>('CAPTCHA_PROVIDER', '') ?? '').trim();
     return (raw.toLowerCase() as CaptchaProvider) || '';
   }
 
@@ -39,10 +37,7 @@ export class CaptchaService {
     }
   }
 
-  private async verifyTurnstile(
-    token: string,
-    ip?: string,
-  ): Promise<boolean> {
+  private async verifyTurnstile(token: string, ip?: string): Promise<boolean> {
     const body = new URLSearchParams({
       secret: this.config.get<string>('TURNSTILE_SECRET', ''),
       response: token,

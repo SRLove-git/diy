@@ -4,7 +4,6 @@ import {
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
-import { randomInt } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   DataSource,
@@ -16,6 +15,10 @@ import {
   Repository,
 } from 'typeorm';
 import { UsersService } from '../users/users.service';
+import {
+  generateRedeemCode,
+  normalizeRedeemCode,
+} from '../common/redeem-code.util';
 import { maskEmail } from '../common/security.util';
 import { Coupon, UserCoupon } from './coupon.entity';
 import {
@@ -219,7 +222,9 @@ export class MembersService implements OnModuleInit {
         const user = userMap.get(i.userId);
         return {
           ...i,
-          userEmail: user?.email ? maskEmail(user.email) ?? undefined : undefined,
+          userEmail: user?.email
+            ? (maskEmail(user.email) ?? undefined)
+            : undefined,
           userNickname: user?.nickname || `用户 #${i.userId}`,
         };
       }),
@@ -344,12 +349,13 @@ export class MembersService implements OnModuleInit {
    * 核销码只在核销前有效：已使用/已过期的券不可再查询使用。
    */
   async findCouponByCode(code: string) {
-    const owned = await this.userCoupons.findOneBy({ code });
+    const owned = await this.userCoupons.findOneBy({
+      code: normalizeRedeemCode(code),
+    });
     if (!owned) throw new NotFoundException('核销码无效');
     const coupon = await this.coupons.findOneBy({ id: owned.couponId });
     if (!coupon) throw new NotFoundException('核销码无效');
-    const expired =
-      owned.status === 'expired' || coupon.expireAt <= new Date();
+    const expired = owned.status === 'expired' || coupon.expireAt <= new Date();
     if (owned.status === 'used') {
       throw new BadRequestException('该核销码已核销，不可重复使用');
     }
@@ -364,16 +370,17 @@ export class MembersService implements OnModuleInit {
       couponThreshold: coupon.threshold,
       expireAt: coupon.expireAt,
       userNickname: user?.nickname || `用户 #${owned.userId}`,
-      userEmail: user?.email ? maskEmail(user.email) ?? undefined : undefined,
+      userEmail: user?.email ? (maskEmail(user.email) ?? undefined) : undefined,
     };
   }
 
   /** 输码核销：状态 unused → used，记录核销时间与核销人（幂等由状态机兜底） */
   async redeemByCode(code: string, operatorId?: number) {
+    const normalized = normalizeRedeemCode(code);
     return this.dataSource.transaction(async (manager) => {
       const ownedRepo = manager.getRepository(UserCoupon);
       const owned = await ownedRepo.findOne({
-        where: { code },
+        where: { code: normalized },
         lock: { mode: 'pessimistic_write' },
       });
       if (!owned) throw new NotFoundException('核销码无效');
@@ -401,10 +408,10 @@ export class MembersService implements OnModuleInit {
     return this.redeemByCode(owned.code, operatorId);
   }
 
-  /** 生成 6 位数字核销码：唯一索引兜底，冲突重试 */
+  /** 生成 6 位数字+字母核销码：唯一索引兜底，冲突重试 */
   private async generateCouponCode(em: EntityManager): Promise<string> {
     for (let i = 0; i < 10; i++) {
-      const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+      const code = generateRedeemCode();
       const exists = await em.findOne(UserCoupon, { where: { code } });
       if (!exists) return code;
     }

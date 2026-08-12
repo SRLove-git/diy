@@ -162,7 +162,7 @@ export class Appointment {
   @Column()
   peopleCount: number;
 
-  /** 预约码：到店核销凭证（6 位数字） */
+  /** 预约码：到店核销凭证（6 位数字+字母） */
   @Column({ length: 10, unique: true })
   code: string;
 

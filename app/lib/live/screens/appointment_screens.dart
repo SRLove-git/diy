@@ -942,6 +942,28 @@ class AppointmentSuccessScreen extends StatelessWidget {
                                 color: LiveColors.textPrimary,
                               ),
                             ),
+                            const SizedBox(height: 14),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: LiveColors.bg,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: QrImageView(
+                                data: appointment.couponCode!,
+                                version: QrVersions.auto,
+                                size: 140,
+                                backgroundColor: LiveColors.bg,
+                                eyeStyle: const QrEyeStyle(
+                                  eyeShape: QrEyeShape.square,
+                                  color: LiveColors.brand,
+                                ),
+                                dataModuleStyle: const QrDataModuleStyle(
+                                  dataModuleShape: QrDataModuleShape.square,
+                                  color: LiveColors.brand,
+                                ),
+                              ),
+                            ),
                             const SizedBox(height: 10),
                             Text(
                               l10n.appointmentCouponRedeemHint,
@@ -2559,6 +2581,81 @@ class CheckinQrScreen extends StatelessWidget {
                     ),
                   ),
                 ],
+                // 预约绑定了优惠券：同页展示优惠券二维码，到店一并核销
+                if (!destroyed &&
+                    appointment.couponCode != null &&
+                    appointment.couponCode!.isNotEmpty) ...[
+                  const SizedBox(height: 26),
+                  Center(
+                    child: Text(
+                      context.l10n.appointmentCouponRedeemLabel,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: LiveColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Center(
+                    child: Text(
+                      appointment.couponCode!,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: LiveColors.textPrimary,
+                        letterSpacing: 4,
+                      ),
+                    ),
+                  ),
+                  if (appointment.couponTitle.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Center(
+                      child: Text(
+                        '${context.l10n.appointmentCoupon}：${appointment.couponTitle}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: LiveColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: LiveColors.bg,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: LiveColors.cardBorder),
+                      ),
+                      child: QrImageView(
+                        data: appointment.couponCode!,
+                        version: QrVersions.auto,
+                        size: 200,
+                        backgroundColor: LiveColors.bg,
+                        eyeStyle: const QrEyeStyle(
+                          eyeShape: QrEyeShape.square,
+                          color: LiveColors.brand,
+                        ),
+                        dataModuleStyle: const QrDataModuleStyle(
+                          dataModuleShape: QrDataModuleShape.square,
+                          color: LiveColors.brand,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Center(
+                    child: Text(
+                      context.l10n.appointmentCouponRedeemHint,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: LiveColors.textTertiary,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -3071,7 +3168,8 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
   }
 
   Future<void> _query() async {
-    if (_codeCtrl.text.trim().length != 6) {
+    final code = _codeCtrl.text.trim().toUpperCase();
+    if (!RegExp(r'^[A-Z0-9]{6}$').hasMatch(code)) {
       showLiveSnack(context, '请输入 6 位核销码');
       return;
     }
@@ -3080,9 +3178,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
       _found = null;
     });
     try {
-      final a = await AppointmentService.instance.findByCode(
-        _codeCtrl.text.trim(),
-      );
+      final a = await AppointmentService.instance.findByCode(code);
       if (mounted) setState(() => _found = a);
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -3092,11 +3188,10 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
   }
 
   Future<void> _checkIn() async {
+    final code = _codeCtrl.text.trim().toUpperCase();
     setState(() => _checking = true);
     try {
-      final a = await AppointmentService.instance.checkIn(
-        _codeCtrl.text.trim(),
-      );
+      final a = await AppointmentService.instance.checkIn(code);
       if (!mounted) return;
       // 通知首页自动刷新：待核销 → 服务中（实时计时）立即更新
       HomeOrdersRefresh.instance.refresh(a);
@@ -3185,7 +3280,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                         TextField(
                           controller: _codeCtrl,
                           focusNode: _codeFocus,
-                          keyboardType: TextInputType.number,
+                          keyboardType: TextInputType.text,
                           maxLength: 6,
                           showCursor: false,
                           style: const TextStyle(
@@ -3199,7 +3294,17 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                             focusedBorder: InputBorder.none,
                           ),
                           inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
+                            FilteringTextInputFormatter.allow(
+                              RegExp('[A-Za-z0-9]'),
+                            ),
+                            TextInputFormatter.withFunction(
+                              (oldValue, newValue) => newValue.copyWith(
+                                text: newValue.text.toUpperCase(),
+                                selection: TextSelection.collapsed(
+                                  offset: newValue.text.length,
+                                ),
+                              ),
+                            ),
                           ],
                           onChanged: (_) => setState(() {}),
                           onSubmitted: (_) => _query(),

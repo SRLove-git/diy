@@ -91,8 +91,8 @@ export class CreateAppointmentDto {
 
 /** 输码核销 */
 export class CheckInDto {
-  /** 6 位预约码 */
-  @Matches(/^\d{6}$/, { message: '预约码为 6 位数字' })
+  /** 6 位预约码（数字+字母） */
+  @Matches(/^[A-Za-z0-9]{6}$/, { message: '预约码为 6 位数字或字母' })
   code: string;
 }
 

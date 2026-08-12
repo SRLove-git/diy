@@ -68,24 +68,25 @@ export class AuditInterceptor implements NestInterceptor {
     const req = context.switchToHttp().getRequest<Request>();
     const params = (req.params ?? {}) as Record<string, unknown>;
     const body = (req.body ?? {}) as Record<string, unknown>;
+    const rawTargetId: unknown =
+      params.id ??
+      body.id ??
+      body.userId ??
+      body.keyword ??
+      params.keyword ??
+      '';
     const targetId =
-      String(
-        params.id ??
-          body.id ??
-          body.userId ??
-          body.keyword ??
-          params.keyword ??
-          '',
-      ) || null;
+      typeof rawTargetId === 'string' || typeof rawTargetId === 'number'
+        ? String(rawTargetId)
+        : null;
 
     return next.handle().pipe(
       tap({
         next: () => {
           void this.audit.record({
             actorId:
-              (
-                req as unknown as { user?: { id?: number } | undefined }
-              ).user?.id ?? null,
+              (req as unknown as { user?: { id?: number } | undefined }).user
+                ?.id ?? null,
             action,
             targetType: targetType ?? null,
             targetId,

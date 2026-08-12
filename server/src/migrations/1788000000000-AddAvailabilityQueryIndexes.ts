@@ -43,12 +43,12 @@ export class AddAvailabilityQueryIndexes1788000000000 implements MigrationInterf
     indexName: string,
     createSql: string,
   ): Promise<void> {
-    const rows = await queryRunner.query(
+    const rows = (await queryRunner.query(
       `SELECT 1 FROM information_schema.statistics
        WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?
        LIMIT 1`,
       [table, indexName],
-    );
+    )) as Array<unknown>;
     if (!rows.length) {
       try {
         await queryRunner.query(createSql);

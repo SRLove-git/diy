@@ -90,7 +90,10 @@ const ERROR_EN: Record<string, string> = {
   '日期格式为 YYYY-MM-DD': 'Date must be in YYYY-MM-DD format.',
   '人数至少 1 人': 'People count must be at least 1.',
   '支付方式仅支持微信/支付宝': 'Payment method must be WeChat or Alipay.',
-  '预约码为 6 位数字': 'Booking code must be 6 digits.',
+  '预约码为 6 位数字或字母':
+    'Booking code must be 6 characters (letters or digits).',
+  '核销码为 6 位数字或字母':
+    'Redemption code must be 6 characters (letters or digits).',
   预约码无效: 'Invalid booking code.',
   预约单不存在: 'Booking not found.',
 

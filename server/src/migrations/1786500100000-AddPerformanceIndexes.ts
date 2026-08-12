@@ -7,9 +7,7 @@ import { randomInt } from 'crypto';
  * 索引名与实体 @Index() 生成的哈希一致，避免后续 migration:generate 误报差异；
  * 创建前按 information_schema 判存在，重复执行安全。
  */
-export class AddPerformanceIndexes1786500100000
-  implements MigrationInterface
-{
+export class AddPerformanceIndexes1786500100000 implements MigrationInterface {
   name = 'AddPerformanceIndexes1786500100000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -26,27 +24,29 @@ export class AddPerformanceIndexes1786500100000
     `);
 
     // 2) 预约码去重：唯一索引前，给重复码重新生成（保留最早一条）
-    const dupCodes = await queryRunner.query(`
+    const dupCodes = (await queryRunner.query(`
       SELECT code, COUNT(*) AS cnt FROM appointments
       GROUP BY code HAVING cnt > 1
-    `);
+    `)) as Array<{ code: string }>;
     for (const dup of dupCodes) {
-      const rows = await queryRunner.query(
+      const rows = (await queryRunner.query(
         'SELECT id FROM appointments WHERE code = ? ORDER BY id ASC',
         [dup.code],
-      );
+      )) as Array<{ id: number }>;
       for (let i = 1; i < rows.length; i++) {
         let next: string | null = null;
         for (let attempt = 0; attempt < 10 && next == null; attempt++) {
           const candidate = String(randomInt(0, 1_000_000)).padStart(6, '0');
-          const exists = await queryRunner.query(
+          const exists = (await queryRunner.query(
             'SELECT id FROM appointments WHERE code = ? LIMIT 1',
             [candidate],
-          );
+          )) as Array<{ id: number }>;
           if (!exists.length) next = candidate;
         }
         if (next == null) {
-          throw new Error(`预约码去重失败：无法为预约单 ${rows[i].id} 生成新码`);
+          throw new Error(
+            `预约码去重失败：无法为预约单 ${rows[i].id} 生成新码`,
+          );
         }
         await queryRunner.query(
           'UPDATE appointments SET code = ? WHERE id = ?',
@@ -111,18 +111,16 @@ export class AddPerformanceIndexes1786500100000
       'CREATE INDEX `IDX_88a7b458a43b57e29e37e26f1b` ON `posts` (`status`, `createdAt`)',
     );
     // member_orders：删除旧的单列 userId 索引，换成 (userId, createdAt) 复合索引
-    const oldOrderIdx = await queryRunner.query(
+    const oldOrderIdx = (await queryRunner.query(
       `SELECT index_name FROM information_schema.statistics
        WHERE table_schema = DATABASE() AND table_name = 'member_orders'
          AND column_name = 'userId' AND index_name <> 'IDX_2d87f4e60a50e745a7bb11b83a'
        GROUP BY index_name`,
-    );
+    )) as Array<{ index_name?: string; INDEX_NAME?: string }>;
     for (const row of oldOrderIdx) {
       // information_schema.statistics 返回的列名可能为大写 INDEX_NAME
       const idxName = row.index_name ?? row.INDEX_NAME;
-      await queryRunner.query(
-        `DROP INDEX \`${idxName}\` ON \`member_orders\``,
-      );
+      await queryRunner.query(`DROP INDEX \`${idxName}\` ON \`member_orders\``);
     }
     await this.ensureIndex(
       queryRunner,
@@ -181,12 +179,12 @@ export class AddPerformanceIndexes1786500100000
     indexName: string,
     createSql: string,
   ): Promise<void> {
-    const rows = await queryRunner.query(
+    const rows = (await queryRunner.query(
       `SELECT 1 FROM information_schema.statistics
        WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?
        LIMIT 1`,
       [table, indexName],
-    );
+    )) as Array<unknown>;
     if (!rows.length) {
       try {
         await queryRunner.query(createSql);

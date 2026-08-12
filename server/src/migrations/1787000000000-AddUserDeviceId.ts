@@ -15,8 +15,6 @@ export class AddUserDeviceId1787000000000 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX \`IDX_users_device_id\` ON \`users\``);
-    await queryRunner.query(
-      `ALTER TABLE \`users\` DROP COLUMN \`deviceId\``,
-    );
+    await queryRunner.query(`ALTER TABLE \`users\` DROP COLUMN \`deviceId\``);
   }
 }

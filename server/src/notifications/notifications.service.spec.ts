@@ -117,7 +117,12 @@ describe('NotificationsService.myNotifications', () => {
     expect(result).toEqual({ ok: true });
     expect(m.readRepo.manager.query).toHaveBeenCalledWith(
       'INSERT IGNORE INTO notification_reads (userId, notificationId) VALUES ?',
-      [[[1, 1], [1, 2]]],
+      [
+        [
+          [1, 1],
+          [1, 2],
+        ],
+      ],
     );
     expect(m.readRepo.save).not.toHaveBeenCalled();
   });
@@ -125,7 +130,11 @@ describe('NotificationsService.myNotifications', () => {
   it('未读数 = 可见通知总数 - 已读数量', async () => {
     const m = buildService();
     m.userRepo.findOneBy.mockResolvedValue({ role: 'user' });
-    m.notificationRepo.find.mockResolvedValue([{ id: 1 }, { id: 2 }, { id: 3 }]);
+    m.notificationRepo.find.mockResolvedValue([
+      { id: 1 },
+      { id: 2 },
+      { id: 3 },
+    ]);
     m.readRepo.count.mockResolvedValue(1);
 
     const result = await m.svc.unreadCount(1);

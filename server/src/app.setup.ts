@@ -1,7 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { WsAdapter } from '@nestjs/platform-ws';
 import helmet from 'helmet';
-import express from 'express';
+import express, { type Express } from 'express';
 import { join, resolve } from 'path';
 import { uploadRoot } from './uploads/uploads.provider';
 
@@ -47,8 +47,7 @@ export function configureApp(app: INestApplication): void {
   // 验证码防刷等按 IP 限流的逻辑依赖 req.ip，未配置时所有请求都取自代理地址，
   // 会导致全站共享同一个限流配额。仅在生产经 nginx 暴露时开启（TRUST_PROXY=true）。
   if (process.env.TRUST_PROXY === 'true') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (app.getHttpAdapter().getInstance() as any).set('trust proxy', 1);
+    (app.getHttpAdapter().getInstance() as Express).set('trust proxy', 1);
   }
 
   const origins = corsOrigins();

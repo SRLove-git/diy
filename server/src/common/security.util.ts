@@ -27,10 +27,7 @@ export function requestFingerprint(
   const header = (
     (req.headers['x-device-fingerprint'] as string | undefined) ?? ''
   ).trim();
-  const ua = ((req.headers['user-agent'] as string | undefined) ?? '').slice(
-    0,
-    200,
-  );
+  const ua = (req.headers['user-agent'] ?? '').slice(0, 200);
   const ip = (req.ip ?? '').split(':').pop() ?? '';
   const raw = header || deviceId?.trim() || `${ua}|${ip}`;
   return createHash('sha1').update(raw).digest('hex');

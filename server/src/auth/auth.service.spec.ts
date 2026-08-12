@@ -80,9 +80,11 @@ function buildRegisterService() {
     findByUsername: jest.fn().mockResolvedValue(null),
     findByEmail: jest.fn().mockResolvedValue(null),
     countByDeviceId: jest.fn().mockResolvedValue(0),
-    create: jest.fn().mockImplementation((data: Record<string, unknown>) =>
-      Promise.resolve({ id: 1, ...data }),
-    ),
+    create: jest
+      .fn()
+      .mockImplementation((data: Record<string, unknown>) =>
+        Promise.resolve({ id: 1, ...data }),
+      ),
   };
   const jwt = { signAsync: jest.fn().mockResolvedValue('token') };
   const config = {

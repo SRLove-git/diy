@@ -5,9 +5,7 @@ import { randomInt } from 'crypto';
  * 优惠券核销码：user_coupons 增加 6 位数字核销码（领取时生成，到店核销凭证）
  * 与核销人字段；历史已领取的券回填唯一核销码。
  */
-export class AddCouponRedemptionCode1792000000000
-  implements MigrationInterface
-{
+export class AddCouponRedemptionCode1792000000000 implements MigrationInterface {
   name = 'AddCouponRedemptionCode1792000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -16,9 +14,9 @@ export class AddCouponRedemptionCode1792000000000
     );
 
     // 历史数据回填：为已领取的券补生成唯一 6 位核销码
-    const rows: Array<{ id: number }> = await queryRunner.query(
+    const rows = (await queryRunner.query(
       'SELECT `id` FROM `user_coupons`',
-    );
+    )) as Array<{ id: number }>;
     for (const row of rows) {
       const code = await this.nextCode(queryRunner);
       await queryRunner.query(
@@ -47,10 +45,10 @@ export class AddCouponRedemptionCode1792000000000
   private async nextCode(queryRunner: QueryRunner): Promise<string> {
     for (let i = 0; i < 10; i++) {
       const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
-      const existing: Array<{ n: number }> = await queryRunner.query(
+      const existing = (await queryRunner.query(
         'SELECT COUNT(*) AS `n` FROM `user_coupons` WHERE `code` = ?',
         [code],
-      );
+      )) as Array<{ n: string | number }>;
       // mysql2 默认将 COUNT 作为字符串返回，需显式转数字再判断
       if (Number(existing[0]?.n) === 0) return code;
     }

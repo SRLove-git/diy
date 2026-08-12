@@ -68,16 +68,12 @@ export class AdminMembersController {
   }
   @Post('orders/:id/confirm')
   @Audit('membership.order_confirm', 'order')
-  confirmOrder(
-    @Param('id', ParseIntPipe) id: number,
-  ) {
+  confirmOrder(@Param('id', ParseIntPipe) id: number) {
     return this.members.adminConfirmOrder(id);
   }
   @Post('orders/:id/cancel')
   @Audit('membership.order_cancel', 'order')
-  cancelOrder(
-    @Param('id', ParseIntPipe) id: number,
-  ) {
+  cancelOrder(@Param('id', ParseIntPipe) id: number) {
     return this.members.adminCancelOrder(id);
   }
   @Get('plans') plans() {
@@ -90,10 +86,7 @@ export class AdminMembersController {
   }
   @Patch('plans/:id')
   @Audit('membership.plan_update', 'plan')
-  updatePlan(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: SavePlanDto,
-  ) {
+  updatePlan(@Param('id', ParseIntPipe) id: number, @Body() dto: SavePlanDto) {
     return this.members.savePlan(dto, id);
   }
   @Patch('plans/:id/enabled')
@@ -128,7 +121,7 @@ export class AdminMembersController {
   ) {
     return this.members.toggleCoupon(id, enabled);
   }
-  /** 输码核销（店员代操作）：按 6 位核销码核销 */
+  /** 输码核销（店员代操作）：按 6 位数字+字母核销码核销 */
   @Post('coupons/redeem-code')
   @Audit('membership.coupon_redeem', 'coupon')
   redeemByCode(@Body() dto: RedeemCouponDto, @CurrentUser() user: AuthUser) {
@@ -137,10 +130,7 @@ export class AdminMembersController {
   /** 按记录 ID 核销（店员代操作） */
   @Post('coupons/:id/redeem')
   @Audit('membership.coupon_redeem', 'coupon')
-  redeem(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: AuthUser,
-  ) {
+  redeem(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
     return this.members.adminRedeemCoupon(id, user.id);
   }
 }
