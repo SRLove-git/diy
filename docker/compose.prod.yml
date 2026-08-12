@@ -38,6 +38,7 @@ services:
       retries: 10
 
   server:
+    image: ${SERVER_IMAGE:-diy-server:latest}
     build:
       context: ../server
     restart: unless-stopped
@@ -110,6 +111,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
 
   admin:
+    image: ${ADMIN_IMAGE:-diy-admin:latest}
     build:
       context: ../admin
     container_name: diy-admin-prod

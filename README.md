@@ -91,6 +91,19 @@ docker compose -f docker/compose.prod.yml up -d --build --scale server=3
 
 注意：副本数 × `DB_POOL_SIZE` 需 ≤ MySQL `max_connections`（compose 已默认放大到 500）；聊天跨实例转发由 Redis pub/sub 承载，扩副本无需改代码。
 
+### 本地构建部署（服务器不构建）
+
+服务器性能弱或不想在服务器上装构建工具链时，可以在本地（Mac）构建镜像再传过去。脚本支持同架构与 Apple Silicon 交叉构建 `linux/amd64`：
+
+```bash
+# 服务器是 x86_64（最常见）
+./docker/deploy-local.sh amd64
+# 服务器是 arm64
+./docker/deploy-local.sh arm64
+```
+
+脚本会在 `docker/` 下生成 `images-<tag>.tar.gz`，并打印 scp 传输与服务器 `docker load` + `up --no-build` 命令。服务器只需安装 Docker，不需要 Node/npm。
+
 ## CI
 
 `.github/workflows/ci.yml` 在 push/PR 到 `main` 时自动运行：
