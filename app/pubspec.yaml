@@ -48,6 +48,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: any
+  sensors_plus: ^7.1.0
 
 dev_dependencies:
   flutter_test:

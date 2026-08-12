@@ -1,7 +1,4 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../api/api_client.dart';
 import '../../api/auth_store.dart';
@@ -122,17 +119,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     onSubmitted: (_) => _login(),
                   ),
-                  const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => LiveRoutes.push(context, RoutePaths.loginForgot),
-                      child: Text(
-                        l10n.loginForgotQuestion,
-                        style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 8),
                   PrimaryButton(
                     label: l10n.loginButton,
@@ -180,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-/// 注册：用户名 + 密码 + 邮箱绑定（邮箱验证码校验）。
+/// 注册：用户名 + 密码 + 邮箱绑定。
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -191,22 +177,16 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _usernameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
-  final _codeCtrl = TextEditingController();
   final _pwdCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   bool _loading = false;
-  bool _sending = false;
   bool _obscure = true;
-  int _countdown = 0;
-  Timer? _timer;
 
   @override
   void dispose() {
-    _timer?.cancel();
     for (final c in [
       _usernameCtrl,
       _emailCtrl,
-      _codeCtrl,
       _pwdCtrl,
       _confirmCtrl,
     ]) {
@@ -217,43 +197,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool get _emailOk => _emailReg.hasMatch(_emailCtrl.text.trim());
 
-  void _startCountdown() {
-    _timer?.cancel();
-    setState(() => _countdown = 60);
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) return;
-      if (_countdown <= 1) {
-        t.cancel();
-        setState(() => _countdown = 0);
-      } else {
-        setState(() => _countdown--);
-      }
-    });
-  }
-
-  Future<void> _sendCode() async {
-    if (!_emailOk) {
-      showLiveSnack(context, context.l10n.needValidEmail);
-      return;
-    }
-    setState(() => _sending = true);
-    try {
-      final code =
-          await AuthService.instance.sendEmailCode(_emailCtrl.text.trim());
-      if (!mounted) return;
-      if (code != null) {
-        showLiveSnack(context, context.l10n.sendCodeSentDev(code));
-      } else {
-        showLiveSnack(context, context.l10n.sendCodeSent);
-      }
-      _startCountdown();
-    } on ApiException catch (e) {
-      if (mounted) showLiveSnack(context, e.message);
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
-  }
-
   Future<void> _register() async {
     final username = _usernameCtrl.text.trim();
     final email = _emailCtrl.text.trim();
@@ -263,10 +206,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
     if (!_emailOk) {
       showLiveSnack(context, context.l10n.needValidEmail);
-      return;
-    }
-    if (_codeCtrl.text.trim().length != 6) {
-      showLiveSnack(context, context.l10n.needCode6);
       return;
     }
     if (_pwdCtrl.text.length < 6) {
@@ -283,7 +222,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         username: username,
         email: email,
         password: _pwdCtrl.text,
-        emailCode: _codeCtrl.text.trim(),
       );
       await AuthStore.instance.save(
         accessToken: r.accessToken,
@@ -341,41 +279,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               decoration: InputDecoration(hintText: l10n.registerEmailHintFull, counterText: ''),
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _codeCtrl,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    decoration: InputDecoration(hintText: l10n.registerCodeHint, counterText: ''),
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 118,
-                  height: 50,
-                  child: OutlinedButton(
-                    onPressed: (_countdown > 0 || _sending) ? null : _sendCode,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: LiveColors.brand,
-                      side: const BorderSide(color: LiveColors.brand, width: 1),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: Text(
-                      _countdown > 0
-                          ? l10n.registerResendIn(_countdown)
-                          : l10n.registerSendCode,
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
             TextField(
               controller: _pwdCtrl,
               obscureText: _obscure,
@@ -413,225 +316,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   onPressed: () => LiveRoutes.replace(context, RoutePaths.login),
                   child: Text(
                     l10n.registerToLogin,
-                    style: const TextStyle(color: LiveColors.textSecondary, fontSize: 14),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 忘记密码：邮箱验证码校验 + 设置新密码。
-class ForgotPasswordScreen extends StatefulWidget {
-  const ForgotPasswordScreen({super.key});
-
-  @override
-  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
-}
-
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
-  final _emailCtrl = TextEditingController();
-  final _codeCtrl = TextEditingController();
-  final _pwdCtrl = TextEditingController();
-  final _confirmCtrl = TextEditingController();
-  bool _loading = false;
-  bool _sending = false;
-  bool _obscure = true;
-  int _countdown = 0;
-  Timer? _timer;
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    for (final c in [_emailCtrl, _codeCtrl, _pwdCtrl, _confirmCtrl]) {
-      c.dispose();
-    }
-    super.dispose();
-  }
-
-  bool get _emailOk => _emailReg.hasMatch(_emailCtrl.text.trim());
-
-  void _startCountdown() {
-    _timer?.cancel();
-    setState(() => _countdown = 60);
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) return;
-      if (_countdown <= 1) {
-        t.cancel();
-        setState(() => _countdown = 0);
-      } else {
-        setState(() => _countdown--);
-      }
-    });
-  }
-
-  Future<void> _sendCode() async {
-    if (!_emailOk) {
-      showLiveSnack(context, context.l10n.needValidEmail);
-      return;
-    }
-    setState(() => _sending = true);
-    try {
-      final code =
-          await AuthService.instance.sendEmailCode(_emailCtrl.text.trim());
-      if (!mounted) return;
-      if (code != null) {
-        showLiveSnack(context, context.l10n.sendCodeSentDev(code));
-      } else {
-        showLiveSnack(context, context.l10n.sendCodeSent);
-      }
-      _startCountdown();
-    } on ApiException catch (e) {
-      if (mounted) showLiveSnack(context, e.message);
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
-  }
-
-  Future<void> _submit() async {
-    final email = _emailCtrl.text.trim();
-    if (!_emailOk) {
-      showLiveSnack(context, context.l10n.needValidEmail);
-      return;
-    }
-    if (_codeCtrl.text.trim().length != 6) {
-      showLiveSnack(context, context.l10n.needCode6);
-      return;
-    }
-    if (_pwdCtrl.text.length < 6) {
-      showLiveSnack(context, context.l10n.passwordMin6);
-      return;
-    }
-    if (_pwdCtrl.text != _confirmCtrl.text) {
-      showLiveSnack(context, context.l10n.passwordMismatch);
-      return;
-    }
-    setState(() => _loading = true);
-    try {
-      await AuthService.instance.resetPassword(
-        email: email,
-        emailCode: _codeCtrl.text.trim(),
-        password: _pwdCtrl.text,
-      );
-      if (!mounted) return;
-      showLiveSnack(context, context.l10n.resetPasswordSuccess);
-      LiveRoutes.replace(context, RoutePaths.login);
-    } on ApiException catch (e) {
-      if (mounted) showLiveSnack(context, e.message);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return LivePage(
-      resizeToAvoidBottomInset: false,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            Text(
-              l10n.forgotTitle,
-              style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                color: LiveColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.forgotDesc,
-              style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
-            ),
-            const SizedBox(height: 28),
-            TextField(
-              controller: _emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              maxLength: 255,
-              decoration: InputDecoration(hintText: l10n.registerEmailHint, counterText: ''),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _codeCtrl,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    decoration: InputDecoration(hintText: l10n.registerCodeHint, counterText: ''),
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 118,
-                  height: 50,
-                  child: OutlinedButton(
-                    onPressed: (_countdown > 0 || _sending) ? null : _sendCode,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: LiveColors.brand,
-                      side: const BorderSide(color: LiveColors.brand),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: Text(
-                      _countdown > 0
-                          ? l10n.registerResendIn(_countdown)
-                          : l10n.registerSendCode,
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _pwdCtrl,
-              obscureText: _obscure,
-              maxLength: 32,
-              decoration: InputDecoration(
-                hintText: l10n.forgotNewPassword,
-                counterText: '',
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                    color: LiveColors.textTertiary,
-                  ),
-                  onPressed: () => setState(() => _obscure = !_obscure),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _confirmCtrl,
-              obscureText: true,
-              maxLength: 32,
-              decoration: InputDecoration(hintText: l10n.changePasswordConfirm, counterText: ''),
-            ),
-            const SizedBox(height: 24),
-            PrimaryButton(
-              label: l10n.forgotResetButton,
-              onTap: _loading ? null : _submit,
-              loading: _loading,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextButton(
-                  onPressed: () => LiveRoutes.replace(context, RoutePaths.login),
-                  child: Text(
-                    l10n.forgotBackToLogin,
                     style: const TextStyle(color: LiveColors.textSecondary, fontSize: 14),
                   ),
                 ),

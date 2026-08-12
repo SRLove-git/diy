@@ -24,11 +24,14 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late Future<({List<Activity> activities, int unread})> _future;
+
   /// 已拉取的订单列表（独立状态，支持后台轮询实时更新）。
   List<Appointment> _orders = [];
+
   /// 乐观更新的订单（预约成功 / 下钟结束后立即合入展示，不等网络刷新）。
   final Map<int, Appointment> _pendingOrders = {};
   bool _loadingOrders = false;
+
   /// 预约到点后自动刷新，让已失效订单从首页消失（保留在“我的预约”中）。
   Timer? _expiryTimer;
 
@@ -45,7 +48,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // 从后台回到前台时刷新订单，感知店员后台核销
-    if (state == AppLifecycleState.resumed && ( _orders.isNotEmpty || _pendingOrders.isNotEmpty)) {
+    if (state == AppLifecycleState.resumed &&
+        (_orders.isNotEmpty || _pendingOrders.isNotEmpty)) {
       _loadOrders();
     }
   }
@@ -133,178 +137,342 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    // 页面级极光背景：深蓝 / 深紫透明光晕固定在顶部渐隐，内容在其上滚动
     return LivePage(
-      child: FutureBuilder(
-        future: _future,
-        builder: (context, snap) {
-          final l10n = context.l10n;
-          if (snap.hasError) {
-            return Column(
-              children: [
-                const _TopBar(),
-                Expanded(
-                  child: ErrorView(
-                    message: snap.error is ApiException
-                        ? (snap.error as ApiException).message
-                        : l10n.commonLoadFailed,
-                    onRetry: _retry,
-                  ),
-                ),
-              ],
-            );
-          }
-          if (!snap.hasData) {
-            return Column(
-              children: [
-                const _TopBar(),
-                const Expanded(child: LoadingView()),
-              ],
-            );
-          }
-          final data = snap.data!;
-          final now = DateTime.now();
-          // 合并轮询数据与乐观更新的订单（乐观更新优先，即时展示）
-          final mergedOrders = <Appointment>[..._orders];
-          for (final p in _pendingOrders.values) {
-            mergedOrders.removeWhere((o) => o.id == p.id);
-            mergedOrders.add(p);
-          }
-          // 服务中订单（实时计时）
-          final active = mergedOrders
-              .where((a) =>
-                  a.status == 'checked_in' || a.status == 'in_service')
-              .toList();
-          // 未来订单：待确认/待核销且未过期，按时间升序
-          final upcoming = mergedOrders
-              .where((a) =>
-                  a.status == 'pending' || a.status == 'booked')
-              .where((a) => !a.isExpired(now))
-              .toList()
-            ..sort((x, y) => (x.endDateTime ?? DateTime.now())
-                .compareTo(y.endDateTime ?? DateTime.now()));
-          // 已失效订单（超过预约结束时间）不在首页展示，
-          // 仅保留在“我的预约”中；到点后由 _scheduleExpiryRefresh 触发消失。
-          final showOrders = active.isNotEmpty || upcoming.isNotEmpty;
-          return RefreshIndicator(
-            onRefresh: () async => _retry(),
-            child: ListView(
-              // 底部悬浮 Tab 覆盖在内容之上，预留滚动空间避免最后内容被遮挡
-              padding: const EdgeInsets.only(bottom: 96),
-              children: [
-                const _TopBar(),
-                // 「拼豆」板块：入口卡（预约 / 到店 / 会员套餐）
-                 _SectionHeader(
-                  title: l10n.homeStoreSection,
-                  badge: l10n.homeStoreSectionBadge,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
-                  child: _EntryCardsRow(
-                    onTap: (key) {
-                      switch (key) {
-                        case 'appoint':
-                          LiveRoutes.push(context, RoutePaths.storeList);
-                        case 'checkin':
-                          LiveRoutes.push(context, RoutePaths.storeCheckin);
-                        case 'member':
-                          LiveRoutes.push(context, RoutePaths.memberCenter);
-                      }
-                    },
-                  ),
-                ),
-                // 「我的订单」：服务中实时计时 + 未来可核销的待核销订单
-                if (showOrders) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-                    child: Column(
-                      children: [
-                        for (final o in active)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _HomeServiceCard(
-                              appointment: o,
-                              onTap: () async {
-                                final ok =
-                                    await showClockOutConfirmDialog(context);
-                                if (ok == true && context.mounted) {
-                                  LiveRoutes.push(
-                                    context,
-                                    RoutePaths.appointmentServiceEnd,
-                                    extra: o,
-                                  );
-                                }
-                              },
-                            ),
-                          ),
-                        for (final o in upcoming)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _HomeOrderCard(
-                              appointment: o,
-                              onTap: () => LiveRoutes.push(
-                                context,
-                                RoutePaths.appointmentCheckinQr,
-                                extra: o,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-                // 「敬请期待」模块：标题在左上角（同拼豆模块），下方为占位框
-                _SectionHeader(title: l10n.homeComingSoon),
-                Padding(
-                  // 与拼豆模块卡片同宽
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
-                  child: Container(
-                    width: double.infinity,
-                    // 高度与拼豆模块（124）一致
-                    height: 124,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: LiveColors.card,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: LiveColors.divider),
-                    ),
-                    child: Text(
-                      l10n.homeComingSoonMore,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: LiveColors.textTertiary,
+      fullBleed: true,
+      statusBarLight: false,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const _AuroraBackground(),
+          SafeArea(
+            bottom: false,
+            child: FutureBuilder(
+              future: _future,
+              builder: (context, snap) {
+                final l10n = context.l10n;
+                if (snap.hasError) {
+                  return Column(
+                    children: [
+                      const _TopBar(),
+                      Expanded(
+                        child: ErrorView(
+                          message: snap.error is ApiException
+                              ? (snap.error as ApiException).message
+                              : l10n.commonLoadFailed,
+                          onRetry: _retry,
+                        ),
                       ),
-                    ),
+                    ],
+                  );
+                }
+                if (!snap.hasData) {
+                  return Column(
+                    children: [
+                      const _TopBar(),
+                      const Expanded(child: LoadingView()),
+                    ],
+                  );
+                }
+                final data = snap.data!;
+                final now = DateTime.now();
+                // 合并轮询数据与乐观更新的订单（乐观更新优先，即时展示）
+                final mergedOrders = <Appointment>[..._orders];
+                for (final p in _pendingOrders.values) {
+                  mergedOrders.removeWhere((o) => o.id == p.id);
+                  mergedOrders.add(p);
+                }
+                // 服务中订单（实时计时）
+                final active = mergedOrders
+                    .where(
+                      (a) =>
+                          a.status == 'checked_in' || a.status == 'in_service',
+                    )
+                    .toList();
+                // 未来订单：待确认/待核销且未过期，按时间升序
+                final upcoming =
+                    mergedOrders
+                        .where(
+                          (a) => a.status == 'pending' || a.status == 'booked',
+                        )
+                        .where((a) => !a.isExpired(now))
+                        .toList()
+                      ..sort(
+                        (x, y) => (x.endDateTime ?? DateTime.now()).compareTo(
+                          y.endDateTime ?? DateTime.now(),
+                        ),
+                      );
+                // 已失效订单（超过预约结束时间）不在首页展示，
+                // 仅保留在“我的预约”中；到点后由 _scheduleExpiryRefresh 触发消失。
+                final showOrders = active.isNotEmpty || upcoming.isNotEmpty;
+                return RefreshIndicator(
+                  onRefresh: () async => _retry(),
+                  color: const Color(0xFF5B21B6),
+                  backgroundColor: Colors.white,
+                  child: ListView(
+                    // 底部悬浮 Tab 覆盖在内容之上，预留滚动空间避免最后内容被遮挡
+                    padding: const EdgeInsets.only(bottom: 96),
+                    children: [
+                      const _TopBar(),
+                      // 「拼豆」板块：入口卡（预约 / 到店 / 会员套餐）
+                      _SectionHeader(
+                        title: l10n.homeStoreSection,
+                        badge: l10n.homeStoreSectionBadge,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: _EntryCardsRow(
+                          onTap: (key) {
+                            switch (key) {
+                              case 'appoint':
+                                LiveRoutes.push(context, RoutePaths.storeList);
+                              case 'checkin':
+                                LiveRoutes.push(
+                                  context,
+                                  RoutePaths.storeCheckin,
+                                );
+                              case 'member':
+                                LiveRoutes.push(
+                                  context,
+                                  RoutePaths.memberCenter,
+                                );
+                            }
+                          },
+                        ),
+                      ),
+                      // 「我的订单」：服务中实时计时 + 未来可核销的待核销订单
+                      if (showOrders) ...[
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                          child: Column(
+                            children: [
+                              for (final o in active)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: _HomeServiceCard(
+                                    appointment: o,
+                                    onTap: () async {
+                                      final ok =
+                                          await showClockOutConfirmDialog(
+                                            context,
+                                          );
+                                      if (ok == true && context.mounted) {
+                                        LiveRoutes.push(
+                                          context,
+                                          RoutePaths.appointmentServiceEnd,
+                                          extra: o,
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                              for (final o in upcoming)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: _HomeOrderCard(
+                                    appointment: o,
+                                    onTap: () => LiveRoutes.push(
+                                      context,
+                                      RoutePaths.appointmentCheckinQr,
+                                      extra: o,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      // 「敬请期待」模块：标题在左上角（同拼豆模块），下方为占位框
+                      _SectionHeader(title: l10n.homeComingSoon),
+                      Padding(
+                        // 与拼豆模块卡片同宽
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: Container(
+                          width: double.infinity,
+                          // 高度与拼豆模块（124）一致
+                          height: 124,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            gradient: LiveGradients.brandSoft,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFE4DEF9)),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.auto_awesome,
+                                size: 20,
+                                color: Color(0xFFB7AEF2),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                l10n.homeComingSoonMore,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF9B93C9),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // 「活动推荐」板块
+                      _SectionHeader(
+                        title: l10n.homeActivitySection,
+                        more: l10n.homeViewAll,
+                        onMore: () =>
+                            LiveRoutes.push(context, RoutePaths.activityList),
+                      ),
+                      if (data.activities.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          child: _ActivityGrid(activities: data.activities),
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          child: EmptyView(text: l10n.homeNoActivities),
+                        ),
+                      const SizedBox(height: 12),
+                    ],
                   ),
-                ),
-                // 「活动推荐」板块
-                _SectionHeader(
-                  title: l10n.homeActivitySection,
-                  more: l10n.homeViewAll,
-                  onMore: () => LiveRoutes.push(context, RoutePaths.activityList),
-                ),
-                if (data.activities.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: _ActivityGrid(activities: data.activities),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: EmptyView(text: l10n.homeNoActivities),
-                  ),
-                const SizedBox(height: 12),
-              ],
+                );
+              },
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
 }
 
-/// 顶部：Think Origin + 通知铃铛（角标）
-class _TopBar extends StatelessWidget {
+/// 页面级极光背景：深蓝 / 深紫光晕在顶部渐隐，营造 ins 风氛围。
+class _AuroraBackground extends StatelessWidget {
+  const _AuroraBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Stack(
+      children: [
+        // 蓝紫渐变底纱：从顶部向下渐隐，奠定清晰可见的 ins 蓝紫基调
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFDCD9F7), Color(0x00DCD9F7)],
+                stops: [0.0, 0.55],
+              ),
+            ),
+          ),
+        ),
+        // 深蓝极光（左上）
+        Positioned(
+          top: -110,
+          left: -70,
+          child: _GlowCircle(
+            diameter: 360,
+            color: Color(0xFF2E3AB8),
+            opacity: 0.5,
+          ),
+        ),
+        // 深紫极光（右上）
+        Positioned(
+          top: -80,
+          right: -90,
+          child: _GlowCircle(
+            diameter: 360,
+            color: Color(0xFF5B21B6),
+            opacity: 0.45,
+          ),
+        ),
+        // 靛蓝过渡（中上部，衔接两团光晕）
+        Positioned(
+          top: 90,
+          left: 60,
+          child: _GlowCircle(
+            diameter: 240,
+            color: Color(0xFF4F46E5),
+            opacity: 0.28,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 极光光晕：径向渐隐的柔光圆。
+class _GlowCircle extends StatelessWidget {
+  const _GlowCircle({
+    required this.diameter,
+    required this.color,
+    required this.opacity,
+  });
+
+  final double diameter;
+  final Color color;
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: diameter,
+      height: diameter,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [
+            color.withValues(alpha: opacity),
+            color.withValues(alpha: 0),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 顶部：Think Origin 渐变流光 Logo 字 + 通知铃铛（角标）。
+class _TopBar extends StatefulWidget {
   const _TopBar();
+
+  @override
+  State<_TopBar> createState() => _TopBarState();
+}
+
+class _TopBarState extends State<_TopBar> with SingleTickerProviderStateMixin {
+  /// Logo 字流光时钟：4.2s 循环，前 45% 扫过一次，其余时间静止。
+  late final AnimationController _shine;
+  late final CurvedAnimation _shineCurve;
+
+  /// Logo 字样式（ShaderMask 下颜色仅作遮罩，用白色）。
+  static const _titleStyle = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.w800,
+    letterSpacing: -0.3,
+    color: Colors.white,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _shine = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4200),
+    )..repeat();
+    _shineCurve = CurvedAnimation(
+      parent: _shine,
+      curve: const Interval(0, 0.45, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _shineCurve.dispose();
+    _shine.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -312,13 +480,35 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 10, 10, 2),
       child: Row(
         children: [
-          const Text(
-            'Think Origin',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: LiveColors.textPrimary,
-            ),
+          // 渐变 Logo 字：深蓝 → 深紫底 + 周期性高光扫过
+          Stack(
+            children: [
+              ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [Color(0xFF2E3AB8), Color(0xFF5B21B6)],
+                ).createShader(bounds),
+                child: const Text('Think Origin', style: _titleStyle),
+              ),
+              AnimatedBuilder(
+                animation: _shineCurve,
+                builder: (context, _) {
+                  return ShaderMask(
+                    shaderCallback: (bounds) => LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        Colors.transparent,
+                        Colors.white.withValues(alpha: 0.75),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.42, 0.5, 0.58],
+                      transform: _TitleShineTransform(_shineCurve.value),
+                    ).createShader(bounds),
+                    child: const Text('Think Origin', style: _titleStyle),
+                  );
+                },
+              ),
+            ],
           ),
           const Spacer(),
           // ── 社区搜索前期暂不开放，入口先隐藏 ──
@@ -327,14 +517,22 @@ class _TopBar extends StatelessWidget {
           //   onPressed: () => LiveRoutes.push(context, RoutePaths.search),
           // ),
           IconButton(
-            icon: const Icon(Icons.receipt_long_outlined, color: LiveColors.textPrimary, size: 24),
+            icon: const Icon(
+              Icons.receipt_long_outlined,
+              color: LiveColors.textPrimary,
+              size: 24,
+            ),
             onPressed: () => LiveRoutes.push(context, RoutePaths.appointmentMy),
           ),
           IconButton(
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.notifications_none, color: LiveColors.textPrimary, size: 24),
+                const Icon(
+                  Icons.notifications_none,
+                  color: LiveColors.textPrimary,
+                  size: 24,
+                ),
                 ValueListenableBuilder<int>(
                   valueListenable: NotificationService.instance.unread,
                   builder: (context, unread, _) {
@@ -344,14 +542,20 @@ class _TopBar extends StatelessWidget {
                       top: -2,
                       child: Container(
                         padding: const EdgeInsets.all(3),
-                        constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
+                        constraints: const BoxConstraints(
+                          minWidth: 15,
+                          minHeight: 15,
+                        ),
                         decoration: const BoxDecoration(
                           color: LiveColors.danger,
                           shape: BoxShape.circle,
                         ),
                         child: Text(
                           unread > 99 ? '99+' : '$unread',
-                          style: const TextStyle(color: Colors.white, fontSize: 8),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -368,7 +572,20 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/// 区块标题：标题 + 可选徽标 + 可选「查看全部 ›」/ 右侧灰字
+/// Logo 字流光：光带随动画从文字左侧外滑到右侧外。
+class _TitleShineTransform extends GradientTransform {
+  const _TitleShineTransform(this.percent);
+
+  /// 0 → 1，光带中心从文字左缘外移到右缘外。
+  final double percent;
+
+  @override
+  Matrix4? transform(Rect bounds, {TextDirection? textDirection}) {
+    return Matrix4.translationValues(bounds.width * 2 * (percent - 0.5), 0, 0);
+  }
+}
+
+/// 区块标题：标题 + 可选徽标 + 可选「查看全部 ›」/ 右侧灰字。
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({
     required this.title,
@@ -403,7 +620,7 @@ class _SectionHeader extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
               decoration: BoxDecoration(
-                color: LiveColors.textPrimary,
+                gradient: LiveGradients.brand,
                 borderRadius: BorderRadius.circular(11),
               ),
               child: Text(
@@ -422,13 +639,19 @@ class _SectionHeader extends StatelessWidget {
               onTap: onMore,
               child: Text(
                 more!,
-                style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: LiveColors.textSecondary,
+                ),
               ),
             )
           else if (trailing != null)
             Text(
               trailing!,
-              style: const TextStyle(fontSize: 11.6, color: LiveColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 11.6,
+                color: LiveColors.textSecondary,
+              ),
             ),
         ],
       ),
@@ -436,8 +659,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// 三入口卡（预约 / 到店 / 会员套餐），Flutter 原生卡片，对齐设计稿
-/// （白卡 + 深色图标盒 + 标题/描述），替换原黑色资源图。
+/// 三入口卡（预约 / 到店 / 会员套餐）：白卡 + 渐变图标盒，浮于极光背景之上。
 class _EntryCardsRow extends StatelessWidget {
   const _EntryCardsRow({required this.onTap});
 
@@ -482,16 +704,11 @@ class _EntryCardsRow extends StatelessWidget {
   }
 }
 
-/// 单张入口卡：深色图标盒 + 标题 + 描述。
+/// 单张入口卡：白卡 + 深蓝紫渐变图标盒 + 标题/描述，带柔和投影。
 class _EntryCard extends StatelessWidget {
   const _EntryCard({required this.entry, required this.onTap});
 
-  final ({
-    String key,
-    IconData icon,
-    String title,
-    String desc,
-  }) entry;
+  final ({String key, IconData icon, String title, String desc}) entry;
   final VoidCallback onTap;
 
   @override
@@ -505,7 +722,13 @@ class _EntryCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: LiveColors.divider),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF3C3674).withValues(alpha: 0.08),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -514,9 +737,7 @@ class _EntryCard extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF333333), Color(0xFF141414)],
-                ),
+                gradient: LiveGradients.brand,
                 borderRadius: BorderRadius.circular(11),
               ),
               child: Icon(entry.icon, size: 19, color: Colors.white),
@@ -613,8 +834,8 @@ class _HomeOrderCard extends StatelessWidget {
                     color: expired
                         ? const Color(0xFFECECEF)
                         : pending
-                            ? const Color(0xFFF3E8FF)
-                            : const Color(0xFFFFEBEE),
+                        ? const Color(0xFFF3E8FF)
+                        : const Color(0xFFFFEBEE),
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: Center(
@@ -622,16 +843,16 @@ class _HomeOrderCard extends StatelessWidget {
                       expired
                           ? l10n.homeOrderExpired
                           : pending
-                              ? l10n.homeWaitingConfirm
-                              : l10n.appointmentStatusBooked,
+                          ? l10n.homeWaitingConfirm
+                          : l10n.appointmentStatusBooked,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: expired
                             ? LiveColors.textSecondary
                             : pending
-                                ? const Color(0xFF7C3AED)
-                                : const Color(0xFFE53935),
+                            ? const Color(0xFF7C3AED)
+                            : const Color(0xFFE53935),
                       ),
                     ),
                   ),
@@ -711,7 +932,7 @@ class _HomeOrderCard extends StatelessWidget {
                       vertical: 7,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF141414),
+                      gradient: LiveGradients.brand,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
@@ -733,6 +954,7 @@ class _HomeOrderCard extends StatelessWidget {
 }
 
 /// 首页“服务中”卡：门店 + 服务中标签 + 实时计时卡（下钟进入体验页）。
+/// 外层包一圈 ins 蓝紫渐变描边，突出「进行中」状态。
 class _HomeServiceCard extends StatelessWidget {
   const _HomeServiceCard({required this.appointment, required this.onTap});
 
@@ -744,65 +966,67 @@ class _HomeServiceCard extends StatelessWidget {
     final l10n = context.l10n;
     final a = appointment;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(1.2),
       decoration: BoxDecoration(
-        color: Colors.white,
+        gradient: LiveGradients.brand,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: LiveColors.divider),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  a.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: LiveColors.textPrimary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                height: 22,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Center(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14.8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
                   child: Text(
-                    l10n.appointmentStatusInService,
+                    a.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF2E7D32),
+                      color: LiveColors.textPrimary,
                     ),
                   ),
                 ),
+                const SizedBox(width: 8),
+                Container(
+                  height: 22,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Center(
+                    child: Text(
+                      l10n.appointmentStatusInService,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF2E7D32),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              l10n.homeStartedAt(a.date, a.startTime, _durationLabel(a, l10n)),
+              style: const TextStyle(
+                fontSize: 13,
+                color: LiveColors.textSecondary,
               ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            l10n.homeStartedAt(
-              a.date,
-              a.startTime,
-              _durationLabel(a, l10n),
             ),
-            style: const TextStyle(
-              fontSize: 13,
-              color: LiveColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 10),
-          TimerCard(appointment: a, onAction: onTap),
-        ],
+            const SizedBox(height: 10),
+            TimerCard(appointment: a, onAction: onTap),
+          ],
+        ),
       ),
     );
   }
@@ -882,7 +1106,7 @@ class _ActivityCard extends StatelessWidget {
         height: 135,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: LiveColors.brandLight,
+          gradient: LiveGradients.brandSoft,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
@@ -895,13 +1119,18 @@ class _ActivityCard extends StatelessWidget {
                 const Spacer(),
                 Text(
                   activity.date,
-                  style: const TextStyle(fontSize: 10.6, color: LiveColors.textSecondary),
+                  style: const TextStyle(
+                    fontSize: 10.6,
+                    color: LiveColors.textSecondary,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             Text(
-              activity.title.startsWith('#') ? activity.title : '# ${activity.title}',
+              activity.title.startsWith('#')
+                  ? activity.title
+                  : '# ${activity.title}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
@@ -919,7 +1148,7 @@ class _ActivityCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: LiveColors.textPrimary,
+                color: Color(0xFF5B21B6),
               ),
             ),
           ],

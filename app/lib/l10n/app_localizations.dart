@@ -230,12 +230,6 @@ abstract class AppLocalizations {
   /// **'发现手作 · 遇见同好'**
   String get loginSlogan;
 
-  /// No description provided for @loginForgotQuestion.
-  ///
-  /// In zh, this message translates to:
-  /// **'忘记密码？'**
-  String get loginForgotQuestion;
-
   /// No description provided for @loginAgreeTerms.
   ///
   /// In zh, this message translates to:
@@ -247,12 +241,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'登录'**
   String get loginButton;
-
-  /// No description provided for @loginForgot.
-  ///
-  /// In zh, this message translates to:
-  /// **'忘记密码'**
-  String get loginForgot;
 
   /// No description provided for @loginRegisterLink.
   ///
@@ -293,7 +281,7 @@ abstract class AppLocalizations {
   /// No description provided for @registerDesc.
   ///
   /// In zh, this message translates to:
-  /// **'用用户名和密码注册，绑定邮箱用于找回密码'**
+  /// **'用用户名和密码注册'**
   String get registerDesc;
 
   /// No description provided for @registerEmailHint.
@@ -301,24 +289,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'绑定邮箱'**
   String get registerEmailHint;
-
-  /// No description provided for @registerCodeHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'邮箱验证码'**
-  String get registerCodeHint;
-
-  /// No description provided for @registerSendCode.
-  ///
-  /// In zh, this message translates to:
-  /// **'获取验证码'**
-  String get registerSendCode;
-
-  /// No description provided for @registerResendIn.
-  ///
-  /// In zh, this message translates to:
-  /// **'{count}s 后重发'**
-  String registerResendIn(int count);
 
   /// No description provided for @registerPasswordHint.
   ///
@@ -347,7 +317,7 @@ abstract class AppLocalizations {
   /// No description provided for @registerEmailHintFull.
   ///
   /// In zh, this message translates to:
-  /// **'邮箱（用于绑定和找回密码）'**
+  /// **'邮箱'**
   String get registerEmailHintFull;
 
   /// No description provided for @registerSuccess.
@@ -361,12 +331,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'请输入正确的邮箱'**
   String get needValidEmail;
-
-  /// No description provided for @needCode6.
-  ///
-  /// In zh, this message translates to:
-  /// **'请输入 6 位验证码'**
-  String get needCode6;
 
   /// No description provided for @usernameInvalid.
   ///
@@ -385,54 +349,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'两次输入的密码不一致'**
   String get passwordMismatch;
-
-  /// No description provided for @sendCodeSent.
-  ///
-  /// In zh, this message translates to:
-  /// **'验证码已发送'**
-  String get sendCodeSent;
-
-  /// No description provided for @sendCodeSentDev.
-  ///
-  /// In zh, this message translates to:
-  /// **'验证码已发送（开发环境：{code}）'**
-  String sendCodeSentDev(String code);
-
-  /// No description provided for @resetPasswordSuccess.
-  ///
-  /// In zh, this message translates to:
-  /// **'密码重置成功，请重新登录'**
-  String get resetPasswordSuccess;
-
-  /// No description provided for @forgotTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'忘记密码'**
-  String get forgotTitle;
-
-  /// No description provided for @forgotDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'通过绑定邮箱验证后设置新密码'**
-  String get forgotDesc;
-
-  /// No description provided for @forgotResetButton.
-  ///
-  /// In zh, this message translates to:
-  /// **'重置密码'**
-  String get forgotResetButton;
-
-  /// No description provided for @forgotBackToLogin.
-  ///
-  /// In zh, this message translates to:
-  /// **'返回登录'**
-  String get forgotBackToLogin;
-
-  /// No description provided for @forgotNewPassword.
-  ///
-  /// In zh, this message translates to:
-  /// **'设置新密码（6-32 位）'**
-  String get forgotNewPassword;
 
   /// No description provided for @changePasswordTitle.
   ///
@@ -2119,6 +2035,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'桌位'**
   String get appointmentTable;
+
+  /// No description provided for @appointmentSeat.
+  ///
+  /// In zh, this message translates to:
+  /// **'座位'**
+  String get appointmentSeat;
 
   /// No description provided for @appointmentPayMethod.
   ///

@@ -267,7 +267,8 @@ class AppointmentConfirmScreen extends StatefulWidget {
   final String note;
 
   @override
-  State<AppointmentConfirmScreen> createState() => _AppointmentConfirmScreenState();
+  State<AppointmentConfirmScreen> createState() =>
+      _AppointmentConfirmScreenState();
 }
 
 class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
@@ -282,11 +283,14 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
   void initState() {
     super.initState();
     // 获取预订人会员状态，用于计价预览（会员价 / 多人同行价）
-    MemberService.instance.myMembership().then((m) {
-      if (mounted && m.isActive) setState(() => _isMember = true);
-    }).catchError((_) {
-      // 会员状态获取失败时按非会员预览，最终金额以服务端结算为准
-    });
+    MemberService.instance
+        .myMembership()
+        .then((m) {
+          if (mounted && m.isActive) setState(() => _isMember = true);
+        })
+        .catchError((_) {
+          // 会员状态获取失败时按非会员预览，最终金额以服务端结算为准
+        });
   }
 
   // @override
@@ -364,22 +368,22 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
     return isSurchargeDate(widget.date);
   }
 
-  double get _surchargeRate =>
-      _weekendSurcharge
-          ? (100 + (widget.store?.weekendSurchargePercent ?? 0)) / 100
-          : 1;
+  double get _surchargeRate => _weekendSurcharge
+      ? (100 + (widget.store?.weekendSurchargePercent ?? 0)) / 100
+      : 1;
 
   /// 原价（门市价 × 人数，不含周末加价）
   double get _originalBase => _normalPrice * widget.peopleCount;
+
   /// 会员/同行优惠（门市小计 − 实际小计）
   double get _discountBase => _originalBase - _subtotalBase;
+
   /// 周末加价金额（实际小计 × 加价比例）
   double get _surchargeAmount => _subtotalBase * (_surchargeRate - 1);
   // ── 线上支付（暂不接入）：优惠券抵扣固定为 0 ──
   double get _discount => 0;
   double get _total =>
-      (_subtotalBase + _surchargeAmount - _discount)
-          .clamp(0, double.infinity);
+      (_subtotalBase + _surchargeAmount - _discount).clamp(0, double.infinity);
 
   String get _discountLabel {
     final l10n = context.l10n;
@@ -413,9 +417,9 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
     if (widget.type == 'activity') return l10n.activitySession;
     return switch (widget.bookingType) {
       'package' => l10n.bookingTypePackage(
-          widget.packageName.isEmpty ? l10n.commonPackage : widget.packageName,
-          widget.durationHours,
-        ),
+        widget.packageName.isEmpty ? l10n.commonPackage : widget.packageName,
+        widget.durationHours,
+      ),
       'all_day' => l10n.bookingTypeAllDay,
       _ => l10n.bookingTypeHours(widget.durationHours),
     };
@@ -475,18 +479,22 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
               children: [
                 _InfoRow(label: l10n.appointmentItem, value: _title),
                 _InfoRow(label: l10n.appointmentTime, value: _timeText),
-                if (widget.type == 'store')
-                  ...[
-                    _InfoRow(label: l10n.appointmentBookingType, value: _bookingLabel),
-                    _InfoRow(
-                      label: l10n.appointmentTable,
-                      value:
-                          '${widget.tableLabel.isEmpty ? '-' : widget.tableLabel}'
-                          '（${l10n.appointmentPeople(widget.peopleCount)}）',
-                    ),
-                    _InfoRow(label: l10n.appointmentPayMethod, value: l10n.appointmentPayOffline),
-                  ]
-                else
+                if (widget.type == 'store') ...[
+                  _InfoRow(
+                    label: l10n.appointmentBookingType,
+                    value: _bookingLabel,
+                  ),
+                  _InfoRow(
+                    label: l10n.appointmentTable,
+                    value:
+                        '${widget.tableLabel.isEmpty ? '-' : widget.tableLabel}'
+                        '（${l10n.appointmentPeople(widget.peopleCount)}）',
+                  ),
+                  _InfoRow(
+                    label: l10n.appointmentPayMethod,
+                    value: l10n.appointmentPayOffline,
+                  ),
+                ] else
                   _InfoRow(
                     label: l10n.appointmentPeopleCountLabel,
                     value: l10n.appointmentPeople(widget.peopleCount),
@@ -526,19 +534,30 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.storefront_outlined, size: 18, color: LiveColors.brand),
+                      const Icon(
+                        Icons.storefront_outlined,
+                        size: 18,
+                        color: LiveColors.brand,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           l10n.appointmentNoOnlinePay,
-                          style: const TextStyle(fontSize: 12.5, color: LiveColors.textSecondary, height: 1.5),
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: LiveColors.textSecondary,
+                            height: 1.5,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
                 const Divider(height: 32, color: LiveColors.divider),
-                _PriceRow(label: l10n.appointmentOriginalPrice, value: '\$${_originalBase.toStringAsFixed(2)}'),
+                _PriceRow(
+                  label: l10n.appointmentOriginalPrice,
+                  value: '\$${_originalBase.toStringAsFixed(2)}',
+                ),
                 if (_discountBase > 0)
                   _PriceRow(
                     label: _discountLabel,
@@ -593,13 +612,23 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 14, color: LiveColors.textSecondary)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              color: LiveColors.textSecondary,
+            ),
+          ),
           const SizedBox(width: 20),
           Expanded(
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: LiveColors.textPrimary),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: LiveColors.textPrimary,
+              ),
             ),
           ),
         ],
@@ -755,16 +784,29 @@ class AppointmentSuccessScreen extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 60),
-              const Icon(Icons.check_circle, size: 84, color: LiveColors.success),
+              const Icon(
+                Icons.check_circle,
+                size: 84,
+                color: LiveColors.success,
+              ),
               const SizedBox(height: 16),
               Text(
-                pending ? l10n.appointmentBookSubmitted : l10n.appointmentBookSuccess,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
+                pending
+                    ? l10n.appointmentBookSubmitted
+                    : l10n.appointmentBookSuccess,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: LiveColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 '${appointment.title} · ${appointment.date} ${appointment.startTime}',
-                style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: LiveColors.textSecondary,
+                ),
               ),
               const SizedBox(height: 28),
               Container(
@@ -778,7 +820,11 @@ class AppointmentSuccessScreen extends StatelessWidget {
                 child: pending
                     ? Column(
                         children: [
-                          const Icon(Icons.schedule, size: 32, color: Color(0xFF7C3AED)),
+                          const Icon(
+                            Icons.schedule,
+                            size: 32,
+                            color: Color(0xFF7C3AED),
+                          ),
                           const SizedBox(height: 8),
                           Text(
                             l10n.appointmentWaitingConfirm,
@@ -792,7 +838,10 @@ class AppointmentSuccessScreen extends StatelessWidget {
                           Text(
                             l10n.appointmentBookSubmittedDesc,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: LiveColors.textSecondary,
+                            ),
                           ),
                         ],
                       )
@@ -800,7 +849,10 @@ class AppointmentSuccessScreen extends StatelessWidget {
                         children: [
                           Text(
                             l10n.appointmentCheckInCode,
-                            style: const TextStyle(fontSize: 12, color: LiveColors.brand),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: LiveColors.brand,
+                            ),
                           ),
                           const SizedBox(height: 6),
                           SelectableText(
@@ -816,7 +868,10 @@ class AppointmentSuccessScreen extends StatelessWidget {
                           Text(
                             l10n.appointmentBookSuccessDesc,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: LiveColors.textSecondary,
+                            ),
                           ),
                         ],
                       ),
@@ -856,10 +911,13 @@ class MyAppointmentsScreen extends StatefulWidget {
 class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
   late Future<List<Appointment>> _future;
   String _tab = 'all';
+
   /// 已取消订单：取消后立即从列表消失（不等网络刷新）。
   final Set<int> _removedIds = {};
+
   /// 最近一次拉取的订单快照（供乐观失效刷新使用，避免依赖网络）。
   List<Appointment>? _lastList;
+
   /// 预约到点后本地立即把卡片置灰，无需网络刷新。
   Timer? _expiryTimer;
 
@@ -990,7 +1048,9 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
             return Column(
               children: [
                 LiveAppBar(title: l10n.appointmentMyTitle),
-                Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
+                Expanded(
+                  child: ErrorView(message: _msg(snap.error), onRetry: _retry),
+                ),
               ],
             );
           }
@@ -1022,7 +1082,8 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                         child: ListView.separated(
                           padding: const EdgeInsets.all(18),
                           itemCount: list.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 12),
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 12),
                           itemBuilder: (_, i) {
                             final a = list[i];
                             return _AppointmentCard(
@@ -1038,35 +1099,35 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                               ),
                               onAction: switch (a.status) {
                                 'pending' => () => LiveRoutes.pushId(
-                                      context,
-                                      RoutePaths.appointmentDetail,
-                                      a.id,
-                                    ),
-                                'booked' => a.isExpired()
-                                    ? () {}
-                                    : () => LiveRoutes.push(
+                                  context,
+                                  RoutePaths.appointmentDetail,
+                                  a.id,
+                                ),
+                                'booked' =>
+                                  a.isExpired()
+                                      ? () {}
+                                      : () => LiveRoutes.push(
                                           context,
                                           RoutePaths.appointmentCheckinQr,
                                           extra: a,
                                         ),
                                 'checked_in' => () => LiveRoutes.push(
-                                      context,
-                                      RoutePaths.appointmentCheckinQr,
-                                      extra: a,
-                                    ),
+                                  context,
+                                  RoutePaths.appointmentCheckinQr,
+                                  extra: a,
+                                ),
                                 'in_service' => () async {
-                                      final ok =
-                                          await showClockOutConfirmDialog(
-                                        context,
-                                      );
-                                      if (ok == true && context.mounted) {
-                                        LiveRoutes.push(
-                                          context,
-                                          RoutePaths.appointmentServiceEnd,
-                                          extra: a,
-                                        );
-                                      }
-                                    },
+                                  final ok = await showClockOutConfirmDialog(
+                                    context,
+                                  );
+                                  if (ok == true && context.mounted) {
+                                    LiveRoutes.push(
+                                      context,
+                                      RoutePaths.appointmentServiceEnd,
+                                      extra: a,
+                                    );
+                                  }
+                                },
                                 _ => () => _again(a),
                               },
                             );
@@ -1359,7 +1420,8 @@ class _AppointmentCard extends StatelessWidget {
     );
   }
 
-  String _actionLabel(Appointment a, AppLocalizations l10n) => switch (a.status) {
+  String _actionLabel(Appointment a, AppLocalizations l10n) =>
+      switch (a.status) {
         'checked_in' => l10n.appointmentViewQr,
         'completed' => l10n.appointmentBookAgain,
         'cancelled' => l10n.appointmentBookAgain,
@@ -1407,11 +1469,7 @@ String _durationLabel(Appointment a, AppLocalizations l10n) {
 
 /// 状态标签（对齐设计稿 tag：高 22、圆角 11、字号 11 加粗）。
 class _StatusTag extends StatelessWidget {
-  const _StatusTag({
-    required this.label,
-    required this.bg,
-    required this.fg,
-  });
+  const _StatusTag({required this.label, required this.bg, required this.fg});
 
   final String label;
   final Color bg;
@@ -1473,7 +1531,11 @@ class _ActionButton extends StatelessWidget {
 
 /// 服务中计时卡：每秒刷新已用时长，实时计时（首页 / 我的预约共用）。
 class TimerCard extends StatefulWidget {
-  const TimerCard({super.key, required this.appointment, required this.onAction});
+  const TimerCard({
+    super.key,
+    required this.appointment,
+    required this.onAction,
+  });
 
   final Appointment appointment;
   final VoidCallback onAction;
@@ -1572,9 +1634,7 @@ class _TimerCardState extends State<TimerCard> {
               value: _progress(),
               minHeight: 4,
               backgroundColor: const Color(0xFFF0F0F0),
-              valueColor: const AlwaysStoppedAnimation(
-                LiveColors.textPrimary,
-              ),
+              valueColor: const AlwaysStoppedAnimation(LiveColors.textPrimary),
             ),
           ),
           const SizedBox(height: 12),
@@ -1612,7 +1672,8 @@ class AppointmentDetailScreen extends StatefulWidget {
   final int appointmentId;
 
   @override
-  State<AppointmentDetailScreen> createState() => _AppointmentDetailScreenState();
+  State<AppointmentDetailScreen> createState() =>
+      _AppointmentDetailScreenState();
 }
 
 class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
@@ -1626,16 +1687,17 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   }
 
   void _reload() => setState(() {
-        _future = AppointmentService.instance.detail(widget.appointmentId);
-      });
+    _future = AppointmentService.instance.detail(widget.appointmentId);
+  });
 
   Future<void> _cancel() async {
     final ok = await showCancelAppointmentDialog(context);
     if (ok != true) return;
     setState(() => _acting = true);
     try {
-      final updated =
-          await AppointmentService.instance.cancel(widget.appointmentId);
+      final updated = await AppointmentService.instance.cancel(
+        widget.appointmentId,
+      );
       HomeOrdersRefresh.instance.refresh(updated);
       if (mounted) {
         showLiveSnack(context, context.l10n.appointmentCancelled);
@@ -1659,7 +1721,9 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
             return Column(
               children: [
                 LiveAppBar(title: l10n.appointmentDetailTitle),
-                Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _reload)),
+                Expanded(
+                  child: ErrorView(message: _msg(snap.error), onRetry: _reload),
+                ),
               ],
             );
           }
@@ -1689,7 +1753,11 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                         ),
                         child: Column(
                           children: [
-                            const Icon(Icons.schedule, size: 36, color: Color(0xFF7C3AED)),
+                            const Icon(
+                              Icons.schedule,
+                              size: 36,
+                              color: Color(0xFF7C3AED),
+                            ),
                             const SizedBox(height: 8),
                             Text(
                               l10n.appointmentWaitingConfirm,
@@ -1721,7 +1789,10 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                           children: [
                             Text(
                               l10n.appointmentCheckInCode,
-                              style: const TextStyle(fontSize: 12, color: LiveColors.brand),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: LiveColors.brand,
+                              ),
                             ),
                             const SizedBox(height: 4),
                             SelectableText(
@@ -1738,27 +1809,36 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                               expired
                                   ? l10n.appointmentOrderExpired
                                   : _appointmentStatusLabel(l10n, a.status),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: expired
-                                      ? LiveColors.textSecondary
-                                      : LiveColors.brand,
-                                )),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: expired
+                                    ? LiveColors.textSecondary
+                                    : LiveColors.brand,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     const SizedBox(height: 18),
                     Text(
                       l10n.appointmentProgress,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: LiveColors.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     _ProgressStepper(status: a.status),
                     const SizedBox(height: 22),
                     Text(
                       l10n.appointmentInfo,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: LiveColors.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     _DetailRow(l10n.appointmentItem, a.title),
@@ -1772,13 +1852,22 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                     ),
                     if (a.tableLabel.isNotEmpty)
                       _DetailRow(l10n.appointmentTable, a.tableLabel),
+                    if (a.seatLabel.isNotEmpty)
+                      _DetailRow(l10n.appointmentSeat, a.seatLabel),
                     // ── 线上支付（暂不接入）：支付方式 / 支付状态 / 优惠券，先注释 ──
                     // _DetailRow('支付方式', a.payMethod == 'wechat' ? '微信支付' : a.payMethod == 'alipay' ? '支付宝' : a.payMethod),
                     // _DetailRow('支付状态', a.payStatus == 'paid' ? '已支付' : '未支付'),
-                    _DetailRow(l10n.appointmentPayMethod, l10n.appointmentPayOffline),
-                    _DetailRow(l10n.appointmentAmount, '\$${a.amount.toStringAsFixed(2)}'),
+                    _DetailRow(
+                      l10n.appointmentPayMethod,
+                      l10n.appointmentPayOffline,
+                    ),
+                    _DetailRow(
+                      l10n.appointmentAmount,
+                      '\$${a.amount.toStringAsFixed(2)}',
+                    ),
                     // if (a.couponDiscount > 0) _DetailRow('优惠券', '${a.couponTitle} -\$${a.couponDiscount.toStringAsFixed(2)}'),
-                    if (a.note.isNotEmpty) _DetailRow(l10n.appointmentNote, a.note),
+                    if (a.note.isNotEmpty)
+                      _DetailRow(l10n.appointmentNote, a.note),
                     if (a.status == 'booked' ||
                         a.status == 'checked_in' ||
                         a.status == 'in_service') ...[
@@ -1791,7 +1880,10 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                               height: 42,
                               onTap: () {
                                 Clipboard.setData(ClipboardData(text: a.code));
-                                showLiveSnack(context, l10n.appointmentCodeCopied);
+                                showLiveSnack(
+                                  context,
+                                  l10n.appointmentCodeCopied,
+                                );
                               },
                             ),
                           ),
@@ -1803,10 +1895,10 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                               onTap: expired
                                   ? null
                                   : () => LiveRoutes.push(
-                                        context,
-                                        RoutePaths.appointmentCheckinQr,
-                                        extra: a,
-                                      ),
+                                      context,
+                                      RoutePaths.appointmentCheckinQr,
+                                      extra: a,
+                                    ),
                             ),
                           ),
                         ],
@@ -1840,13 +1932,13 @@ class _ProgressStepper extends StatelessWidget {
   final String status;
 
   int get _current => switch (status) {
-        'pending' => 0,
-        'booked' => 1,
-        'checked_in' => 2,
-        'in_service' => 2,
-        'completed' => 3,
-        _ => 0,
-      };
+    'pending' => 0,
+    'booked' => 1,
+    'checked_in' => 2,
+    'in_service' => 2,
+    'completed' => 3,
+    _ => 0,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -1876,9 +1968,7 @@ class _ProgressStepper extends StatelessWidget {
                 width: 20,
                 height: 20,
                 decoration: BoxDecoration(
-                  color: i <= _current
-                      ? LiveColors.textPrimary
-                      : LiveColors.bg,
+                  color: i <= _current ? LiveColors.textPrimary : LiveColors.bg,
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: i <= _current
@@ -1931,13 +2021,23 @@ class _DetailRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              color: LiveColors.textSecondary,
+            ),
+          ),
           const SizedBox(width: 24),
           Expanded(
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: LiveColors.textPrimary),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: LiveColors.textPrimary,
+              ),
             ),
           ),
         ],
@@ -1962,23 +2062,36 @@ class _QrCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-                          Text(
-                            context.l10n.appointmentShowQr,
-                            style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
-                          ),
+          Text(
+            context.l10n.appointmentShowQr,
+            style: const TextStyle(
+              fontSize: 13,
+              color: LiveColors.textSecondary,
+            ),
+          ),
           const SizedBox(height: 12),
           QrImageView(
             data: appointment.code,
             version: QrVersions.auto,
             size: 180,
             backgroundColor: LiveColors.bg,
-            eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: LiveColors.textPrimary),
-            dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: LiveColors.textPrimary),
+            eyeStyle: const QrEyeStyle(
+              eyeShape: QrEyeShape.square,
+              color: LiveColors.textPrimary,
+            ),
+            dataModuleStyle: const QrDataModuleStyle(
+              dataModuleShape: QrDataModuleShape.square,
+              color: LiveColors.textPrimary,
+            ),
           ),
           const SizedBox(height: 10),
           Text(
             context.l10n.appointmentQrCode(appointment.code),
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: LiveColors.textPrimary),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: LiveColors.textPrimary,
+            ),
           ),
         ],
       ),
@@ -2082,17 +2195,16 @@ class CheckinQrScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 26),
                 Center(
-                  child: Avatar(
-                    url: '',
-                    name: appointment.title,
-                    size: 58,
-                  ),
+                  child: Avatar(url: '', name: appointment.title, size: 58),
                 ),
                 const SizedBox(height: 22),
                 Center(
                   child: Text(
                     context.l10n.appointmentCodeLabel,
-                    style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: LiveColors.textSecondary,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -2107,6 +2219,22 @@ class CheckinQrScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (appointment.tableLabel.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Text(
+                      appointment.seatLabel.isNotEmpty
+                          ? '${context.l10n.appointmentTable} ${appointment.tableLabel} · ${context.l10n.appointmentSeat} ${appointment.seatLabel}'
+                          : '${context.l10n.appointmentTable} ${appointment.tableLabel}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: LiveColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 22),
                 Center(
                   child: Container(
@@ -2136,14 +2264,20 @@ class CheckinQrScreen extends StatelessWidget {
                 Center(
                   child: Text(
                     context.l10n.appointmentQrRefresh,
-                    style: const TextStyle(fontSize: 11.6, color: LiveColors.textTertiary),
+                    style: const TextStyle(
+                      fontSize: 11.6,
+                      color: LiveColors.textTertiary,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Center(
                   child: Text(
                     context.l10n.appointmentValidUntilAt(appointment.endTime),
-                    style: const TextStyle(fontSize: 11.6, color: LiveColors.textTertiary),
+                    style: const TextStyle(
+                      fontSize: 11.6,
+                      color: LiveColors.textTertiary,
+                    ),
                   ),
                 ),
               ],
@@ -2178,8 +2312,9 @@ class _ServiceEndScreenState extends State<ServiceEndScreen> {
 
   Future<void> _clockOut() async {
     try {
-      final updated =
-          await AppointmentService.instance.clockOut(widget.appointment.id);
+      final updated = await AppointmentService.instance.clockOut(
+        widget.appointment.id,
+      );
       // 通知首页自动刷新：服务中订单移除、计时停止
       HomeOrdersRefresh.instance.refresh(updated);
       if (mounted) setState(() => _result = updated);
@@ -2237,11 +2372,7 @@ class _ServiceEndScreenState extends State<ServiceEndScreen> {
                     color: Color(0xFF141414),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.check,
-                    size: 44,
-                    color: Colors.white,
-                  ),
+                  child: const Icon(Icons.check, size: 44, color: Colors.white),
                 ),
                 const SizedBox(height: 20),
                 Text(
@@ -2340,9 +2471,7 @@ class _ServiceEndScreenState extends State<ServiceEndScreen> {
                               child: Padding(
                                 padding: const EdgeInsets.only(right: 10),
                                 child: Icon(
-                                  i <= _stars
-                                      ? Icons.star
-                                      : Icons.star_border,
+                                  i <= _stars ? Icons.star : Icons.star_border,
                                   size: 30,
                                   color: i <= _stars
                                       ? const Color(0xFFFFB300)
@@ -2363,8 +2492,7 @@ class _ServiceEndScreenState extends State<ServiceEndScreen> {
                     borderRadius: BorderRadius.circular(16),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
-                      onTap: () =>
-                          showLiveSnack(context, '评价已提交，感谢您的反馈'),
+                      onTap: () => showLiveSnack(context, '评价已提交，感谢您的反馈'),
                       child: const Center(
                         child: Text(
                           '提交评价',
@@ -2468,7 +2596,8 @@ class _CheckinFlowScreenState extends State<CheckinFlowScreen> {
     _future = AppointmentService.instance.myList();
   }
 
-  void _retry() => setState(() => _future = AppointmentService.instance.myList());
+  void _retry() =>
+      setState(() => _future = AppointmentService.instance.myList());
 
   @override
   Widget build(BuildContext context) {
@@ -2480,7 +2609,9 @@ class _CheckinFlowScreenState extends State<CheckinFlowScreen> {
             return Column(
               children: [
                 LiveAppBar(title: context.l10n.appointmentToCheckIn),
-                Expanded(child: ErrorView(message: _msg(snap.error), onRetry: _retry)),
+                Expanded(
+                  child: ErrorView(message: _msg(snap.error), onRetry: _retry),
+                ),
               ],
             );
           }
@@ -2494,10 +2625,12 @@ class _CheckinFlowScreenState extends State<CheckinFlowScreen> {
           }
           final list = snap.data!;
           final active = list
-              .where((a) =>
-                  (a.status == 'booked' && !a.isExpired()) ||
-                  a.status == 'checked_in' ||
-                  a.status == 'in_service')
+              .where(
+                (a) =>
+                    (a.status == 'booked' && !a.isExpired()) ||
+                    a.status == 'checked_in' ||
+                    a.status == 'in_service',
+              )
               .toList();
           return Column(
             children: [
@@ -2551,10 +2684,7 @@ class _CheckinFlowScreenState extends State<CheckinFlowScreen> {
 
 /// 到店体验卡（门店 + 预约码 + 扫码核销）。
 class _ExperienceCard extends StatelessWidget {
-  const _ExperienceCard({
-    required this.appointment,
-    required this.onScan,
-  });
+  const _ExperienceCard({required this.appointment, required this.onScan});
 
   final Appointment appointment;
   final VoidCallback onScan;
@@ -2562,9 +2692,7 @@ class _ExperienceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final date = DateTime.tryParse(appointment.date);
-    final week = date == null
-        ? ''
-        : '周${'一二三四五六日'[date.weekday - 1]}';
+    final week = date == null ? '' : '周${'一二三四五六日'[date.weekday - 1]}';
     final table = appointment.tableLabel.isNotEmpty
         ? ' · ${appointment.tableLabel}'
         : '';
@@ -2596,7 +2724,10 @@ class _ExperienceCard extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 _appointmentStatusLabel(context.l10n, appointment.status),
-                style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: LiveColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -2617,7 +2748,10 @@ class _ExperienceCard extends StatelessWidget {
             child: Text(
               info,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12, color: LiveColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 12,
+                color: LiveColors.textSecondary,
+              ),
             ),
           ),
           const SizedBox(height: 18),
@@ -2666,7 +2800,9 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
       _found = null;
     });
     try {
-      final a = await AppointmentService.instance.findByCode(_codeCtrl.text.trim());
+      final a = await AppointmentService.instance.findByCode(
+        _codeCtrl.text.trim(),
+      );
       if (mounted) setState(() => _found = a);
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -2678,7 +2814,9 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
   Future<void> _checkIn() async {
     setState(() => _checking = true);
     try {
-      final a = await AppointmentService.instance.checkIn(_codeCtrl.text.trim());
+      final a = await AppointmentService.instance.checkIn(
+        _codeCtrl.text.trim(),
+      );
       if (!mounted) return;
       // 通知首页自动刷新：待核销 → 服务中（实时计时）立即更新
       HomeOrdersRefresh.instance.refresh(a);
@@ -2714,17 +2852,25 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                 children: [
                   const Text(
                     '输入预约码',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: LiveColors.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   const Text(
                     '输入店员提供的 6 位预约码进行核销',
-                    style: TextStyle(fontSize: 12.6, color: LiveColors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 12.6,
+                      color: LiveColors.textSecondary,
+                    ),
                   ),
                   const SizedBox(height: 30),
                   // 6 位分格输入
                   GestureDetector(
-                    onTap: () => FocusScope.of(context).requestFocus(_codeFocus),
+                    onTap: () =>
+                        FocusScope.of(context).requestFocus(_codeFocus),
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
@@ -2740,7 +2886,9 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                                 color: filled ? LiveColors.bg : LiveColors.card,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: filled ? LiveColors.textPrimary : LiveColors.cardBorder,
+                                  color: filled
+                                      ? LiveColors.textPrimary
+                                      : LiveColors.cardBorder,
                                 ),
                               ),
                               child: Text(
@@ -2760,14 +2908,19 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                           keyboardType: TextInputType.number,
                           maxLength: 6,
                           showCursor: false,
-                          style: const TextStyle(color: Colors.transparent, fontSize: 20),
+                          style: const TextStyle(
+                            color: Colors.transparent,
+                            fontSize: 20,
+                          ),
                           decoration: const InputDecoration(
                             counterText: '',
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
                           ),
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
                           onChanged: (_) => setState(() {}),
                           onSubmitted: (_) => _query(),
                         ),
@@ -2782,9 +2935,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                   ),
                   const SizedBox(height: 20),
                   if (_found != null) ...[
-                    _FoundCard(
-                      appointment: _found!,
-                    ),
+                    _FoundCard(appointment: _found!),
                     if (_found!.status == 'booked') ...[
                       const SizedBox(height: 12),
                       PrimaryButton(
@@ -2799,9 +2950,15 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                         padding: const EdgeInsets.only(top: 12),
                         child: Text(
                           context.l10n.appointmentStatusCurrentLabel(
-                            _appointmentStatusLabel(context.l10n, _found!.status),
+                            _appointmentStatusLabel(
+                              context.l10n,
+                              _found!.status,
+                            ),
                           ),
-                          style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: LiveColors.textSecondary,
+                          ),
                         ),
                       ),
                   ],
@@ -2811,7 +2968,10 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                     children: [
                       const Text(
                         '也可以',
-                        style: TextStyle(fontSize: 12.6, color: LiveColors.textTertiary),
+                        style: TextStyle(
+                          fontSize: 12.6,
+                          color: LiveColors.textTertiary,
+                        ),
                       ),
                       const SizedBox(width: 6),
                       InkWell(
@@ -2856,17 +3016,28 @@ class _FoundCard extends StatelessWidget {
         children: [
           Text(
             appointment.title,
-            style: const TextStyle(fontSize: 14.6, fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
+            style: const TextStyle(
+              fontSize: 14.6,
+              fontWeight: FontWeight.w700,
+              color: LiveColors.textPrimary,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             '${appointment.date} ${appointment.startTime}-${appointment.endTime} · ${appointment.peopleCount} 人',
-            style: const TextStyle(fontSize: 11.6, color: LiveColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 11.6,
+              color: LiveColors.textSecondary,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             '${context.l10n.homeCode(appointment.code)} · ${_appointmentStatusLabel(context.l10n, appointment.status)}',
-            style: const TextStyle(fontSize: 12.6, fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
+            style: const TextStyle(
+              fontSize: 12.6,
+              fontWeight: FontWeight.w700,
+              color: LiveColors.textPrimary,
+            ),
           ),
         ],
       ),
@@ -2874,5 +3045,4 @@ class _FoundCard extends StatelessWidget {
   }
 }
 
-String _msg(Object? e) =>
-    e is ApiException ? e.message : '加载失败，请确认后端服务已启动';
+String _msg(Object? e) => e is ApiException ? e.message : '加载失败，请确认后端服务已启动';

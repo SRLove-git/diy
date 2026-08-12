@@ -71,13 +71,6 @@ final GoRouter appRouter = GoRouter(
       ),
     ),
     GoRoute(
-      path: RoutePaths.loginForgot,
-      builder: (_, _) => LiveHost(
-        resizeToAvoidBottomInset: false,
-        child: const ForgotPasswordScreen(),
-      ),
-    ),
-    GoRoute(
       path: RoutePaths.loginVerify,
       builder: (_, _) => LiveHost(
         resizeToAvoidBottomInset: false,

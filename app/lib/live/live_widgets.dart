@@ -19,15 +19,21 @@ class LivePage extends StatelessWidget {
     required this.child,
     this.bottomBar,
     this.fullBleed = false,
+    this.statusBarLight = true,
     this.backgroundColor = LiveColors.bg,
     this.resizeToAvoidBottomInset = true,
   });
 
   final Widget child;
   final Widget? bottomBar;
+
   /// 深色全屏页（Reels / 播放页）：顶部铺满、状态栏图标用浅色。
   final bool fullBleed;
+
+  /// [fullBleed] 时状态栏图标是否为浅色；浅色背景页（如首页极光）置为 false。
+  final bool statusBarLight;
   final Color backgroundColor;
+
   /// 键盘弹出时是否压缩页面高度。默认 true（Scaffold 默认行为）；
   /// 登录等页面设为 false，键盘直接覆盖在页面之上，避免页面被压缩变小。
   final bool resizeToAvoidBottomInset;
@@ -45,10 +51,14 @@ class LivePage extends StatelessWidget {
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       body: fullBleed
           ? AnnotatedRegion<SystemUiOverlayStyle>(
-              value: const SystemUiOverlayStyle(
+              value: SystemUiOverlayStyle(
                 statusBarColor: Colors.transparent,
-                statusBarIconBrightness: Brightness.light,
-                statusBarBrightness: Brightness.dark,
+                statusBarIconBrightness: statusBarLight
+                    ? Brightness.light
+                    : Brightness.dark,
+                statusBarBrightness: statusBarLight
+                    ? Brightness.dark
+                    : Brightness.light,
               ),
               child: content,
             )
@@ -72,7 +82,8 @@ class LiveAppBar extends StatelessWidget implements PreferredSizeWidget {
   final PreferredSizeWidget? bottom;
 
   @override
-  Size get preferredSize => Size.fromHeight(bottom == null ? 52 : 52 + bottom!.preferredSize.height);
+  Size get preferredSize =>
+      Size.fromHeight(bottom == null ? 52 : 52 + bottom!.preferredSize.height);
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +93,8 @@ class LiveAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: LiveColors.bg,
       surfaceTintColor: Colors.transparent,
       title: title == null ? null : Text(title!),
-      leading: leading ??
+      leading:
+          leading ??
           (Navigator.of(context).canPop()
               ? IconButton(
                   icon: const Icon(Icons.arrow_back_ios_new, size: 20),
@@ -155,8 +167,9 @@ class LiveTabBar extends StatelessWidget {
                           tabs[i].$3,
                           style: TextStyle(
                             fontSize: 10.5,
-                            fontWeight:
-                                i == current ? FontWeight.w700 : FontWeight.w400,
+                            fontWeight: i == current
+                                ? FontWeight.w700
+                                : FontWeight.w400,
                             color: i == current
                                 ? LiveColors.textPrimary
                                 : LiveColors.textTertiary,
@@ -218,7 +231,10 @@ class PrimaryButton extends StatelessWidget {
                 ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: LiveColors.brand),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: LiveColors.brand,
+                    ),
                   )
                 : Text(
                     label,
@@ -259,7 +275,9 @@ class OutlineButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           foregroundColor: color,
           side: BorderSide(color: color.withValues(alpha: 0.35)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         child: Text(label),
@@ -297,7 +315,11 @@ class SectionHeader extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             title,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: LiveColors.textPrimary),
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: LiveColors.textPrimary,
+            ),
           ),
           const Spacer(),
           if (moreLabel != null)
@@ -305,8 +327,18 @@ class SectionHeader extends StatelessWidget {
               onTap: onMore,
               child: Row(
                 children: [
-                  Text(moreLabel!, style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary)),
-                  const Icon(Icons.chevron_right, size: 16, color: LiveColors.textSecondary),
+                  Text(
+                    moreLabel!,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: LiveColors.textSecondary,
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 16,
+                    color: LiveColors.textSecondary,
+                  ),
                 ],
               ),
             ),
@@ -317,12 +349,7 @@ class SectionHeader extends StatelessWidget {
 }
 
 class Avatar extends StatelessWidget {
-  const Avatar({
-    super.key,
-    this.url = '',
-    this.name = '',
-    this.size = 40,
-  });
+  const Avatar({super.key, this.url = '', this.name = '', this.size = 40});
 
   final String url;
   final String name;
@@ -330,8 +357,9 @@ class Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initial =
-        name.isNotEmpty ? name.characters.first : context.l10n.profileEditMe;
+    final initial = name.isNotEmpty
+        ? name.characters.first
+        : context.l10n.profileEditMe;
     return ClipOval(
       child: url.isEmpty
           ? Container(
@@ -341,7 +369,11 @@ class Avatar extends StatelessWidget {
               alignment: Alignment.center,
               child: Text(
                 initial,
-                style: TextStyle(color: LiveColors.brand, fontSize: size * 0.42, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: LiveColors.brand,
+                  fontSize: size * 0.42,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             )
           : Image.network(
@@ -356,7 +388,11 @@ class Avatar extends StatelessWidget {
                 alignment: Alignment.center,
                 child: Text(
                   initial,
-                  style: TextStyle(color: LiveColors.brand, fontSize: size * 0.42, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: LiveColors.brand,
+                    fontSize: size * 0.42,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -385,7 +421,11 @@ class NetImage extends StatelessWidget {
       inner = Container(
         color: placeholderColor,
         alignment: Alignment.center,
-        child: const Icon(Icons.image_outlined, color: LiveColors.textTertiary, size: 28),
+        child: const Icon(
+          Icons.image_outlined,
+          color: LiveColors.textTertiary,
+          size: 28,
+        ),
       );
     } else {
       inner = Image.network(
@@ -396,12 +436,19 @@ class NetImage extends StatelessWidget {
         errorBuilder: (_, _, _) => Container(
           color: placeholderColor,
           alignment: Alignment.center,
-          child: const Icon(Icons.broken_image_outlined, color: LiveColors.textTertiary, size: 28),
+          child: const Icon(
+            Icons.broken_image_outlined,
+            color: LiveColors.textTertiary,
+            size: 28,
+          ),
         ),
       );
     }
     if (radius != null) {
-      return ClipRRect(borderRadius: BorderRadius.circular(radius!), child: inner);
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(radius!),
+        child: inner,
+      );
     }
     return inner;
   }
@@ -420,12 +467,18 @@ class LoadingView extends StatelessWidget {
           const SizedBox(
             width: 26,
             height: 26,
-            child: CircularProgressIndicator(strokeWidth: 2.5, color: LiveColors.brand),
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: LiveColors.brand,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
             text ?? context.l10n.commonLoading,
-            style: const TextStyle(color: LiveColors.textSecondary, fontSize: 13),
+            style: const TextStyle(
+              color: LiveColors.textSecondary,
+              fontSize: 13,
+            ),
           ),
         ],
       ),
@@ -447,16 +500,27 @@ class ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.wifi_off_outlined, size: 40, color: LiveColors.textTertiary),
+            const Icon(
+              Icons.wifi_off_outlined,
+              size: 40,
+              color: LiveColors.textTertiary,
+            ),
             const SizedBox(height: 12),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: LiveColors.textSecondary, fontSize: 13),
+              style: const TextStyle(
+                color: LiveColors.textSecondary,
+                fontSize: 13,
+              ),
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 16),
-              OutlineButton(label: context.l10n.commonRetry, onTap: onRetry, height: 40),
+              OutlineButton(
+                label: context.l10n.commonRetry,
+                onTap: onRetry,
+                height: 40,
+              ),
             ],
           ],
         ),
@@ -479,10 +543,13 @@ class EmptyView extends StatelessWidget {
         children: [
           Icon(icon, size: 42, color: LiveColors.textTertiary),
           const SizedBox(height: 10),
-            Text(
-              text ?? context.l10n.commonEmpty,
-              style: const TextStyle(color: LiveColors.textSecondary, fontSize: 13),
+          Text(
+            text ?? context.l10n.commonEmpty,
+            style: const TextStyle(
+              color: LiveColors.textSecondary,
+              fontSize: 13,
             ),
+          ),
         ],
       ),
     );
@@ -490,7 +557,12 @@ class EmptyView extends StatelessWidget {
 }
 
 class TagChip extends StatelessWidget {
-  const TagChip({super.key, required this.label, this.color = LiveColors.brand, this.outlined = false});
+  const TagChip({
+    super.key,
+    required this.label,
+    this.color = LiveColors.brand,
+    this.outlined = false,
+  });
 
   final String label;
   final Color color;
@@ -502,7 +574,9 @@ class TagChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: outlined ? Colors.transparent : color.withValues(alpha: 0.1),
-        border: outlined ? Border.all(color: color.withValues(alpha: 0.5)) : null,
+        border: outlined
+            ? Border.all(color: color.withValues(alpha: 0.5))
+            : null,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -518,7 +592,12 @@ class TagChip extends StatelessWidget {
 }
 
 class StatRow extends StatelessWidget {
-  const StatRow({super.key, required this.label, required this.value, this.onTap});
+  const StatRow({
+    super.key,
+    required this.label,
+    required this.value,
+    this.onTap,
+  });
 
   final String label;
   final String value;
@@ -531,9 +610,22 @@ class StatRow extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: LiveColors.textPrimary)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: LiveColors.textPrimary,
+            ),
+          ),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 11, color: LiveColors.textSecondary)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: LiveColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -679,7 +771,11 @@ class ImageViewerPage extends StatelessWidget {
                     children: [
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close, color: Colors.white, size: 24),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       ),
                       const Spacer(),
                       if (title != null)
@@ -688,7 +784,10 @@ class ImageViewerPage extends StatelessWidget {
                             title!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 13, color: Colors.white70),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.white70,
+                            ),
                           ),
                         ),
                     ],

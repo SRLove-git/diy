@@ -8,24 +8,16 @@ class AuthService {
   AuthService._();
   static final AuthService instance = AuthService._();
 
-  /// 发送邮箱验证码（开发环境返回 code 便于联调）
-  Future<String?> sendEmailCode(String email) async {
-    final data = await ApiClient.instance.post('/auth/email-code', body: {'email': email});
-    return data is Map && data['code'] != null ? data['code'].toString() : null;
-  }
-
   /// 注册：用户名 + 密码 + 邮箱绑定（注册成功即自动登录）
   Future<({int userId, bool isNewUser, String accessToken, String refreshToken})> register({
     required String username,
     required String email,
     required String password,
-    required String emailCode,
   }) async {
     final data = await ApiClient.instance.post('/auth/register', body: {
       'username': username,
       'email': email,
       'password': password,
-      'emailCode': emailCode,
     }) as Map<String, dynamic>;
     return (
       userId: (data['userId'] as num).toInt(),
@@ -48,19 +40,6 @@ class AuthService {
       accessToken: data['accessToken'] as String,
       refreshToken: data['refreshToken'] as String,
     );
-  }
-
-  /// 忘记密码：邮箱验证码 + 新密码
-  Future<void> resetPassword({
-    required String email,
-    required String emailCode,
-    required String password,
-  }) {
-    return ApiClient.instance.post('/auth/reset-password', body: {
-      'email': email,
-      'emailCode': emailCode,
-      'password': password,
-    });
   }
 
   /// 修改登录密码（登录态下，需校验原密码）

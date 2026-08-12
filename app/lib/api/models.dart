@@ -37,20 +37,20 @@ class User {
   String get displayName => nickname.isNotEmpty ? nickname : '用户 #$id';
 
   factory User.fromJson(Map<String, dynamic> json) => User(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        email: json['email'] as String?,
-        username: json['username'] as String?,
-        nickname: json['nickname'] as String? ?? '',
-        avatar: json['avatar'] as String? ?? '',
-        bio: json['bio'] as String? ?? '',
-        gender: json['gender'] as String? ?? 'secret',
-        birthday: json['birthday'] as String?,
-        location: json['location'] as String? ?? '',
-        role: json['role'] as String? ?? 'user',
-        createdAt: json['createdAt'] == null
-            ? null
-            : DateTime.tryParse(json['createdAt'].toString()),
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    email: json['email'] as String?,
+    username: json['username'] as String?,
+    nickname: json['nickname'] as String? ?? '',
+    avatar: json['avatar'] as String? ?? '',
+    bio: json['bio'] as String? ?? '',
+    gender: json['gender'] as String? ?? 'secret',
+    birthday: json['birthday'] as String?,
+    location: json['location'] as String? ?? '',
+    role: json['role'] as String? ?? 'user',
+    createdAt: json['createdAt'] == null
+        ? null
+        : DateTime.tryParse(json['createdAt'].toString()),
+  );
 }
 
 /// 帖子/视频中嵌入的作者摘要。
@@ -91,12 +91,12 @@ class StoreTable {
   final bool available;
 
   factory StoreTable.fromJson(Map<String, dynamic> json) => StoreTable(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        name: json['name'] as String? ?? '',
-        capacity: (json['capacity'] as num?)?.toInt() ?? 1,
-        enabled: json['enabled'] as bool? ?? true,
-        available: json['available'] as bool? ?? true,
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    name: json['name'] as String? ?? '',
+    capacity: (json['capacity'] as num?)?.toInt() ?? 1,
+    enabled: json['enabled'] as bool? ?? true,
+    available: json['available'] as bool? ?? true,
+  );
 }
 
 class TimeSlot {
@@ -115,11 +115,11 @@ class TimeSlot {
   String get label => '$startTime-$endTime';
 
   factory TimeSlot.fromJson(Map<String, dynamic> json) => TimeSlot(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        startTime: json['startTime'] as String? ?? '',
-        endTime: json['endTime'] as String? ?? '',
-        enabled: json['enabled'] as bool? ?? true,
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    startTime: json['startTime'] as String? ?? '',
+    endTime: json['endTime'] as String? ?? '',
+    enabled: json['enabled'] as bool? ?? true,
+  );
 }
 
 class Store {
@@ -168,36 +168,41 @@ class Store {
   String get cover => images.isNotEmpty ? images.first : '';
 
   factory Store.fromJson(Map<String, dynamic> json) => Store(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        name: json['name'] as String? ?? '',
-        address: json['address'] as String? ?? '',
-        lat: (json['lat'] as num?)?.toDouble(),
-        lng: (json['lng'] as num?)?.toDouble(),
-        rating: (json['rating'] as num?)?.toDouble() ?? 5,
-        images: (json['images'] as List?)?.map((e) => e.toString()).toList() ?? const [],
-        price: (json['price'] as num?)?.toDouble() ?? 0,
-        memberPrice: (json['memberPrice'] as num?)?.toDouble(),
-        groupPrice: (json['groupPrice'] as num?)?.toDouble(),
-        allDayPrice: (json['allDayPrice'] as num?)?.toDouble(),
-        allDayMemberPrice: (json['allDayMemberPrice'] as num?)?.toDouble(),
-        allDayGroupPrice: (json['allDayGroupPrice'] as num?)?.toDouble(),
-        weekendSurchargePercent:
-            (json['weekendSurchargePercent'] as num?)?.toInt() ?? 0,
-        businessHours: json['businessHours'] as String? ?? '',
-        phone: json['phone'] as String? ?? '',
-        tables: (json['tables'] as List?)
-                ?.map((e) => StoreTable.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            const [],
-        slots: (json['slots'] as List?)
-                ?.map((e) => TimeSlot.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            const [],
-        packages: (json['packages'] as List?)
-                ?.map((e) => StorePackage.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            const [],
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    name: json['name'] as String? ?? '',
+    address: json['address'] as String? ?? '',
+    lat: (json['lat'] as num?)?.toDouble(),
+    lng: (json['lng'] as num?)?.toDouble(),
+    rating: (json['rating'] as num?)?.toDouble() ?? 5,
+    images:
+        (json['images'] as List?)?.map((e) => e.toString()).toList() ??
+        const [],
+    price: (json['price'] as num?)?.toDouble() ?? 0,
+    memberPrice: (json['memberPrice'] as num?)?.toDouble(),
+    groupPrice: (json['groupPrice'] as num?)?.toDouble(),
+    allDayPrice: (json['allDayPrice'] as num?)?.toDouble(),
+    allDayMemberPrice: (json['allDayMemberPrice'] as num?)?.toDouble(),
+    allDayGroupPrice: (json['allDayGroupPrice'] as num?)?.toDouble(),
+    weekendSurchargePercent:
+        (json['weekendSurchargePercent'] as num?)?.toInt() ?? 0,
+    businessHours: json['businessHours'] as String? ?? '',
+    phone: json['phone'] as String? ?? '',
+    tables:
+        (json['tables'] as List?)
+            ?.map((e) => StoreTable.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        const [],
+    slots:
+        (json['slots'] as List?)
+            ?.map((e) => TimeSlot.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        const [],
+    packages:
+        (json['packages'] as List?)
+            ?.map((e) => StorePackage.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        const [],
+  );
 }
 
 /// 门店时长套餐（如 5 小时 / 6 小时）。
@@ -221,14 +226,14 @@ class StorePackage {
   final bool enabled;
 
   factory StorePackage.fromJson(Map<String, dynamic> json) => StorePackage(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        name: json['name'] as String? ?? '',
-        hours: (json['hours'] as num?)?.toInt() ?? 0,
-        price: (json['price'] as num?)?.toDouble() ?? 0,
-        memberPrice: (json['memberPrice'] as num?)?.toDouble(),
-        groupPrice: (json['groupPrice'] as num?)?.toDouble(),
-        enabled: json['enabled'] as bool? ?? true,
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    name: json['name'] as String? ?? '',
+    hours: (json['hours'] as num?)?.toInt() ?? 0,
+    price: (json['price'] as num?)?.toDouble() ?? 0,
+    memberPrice: (json['memberPrice'] as num?)?.toDouble(),
+    groupPrice: (json['groupPrice'] as num?)?.toDouble(),
+    enabled: json['enabled'] as bool? ?? true,
+  );
 }
 
 /// 桌位可用性：某日某桌的已占用时段窗口。
@@ -246,19 +251,19 @@ class TableAvailability {
   final List<BookedWindow> bookedWindows;
 
   /// 指定时段 [start, end) 与该桌已占用窗口是否无重叠。
-  bool isFree(String start, String end) =>
-      bookedWindows.every((w) {
-        final ws = _tm(w.startTime);
-        final we = _tm(w.endTime);
-        return ws >= _tm(end) || we <= _tm(start);
-      });
+  bool isFree(String start, String end) => bookedWindows.every((w) {
+    final ws = _tm(w.startTime);
+    final we = _tm(w.endTime);
+    return ws >= _tm(end) || we <= _tm(start);
+  });
 
   factory TableAvailability.fromJson(Map<String, dynamic> json) =>
       TableAvailability(
         id: (json['id'] as num?)?.toInt() ?? 0,
         name: json['name'] as String? ?? '',
         capacity: (json['capacity'] as num?)?.toInt() ?? 1,
-        bookedWindows: (json['bookedWindows'] as List?)
+        bookedWindows:
+            (json['bookedWindows'] as List?)
                 ?.map((e) => BookedWindow.fromJson(e as Map<String, dynamic>))
                 .toList() ??
             const [],
@@ -277,10 +282,10 @@ class BookedWindow {
   final String status;
 
   factory BookedWindow.fromJson(Map<String, dynamic> json) => BookedWindow(
-        startTime: json['startTime'] as String? ?? '',
-        endTime: json['endTime'] as String? ?? '',
-        status: json['status'] as String? ?? 'booked',
-      );
+    startTime: json['startTime'] as String? ?? '',
+    endTime: json['endTime'] as String? ?? '',
+    status: json['status'] as String? ?? 'booked',
+  );
 }
 
 int _tm(String time) {
@@ -309,7 +314,8 @@ class ActivitySession {
 
   int get remainingCount => remaining ?? (capacity - bookedCount);
 
-  factory ActivitySession.fromJson(Map<String, dynamic> json) => ActivitySession(
+  factory ActivitySession.fromJson(Map<String, dynamic> json) =>
+      ActivitySession(
         id: (json['id'] as num?)?.toInt() ?? 0,
         date: json['date'] as String? ?? '',
         startTime: json['startTime'] as String? ?? '',
@@ -348,21 +354,22 @@ class Activity {
   final List<ActivitySession> sessions;
 
   factory Activity.fromJson(Map<String, dynamic> json) => Activity(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        title: json['title'] as String? ?? '',
-        date: json['date'] as String? ?? '',
-        desc: json['desc'] as String? ?? '',
-        tag: json['tag'] as String? ?? '',
-        address: json['address'] as String? ?? '',
-        price: (json['price'] as num?)?.toDouble() ?? 0,
-        memberPrice: (json['memberPrice'] as num?)?.toDouble(),
-        bookable: json['bookable'] as bool? ?? false,
-        membersOnly: json['membersOnly'] as bool? ?? false,
-        sessions: (json['sessions'] as List?)
-                ?.map((e) => ActivitySession.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            const [],
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    title: json['title'] as String? ?? '',
+    date: json['date'] as String? ?? '',
+    desc: json['desc'] as String? ?? '',
+    tag: json['tag'] as String? ?? '',
+    address: json['address'] as String? ?? '',
+    price: (json['price'] as num?)?.toDouble() ?? 0,
+    memberPrice: (json['memberPrice'] as num?)?.toDouble(),
+    bookable: json['bookable'] as bool? ?? false,
+    membersOnly: json['membersOnly'] as bool? ?? false,
+    sessions:
+        (json['sessions'] as List?)
+            ?.map((e) => ActivitySession.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        const [],
+  );
 }
 
 class Appointment {
@@ -445,15 +452,25 @@ class Appointment {
     return tableName;
   }
 
+  /// 座位标签：按各桌分配人数自动派座（如 B1-1、B1-2 = 第一个二人桌的 1/2 号座位）。
+  /// 无多桌明细（旧单桌数据）时为空。
+  String get seatLabel {
+    if (tables.isEmpty) return '';
+    return [
+      for (final t in tables)
+        for (var i = 1; i <= t.people; i++) '${t.name}-$i',
+    ].join('、');
+  }
+
   String get statusLabel => switch (status) {
-        'pending' => '待确认',
-        'booked' => '待核销',
-        'checked_in' => '已核销',
-        'in_service' => '服务中',
-        'completed' => '已完成',
-        'cancelled' => '已取消',
-        _ => status,
-      };
+    'pending' => '待确认',
+    'booked' => '待核销',
+    'checked_in' => '已核销',
+    'in_service' => '服务中',
+    'completed' => '已完成',
+    'cancelled' => '已取消',
+    _ => status,
+  };
 
   /// 预约结束时间（date + endTime）。
   DateTime? get endDateTime {
@@ -492,7 +509,8 @@ class Appointment {
       tableId: (json['tableId'] as num?)?.toInt(),
       tableName: json['tableName'] as String? ?? '',
       slotId: (json['slotId'] as num?)?.toInt(),
-      tables: (json['tables'] as List?)
+      tables:
+          (json['tables'] as List?)
               ?.map((e) => TableSeat.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
@@ -521,18 +539,23 @@ class Appointment {
 }
 
 class PostMedia {
-  const PostMedia({required this.type, required this.url, this.aspectRatio, this.duration});
+  const PostMedia({
+    required this.type,
+    required this.url,
+    this.aspectRatio,
+    this.duration,
+  });
   final String type;
   final String url;
   final double? aspectRatio;
   final double? duration;
 
   factory PostMedia.fromJson(Map<String, dynamic> json) => PostMedia(
-        type: json['type'] as String? ?? 'image',
-        url: json['url'] as String? ?? '',
-        aspectRatio: (json['aspectRatio'] as num?)?.toDouble(),
-        duration: (json['duration'] as num?)?.toDouble(),
-      );
+    type: json['type'] as String? ?? 'image',
+    url: json['url'] as String? ?? '',
+    aspectRatio: (json['aspectRatio'] as num?)?.toDouble(),
+    duration: (json['duration'] as num?)?.toDouble(),
+  );
 }
 
 /// 预约桌位明细（一单多桌）：桌位 + 容纳人数 + 该桌分配人数。
@@ -550,11 +573,11 @@ class TableSeat {
   final int people;
 
   factory TableSeat.fromJson(Map<String, dynamic> json) => TableSeat(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        name: json['name'] as String? ?? '',
-        capacity: (json['capacity'] as num?)?.toInt() ?? 1,
-        people: (json['people'] as num?)?.toInt() ?? 0,
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    name: json['name'] as String? ?? '',
+    capacity: (json['capacity'] as num?)?.toInt() ?? 1,
+    people: (json['people'] as num?)?.toInt() ?? 0,
+  );
 }
 
 class Post {
@@ -596,34 +619,37 @@ class Post {
   final DateTime? createdAt;
   final Author? author;
 
-  List<String> get mediaUrls => medias.isNotEmpty
-      ? medias.map((m) => m.url).toList()
-      : images;
+  List<String> get mediaUrls =>
+      medias.isNotEmpty ? medias.map((m) => m.url).toList() : images;
 
   factory Post.fromJson(Map<String, dynamic> json) => Post(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        userId: (json['userId'] as num?)?.toInt() ?? 0,
-        title: json['title'] as String? ?? '',
-        content: json['content'] as String? ?? '',
-        location: json['location'] as String? ?? '',
-        images: (json['images'] as List?)?.map((e) => e.toString()).toList() ?? const [],
-        medias: (json['medias'] as List?)
-                ?.map((e) => PostMedia.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            const [],
-        tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? const [],
-        channelTag: json['channelTag'] as String? ?? '',
-        status: json['status'] as String? ?? 'pending',
-        likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
-        collectCount: (json['collectCount'] as num?)?.toInt() ?? 0,
-        commentCount: (json['commentCount'] as num?)?.toInt() ?? 0,
-        viewCount: (json['viewCount'] as num?)?.toInt() ?? 0,
-        shareCount: (json['shareCount'] as num?)?.toInt() ?? 0,
-        createdAt: json['createdAt'] == null
-            ? null
-            : DateTime.tryParse(json['createdAt'].toString()),
-        author: Author.fromJson(json['author']),
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    userId: (json['userId'] as num?)?.toInt() ?? 0,
+    title: json['title'] as String? ?? '',
+    content: json['content'] as String? ?? '',
+    location: json['location'] as String? ?? '',
+    images:
+        (json['images'] as List?)?.map((e) => e.toString()).toList() ??
+        const [],
+    medias:
+        (json['medias'] as List?)
+            ?.map((e) => PostMedia.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        const [],
+    tags:
+        (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+    channelTag: json['channelTag'] as String? ?? '',
+    status: json['status'] as String? ?? 'pending',
+    likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
+    collectCount: (json['collectCount'] as num?)?.toInt() ?? 0,
+    commentCount: (json['commentCount'] as num?)?.toInt() ?? 0,
+    viewCount: (json['viewCount'] as num?)?.toInt() ?? 0,
+    shareCount: (json['shareCount'] as num?)?.toInt() ?? 0,
+    createdAt: json['createdAt'] == null
+        ? null
+        : DateTime.tryParse(json['createdAt'].toString()),
+    author: Author.fromJson(json['author']),
+  );
 }
 
 class Comment {
@@ -654,25 +680,24 @@ class Comment {
   final List<Comment> replies;
 
   factory Comment.fromJson(Map<String, dynamic> json) => Comment(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        userId: (json['userId'] as num?)?.toInt() ?? 0,
-        postId: (json['postId'] as num?)?.toInt() ?? 0,
-        parentId: (json['parentId'] as num?)?.toInt(),
-        replyToId: (json['replyToId'] as num?)?.toInt(),
-        content: json['content'] as String? ?? '',
-        likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
-        createdAt: json['createdAt'] == null
-            ? null
-            : DateTime.tryParse(json['createdAt'].toString()),
-        author: Author.fromJson(json['author']),
-        replyTo: json['replyTo'] == null
-            ? null
-            : Author.fromJson(json['replyTo']),
-        replies: (json['replies'] as List?)
-                ?.map((e) => Comment.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            const [],
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    userId: (json['userId'] as num?)?.toInt() ?? 0,
+    postId: (json['postId'] as num?)?.toInt() ?? 0,
+    parentId: (json['parentId'] as num?)?.toInt(),
+    replyToId: (json['replyToId'] as num?)?.toInt(),
+    content: json['content'] as String? ?? '',
+    likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
+    createdAt: json['createdAt'] == null
+        ? null
+        : DateTime.tryParse(json['createdAt'].toString()),
+    author: Author.fromJson(json['author']),
+    replyTo: json['replyTo'] == null ? null : Author.fromJson(json['replyTo']),
+    replies:
+        (json['replies'] as List?)
+            ?.map((e) => Comment.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        const [],
+  );
 }
 
 class Video {
@@ -725,30 +750,33 @@ class Video {
   bool get isPhoto => videoUrl.isEmpty && photos.isNotEmpty;
 
   factory Video.fromJson(Map<String, dynamic> json) => Video(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        userId: (json['userId'] as num?)?.toInt() ?? 0,
-        title: json['title'] as String? ?? '',
-        content: json['content'] as String? ?? '',
-        cover: json['cover'] as String? ?? '',
-        videoUrl: json['videoUrl'] as String? ?? '',
-        photos: (json['photos'] as List?)?.map((e) => e.toString()).toList() ?? const [],
-        filter: json['filter'] as String? ?? '',
-        speed: (json['speed'] as num?)?.toDouble() ?? 1,
-        duration: (json['duration'] as num?)?.toInt() ?? 0,
-        aspectRatio: (json['aspectRatio'] as num?)?.toDouble() ?? 0,
-        music: json['music'] as String? ?? '',
-        tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? const [],
-        location: json['location'] as String? ?? '',
-        likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
-        commentCount: (json['commentCount'] as num?)?.toInt() ?? 0,
-        shareCount: (json['shareCount'] as num?)?.toInt() ?? 0,
-        viewCount: (json['viewCount'] as num?)?.toInt() ?? 0,
-        createdAt: json['createdAt'] == null
-            ? null
-            : DateTime.tryParse(json['createdAt'].toString()),
-        author: Author.fromJson(json['author']),
-        liked: json['liked'] as bool? ?? false,
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    userId: (json['userId'] as num?)?.toInt() ?? 0,
+    title: json['title'] as String? ?? '',
+    content: json['content'] as String? ?? '',
+    cover: json['cover'] as String? ?? '',
+    videoUrl: json['videoUrl'] as String? ?? '',
+    photos:
+        (json['photos'] as List?)?.map((e) => e.toString()).toList() ??
+        const [],
+    filter: json['filter'] as String? ?? '',
+    speed: (json['speed'] as num?)?.toDouble() ?? 1,
+    duration: (json['duration'] as num?)?.toInt() ?? 0,
+    aspectRatio: (json['aspectRatio'] as num?)?.toDouble() ?? 0,
+    music: json['music'] as String? ?? '',
+    tags:
+        (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+    location: json['location'] as String? ?? '',
+    likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
+    commentCount: (json['commentCount'] as num?)?.toInt() ?? 0,
+    shareCount: (json['shareCount'] as num?)?.toInt() ?? 0,
+    viewCount: (json['viewCount'] as num?)?.toInt() ?? 0,
+    createdAt: json['createdAt'] == null
+        ? null
+        : DateTime.tryParse(json['createdAt'].toString()),
+    author: Author.fromJson(json['author']),
+    liked: json['liked'] as bool? ?? false,
+  );
 }
 
 class ChatMessage {
@@ -782,24 +810,24 @@ class ChatMessage {
   bool get isRecalled => recalledAt != null;
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        senderId: (json['senderId'] as num?)?.toInt() ?? 0,
-        contentType: json['contentType'] as String? ?? 'text',
-        content: json['content'] as String? ?? '',
-        replyToId: (json['replyToId'] as num?)?.toInt(),
-        replyPreview: json['replyPreview'] as String?,
-        forwarded: json['forwarded'] as bool? ?? false,
-        recalledAt: json['recalledAt'] == null
-            ? null
-            : DateTime.tryParse(json['recalledAt'].toString()),
-        readAt: json['readAt'] == null
-            ? null
-            : DateTime.tryParse(json['readAt'].toString()),
-        createdAt: json['createdAt'] == null
-            ? null
-            : DateTime.tryParse(json['createdAt'].toString()),
-        author: Author.fromJson(json['author']),
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    senderId: (json['senderId'] as num?)?.toInt() ?? 0,
+    contentType: json['contentType'] as String? ?? 'text',
+    content: json['content'] as String? ?? '',
+    replyToId: (json['replyToId'] as num?)?.toInt(),
+    replyPreview: json['replyPreview'] as String?,
+    forwarded: json['forwarded'] as bool? ?? false,
+    recalledAt: json['recalledAt'] == null
+        ? null
+        : DateTime.tryParse(json['recalledAt'].toString()),
+    readAt: json['readAt'] == null
+        ? null
+        : DateTime.tryParse(json['readAt'].toString()),
+    createdAt: json['createdAt'] == null
+        ? null
+        : DateTime.tryParse(json['createdAt'].toString()),
+    author: Author.fromJson(json['author']),
+  );
 }
 
 class ConversationItem {
@@ -873,20 +901,20 @@ class GroupItem {
   final bool isOwner;
 
   factory GroupItem.fromJson(Map<String, dynamic> json) => GroupItem(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        name: json['name'] as String? ?? '',
-        ownerId: (json['ownerId'] as num?)?.toInt() ?? 0,
-        memberCount: (json['memberCount'] as num?)?.toInt() ?? 0,
-        memberAvatars:
-            (json['memberAvatars'] as List?)?.map((e) => e.toString()).toList() ??
-                const [],
-        lastMessagePreview: json['lastMessagePreview'] as String?,
-        lastMessageAt: json['lastMessageAt'] == null
-            ? null
-            : DateTime.tryParse(json['lastMessageAt'].toString()),
-        unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
-        isOwner: json['isOwner'] as bool? ?? false,
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    name: json['name'] as String? ?? '',
+    ownerId: (json['ownerId'] as num?)?.toInt() ?? 0,
+    memberCount: (json['memberCount'] as num?)?.toInt() ?? 0,
+    memberAvatars:
+        (json['memberAvatars'] as List?)?.map((e) => e.toString()).toList() ??
+        const [],
+    lastMessagePreview: json['lastMessagePreview'] as String?,
+    lastMessageAt: json['lastMessageAt'] == null
+        ? null
+        : DateTime.tryParse(json['lastMessageAt'].toString()),
+    unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
+    isOwner: json['isOwner'] as bool? ?? false,
+  );
 }
 
 class GroupMember {
@@ -908,12 +936,12 @@ class GroupMember {
     final user = json['user'] as Map<String, dynamic>? ?? json;
     return GroupMember(
       id: (json['id'] as num?)?.toInt() ?? 0,
-      userId: (json['userId'] as num?)?.toInt() ??
+      userId:
+          (json['userId'] as num?)?.toInt() ??
           (json['id'] as num?)?.toInt() ??
           0,
-      nickname: json['nickname'] as String? ??
-          user['nickname'] as String? ??
-          '',
+      nickname:
+          json['nickname'] as String? ?? user['nickname'] as String? ?? '',
       avatar: json['avatar'] as String? ?? user['avatar'] as String? ?? '',
       role: json['role'] as String? ?? 'member',
     );
@@ -942,11 +970,13 @@ class AppNotification {
   final DateTime? createdAt;
   final DateTime? sentAt;
   final bool read;
+
   /// 点击跳转类型：post / video / user
   final String? actionType;
   final int? actionId;
 
-  factory AppNotification.fromJson(Map<String, dynamic> json) => AppNotification(
+  factory AppNotification.fromJson(Map<String, dynamic> json) =>
+      AppNotification(
         id: (json['id'] as num?)?.toInt() ?? 0,
         title: json['title'] as String? ?? '',
         content: json['content'] as String? ?? '',
@@ -982,14 +1012,14 @@ class Membership {
   bool get isActive => status == 'active';
 
   factory Membership.fromJson(Map<String, dynamic> json) => Membership(
-        id: (json['id'] as num?)?.toInt(),
-        memberNo: json['memberNo'] as String? ?? '',
-        levelName: json['levelName'] as String? ?? '手作会员',
-        status: json['status'] as String? ?? 'none',
-        expireAt: json['expireAt'] == null
-            ? null
-            : DateTime.tryParse(json['expireAt'].toString()),
-      );
+    id: (json['id'] as num?)?.toInt(),
+    memberNo: json['memberNo'] as String? ?? '',
+    levelName: json['levelName'] as String? ?? '手作会员',
+    status: json['status'] as String? ?? 'none',
+    expireAt: json['expireAt'] == null
+        ? null
+        : DateTime.tryParse(json['expireAt'].toString()),
+  );
 }
 
 class MemberOrder {
@@ -1010,22 +1040,22 @@ class MemberOrder {
   final DateTime? createdAt;
 
   String get statusLabel => switch (status) {
-        'pending' => '待确认',
-        'confirmed' => '已开通',
-        'cancelled' => '已取消',
-        _ => status,
-      };
+    'pending' => '待确认',
+    'confirmed' => '已开通',
+    'cancelled' => '已取消',
+    _ => status,
+  };
 
   factory MemberOrder.fromJson(Map<String, dynamic> json) => MemberOrder(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        planName: json['planName'] as String? ?? '',
-        durationDays: (json['durationDays'] as num?)?.toInt() ?? 0,
-        amount: _num(json['amount'])?.toDouble() ?? 0,
-        status: json['status'] as String? ?? 'pending',
-        createdAt: json['createdAt'] == null
-            ? null
-            : DateTime.tryParse(json['createdAt'].toString()),
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    planName: json['planName'] as String? ?? '',
+    durationDays: (json['durationDays'] as num?)?.toInt() ?? 0,
+    amount: _num(json['amount'])?.toDouble() ?? 0,
+    status: json['status'] as String? ?? 'pending',
+    createdAt: json['createdAt'] == null
+        ? null
+        : DateTime.tryParse(json['createdAt'].toString()),
+  );
 }
 
 class MemberPlan {
@@ -1050,15 +1080,17 @@ class MemberPlan {
   final bool recommended;
 
   factory MemberPlan.fromJson(Map<String, dynamic> json) => MemberPlan(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        name: json['name'] as String? ?? '',
-        durationDays: (json['durationDays'] as num?)?.toInt() ?? 0,
-        price: _num(json['price'])?.toDouble() ?? 0,
-        originalPrice: _num(json['originalPrice'])?.toDouble() ?? 0,
-        benefits: (json['benefits'] as List?)?.map((e) => e.toString()).toList() ?? const [],
-        badge: json['badge'] as String? ?? '',
-        recommended: json['recommended'] as bool? ?? false,
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    name: json['name'] as String? ?? '',
+    durationDays: (json['durationDays'] as num?)?.toInt() ?? 0,
+    price: _num(json['price'])?.toDouble() ?? 0,
+    originalPrice: _num(json['originalPrice'])?.toDouble() ?? 0,
+    benefits:
+        (json['benefits'] as List?)?.map((e) => e.toString()).toList() ??
+        const [],
+    badge: json['badge'] as String? ?? '',
+    recommended: json['recommended'] as bool? ?? false,
+  );
 }
 
 class Coupon {
@@ -1088,25 +1120,27 @@ class Coupon {
   final String status;
   final DateTime? receivedAt;
 
-  bool get usable => status == 'unused' && (expireAt == null || expireAt!.isAfter(DateTime.now()));
+  bool get usable =>
+      status == 'unused' &&
+      (expireAt == null || expireAt!.isAfter(DateTime.now()));
 
   factory Coupon.fromJson(Map<String, dynamic> json) => Coupon(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        title: json['title'] as String? ?? '',
-        amount: _num(json['amount'])?.toDouble() ?? 0,
-        threshold: json['threshold'] as String? ?? '无门槛',
-        expireAt: json['expireAt'] == null
-            ? null
-            : DateTime.tryParse(json['expireAt'].toString()),
-        stock: (json['stock'] as num?)?.toInt() ?? 0,
-        membersOnly: json['membersOnly'] as bool? ?? true,
-        received: json['received'] as bool? ?? false,
-        userCouponId: (json['userCouponId'] as num?)?.toInt(),
-        status: json['status'] as String? ?? 'unused',
-        receivedAt: json['receivedAt'] == null
-            ? null
-            : DateTime.tryParse(json['receivedAt'].toString()),
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    title: json['title'] as String? ?? '',
+    amount: _num(json['amount'])?.toDouble() ?? 0,
+    threshold: json['threshold'] as String? ?? '无门槛',
+    expireAt: json['expireAt'] == null
+        ? null
+        : DateTime.tryParse(json['expireAt'].toString()),
+    stock: (json['stock'] as num?)?.toInt() ?? 0,
+    membersOnly: json['membersOnly'] as bool? ?? true,
+    received: json['received'] as bool? ?? false,
+    userCouponId: (json['userCouponId'] as num?)?.toInt(),
+    status: json['status'] as String? ?? 'unused',
+    receivedAt: json['receivedAt'] == null
+        ? null
+        : DateTime.tryParse(json['receivedAt'].toString()),
+  );
 }
 
 class Music {
@@ -1127,13 +1161,13 @@ class Music {
   final int duration;
 
   factory Music.fromJson(Map<String, dynamic> json) => Music(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        title: json['title'] as String? ?? '',
-        artist: json['artist'] as String? ?? '',
-        cover: json['cover'] as String? ?? '',
-        musicUrl: json['musicUrl'] as String? ?? '',
-        duration: (json['duration'] as num?)?.toInt() ?? 0,
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    title: json['title'] as String? ?? '',
+    artist: json['artist'] as String? ?? '',
+    cover: json['cover'] as String? ?? '',
+    musicUrl: json['musicUrl'] as String? ?? '',
+    duration: (json['duration'] as num?)?.toInt() ?? 0,
+  );
 }
 
 class FollowStatus {
@@ -1186,11 +1220,11 @@ class FollowUser {
   final bool following;
 
   factory FollowUser.fromJson(Map<String, dynamic> json) => FollowUser(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        nickname: json['nickname'] as String? ?? '',
-        avatar: json['avatar'] as String? ?? '',
-        following: json['following'] as bool? ?? false,
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    nickname: json['nickname'] as String? ?? '',
+    avatar: json['avatar'] as String? ?? '',
+    following: json['following'] as bool? ?? false,
+  );
 }
 
 /// 分页助手：多数列表接口返回 `[items, total]` 或 `{items, total}`。
@@ -1208,14 +1242,18 @@ class Page<T> {
     if (raw is List && raw.length == 2) {
       final list = raw[0] as List? ?? [];
       return Page(
-        items: itemsOf != null ? itemsOf(list) : list.map((e) => fromJson(e as Map<String, dynamic>)).toList(),
+        items: itemsOf != null
+            ? itemsOf(list)
+            : list.map((e) => fromJson(e as Map<String, dynamic>)).toList(),
         total: (raw[1] as num?)?.toInt() ?? list.length,
       );
     }
     if (raw is Map<String, dynamic>) {
       final list = raw['items'] as List? ?? [];
       return Page(
-        items: itemsOf != null ? itemsOf(list) : list.map((e) => fromJson(e as Map<String, dynamic>)).toList(),
+        items: itemsOf != null
+            ? itemsOf(list)
+            : list.map((e) => fromJson(e as Map<String, dynamic>)).toList(),
         total: (raw['total'] as num?)?.toInt() ?? list.length,
       );
     }

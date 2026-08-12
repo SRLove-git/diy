@@ -75,16 +75,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loginSlogan => '发现手作 · 遇见同好';
 
   @override
-  String get loginForgotQuestion => '忘记密码？';
-
-  @override
   String get loginAgreeTerms => '注册即代表同意《用户协议》和《隐私政策》';
 
   @override
   String get loginButton => '登录';
-
-  @override
-  String get loginForgot => '忘记密码';
 
   @override
   String get loginRegisterLink => '注册新账号';
@@ -105,21 +99,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get registerUsernameHint => '用户名（2-30 位，字母/数字/下划线）';
 
   @override
-  String get registerDesc => '用用户名和密码注册，绑定邮箱用于找回密码';
+  String get registerDesc => '用用户名和密码注册';
 
   @override
   String get registerEmailHint => '绑定邮箱';
-
-  @override
-  String get registerCodeHint => '邮箱验证码';
-
-  @override
-  String get registerSendCode => '获取验证码';
-
-  @override
-  String registerResendIn(int count) {
-    return '${count}s 后重发';
-  }
 
   @override
   String get registerPasswordHint => '设置密码（6-32 位）';
@@ -134,16 +117,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get registerToLogin => '已有账号？去登录';
 
   @override
-  String get registerEmailHintFull => '邮箱（用于绑定和找回密码）';
+  String get registerEmailHintFull => '邮箱';
 
   @override
   String get registerSuccess => '注册成功，欢迎加入 Think Origin';
 
   @override
   String get needValidEmail => '请输入正确的邮箱';
-
-  @override
-  String get needCode6 => '请输入 6 位验证码';
 
   @override
   String get usernameInvalid => '用户名需为 2-30 位字母、数字或下划线';
@@ -153,32 +133,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get passwordMismatch => '两次输入的密码不一致';
-
-  @override
-  String get sendCodeSent => '验证码已发送';
-
-  @override
-  String sendCodeSentDev(String code) {
-    return '验证码已发送（开发环境：$code）';
-  }
-
-  @override
-  String get resetPasswordSuccess => '密码重置成功，请重新登录';
-
-  @override
-  String get forgotTitle => '忘记密码';
-
-  @override
-  String get forgotDesc => '通过绑定邮箱验证后设置新密码';
-
-  @override
-  String get forgotResetButton => '重置密码';
-
-  @override
-  String get forgotBackToLogin => '返回登录';
-
-  @override
-  String get forgotNewPassword => '设置新密码（6-32 位）';
 
   @override
   String get changePasswordTitle => '修改登录密码';
@@ -1085,6 +1039,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appointmentTable => '桌位';
+
+  @override
+  String get appointmentSeat => '座位';
 
   @override
   String get appointmentPayMethod => '付款方式';

@@ -75,17 +75,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginSlogan => 'Discover crafts · Meet makers';
 
   @override
-  String get loginForgotQuestion => 'Forgot password?';
-
-  @override
   String get loginAgreeTerms =>
       'By registering you agree to the User Agreement and Privacy Policy';
 
   @override
   String get loginButton => 'Log In';
-
-  @override
-  String get loginForgot => 'Forgot password';
 
   @override
   String get loginRegisterLink => 'Create account';
@@ -107,22 +101,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Username (2-30, letters/digits/underscore)';
 
   @override
-  String get registerDesc =>
-      'Sign up with username and password; bind an email for recovery';
+  String get registerDesc => 'Sign up with username and password';
 
   @override
   String get registerEmailHint => 'Email';
-
-  @override
-  String get registerCodeHint => 'Verification code';
-
-  @override
-  String get registerSendCode => 'Send code';
-
-  @override
-  String registerResendIn(int count) {
-    return 'Resend in ${count}s';
-  }
 
   @override
   String get registerPasswordHint => 'Password (6-32)';
@@ -137,16 +119,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get registerToLogin => 'Already have an account? Log in';
 
   @override
-  String get registerEmailHintFull => 'Email (used for binding and recovery)';
+  String get registerEmailHintFull => 'Email';
 
   @override
   String get registerSuccess => 'Welcome to Think Origin!';
 
   @override
   String get needValidEmail => 'Enter a valid email';
-
-  @override
-  String get needCode6 => 'Enter the 6-digit code';
 
   @override
   String get usernameInvalid =>
@@ -157,32 +136,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get passwordMismatch => 'Passwords do not match';
-
-  @override
-  String get sendCodeSent => 'Verification code sent';
-
-  @override
-  String sendCodeSentDev(String code) {
-    return 'Verification code sent (dev: $code)';
-  }
-
-  @override
-  String get resetPasswordSuccess => 'Password reset, please log in again';
-
-  @override
-  String get forgotTitle => 'Forgot Password';
-
-  @override
-  String get forgotDesc => 'Verify your email to set a new password';
-
-  @override
-  String get forgotResetButton => 'Reset Password';
-
-  @override
-  String get forgotBackToLogin => 'Back to login';
-
-  @override
-  String get forgotNewPassword => 'New password (6-32)';
 
   @override
   String get changePasswordTitle => 'Change Password';
@@ -1116,6 +1069,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appointmentTable => 'Table';
+
+  @override
+  String get appointmentSeat => 'Seat';
 
   @override
   String get appointmentPayMethod => 'Payment';
