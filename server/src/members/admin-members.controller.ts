@@ -12,6 +12,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { AuthUser } from '../auth/current-user.decorator';
 import { Audit } from '../audit/audit.decorator';
 import { AdminGuard } from '../stores/admin.guard';
 import { PERMISSIONS } from '../common/admin-permissions';
@@ -23,6 +25,7 @@ import {
   SaveCouponDto,
   SaveMembershipDto,
   SavePlanDto,
+  RedeemCouponDto,
   UpdateMembershipDto,
 } from './member.dto';
 import { MembersService } from './members.service';
@@ -124,5 +127,20 @@ export class AdminMembersController {
     @Body('enabled') enabled: boolean,
   ) {
     return this.members.toggleCoupon(id, enabled);
+  }
+  /** 输码核销（店员代操作）：按 6 位核销码核销 */
+  @Post('coupons/redeem-code')
+  @Audit('membership.coupon_redeem', 'coupon')
+  redeemByCode(@Body() dto: RedeemCouponDto, @CurrentUser() user: AuthUser) {
+    return this.members.redeemByCode(dto.code, user.id);
+  }
+  /** 按记录 ID 核销（店员代操作） */
+  @Post('coupons/:id/redeem')
+  @Audit('membership.coupon_redeem', 'coupon')
+  redeem(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.members.adminRedeemCoupon(id, user.id);
   }
 }

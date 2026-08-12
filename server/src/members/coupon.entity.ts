@@ -52,6 +52,10 @@ export class UserCoupon {
   @Column()
   couponId: number;
 
+  /** 核销码：到店核销凭证（6 位数字，领取时生成） */
+  @Column({ length: 10, unique: true })
+  code: string;
+
   @Column({
     type: 'enum',
     enum: ['unused', 'used', 'expired'],
@@ -61,6 +65,10 @@ export class UserCoupon {
 
   @Column({ type: 'datetime', nullable: true })
   usedAt: Date | null;
+
+  /** 核销人 ID（店员代操作时记录） */
+  @Column({ type: 'int', nullable: true })
+  redeemedBy: number | null;
 
   @CreateDateColumn()
   receivedAt: Date;

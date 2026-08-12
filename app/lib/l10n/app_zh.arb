@@ -249,6 +249,15 @@
   "memberTabUnused": "未使用",
   "memberTabUsed": "已使用",
   "memberTabExpired": "已过期",
+  "memberShowRedeemCode": "出示核销码 {code}",
+  "@memberShowRedeemCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "memberRedeemQrHint": "到店出示二维码，店员扫码或输码核销后即视为已使用",
   "memberNotOpened": "未开通",
   "memberExpired": "已过期",
   "memberPendingHint": "有 {count} 笔会员开通申请待门店确认，到店支付费用后将为你开通",
@@ -259,6 +268,7 @@
       }
     }
   },
+  "memberPendingOnce": "您已提交会员开通申请，待门店确认后可再次申请",
   "memberPurchaseTitle": "开通会员",
   "memberPurchaseDays": "{days} 天有效期",
   "@memberPurchaseDays": {

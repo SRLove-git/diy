@@ -4,9 +4,11 @@ import {
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
+import { randomInt } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   DataSource,
+  EntityManager,
   FindOptionsWhere,
   In,
   Like,
@@ -294,7 +296,15 @@ export class MembersService implements OnModuleInit {
           ? 'expired'
           : x.status;
       return [
-        { ...coupon, userCouponId: x.id, status, receivedAt: x.receivedAt },
+        {
+          ...coupon,
+          userCouponId: x.id,
+          status,
+          receivedAt: x.receivedAt,
+          code: x.code,
+          usedAt: x.usedAt,
+          redeemedBy: x.redeemedBy,
+        },
       ];
     });
   }
@@ -318,9 +328,97 @@ export class MembersService implements OnModuleInit {
       coupon.stock -= 1;
       await couponRepo.save(coupon);
       return ownedRepo.save(
-        ownedRepo.create({ userId, couponId, status: 'unused', usedAt: null }),
+        ownedRepo.create({
+          userId,
+          couponId,
+          code: await this.generateCouponCode(manager),
+          status: 'unused',
+          usedAt: null,
+        }),
       );
     });
+  }
+
+  /**
+   * 按核销码查询（核销前确认用）。
+   * 核销码只在核销前有效：已使用/已过期的券不可再查询使用。
+   */
+  async findCouponByCode(code: string) {
+    const owned = await this.userCoupons.findOneBy({ code });
+    if (!owned) throw new NotFoundException('核销码无效');
+    const coupon = await this.coupons.findOneBy({ id: owned.couponId });
+    if (!coupon) throw new NotFoundException('核销码无效');
+    const expired =
+      owned.status === 'expired' || coupon.expireAt <= new Date();
+    if (owned.status === 'used') {
+      throw new BadRequestException('该核销码已核销，不可重复使用');
+    }
+    if (expired) {
+      throw new BadRequestException('该优惠券已过期，无法核销');
+    }
+    const user = await this.users.findById(owned.userId);
+    return {
+      ...owned,
+      couponTitle: coupon.title,
+      couponAmount: coupon.amount,
+      couponThreshold: coupon.threshold,
+      expireAt: coupon.expireAt,
+      userNickname: user?.nickname || `用户 #${owned.userId}`,
+      userEmail: user?.email ? maskEmail(user.email) ?? undefined : undefined,
+    };
+  }
+
+  /** 输码核销：状态 unused → used，记录核销时间与核销人（幂等由状态机兜底） */
+  async redeemByCode(code: string, operatorId?: number) {
+    return this.dataSource.transaction(async (manager) => {
+      const ownedRepo = manager.getRepository(UserCoupon);
+      const owned = await ownedRepo.findOne({
+        where: { code },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!owned) throw new NotFoundException('核销码无效');
+      const coupon = await manager
+        .getRepository(Coupon)
+        .findOneBy({ id: owned.couponId });
+      if (!coupon || coupon.expireAt <= new Date()) {
+        throw new BadRequestException('优惠券不存在或已过期');
+      }
+      if (owned.status !== 'unused') {
+        throw new BadRequestException('该核销码已核销，不可重复核销');
+      }
+      owned.status = 'used';
+      owned.usedAt = new Date();
+      if (operatorId) owned.redeemedBy = operatorId;
+      const saved = await ownedRepo.save(owned);
+      return this.couponRedeemView(saved, coupon);
+    });
+  }
+
+  /** 管理端按记录 ID 核销（店员代操作） */
+  async adminRedeemCoupon(id: number, operatorId?: number) {
+    const owned = await this.userCoupons.findOneBy({ id });
+    if (!owned) throw new NotFoundException('优惠券记录不存在');
+    return this.redeemByCode(owned.code, operatorId);
+  }
+
+  /** 生成 6 位数字核销码：唯一索引兜底，冲突重试 */
+  private async generateCouponCode(em: EntityManager): Promise<string> {
+    for (let i = 0; i < 10; i++) {
+      const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+      const exists = await em.findOne(UserCoupon, { where: { code } });
+      if (!exists) return code;
+    }
+    throw new Error('生成核销码失败，请重试');
+  }
+
+  private couponRedeemView(owned: UserCoupon, coupon: Coupon) {
+    return {
+      ...owned,
+      couponTitle: coupon.title,
+      couponAmount: coupon.amount,
+      couponThreshold: coupon.threshold,
+      expireAt: coupon.expireAt,
+    };
   }
 
   /** 管理端：会员列表（分页，可按用户ID/用户名/邮箱/昵称/会员编号搜索），附带用户显示名 */

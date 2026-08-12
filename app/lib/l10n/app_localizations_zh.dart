@@ -578,6 +578,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memberTabExpired => '已过期';
 
   @override
+  String memberShowRedeemCode(String code) {
+    return '出示核销码 $code';
+  }
+
+  @override
+  String get memberRedeemQrHint => '到店出示二维码，店员扫码或输码核销后即视为已使用';
+
+  @override
   String get memberNotOpened => '未开通';
 
   @override

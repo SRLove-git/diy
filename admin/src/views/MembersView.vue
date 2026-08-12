@@ -8,6 +8,7 @@ import {
   type Membership,
   type SaveCouponPayload,
   type SavePlanPayload,
+  type UserCoupon,
 } from '../api/members'
 import { i18n, t } from '../i18n'
 import { refreshPending } from '../stores/pending'
@@ -66,6 +67,12 @@ const couponForm = reactive<SaveCouponPayload>({
   membersOnly: true,
   enabled: true,
 })
+const redeemModalOpen = ref(false)
+const redeemCode = ref('')
+const redeemQuerying = ref(false)
+const redeemBusy = ref(false)
+const redeemResult = ref<UserCoupon | null>(null)
+const redeemError = ref('')
 
 function resetPlanForm() {
   editingPlanId.value = null
@@ -409,6 +416,59 @@ async function toggleCoupon(coupon: Coupon) {
   }
 }
 
+function openRedeemCoupon() {
+  redeemCode.value = ''
+  redeemResult.value = null
+  redeemError.value = ''
+  redeemModalOpen.value = true
+}
+
+function closeRedeemCoupon() {
+  redeemModalOpen.value = false
+  redeemCode.value = ''
+  redeemResult.value = null
+  redeemError.value = ''
+}
+
+async function queryRedeemCode() {
+  const code = redeemCode.value.trim()
+  if (!/^\d{6}$/.test(code)) {
+    redeemError.value = t(
+      '请输入 6 位数字核销码',
+      'Please enter the 6-digit code',
+    )
+    return
+  }
+  redeemQuerying.value = true
+  redeemError.value = ''
+  redeemResult.value = null
+  try {
+    const { data } = await memberApi.findCouponByCode(code)
+    redeemResult.value = data
+  } catch (e: any) {
+    redeemError.value =
+      e?.response?.data?.message ?? t('查询失败', 'Query failed')
+  } finally {
+    redeemQuerying.value = false
+  }
+}
+
+async function confirmRedeemCoupon() {
+  redeemBusy.value = true
+  redeemError.value = ''
+  try {
+    redeemResult.value = await memberApi.redeemCouponByCode(
+      redeemCode.value.trim(),
+    )
+    await loadCoupons()
+  } catch (e: any) {
+    redeemError.value =
+      e?.response?.data?.message ?? t('核销失败', 'Redeem failed')
+  } finally {
+    redeemBusy.value = false
+  }
+}
+
 function goPage(nextPage: number) {
   if (nextPage < 1 || nextPage > totalPages.value) return
   page.value = nextPage
@@ -675,7 +735,12 @@ onMounted(loadAll)
           <div class="hint">
             {{ $t('维护优惠券面额、门槛、库存、到期时间和会员限制', 'Manage coupon amounts, thresholds, stock, expiry and member restrictions.') }}
           </div>
-          <button class="btn" @click="openCreateCoupon">{{ $t('新增优惠券', 'New coupon') }}</button>
+          <div class="actions">
+            <button class="btn btn-success" @click="openRedeemCoupon">
+              {{ $t('核销码核销', 'Redeem by code') }}
+            </button>
+            <button class="btn" @click="openCreateCoupon">{{ $t('新增优惠券', 'New coupon') }}</button>
+          </div>
         </div>
         <table class="table">
           <thead>
@@ -852,6 +917,67 @@ onMounted(loadAll)
         </div>
       </div>
     </div>
+
+    <div v-if="redeemModalOpen" class="modal-overlay" @click.self="closeRedeemCoupon">
+      <div class="modal">
+        <h3>{{ $t('核销码核销', 'Redeem by code') }}</h3>
+        <p class="modal-desc">
+          {{ $t('输入顾客卡包中的 6 位核销码，先查询确认，再点击核销。', 'Enter the 6-digit code from the customer wallet to confirm, then redeem.') }}
+        </p>
+        <div class="redeem-row">
+          <input
+            v-model="redeemCode"
+            type="text"
+            maxlength="6"
+            :placeholder="$t('6 位核销码', '6-digit code')"
+            @keyup.enter="queryRedeemCode"
+          />
+          <button class="btn btn-sm" :disabled="redeemQuerying" @click="queryRedeemCode">
+            {{ redeemQuerying ? $t('查询中…', 'Querying…') : $t('查询', 'Query') }}
+          </button>
+        </div>
+        <p v-if="redeemError" class="redeem-error">{{ redeemError }}</p>
+        <div v-if="redeemResult" class="redeem-result">
+          <div class="redeem-line">
+            <span>{{ $t('用户', 'User') }}</span>
+            <strong>
+              {{ redeemResult.userNickname || $t('用户 #{id}', 'User #{id}', { id: redeemResult.userId }) }}
+            </strong>
+          </div>
+          <div class="redeem-line">
+            <span>{{ $t('优惠券', 'Coupon') }}</span>
+            <strong>{{ redeemResult.couponTitle }}（{{ redeemResult.couponAmount }}）</strong>
+          </div>
+          <div class="redeem-line">
+            <span>{{ $t('门槛', 'Threshold') }}</span>
+            <strong>{{ redeemResult.couponThreshold }}</strong>
+          </div>
+          <div class="redeem-line">
+            <span>{{ $t('到期时间', 'Expires') }}</span>
+            <strong>{{ formatTime(redeemResult.expireAt) }}</strong>
+          </div>
+          <div class="redeem-line">
+            <span>{{ $t('状态', 'Status') }}</span>
+            <strong v-if="redeemResult.status === 'used'" class="redeem-used">
+              {{ $t('已核销', 'Redeemed') }}
+            </strong>
+            <strong v-else class="redeem-ok">
+              {{ $t('可核销', 'Ready to redeem') }}
+            </strong>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-sm" @click="closeRedeemCoupon">{{ $t('取消', 'Cancel') }}</button>
+          <button
+            class="btn btn-sm btn-success"
+            :disabled="redeemBusy || !redeemResult || redeemResult.status === 'used'"
+            @click="confirmRedeemCoupon"
+          >
+            {{ redeemBusy ? $t('核销中…', 'Redeeming…') : $t('确认核销', 'Confirm redeem') }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -883,6 +1009,7 @@ onMounted(loadAll)
   padding: 16px;
 }
 .hint { font-size: 13px; color: #8a8a8a; }
+.actions { display: flex; gap: 8px; align-items: center; }
 .state { text-align: center; padding: 40px; color: #8a8a8a; }
 .error { color: #d9453e; }
 .table {
@@ -997,4 +1124,39 @@ onMounted(loadAll)
   gap: 8px;
   margin-top: 20px;
 }
+.redeem-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.redeem-row input {
+  flex: 1;
+  border: 1px solid #eceae6;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 18px;
+  letter-spacing: 3px;
+  box-sizing: border-box;
+}
+.redeem-error { color: #d9453e; font-size: 13px; margin: 10px 0 0; }
+.redeem-result {
+  margin-top: 16px;
+  border: 1px solid #eceae6;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #faf9f7;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.redeem-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+.redeem-line span { color: #8a8a8a; }
+.redeem-line strong { color: #333; text-align: right; }
+.redeem-ok { color: #2e9e5b; }
+.redeem-used { color: #d9453e; }
 </style>

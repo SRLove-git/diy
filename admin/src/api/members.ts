@@ -48,6 +48,24 @@ export interface Coupon {
   enabled: boolean
 }
 
+/** 已发放给用户的优惠券（含核销码） */
+export interface UserCoupon {
+  id: number
+  userId: number
+  couponId: number
+  code: string
+  status: 'unused' | 'used' | 'expired'
+  usedAt: string | null
+  redeemedBy: number | null
+  receivedAt: string
+  couponTitle: string
+  couponAmount: string
+  couponThreshold: string
+  expireAt: string
+  userNickname?: string
+  userEmail?: string
+}
+
 export interface SavePlanPayload {
   name: string
   durationDays: number
@@ -129,5 +147,21 @@ export const memberApi = {
   },
   toggleCoupon(id: number, enabled: boolean) {
     return http.patch(`/admin/members/coupons/${id}/enabled`, { enabled })
+  },
+  /** 按核销码查询（核销前确认用，公开接口） */
+  findCouponByCode(code: string) {
+    return http.get<UserCoupon>(`/members/coupons/code/${code}`)
+  },
+  /** 输码核销（店员代操作） */
+  redeemCouponByCode(code: string) {
+    return http
+      .post<UserCoupon>('/admin/members/coupons/redeem-code', { code })
+      .then((r) => r.data)
+  },
+  /** 按记录 ID 核销（店员代操作） */
+  adminRedeemCoupon(id: number) {
+    return http
+      .post<UserCoupon>(`/admin/members/coupons/${id}/redeem`)
+      .then((r) => r.data)
   },
 }

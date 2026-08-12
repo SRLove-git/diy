@@ -590,6 +590,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get memberTabExpired => 'Expired';
 
   @override
+  String memberShowRedeemCode(String code) {
+    return 'Redeem code $code';
+  }
+
+  @override
+  String get memberRedeemQrHint =>
+      'Show this QR code at the store; staff will redeem it by scanning or entering the code.';
+
+  @override
   String get memberNotOpened => 'Not opened';
 
   @override
@@ -602,7 +611,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get memberPendingOnce =>
-      'You already have a pending application. Wait for the store to confirm before applying again';
+      'You have a pending membership application. You can apply again after the store confirms it.';
 
   @override
   String get memberPurchaseTitle => 'Membership';

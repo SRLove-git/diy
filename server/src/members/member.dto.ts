@@ -6,6 +6,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -29,6 +30,12 @@ export class SaveCouponDto {
   @IsInt() @Min(0) stock: number;
   @IsOptional() @IsBoolean() membersOnly?: boolean;
   @IsOptional() @IsBoolean() enabled?: boolean;
+}
+
+/** 输码核销：6 位数字核销码 */
+export class RedeemCouponDto {
+  @Matches(/^\d{6}$/, { message: '核销码为 6 位数字' })
+  code: string;
 }
 
 /** 后台开通会员：按用户 ID 直接开通 */

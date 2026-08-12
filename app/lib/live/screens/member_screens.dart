@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 import '../../api/api_client.dart';
@@ -1599,10 +1600,121 @@ class _CouponCard extends StatelessWidget {
                           : LiveColors.textTertiary,
                     ),
                   ),
+                  if (usable && coupon.code.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _RedeemCodeChip(coupon: coupon),
+                  ],
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RedeemCodeChip extends StatelessWidget {
+  const _RedeemCodeChip({required this.coupon});
+
+  final Coupon coupon;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return InkWell(
+      onTap: () => _showQr(context),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: LiveColors.brand.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: LiveColors.brand.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.qr_code_2, size: 15, color: LiveColors.brand),
+            const SizedBox(width: 6),
+            Text(
+              l10n.memberShowRedeemCode(coupon.code),
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: LiveColors.brand,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showQr(BuildContext context) {
+    final l10n = context.l10n;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: LiveColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 22, 24, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n.memberShowRedeemCode(coupon.code),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: LiveColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                coupon.title,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: LiveColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: LiveColors.bg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: LiveColors.cardBorder),
+                ),
+                child: QrImageView(
+                  data: coupon.code,
+                  version: QrVersions.auto,
+                  size: 200,
+                  backgroundColor: LiveColors.bg,
+                  eyeStyle: const QrEyeStyle(
+                    eyeShape: QrEyeShape.square,
+                    color: LiveColors.textPrimary,
+                  ),
+                  dataModuleStyle: const QrDataModuleStyle(
+                    dataModuleShape: QrDataModuleShape.square,
+                    color: LiveColors.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                l10n.memberRedeemQrHint,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: LiveColors.textTertiary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

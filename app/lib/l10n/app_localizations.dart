@@ -1202,6 +1202,18 @@ abstract class AppLocalizations {
   /// **'已过期'**
   String get memberTabExpired;
 
+  /// No description provided for @memberShowRedeemCode.
+  ///
+  /// In zh, this message translates to:
+  /// **'出示核销码 {code}'**
+  String memberShowRedeemCode(String code);
+
+  /// No description provided for @memberRedeemQrHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'到店出示二维码，店员扫码或输码核销后即视为已使用'**
+  String get memberRedeemQrHint;
+
   /// No description provided for @memberNotOpened.
   ///
   /// In zh, this message translates to:

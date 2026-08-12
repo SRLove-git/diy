@@ -1136,6 +1136,9 @@ class Coupon {
     this.userCouponId,
     this.status = 'unused',
     this.receivedAt,
+    this.code = '',
+    this.usedAt,
+    this.redeemedBy,
   });
 
   final int id;
@@ -1149,6 +1152,9 @@ class Coupon {
   final int? userCouponId;
   final String status;
   final DateTime? receivedAt;
+  final String code;
+  final DateTime? usedAt;
+  final int? redeemedBy;
 
   bool get usable =>
       status == 'unused' &&
@@ -1170,6 +1176,11 @@ class Coupon {
     receivedAt: json['receivedAt'] == null
         ? null
         : DateTime.tryParse(json['receivedAt'].toString()),
+    code: json['code'] as String? ?? '',
+    usedAt: json['usedAt'] == null
+        ? null
+        : DateTime.tryParse(json['usedAt'].toString()),
+    redeemedBy: (json['redeemedBy'] as num?)?.toInt(),
   );
 }
 

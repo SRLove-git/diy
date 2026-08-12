@@ -1,4 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { Coupon, UserCoupon } from './coupon.entity';
 import { MembersService } from './members.service';
 
 function buildService() {
@@ -197,6 +198,171 @@ describe('MembersService', () => {
       await expect(m.svc.adminCancelOrder(1)).rejects.toThrow(
         BadRequestException,
       );
+    });
+  });
+
+  describe('优惠券核销码', () => {
+    function buildCouponService() {
+      const memberships = {
+        findOneBy: jest.fn().mockResolvedValue({
+          expireAt: new Date(Date.now() + 86400000),
+        }),
+      };
+      const coupons = {
+        findOneBy: jest.fn(),
+        findOne: jest.fn(),
+      };
+      const userCoupons = {
+        findOneBy: jest.fn(),
+        findOne: jest.fn(),
+        existsBy: jest.fn(),
+        save: jest.fn(),
+      };
+      const users = { findById: jest.fn() };
+      const manager = {
+        getRepository: jest.fn((cls: unknown) => {
+          if (cls === UserCoupon) return userCoupons;
+          if (cls === Coupon) return coupons;
+          return {};
+        }),
+      };
+      const dataSource = {
+        transaction: jest.fn((cb: (m: unknown) => Promise<unknown>) =>
+          cb(manager),
+        ),
+      };
+      const svc = new MembersService(
+        {} as never,
+        memberships as never,
+        coupons as never,
+        userCoupons as never,
+        {} as never,
+        {} as never,
+        dataSource as never,
+        users as never,
+      );
+      return { svc, coupons, userCoupons, users };
+    }
+
+    const unused = {
+      id: 1,
+      userId: 7,
+      couponId: 2,
+      code: '123456',
+      status: 'unused',
+      usedAt: null,
+      redeemedBy: null,
+      receivedAt: new Date(),
+    };
+    const coupon = {
+      id: 2,
+      title: '满100减20',
+      amount: '$20',
+      threshold: '满 $100',
+      expireAt: new Date(Date.now() + 86400000),
+    };
+
+    it('按核销码查询：返回券与用户信息', async () => {
+      const m = buildCouponService();
+      m.userCoupons.findOneBy.mockResolvedValue(unused);
+      m.coupons.findOneBy.mockResolvedValue(coupon);
+      m.users.findById.mockResolvedValue({
+        id: 7,
+        nickname: 'Alice',
+        email: 'a@example.com',
+      });
+
+      const result = await m.svc.findCouponByCode('123456');
+
+      expect(result.code).toBe('123456');
+      expect(result.couponTitle).toBe('满100减20');
+      expect(result.userNickname).toBe('Alice');
+      expect(result.userEmail).toBeDefined();
+    });
+
+    it('按核销码查询：已使用的券不可再查', async () => {
+      const m = buildCouponService();
+      m.userCoupons.findOneBy.mockResolvedValue({
+        ...unused,
+        status: 'used',
+      });
+      m.coupons.findOneBy.mockResolvedValue(coupon);
+
+      await expect(m.svc.findCouponByCode('123456')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('按核销码查询：已过期的券不可再查', async () => {
+      const m = buildCouponService();
+      m.userCoupons.findOneBy.mockResolvedValue(unused);
+      m.coupons.findOneBy.mockResolvedValue({
+        ...coupon,
+        expireAt: new Date(Date.now() - 1000),
+      });
+
+      await expect(m.svc.findCouponByCode('123456')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('输码核销：unused → used，记录核销人与时间', async () => {
+      const m = buildCouponService();
+      m.userCoupons.findOne.mockResolvedValue({ ...unused });
+      m.coupons.findOneBy.mockResolvedValue(coupon);
+      m.userCoupons.save.mockImplementation((x: unknown) =>
+        Promise.resolve(x),
+      );
+
+      const result = await m.svc.redeemByCode('123456', 99);
+
+      expect(result.status).toBe('used');
+      expect(result.redeemedBy).toBe(99);
+      expect(result.usedAt).toBeInstanceOf(Date);
+      expect(m.userCoupons.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'used', redeemedBy: 99 }),
+      );
+    });
+
+    it('输码核销：重复核销拒绝', async () => {
+      const m = buildCouponService();
+      m.userCoupons.findOne.mockResolvedValue({
+        ...unused,
+        status: 'used',
+      });
+      m.coupons.findOneBy.mockResolvedValue(coupon);
+
+      await expect(m.svc.redeemByCode('123456', 99)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('输码核销：已过期拒绝', async () => {
+      const m = buildCouponService();
+      m.userCoupons.findOne.mockResolvedValue({ ...unused });
+      m.coupons.findOneBy.mockResolvedValue({
+        ...coupon,
+        expireAt: new Date(Date.now() - 1000),
+      });
+
+      await expect(m.svc.redeemByCode('123456', 99)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('管理端按记录 ID 核销', async () => {
+      const m = buildCouponService();
+      m.userCoupons.findOneBy.mockResolvedValue({ ...unused });
+      m.userCoupons.findOne.mockResolvedValue({ ...unused });
+      m.coupons.findOneBy.mockResolvedValue(coupon);
+      m.userCoupons.save.mockImplementation((x: unknown) =>
+        Promise.resolve(x),
+      );
+
+      const result = await m.svc.adminRedeemCoupon(1, 5);
+
+      expect(result.status).toBe('used');
+      expect(result.redeemedBy).toBe(5);
     });
   });
 });
