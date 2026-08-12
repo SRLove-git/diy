@@ -669,6 +669,15 @@ describe('AppointmentsService', () => {
   });
 
   describe('adminWalkIn', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2026-08-13T10:00:00+08:00'));
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     it('散客开台：直接服务中，开始=当前、结束=当前+时长，挂在占位账号下', async () => {
       const m = buildService();
       m.stores.findOneBy.mockResolvedValue({
@@ -1161,6 +1170,15 @@ describe('AppointmentsService', () => {
   });
 
   describe('adminWalkIn 按小时套餐计价', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2026-08-13T10:00:00+08:00'));
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     it('时长超过套餐：套餐价 + 超出小时按小时单价', async () => {
       const m = buildService();
       m.stores.findOneBy.mockResolvedValue({

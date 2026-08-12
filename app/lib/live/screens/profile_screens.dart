@@ -613,8 +613,9 @@ class _VideoGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (videos.isEmpty)
+    if (videos.isEmpty) {
       return EmptyView(text: emptyText, icon: Icons.videocam_outlined);
+    }
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
