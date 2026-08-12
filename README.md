@@ -192,29 +192,6 @@ docker compose -f docker/compose.prod.yml up -d --build --scale server=3
 
 脚本会在 `docker/` 下生成 `images-<tag>.tar.gz`，并打印 scp 传输与服务器 `docker load` + `up --no-build` 命令。服务器只需安装 Docker，不需要 Node/npm。
 
-### GitHub Actions 构建镜像（推荐，绕开本地 Docker Hub 网络问题）
-
-仓库自带 [build-images.yml](.github/workflows/build-images.yml)：在 GitHub 的 x86_64 跑机上原生构建 `linux/amd64` 镜像并打包上传为 artifact（不需要本地 Docker、不需要 QEMU 交叉构建，跑机访问 Docker Hub 不受你本地网络影响）。
-
-```bash
-# 1. 推送工作流文件（只需一次）
-git add .github/workflows/build-images.yml && git commit -m "ci: 镜像构建工作流" && git push
-
-# 2. 之后每次要出包：
-#    GitHub 仓库 → Actions → Build Docker Images (amd64) → Run workflow
-#    构建完成后在运行记录底部 Artifacts 下载 diy-images-<sha>-<日期>
-
-# 3. 下载解压后按包内 DEPLOY.txt 执行：
-scp images-<tag>.tar.gz <用户>@<服务器IP>:/opt/diy/
-ssh <用户>@<服务器IP>
-cd /opt/diy && docker load -i images-<tag>.tar.gz
-SERVER_IMAGE=diy-server:<tag> ADMIN_IMAGE=diy-admin:<tag> \
-  docker compose -f docker/compose.prod.yml up -d --no-build --scale server=3
-curl http://<服务器IP>:3000/api/health
-```
-
-artifact 保留 30 天，镜像包约 200~400MB。仓库推 `v*` 标签也会自动触发构建。
-
 ## CI
 
 `.github/workflows/ci.yml` 在 push/PR 到 `main` 时自动运行：
