@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../api/api_config.dart';
 import '../l10n/l10n_ext.dart';
@@ -107,7 +108,8 @@ class LiveAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
-/// 底部悬浮 Tab（主页/我的），对齐原设计稿的悬浮胶囊样式。
+/// 底部悬浮 Tab（主页/我的）：液态玻璃胶囊 + ins 风纯图标（无文字标签），
+/// 选中态实心图标落在玻璃指示器上，未选中为描边图标。
 /// 社区 / Reels / 聊天前期暂不开放，已隐藏（保留 5 Tab 设计资源，后续恢复时切回）。
 class LiveTabBar extends StatelessWidget {
   const LiveTabBar({super.key, required this.current, this.onTap});
@@ -118,70 +120,33 @@ class LiveTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final tabs = [
-      (Icons.home_outlined, Icons.home, l10n.tabHome),
-      (Icons.person_outline, Icons.person, l10n.tabProfile),
-    ];
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    return SizedBox(
-      height: 88 + bottomInset,
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: Container(
-          height: 62,
-          margin: EdgeInsets.fromLTRB(20, 0, 20, 4 + bottomInset),
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          decoration: BoxDecoration(
-            color: LiveColors.bg,
-            borderRadius: BorderRadius.circular(31),
-            border: Border.all(color: LiveColors.divider, width: 0.5),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x14000000),
-                blurRadius: 12,
-                offset: Offset(0, 4),
-              ),
-            ],
+    // GlassTabBar 不自带底部安全区，这里补上，保持原来的悬浮位置。
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: GlassTabBar.bottom(
+        selectedIndex: current,
+        onTabSelected: (i) {
+          if (i != current) onTap?.call(i);
+        },
+        horizontalPadding: 20,
+        verticalPadding: 4,
+        barHeight: 56,
+        iconSize: 26,
+        selectedIconColor: LiveColors.textPrimary,
+        unselectedIconColor: LiveColors.textTertiary,
+        tabs: [
+          GlassTab(
+            icon: const Icon(Icons.home_outlined),
+            activeIcon: const Icon(Icons.home),
+            semanticLabel: l10n.tabHome,
           ),
-          child: Row(
-            children: [
-              for (var i = 0; i < tabs.length; i++)
-                Expanded(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      if (i != current) onTap?.call(i);
-                    },
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          i == current ? tabs[i].$2 : tabs[i].$1,
-                          size: 22,
-                          color: i == current
-                              ? LiveColors.textPrimary
-                              : LiveColors.textTertiary,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          tabs[i].$3,
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: i == current
-                                ? FontWeight.w700
-                                : FontWeight.w400,
-                            color: i == current
-                                ? LiveColors.textPrimary
-                                : LiveColors.textTertiary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
+          GlassTab(
+            icon: const Icon(Icons.person_outline),
+            activeIcon: const Icon(Icons.person),
+            semanticLabel: l10n.tabProfile,
           ),
-        ),
+        ],
       ),
     );
   }
