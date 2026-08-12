@@ -68,6 +68,8 @@ npm run migration:revert                                # 回滚最近一次迁�
 
 - 开发环境仍用 `synchronize` 自动建表，方便迭代；
 - 生产环境在 compose 中默认 `DB_MIGRATIONS_RUN=true`，应用启动时自动执行未跑过的迁移（含首次建表）。
+- 多副本（`--scale server=3`）同时启动时迁移并发安全：bootstrap 通过 MySQL 命名锁
+  （`diy_migrations`）串行化执行，先启动的副本跑完迁移，其余副本等待后自动跳过。
 
 ## 生产环境变量
 
@@ -75,6 +77,7 @@ npm run migration:revert                                # 回滚最近一次迁�
 
 | 变量 | 说明 |
 | --- | --- |
+| `JWT_LEGACY_SECRETS` | JWT 无缝轮换：逗号分隔的历史密钥（仅验签）。轮换时先填旧密钥再换 `JWT_SECRET / JWT_REFRESH_SECRET`，已登录用户不掉线；旧令牌过期后清空 |
 | `SMTP_HOST/PORT/USER/PASS/FROM` | 邮件发送（验证码）。**生产必须配置**，未配置时验证码只打印在服务端日志 |
 | `CORS_ORIGINS` | 跨域白名单（逗号分隔）；生产未配置默认禁止跨域（原生 App 不受影响） |
 | `CONTENT_KEYWORDS` | 内容机审默认关键词（逗号分隔），管理端 `/api/admin/moderation/keywords` 可运行时增删 |
@@ -218,6 +221,26 @@ docker compose -f docker/compose.prod.yml up -d --build
 # 生产密码/密钥通过环境变量注入：DB_PASSWORD / JWT_SECRET / JWT_REFRESH_SECRET
 # 首次部署需在 docker/.env 设 DB_SYNC=true 自动建表，建表完成后改回 false 并重启
 ```
+
+### 密钥与数据库密码轮换
+
+- **JWT 轮换（不影响已登录用户）**：先把旧 `JWT_SECRET` / `JWT_REFRESH_SECRET` 追加到
+  `docker/.env` 的 `JWT_LEGACY_SECRETS`（逗号分隔），再更新 `JWT_SECRET` / `JWT_REFRESH_SECRET`
+  并重启 server。旧 access token（默认 2h）与 refresh token（30 天）在有效期内继续可验证，
+  全部过期后可清空 `JWT_LEGACY_SECRETS`。不要直接替换密钥，否则所有已登录用户立即掉线。
+
+- **MySQL 密码轮换**：数据卷初始化后 `MYSQL_ROOT_PASSWORD` 不再生效，只改 `docker/.env` 的
+  `DB_PASSWORD` 会导致应用连不上库、健康检查失败。必须用脚本在容器内改密并同步 .env：
+
+```bash
+./docker/rotate-db-password.sh            # 自动生成随机密码
+./docker/rotate-db-password.sh NewPass123 # 指定新密码
+```
+
+  脚本流程：`ALTER USER`（root@% / root@localhost）→ 备份并更新 `docker/.env` → 重建
+  mysql/server 容器。备份账号 `BACKUP_DB_PASSWORD` 是独立低权限账号，不受影响。
+
+版本升级与数据安全 SOP（升级前备份、迁移、回滚、红线事项）见 [version-update.md](./version-update.md)。
 
 ## 环境要求
 

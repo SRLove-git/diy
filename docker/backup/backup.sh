@@ -33,7 +33,7 @@ mv "$TMP_SQL.gz" "$BACKUP_DIR/mysql-$STAMP.sql.gz"
 
 # ---- Redis：--rdb 直接从服务器拉一致性快照（无需挂载 redis 数据卷） ----
 TMP_RDB="$BACKUP_DIR/.redis-$STAMP.rdb"
-redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" --rdb "$TMP_RDB" >/dev/null 2>&1
+redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" --rdb "$TMP_RDB" >/dev/null
 gzip "$TMP_RDB"
 mv "$TMP_RDB.gz" "$BACKUP_DIR/redis-$STAMP.rdb.gz"
 

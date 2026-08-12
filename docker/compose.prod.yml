@@ -6,6 +6,13 @@ services:
     image: mysql:8.0
     container_name: diy-mysql-prod
     restart: unless-stopped
+    # 内存上限：当前 mysqld 实际 ~410M（缓冲池 512M），1G 留足余量，防泄漏拖垮宿主机
+    mem_limit: 1g
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-change-me}
       MYSQL_DATABASE: diy
@@ -23,6 +30,13 @@ services:
     image: redis:7
     container_name: diy-redis-prod
     restart: unless-stopped
+    # 内存上限：maxmemory 256M + 分配器碎片余量
+    mem_limit: 384m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       TZ: Asia/Shanghai
     # 持久化与内存策略集中在 redis.conf（AOF + RDB 兜底、volatile-lru 淘汰）
@@ -40,6 +54,13 @@ services:
     build:
       context: ../server
     restart: unless-stopped
+    # 内存上限：当前 node 实际 ~120M，压测峰值留 4 倍余量
+    mem_limit: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     # 多实例扩容：docker compose -f docker/compose.prod.yml up -d --scale server=3，
     # 外部 3000 由 nginx-lb 负载均衡到各副本；聊天跨实例转发由 Redis pub/sub（chat:events）承载。
     environment:
@@ -57,6 +78,9 @@ services:
       DB_POOL_SIZE: ${DB_POOL_SIZE:-100}
       JWT_SECRET: ${JWT_SECRET:-change-me}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me}
+      # JWT 无缝轮换：历史密钥（逗号分隔，仅验签）。
+      # 先把旧密钥填到这里再换 JWT_SECRET，已登录用户不掉线；轮换完成后清空
+      JWT_LEGACY_SECRETS: ${JWT_LEGACY_SECRETS:-}
       # CORS 白名单（逗号分隔）；不配置则默认禁止跨域（原生 App 不受影响）
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       # 内容机审关键词（逗号分隔），管理端可运行时增删
@@ -100,6 +124,12 @@ services:
     image: nginx:alpine
     container_name: diy-nginx-lb
     restart: unless-stopped
+    mem_limit: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     # 负载均衡入口：外部 3000 → server 各副本（含 /api、/ws WebSocket、/uploads、/assets/music）
     depends_on:
       - server
@@ -114,6 +144,12 @@ services:
       context: ../admin
     container_name: diy-admin-prod
     restart: unless-stopped
+    mem_limit: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       TZ: Asia/Shanghai
     depends_on:
@@ -129,6 +165,12 @@ services:
       context: ./backup
     container_name: diy-backup-prod
     restart: unless-stopped
+    mem_limit: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       TZ: Asia/Shanghai
       MYSQL_HOST: mysql
