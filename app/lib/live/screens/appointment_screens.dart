@@ -1551,6 +1551,15 @@ class TimerCard extends StatefulWidget {
 class _TimerCardState extends State<TimerCard> {
   Timer? _timer;
 
+  /// 秒数格式化为 HH:MM:SS；负数按 0 处理，避免「剩余时间」显示负数。
+  String _fmtClock(int sec) {
+    final s = sec < 0 ? 0 : sec;
+    final h = (s ~/ 3600).toString().padLeft(2, '0');
+    final m = ((s % 3600) ~/ 60).toString().padLeft(2, '0');
+    final sec2 = (s % 60).toString().padLeft(2, '0');
+    return '$h:$m:$sec2';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1568,12 +1577,7 @@ class _TimerCardState extends State<TimerCard> {
   String _elapsed() {
     final start = widget.appointment.serviceStartTime;
     if (start == null) return '00:00:00';
-    var sec = DateTime.now().difference(start).inSeconds;
-    if (sec < 0) sec = 0;
-    final h = (sec ~/ 3600).toString().padLeft(2, '0');
-    final m = ((sec % 3600) ~/ 60).toString().padLeft(2, '0');
-    final s = (sec % 60).toString().padLeft(2, '0');
-    return '$h:$m:$s';
+    return _fmtClock(DateTime.now().difference(start).inSeconds);
   }
 
   /// 剩余时间 = 预约结束时间 - 当前（结束时间固定，不因迟到顺延）。
@@ -1581,12 +1585,7 @@ class _TimerCardState extends State<TimerCard> {
   String _remaining() {
     final end = widget.appointment.serviceEndTime;
     if (end == null) return _elapsed();
-    var sec = end.difference(DateTime.now()).inSeconds;
-    if (sec < 0) sec = 0;
-    final h = (sec ~/ 3600).toString().padLeft(2, '0');
-    final m = ((sec % 3600) ~/ 60).toString().padLeft(2, '0');
-    final s = (sec % 60).toString().padLeft(2, '0');
-    return '$h:$m:$s';
+    return _fmtClock(end.difference(DateTime.now()).inSeconds);
   }
 
   double _progress() {

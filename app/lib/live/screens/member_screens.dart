@@ -263,6 +263,15 @@ class _MemberCenterScreenState extends State<MemberCenterScreen> {
 
 // ===== 会员中心（对齐 Pixso 09-会员中心）=====
 
+/// 会员剩余天数：未开通/已过期返回 0，剩余时长不足 1 天按 0 计，
+/// 保证「剩余 X 天」永远不会显示负数。
+int memberRemainingDays(Membership membership, DateTime now) {
+  if (!membership.isActive || membership.expireAt == null) return 0;
+  final diff = membership.expireAt!.difference(now);
+  if (diff.isNegative) return 0;
+  return diff.inDays;
+}
+
 /// 会员卡：高贵黑金 —— 暖黑底 + 鎏金点缀 + 陀螺仪 3D 视差 + 全息镭射 +
 /// 旋转描边流光。动效由统一时钟 [_fx] 驱动，未开通会员保持静态暗夜质感。
 class _MembershipCard extends StatefulWidget {
@@ -349,9 +358,7 @@ class _MembershipCardState extends State<_MembershipCard>
     final l10n = context.l10n;
     final membership = widget.membership;
     final active = membership.isActive;
-    final remaining = active && membership.expireAt != null
-        ? membership.expireAt!.difference(DateTime.now()).inDays
-        : 0;
+    final remaining = memberRemainingDays(membership, DateTime.now());
     return AnimatedBuilder(
       animation: _fx,
       builder: (context, _) {
