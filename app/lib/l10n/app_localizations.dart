@@ -194,6 +194,12 @@ abstract class AppLocalizations {
   /// **'全部'**
   String get commonAll;
 
+  /// No description provided for @commonUserId.
+  ///
+  /// In zh, this message translates to:
+  /// **'用户 #{id}'**
+  String commonUserId(int id);
+
   /// No description provided for @tabHome.
   ///
   /// In zh, this message translates to:
@@ -265,6 +271,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'登录成功'**
   String get loginSuccess;
+
+  /// No description provided for @loginRecentAccounts.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近登录账号'**
+  String get loginRecentAccounts;
 
   /// No description provided for @registerTitle.
   ///
@@ -524,23 +536,29 @@ abstract class AppLocalizations {
   /// **'登录其他账号'**
   String get settingsSwitchAccountSub;
 
-  /// No description provided for @settingsSwitchConfirmTitle.
+  /// No description provided for @settingsSwitchCurrent.
   ///
   /// In zh, this message translates to:
-  /// **'切换账号'**
-  String get settingsSwitchConfirmTitle;
+  /// **'当前账号'**
+  String get settingsSwitchCurrent;
 
-  /// No description provided for @settingsSwitchConfirmDesc.
+  /// No description provided for @settingsSwitchOther.
   ///
   /// In zh, this message translates to:
-  /// **'切换账号将退出当前账号并返回登录页，需要重新登录后才能继续，确定切换吗？'**
-  String get settingsSwitchConfirmDesc;
+  /// **'其他账号'**
+  String get settingsSwitchOther;
 
-  /// No description provided for @settingsSwitchAction.
+  /// No description provided for @settingsSwitchCurrentTag.
   ///
   /// In zh, this message translates to:
-  /// **'切换账号'**
-  String get settingsSwitchAction;
+  /// **'当前'**
+  String get settingsSwitchCurrentTag;
+
+  /// No description provided for @settingsSwitchSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已切换账号'**
+  String get settingsSwitchSuccess;
 
   /// No description provided for @settingsNotifications.
   ///

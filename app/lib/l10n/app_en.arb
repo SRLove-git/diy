@@ -16,6 +16,14 @@
   "commonCopy": "Copy",
   "commonClose": "Close",
   "commonAll": "All",
+  "commonUserId": "User #{id}",
+  "@commonUserId": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
   "tabHome": "Home",
   "tabProfile": "Me",
   "loginTitle": "Think Origin",
@@ -28,6 +36,7 @@
   "loginNeedAccount": "Enter username or email",
   "loginNeedPassword": "Enter your password",
   "loginSuccess": "Logged in",
+  "loginRecentAccounts": "Recent accounts",
   "registerTitle": "Sign Up",
   "registerUsernameHint": "Username (2-30, letters/digits/underscore)",
   "registerDesc": "Sign up with username and password",
@@ -71,9 +80,10 @@
   "settingsLoginPasswordSub": "Set · password login available",
   "settingsSwitchAccount": "Switch account",
   "settingsSwitchAccountSub": "Log in with another account",
-  "settingsSwitchConfirmTitle": "Switch Account",
-  "settingsSwitchConfirmDesc": "Switching will log out the current account and return to the login page. Continue?",
-  "settingsSwitchAction": "Switch",
+  "settingsSwitchCurrent": "Current account",
+  "settingsSwitchOther": "Other accounts",
+  "settingsSwitchCurrentTag": "Current",
+  "settingsSwitchSuccess": "Account switched",
   "settingsNotifications": "Notifications",
   "settingsNotificationsSub": "Interactions and system alerts",
   "settingsVersion": "Version",

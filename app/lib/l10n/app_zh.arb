@@ -16,6 +16,14 @@
   "commonCopy": "复制",
   "commonClose": "关闭",
   "commonAll": "全部",
+  "commonUserId": "用户 #{id}",
+  "@commonUserId": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
   "tabHome": "首页",
   "tabProfile": "我的",
   "loginTitle": "Think Origin",
@@ -28,6 +36,7 @@
   "loginNeedAccount": "请输入用户名或邮箱",
   "loginNeedPassword": "请输入密码",
   "loginSuccess": "登录成功",
+  "loginRecentAccounts": "最近登录账号",
   "registerTitle": "注册",
   "registerUsernameHint": "用户名（2-30 位，字母/数字/下划线）",
   "registerDesc": "用用户名和密码注册",
@@ -71,9 +80,10 @@
   "settingsLoginPasswordSub": "已设置 · 可用密码登录",
   "settingsSwitchAccount": "切换账号",
   "settingsSwitchAccountSub": "登录其他账号",
-  "settingsSwitchConfirmTitle": "切换账号",
-  "settingsSwitchConfirmDesc": "切换账号将退出当前账号并返回登录页，需要重新登录后才能继续，确定切换吗？",
-  "settingsSwitchAction": "切换账号",
+  "settingsSwitchCurrent": "当前账号",
+  "settingsSwitchOther": "其他账号",
+  "settingsSwitchCurrentTag": "当前",
+  "settingsSwitchSuccess": "已切换账号",
   "settingsNotifications": "消息通知",
   "settingsNotificationsSub": "互动、系统消息提醒",
   "settingsVersion": "版本",

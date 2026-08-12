@@ -62,6 +62,7 @@ class RoutePaths {
   static const memberPurchase = '/member/purchase';
   static const profileEdit = '/profile/edit';
   static const profileSettings = '/profile/settings';
+  static const profileSwitchAccount = '/profile/switch-account';
   static const profileChangePassword = '/profile/change-password';
   static const profileLiked = '/profile/liked';
   static const profileHistory = '/profile/history';
@@ -197,8 +198,8 @@ class LiveRoutes {
       push(context, path.replaceFirst(':id', '$id'));
 
   static Future<void> logout(BuildContext context) async {
-    await AuthStore.instance.clear();
-    // clear() 会触发 refreshListenable 的 redirect（AuthStore 已置为未登录），
+    await AuthStore.instance.logout();
+    // logout() 会触发 refreshListenable 的 redirect（AuthStore 已置为未登录），
     // 自动跳转到登录页。这里不再显式 goLogin，避免与 redirect 同时导航、
     // 向 Navigator 重复压入相同 key 的页面而触发 keyReservation 断言。
   }

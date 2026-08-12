@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 
@@ -122,12 +124,43 @@ class _LoginScreenState extends State<LoginScreen> {
         refreshToken: r.refreshToken,
         userId: r.userId,
       );
+      // 后台拉取昵称/头像，更新「切换账号」列表里的展示信息。
+      unawaited(_refreshSavedAccountInfo());
       if (!mounted) return;
       showLiveSnack(context, context.l10n.loginSuccess);
       // save() 触发 AuthStore notifyListeners -> 路由 redirect 自动跳转首页；
       // 这里不再显式 goHome，避免与 redirect 竞态导致重复 page key 断言。
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// 用 /auth/me 刷新记住账号的昵称/头像（失败静默，不影响登录流程）。
+  Future<void> _refreshSavedAccountInfo() async {
+    try {
+      final u = await AuthService.instance.me();
+      await AuthStore.instance.updateAccountInfo(
+        userId: u.id,
+        displayName: u.nickname.isNotEmpty
+            ? u.nickname
+            : (u.username?.isNotEmpty == true ? u.username : null),
+        avatar: u.avatar.isEmpty ? null : u.avatar,
+      );
+    } catch (_) {
+      // 网络抖动等情况下账号信息稍后可在账号切换页以「用户 #id」展示。
+    }
+  }
+
+  Future<void> _quickSwitchAccount(SavedAccount account) async {
+    if (_loading) return;
+    setState(() => _loading = true);
+    try {
+      await AuthStore.instance.switchTo(account.userId);
+      if (!mounted) return;
+      showLiveSnack(context, context.l10n.settingsSwitchSuccess);
+      // switchTo 触发 notifyListeners -> redirect 检测到已登录自动跳首页。
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -165,6 +198,33 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
                     ),
                   ),
+                  if (AuthStore.instance.accounts.isNotEmpty) ...[
+                    const SizedBox(height: 28),
+                    Text(
+                      l10n.loginRecentAccounts,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: LiveColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 82,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: AuthStore.instance.accounts.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 20),
+                        itemBuilder: (context, i) {
+                          final account = AuthStore.instance.accounts[i];
+                          return _RecentAccountTile(
+                            account: account,
+                            onTap: () => _quickSwitchAccount(account),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 46),
                   TextField(
                     controller: _accountCtrl,
@@ -234,6 +294,45 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
+/// 登录页「最近登录账号」快捷切换项。
+class _RecentAccountTile extends StatelessWidget {
+  const _RecentAccountTile({required this.account, required this.onTap});
+
+  final SavedAccount account;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final name = account.displayName?.isNotEmpty == true
+        ? account.displayName!
+        : l10n.commonUserId(account.userId);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: 68,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Avatar(url: account.avatar ?? '', name: name, size: 48),
+            const SizedBox(height: 6),
+            Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                color: LiveColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// 注册：用户名 + 密码 + 邮箱绑定。
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -296,6 +395,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         accessToken: r.accessToken,
         refreshToken: r.refreshToken,
         userId: r.userId,
+        displayName: username,
       );
       if (!mounted) return;
       showLiveSnack(context, context.l10n.registerSuccess);

@@ -57,6 +57,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonAll => '全部';
 
   @override
+  String commonUserId(int id) {
+    return '用户 #$id';
+  }
+
+  @override
   String get tabHome => '首页';
 
   @override
@@ -91,6 +96,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get loginSuccess => '登录成功';
+
+  @override
+  String get loginRecentAccounts => '最近登录账号';
 
   @override
   String get registerTitle => '注册';
@@ -222,14 +230,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSwitchAccountSub => '登录其他账号';
 
   @override
-  String get settingsSwitchConfirmTitle => '切换账号';
+  String get settingsSwitchCurrent => '当前账号';
 
   @override
-  String get settingsSwitchConfirmDesc =>
-      '切换账号将退出当前账号并返回登录页，需要重新登录后才能继续，确定切换吗？';
+  String get settingsSwitchOther => '其他账号';
 
   @override
-  String get settingsSwitchAction => '切换账号';
+  String get settingsSwitchCurrentTag => '当前';
+
+  @override
+  String get settingsSwitchSuccess => '已切换账号';
 
   @override
   String get settingsNotifications => '消息通知';

@@ -57,6 +57,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonAll => 'All';
 
   @override
+  String commonUserId(int id) {
+    return 'User #$id';
+  }
+
+  @override
   String get tabHome => 'Home';
 
   @override
@@ -92,6 +97,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loginSuccess => 'Logged in';
+
+  @override
+  String get loginRecentAccounts => 'Recent accounts';
 
   @override
   String get registerTitle => 'Sign Up';
@@ -226,14 +234,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSwitchAccountSub => 'Log in with another account';
 
   @override
-  String get settingsSwitchConfirmTitle => 'Switch Account';
+  String get settingsSwitchCurrent => 'Current account';
 
   @override
-  String get settingsSwitchConfirmDesc =>
-      'Switching will log out the current account and return to the login page. Continue?';
+  String get settingsSwitchOther => 'Other accounts';
 
   @override
-  String get settingsSwitchAction => 'Switch';
+  String get settingsSwitchCurrentTag => 'Current';
+
+  @override
+  String get settingsSwitchSuccess => 'Account switched';
 
   @override
   String get settingsNotifications => 'Notifications';

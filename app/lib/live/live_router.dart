@@ -24,6 +24,7 @@ import 'screens/notifications_screen.dart';
 import 'screens/post_screens.dart';
 import 'screens/profile_screens.dart';
 import 'screens/store_screens.dart';
+import 'screens/switch_account_screen.dart';
 import 'screens/video_screens.dart';
 
 /// 底部 Tab 快速连续切换的防抖时间戳。
@@ -471,6 +472,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: RoutePaths.profileSettings,
       builder: (_, _) => LiveHost(child: const SettingsScreen()),
+    ),
+    GoRoute(
+      path: RoutePaths.profileSwitchAccount,
+      builder: (_, _) => LiveHost(child: const SwitchAccountScreen()),
     ),
     // ===== 法律文档 =====
     GoRoute(

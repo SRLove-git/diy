@@ -83,89 +83,85 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return LivePage(
       child: Column(
         children: [
-          LiveAppBar(
-            title: l10n.profileTitle,
-            actions: [_ProfileMenuButton()],
-          ),
+          LiveAppBar(title: l10n.profileTitle, actions: [_ProfileMenuButton()]),
           Expanded(
             child: _loading
                 ? const LoadingView()
                 : _error != null
-                    ? ErrorView(message: _error!, onRetry: _load)
-                    : _me == null
-                        ? const EmptyView()
-                        : RefreshIndicator(
-                            onRefresh: _load,
-                            child: ListView(
-                              // 底部悬浮 Tab 覆盖在内容之上，预留滚动空间避免最后内容被遮挡
-                              padding: const EdgeInsets.fromLTRB(18, 6, 18, 96),
-                              children: [
-                                _ProfileHeader(
-                                  user: _me!,
-                                  onEdit: () async {
-                                    // 编辑页保存成功后直接返回最新用户信息，立即刷新主页头像/昵称
-                                    final updated =
-                                        await LiveRoutes.push<User>(
-                                      context,
-                                      RoutePaths.profileEdit,
-                                    );
-                                    if (updated != null && mounted) {
-                                      setState(() => _me = updated);
-                                    }
-                                    _load();
-                                  },
-                                  onOrders: () => LiveRoutes.push(
-                                    context,
-                                    RoutePaths.appointmentMy,
-                                  ),
-                                ),
-                                const SizedBox(height: 18),
-                                // ── 社区内容（帖子/笔记/视频）前期暂不开放，Tab 与内容网格先隐藏 ──
-                                // _ProfileTabs(
-                                //   tab: _tab,
-                                //   counts: (
-                                //     _textPosts.length,
-                                //     _notePosts.length,
-                                //     _videos.length,
-                                //   ),
-                                //   onChanged: (t) => setState(() => _tab = t),
-                                // ),
-                                // const SizedBox(height: 10),
-                                // if (_tab == 0)
-                                //   _WorksGrid(
-                                //     posts: _textPosts,
-                                //     textStyle: true,
-                                //     onTapPost: (p) => LiveRoutes.pushId(
-                                //       context,
-                                //       RoutePaths.postDetail,
-                                //       p.id,
-                                //     ),
-                                //     emptyText: '还没有发布帖子',
-                                //   )
-                                // else if (_tab == 1)
-                                //   _WorksGrid(
-                                //     posts: _notePosts,
-                                //     onTapPost: (p) => LiveRoutes.pushId(
-                                //       context,
-                                //       RoutePaths.postDetail,
-                                //       p.id,
-                                //     ),
-                                //     emptyText: '还没有发布笔记',
-                                //   )
-                                // else
-                                //   _VideoGrid(
-                                //     videos: _videos,
-                                //     onTapVideo: (v) => LiveRoutes.pushId(
-                                //       context,
-                                //       RoutePaths.videoDetail,
-                                //       v.id,
-                                //     ),
-                                //     emptyText: '还没有发布视频',
-                                //   ),
-                                const SizedBox(height: 20),
-                              ],
-                            ),
+                ? ErrorView(message: _error!, onRetry: _load)
+                : _me == null
+                ? const EmptyView()
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: ListView(
+                      // 底部悬浮 Tab 覆盖在内容之上，预留滚动空间避免最后内容被遮挡
+                      padding: const EdgeInsets.fromLTRB(18, 6, 18, 96),
+                      children: [
+                        _ProfileHeader(
+                          user: _me!,
+                          onEdit: () async {
+                            // 编辑页保存成功后直接返回最新用户信息，立即刷新主页头像/昵称
+                            final updated = await LiveRoutes.push<User>(
+                              context,
+                              RoutePaths.profileEdit,
+                            );
+                            if (updated != null && mounted) {
+                              setState(() => _me = updated);
+                            }
+                            _load();
+                          },
+                          onOrders: () => LiveRoutes.push(
+                            context,
+                            RoutePaths.appointmentMy,
                           ),
+                        ),
+                        const SizedBox(height: 18),
+                        // ── 社区内容（帖子/笔记/视频）前期暂不开放，Tab 与内容网格先隐藏 ──
+                        // _ProfileTabs(
+                        //   tab: _tab,
+                        //   counts: (
+                        //     _textPosts.length,
+                        //     _notePosts.length,
+                        //     _videos.length,
+                        //   ),
+                        //   onChanged: (t) => setState(() => _tab = t),
+                        // ),
+                        // const SizedBox(height: 10),
+                        // if (_tab == 0)
+                        //   _WorksGrid(
+                        //     posts: _textPosts,
+                        //     textStyle: true,
+                        //     onTapPost: (p) => LiveRoutes.pushId(
+                        //       context,
+                        //       RoutePaths.postDetail,
+                        //       p.id,
+                        //     ),
+                        //     emptyText: '还没有发布帖子',
+                        //   )
+                        // else if (_tab == 1)
+                        //   _WorksGrid(
+                        //     posts: _notePosts,
+                        //     onTapPost: (p) => LiveRoutes.pushId(
+                        //       context,
+                        //       RoutePaths.postDetail,
+                        //       p.id,
+                        //     ),
+                        //     emptyText: '还没有发布笔记',
+                        //   )
+                        // else
+                        //   _VideoGrid(
+                        //     videos: _videos,
+                        //     onTapVideo: (v) => LiveRoutes.pushId(
+                        //       context,
+                        //       RoutePaths.videoDetail,
+                        //       v.id,
+                        //     ),
+                        //     emptyText: '还没有发布视频',
+                        //   ),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
           ),
         ],
       ),
@@ -274,7 +270,11 @@ class _ProfileHeader extends StatelessWidget {
         Text(
           user.displayName,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: LiveColors.textPrimary),
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: LiveColors.textPrimary,
+          ),
         ),
         const SizedBox(height: 6),
         Text(
@@ -287,12 +287,9 @@ class _ProfileHeader extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           joinYear != null
-              ? l10n.profileJoined(
-                  '$joinYear',
-                  '${joinMonth ?? ''}',
-                )
+              ? l10n.profileJoined('$joinYear', '${joinMonth ?? ''}')
               : 'Think Origin'
-                  '${user.location.isNotEmpty ? ' · ${user.location}' : ''}',
+                    '${user.location.isNotEmpty ? ' · ${user.location}' : ''}',
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -383,11 +380,7 @@ class _ProfileTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labels = [
-      '帖子 ${counts.$1}',
-      '笔记 ${counts.$2}',
-      '视频 ${counts.$3}',
-    ];
+    final labels = ['帖子 ${counts.$1}', '笔记 ${counts.$2}', '视频 ${counts.$3}'];
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
@@ -423,7 +416,9 @@ class _ProfileTabs extends StatelessWidget {
                       labels[i],
                       style: TextStyle(
                         fontSize: 12.6,
-                        fontWeight: tab == i ? FontWeight.w700 : FontWeight.w400,
+                        fontWeight: tab == i
+                            ? FontWeight.w700
+                            : FontWeight.w400,
                         color: tab == i
                             ? LiveColors.textPrimary
                             : LiveColors.textSecondary,
@@ -483,7 +478,9 @@ class _ContentTab extends StatelessWidget {
                       t.$1,
                       style: TextStyle(
                         fontSize: 12.6,
-                        fontWeight: tab == t.$2 ? FontWeight.w700 : FontWeight.w400,
+                        fontWeight: tab == t.$2
+                            ? FontWeight.w700
+                            : FontWeight.w400,
                         color: tab == t.$2
                             ? LiveColors.textPrimary
                             : LiveColors.textSecondary,
@@ -547,7 +544,10 @@ class _WorksGrid extends StatelessWidget {
                           children: [
                             const Text(
                               '文字帖',
-                              style: TextStyle(fontSize: 10, color: LiveColors.textTertiary),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: LiveColors.textTertiary,
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Expanded(
@@ -572,14 +572,20 @@ class _WorksGrid extends StatelessWidget {
                     bottom: 5,
                     child: Row(
                       children: [
-                        const Icon(Icons.favorite, size: 11, color: Colors.white),
+                        const Icon(
+                          Icons.favorite,
+                          size: 11,
+                          color: Colors.white,
+                        ),
                         const SizedBox(width: 2),
                         Text(
                           fmtCount(p.likeCount),
                           style: const TextStyle(
                             fontSize: 10,
                             color: Colors.white,
-                            shadows: [Shadow(color: Colors.black54, blurRadius: 3)],
+                            shadows: [
+                              Shadow(color: Colors.black54, blurRadius: 3),
+                            ],
                           ),
                         ),
                       ],
@@ -595,7 +601,11 @@ class _WorksGrid extends StatelessWidget {
 }
 
 class _VideoGrid extends StatelessWidget {
-  const _VideoGrid({required this.videos, required this.onTapVideo, required this.emptyText});
+  const _VideoGrid({
+    required this.videos,
+    required this.onTapVideo,
+    required this.emptyText,
+  });
 
   final List<Video> videos;
   final ValueChanged<Video> onTapVideo;
@@ -603,7 +613,8 @@ class _VideoGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (videos.isEmpty) return EmptyView(text: emptyText, icon: Icons.videocam_outlined);
+    if (videos.isEmpty)
+      return EmptyView(text: emptyText, icon: Icons.videocam_outlined);
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -626,7 +637,11 @@ class _VideoGrid extends StatelessWidget {
               children: [
                 NetImage(url: v.cover),
                 const Center(
-                  child: Icon(Icons.play_circle_outline, size: 30, color: Colors.white70),
+                  child: Icon(
+                    Icons.play_circle_outline,
+                    size: 30,
+                    color: Colors.white70,
+                  ),
                 ),
                 Positioned(
                   left: 6,
@@ -713,79 +728,91 @@ class ProfileMenuScreen extends StatelessWidget {
               child: Container(
                 color: LiveColors.bg,
                 child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 42),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          l10n.profileServices,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: LiveColors.textPrimary,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 42),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            l10n.profileServices,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: LiveColors.textPrimary,
+                            ),
                           ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1, color: LiveColors.divider),
+                    _MenuEntryTile(
+                      icon: Icons.confirmation_number_outlined,
+                      title: l10n.profileCardWallet,
+                      subtitle: l10n.profileCardWalletDesc,
+                      onTap: () {
+                        LiveRoutes.pushAfterPop(
+                          context,
+                          RoutePaths.memberCoupons,
+                        );
+                      },
+                    ),
+                    // ── 社区内容（点赞/收藏/历史）前期暂不开放，入口先隐藏 ──
+                    // _MenuEntryTile(
+                    //   icon: Icons.favorite_outline,
+                    //   title: '点赞与收藏',
+                    //   subtitle: '我喜欢的作品',
+                    //   onTap: () {
+                    //     LiveRoutes.pushAfterPop(context, RoutePaths.profileLiked);
+                    //   },
+                    // ),
+                    // _MenuEntryTile(
+                    //   icon: Icons.history,
+                    //   title: '观看历史',
+                    //   subtitle: '作品 · 视频浏览记录',
+                    //   onTap: () {
+                    //     LiveRoutes.pushAfterPop(context, RoutePaths.profileHistory);
+                    //   },
+                    // ),
+                    _MenuEntryTile(
+                      icon: Icons.receipt_long_outlined,
+                      title: l10n.profileCardOrders,
+                      subtitle: l10n.profileCardOrdersDesc,
+                      onTap: () {
+                        LiveRoutes.pushAfterPop(
+                          context,
+                          RoutePaths.appointmentMy,
+                        );
+                      },
+                    ),
+                    _MenuEntryTile(
+                      icon: Icons.settings_outlined,
+                      title: l10n.profileCardSettings,
+                      subtitle: l10n.profileCardSettingsDesc,
+                      onTap: () {
+                        LiveRoutes.pushAfterPop(
+                          context,
+                          RoutePaths.profileSettings,
+                        );
+                      },
+                    ),
+                    const Spacer(),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                      child: Text(
+                        l10n.profileMoreComingSoon,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: LiveColors.textTertiary,
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                  const Divider(height: 1, color: LiveColors.divider),
-                  _MenuEntryTile(
-                    icon: Icons.confirmation_number_outlined,
-                    title: l10n.profileCardWallet,
-                    subtitle: l10n.profileCardWalletDesc,
-                    onTap: () {
-                      LiveRoutes.pushAfterPop(context, RoutePaths.memberCoupons);
-                    },
-                  ),
-                  // ── 社区内容（点赞/收藏/历史）前期暂不开放，入口先隐藏 ──
-                  // _MenuEntryTile(
-                  //   icon: Icons.favorite_outline,
-                  //   title: '点赞与收藏',
-                  //   subtitle: '我喜欢的作品',
-                  //   onTap: () {
-                  //     LiveRoutes.pushAfterPop(context, RoutePaths.profileLiked);
-                  //   },
-                  // ),
-                  // _MenuEntryTile(
-                  //   icon: Icons.history,
-                  //   title: '观看历史',
-                  //   subtitle: '作品 · 视频浏览记录',
-                  //   onTap: () {
-                  //     LiveRoutes.pushAfterPop(context, RoutePaths.profileHistory);
-                  //   },
-                  // ),
-                  _MenuEntryTile(
-                    icon: Icons.receipt_long_outlined,
-                    title: l10n.profileCardOrders,
-                    subtitle: l10n.profileCardOrdersDesc,
-                    onTap: () {
-                      LiveRoutes.pushAfterPop(context, RoutePaths.appointmentMy);
-                    },
-                  ),
-                  _MenuEntryTile(
-                    icon: Icons.settings_outlined,
-                    title: l10n.profileCardSettings,
-                    subtitle: l10n.profileCardSettingsDesc,
-                    onTap: () {
-                      LiveRoutes.pushAfterPop(context, RoutePaths.profileSettings);
-                    },
-                  ),
-                  const Spacer(),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-                    child: Text(
-                      l10n.profileMoreComingSoon,
-                      style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
           ),
         ],
       ),
@@ -840,12 +867,19 @@ class _MenuEntryTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: const TextStyle(fontSize: 10, color: LiveColors.textTertiary),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: LiveColors.textTertiary,
+                    ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, size: 18, color: LiveColors.textTertiary),
+            const Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: LiveColors.textTertiary,
+            ),
           ],
         ),
       ),
@@ -908,7 +942,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     if (s == null) return;
     setState(() => _followBusy = true);
     try {
-      final status = await FollowService.instance.setFollow(widget.userId, !s.following);
+      final status = await FollowService.instance.setFollow(
+        widget.userId,
+        !s.following,
+      );
       if (mounted) setState(() => _status = status);
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -927,150 +964,164 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             child: _loading
                 ? const LoadingView()
                 : _error != null
-                    ? ErrorView(message: _error!, onRetry: _load)
-                    : _status == null
-                        ? const EmptyView()
-                        : RefreshIndicator(
-                            onRefresh: _load,
-                            child: ListView(
-                              padding: const EdgeInsets.all(18),
-                              children: [
-                                Row(
-                                  children: [
-                                    Avatar(
-                                      url: _status!.avatar,
-                                      name: _status!.nickname,
-                                      size: 68,
-                                    ),
-                                    const SizedBox(width: 14),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            _status!.nickname,
-                                            style: const TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.w800,
-                                              color: LiveColors.textPrimary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Row(
-                                            children: [
-                                              StatRow(
-                                                label: '关注',
-                                                value: fmtCount(_status!.followingCount),
-                                                onTap: () => LiveRoutes.push(
-                                                  context,
-                                                  RoutePaths.userFollows,
-                                                  extra: {'targetId': widget.userId, 'initialTab': 'following'},
-                                                ),
-                                              ),
-                                              const SizedBox(width: 20),
-                                              StatRow(
-                                                label: '粉丝',
-                                                value: fmtCount(_status!.followerCount),
-                                                onTap: () => LiveRoutes.push(
-                                                  context,
-                                                  RoutePaths.userFollows,
-                                                  extra: {'targetId': widget.userId, 'initialTab': 'followers'},
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: PrimaryButton(
-                                        label: _status!.following ? '已关注' : '关注',
-                                        height: 42,
-                                        color: _status!.following ? LiveColors.card : null,
-                                        loading: _followBusy,
-                                        onTap: _followBusy ? null : _toggleFollow,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    // ── 聊天功能前期暂不开放，私信入口先隐藏 ──
-                                    // Expanded(
-                                    //   child: OutlineButton(
-                                    //     label: '私信',
-                                    //     height: 42,
-                                    //     onTap: () async {
-                                    //       try {
-                                    //         final conv = await ChatService.instance
-                                    //             .createConversation(widget.userId);
-                                    //         if (context.mounted) {
-                                    //           LiveRoutes.push(
-                                    //             context,
-                                    //             RoutePaths.chatDetail,
-                                    //             extra: {
-                                    //               'conversationId': conv.id,
-                                    //               'peerId': widget.userId,
-                                    //               'peerName': _status!.nickname,
-                                    //               'peerAvatar': _status!.avatar,
-                                    //             },
-                                    //           );
-                                    //         }
-                                    //       } on ApiException catch (e) {
-                                    //         if (context.mounted) showLiveSnack(context, e.message);
-                                    //       }
-                                    //     },
-                                    //   ),
-                                    // ),
-                                  ],
-                                ),
-                                const SizedBox(height: 18),
-                                _ProfileTabs(
-                                  tab: _tab,
-                                  counts: (
-                                    _posts.where((p) => p.mediaUrls.isEmpty).length,
-                                    _posts.where((p) => p.mediaUrls.isNotEmpty).length,
-                                    _videos.length,
-                                  ),
-                                  onChanged: (t) => setState(() => _tab = t),
-                                ),
-                                const SizedBox(height: 10),
-                                if (_tab == 0)
-                                  _WorksGrid(
-                                    posts: _posts.where((p) => p.mediaUrls.isEmpty).toList(),
-                                    textStyle: true,
-                                    onTapPost: (p) => LiveRoutes.pushId(
-                                      context,
-                                      RoutePaths.postDetail,
-                                      p.id,
-                                    ),
-                                    emptyText: 'TA 还没有发布帖子',
-                                  )
-                                else if (_tab == 1)
-                                  _WorksGrid(
-                                    posts: _posts.where((p) => p.mediaUrls.isNotEmpty).toList(),
-                                    onTapPost: (p) => LiveRoutes.pushId(
-                                      context,
-                                      RoutePaths.postDetail,
-                                      p.id,
-                                    ),
-                                    emptyText: 'TA 还没有发布笔记',
-                                  )
-                                else
-                                  _VideoGrid(
-                                    videos: _videos,
-                                    onTapVideo: (v) => LiveRoutes.pushId(
-                                      context,
-                                      RoutePaths.videoDetail,
-                                      v.id,
-                                    ),
-                                    emptyText: 'TA 还没有发布视频',
-                                  ),
-                              ],
+                ? ErrorView(message: _error!, onRetry: _load)
+                : _status == null
+                ? const EmptyView()
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: ListView(
+                      padding: const EdgeInsets.all(18),
+                      children: [
+                        Row(
+                          children: [
+                            Avatar(
+                              url: _status!.avatar,
+                              name: _status!.nickname,
+                              size: 68,
                             ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _status!.nickname,
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w800,
+                                      color: LiveColors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      StatRow(
+                                        label: '关注',
+                                        value: fmtCount(
+                                          _status!.followingCount,
+                                        ),
+                                        onTap: () => LiveRoutes.push(
+                                          context,
+                                          RoutePaths.userFollows,
+                                          extra: {
+                                            'targetId': widget.userId,
+                                            'initialTab': 'following',
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 20),
+                                      StatRow(
+                                        label: '粉丝',
+                                        value: fmtCount(_status!.followerCount),
+                                        onTap: () => LiveRoutes.push(
+                                          context,
+                                          RoutePaths.userFollows,
+                                          extra: {
+                                            'targetId': widget.userId,
+                                            'initialTab': 'followers',
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: PrimaryButton(
+                                label: _status!.following ? '已关注' : '关注',
+                                height: 42,
+                                color: _status!.following
+                                    ? LiveColors.card
+                                    : null,
+                                loading: _followBusy,
+                                onTap: _followBusy ? null : _toggleFollow,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // ── 聊天功能前期暂不开放，私信入口先隐藏 ──
+                            // Expanded(
+                            //   child: OutlineButton(
+                            //     label: '私信',
+                            //     height: 42,
+                            //     onTap: () async {
+                            //       try {
+                            //         final conv = await ChatService.instance
+                            //             .createConversation(widget.userId);
+                            //         if (context.mounted) {
+                            //           LiveRoutes.push(
+                            //             context,
+                            //             RoutePaths.chatDetail,
+                            //             extra: {
+                            //               'conversationId': conv.id,
+                            //               'peerId': widget.userId,
+                            //               'peerName': _status!.nickname,
+                            //               'peerAvatar': _status!.avatar,
+                            //             },
+                            //           );
+                            //         }
+                            //       } on ApiException catch (e) {
+                            //         if (context.mounted) showLiveSnack(context, e.message);
+                            //       }
+                            //     },
+                            //   ),
+                            // ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        _ProfileTabs(
+                          tab: _tab,
+                          counts: (
+                            _posts.where((p) => p.mediaUrls.isEmpty).length,
+                            _posts.where((p) => p.mediaUrls.isNotEmpty).length,
+                            _videos.length,
                           ),
+                          onChanged: (t) => setState(() => _tab = t),
+                        ),
+                        const SizedBox(height: 10),
+                        if (_tab == 0)
+                          _WorksGrid(
+                            posts: _posts
+                                .where((p) => p.mediaUrls.isEmpty)
+                                .toList(),
+                            textStyle: true,
+                            onTapPost: (p) => LiveRoutes.pushId(
+                              context,
+                              RoutePaths.postDetail,
+                              p.id,
+                            ),
+                            emptyText: 'TA 还没有发布帖子',
+                          )
+                        else if (_tab == 1)
+                          _WorksGrid(
+                            posts: _posts
+                                .where((p) => p.mediaUrls.isNotEmpty)
+                                .toList(),
+                            onTapPost: (p) => LiveRoutes.pushId(
+                              context,
+                              RoutePaths.postDetail,
+                              p.id,
+                            ),
+                            emptyText: 'TA 还没有发布笔记',
+                          )
+                        else
+                          _VideoGrid(
+                            videos: _videos,
+                            onTapVideo: (v) => LiveRoutes.pushId(
+                              context,
+                              RoutePaths.videoDetail,
+                              v.id,
+                            ),
+                            emptyText: 'TA 还没有发布视频',
+                          ),
+                      ],
+                    ),
+                  ),
           ),
         ],
       ),
@@ -1092,6 +1143,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _locationCtrl = TextEditingController();
   final _birthdayCtrl = TextEditingController();
   String _avatar = '';
+
   /// 刚选择的头像本地字节：立即预览，上传完成后仍保留到保存/离开页面，
   /// 避免预览依赖网络图加载（上传后不显示的问题）。
   Uint8List? _avatarPreview;
@@ -1102,18 +1154,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
-    AuthService.instance.me().then((u) {
-      if (!mounted) return;
-      setState(() {
-        _avatar = u.avatar;
-        _gender = u.gender;
-        _nicknameCtrl.text = u.nickname;
-        _usernameCtrl.text = u.username ?? '';
-        _bioCtrl.text = u.bio;
-        _locationCtrl.text = u.location;
-        _birthdayCtrl.text = u.birthday ?? '';
-      });
-    }).catchError((_) {});
+    AuthService.instance
+        .me()
+        .then((u) {
+          if (!mounted) return;
+          setState(() {
+            _avatar = u.avatar;
+            _gender = u.gender;
+            _nicknameCtrl.text = u.nickname;
+            _usernameCtrl.text = u.username ?? '';
+            _bioCtrl.text = u.bio;
+            _locationCtrl.text = u.location;
+            _birthdayCtrl.text = u.birthday ?? '';
+          });
+        })
+        .catchError((_) {});
   }
 
   @override
@@ -1142,7 +1197,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _avatarUploading = true;
         });
       }
-      final url = await UploadService.instance.uploadImage(bytes, picked.name, folder: 'avatar');
+      final url = await UploadService.instance.uploadImage(
+        bytes,
+        picked.name,
+        folder: 'avatar',
+      );
       // 上传成功后记录正式 URL（保存时写入资料）；预览继续用本地字节，
       // 不受网络加载/缓存时序影响
       if (mounted) {
@@ -1173,6 +1232,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _save() async {
+    if (_saving) return;
     if (_avatarUploading) {
       showLiveSnack(context, context.l10n.profileEditAvatarUploading);
       return;
@@ -1186,7 +1246,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'bio': _bioCtrl.text.trim(),
         'location': _locationCtrl.text.trim(),
         'gender': _gender,
-        if (_birthdayCtrl.text.trim().isNotEmpty) 'birthday': _birthdayCtrl.text.trim(),
+        if (_birthdayCtrl.text.trim().isNotEmpty)
+          'birthday': _birthdayCtrl.text.trim(),
         if (_avatar.isNotEmpty) 'avatar': _avatar,
       };
       final updated = await UserService.instance.updateMe(body);
@@ -1226,7 +1287,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 15,
-                    color: _gender == g.$1 ? LiveColors.brand : LiveColors.textPrimary,
+                    color: _gender == g.$1
+                        ? LiveColors.brand
+                        : LiveColors.textPrimary,
                   ),
                 ),
                 onTap: () => Navigator.pop(sheetContext, g.$1),
@@ -1240,7 +1303,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _pickBirthday() async {
     final now = DateTime.now();
-    final initial = DateTime.tryParse(_birthdayCtrl.text) ?? DateTime(2000, 1, 1);
+    final initial =
+        DateTime.tryParse(_birthdayCtrl.text) ?? DateTime(2000, 1, 1);
     // 打开日期选择器前收起键盘，避免键盘与 Overlay 过渡叠加触发框架断言。
     FocusScope.of(context).unfocus();
     final picked = await showDatePicker(
@@ -1251,7 +1315,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
     if (picked != null && mounted) {
       setState(() {
-        _birthdayCtrl.text = '${picked.year.toString().padLeft(4, '0')}-'
+        _birthdayCtrl.text =
+            '${picked.year.toString().padLeft(4, '0')}-'
             '${picked.month.toString().padLeft(2, '0')}-'
             '${picked.day.toString().padLeft(2, '0')}';
       });
@@ -1272,7 +1337,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: InputDecoration(hintText: context.l10n.profileEditLocationHint),
+          decoration: InputDecoration(
+            hintText: context.l10n.profileEditLocationHint,
+          ),
         ),
         actions: [
           TextButton(
@@ -1283,7 +1350,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
             child: Text(
               context.l10n.commonOk,
               style: const TextStyle(color: LiveColors.brand),
@@ -1315,30 +1383,44 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             title: l10n.profileEditTitle,
             actions: [
               Padding(
-                padding: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.only(right: 4),
                 child: InkWell(
-                  onTap: (_saving || _avatarUploading) ? null : _save,
-                  borderRadius: BorderRadius.circular(18),
+                  onTap: _save,
+                  // 命中区域 >= 44pt：视觉药丸外扩透明热区，避免边缘点击落空
+                  borderRadius: BorderRadius.circular(20),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.circular(18),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
                     ),
-                    child: _saving
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : Text(
-                            l10n.commonSave,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      // 上传头像 / 保存中统一显示 loading，点击不再「看似可用实则无效」
+                      child: (_saving || _avatarUploading)
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              l10n.commonSave,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
                             ),
-                          ),
+                    ),
                   ),
                 ),
               ),
@@ -1404,9 +1486,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             height: 34,
                             decoration: const BoxDecoration(
                               color: Color(0xFF141414),
-                              borderRadius: BorderRadius.all(Radius.circular(15)),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(15),
+                              ),
                             ),
-                            child: const Icon(Icons.photo_camera, size: 18, color: Colors.white),
+                            child: const Icon(
+                              Icons.photo_camera,
+                              size: 18,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ],
@@ -1429,13 +1517,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
                     l10n.profileEditUsernameHint,
-                    style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: LiveColors.textTertiary,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
                 // 简介 textarea（灰底圆角 14 高 90）
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     color: LiveColors.inputBg,
                     borderRadius: BorderRadius.circular(14),
@@ -1445,7 +1539,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     maxLines: 3,
                     decoration: InputDecoration(
                       hintText: l10n.profileEditBioHint,
-                      hintStyle: TextStyle(fontSize: 15, color: LiveColors.textTertiary),
+                      hintStyle: TextStyle(
+                        fontSize: 15,
+                        color: LiveColors.textTertiary,
+                      ),
                       border: InputBorder.none,
                       isDense: true,
                     ),
@@ -1530,11 +1627,17 @@ class _EditField extends StatelessWidget {
             child: TextField(
               controller: controller,
               decoration: const InputDecoration(
-                hintStyle: TextStyle(fontSize: 15, color: LiveColors.textTertiary),
+                hintStyle: TextStyle(
+                  fontSize: 15,
+                  color: LiveColors.textTertiary,
+                ),
                 border: InputBorder.none,
                 isDense: true,
               ),
-              style: const TextStyle(fontSize: 15, color: LiveColors.textPrimary),
+              style: const TextStyle(
+                fontSize: 15,
+                color: LiveColors.textPrimary,
+              ),
             ),
           ),
         ],
@@ -1574,10 +1677,17 @@ class _InfoRow extends StatelessWidget {
             const Spacer(),
             Text(
               value,
-              style: const TextStyle(fontSize: 13, color: LiveColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 13,
+                color: LiveColors.textSecondary,
+              ),
             ),
             const SizedBox(width: 4),
-            const Icon(Icons.chevron_right, size: 18, color: LiveColors.textTertiary),
+            const Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: LiveColors.textTertiary,
+            ),
           ],
         ),
       ),
@@ -1633,39 +1743,41 @@ class _LikedFavoritesScreenState extends State<LikedFavoritesScreen> {
       child: Column(
         children: [
           const LiveAppBar(title: '点赞与收藏'),
-          _LikedTabs(tab: _tab, onChanged: (t) {
-            setState(() => _tab = t);
-            _load();
-          }),
+          _LikedTabs(
+            tab: _tab,
+            onChanged: (t) {
+              setState(() => _tab = t);
+              _load();
+            },
+          ),
           Expanded(
             child: _loading
                 ? const LoadingView()
                 : _error != null
-                    ? ErrorView(message: _error!, onRetry: _load)
-                    : _tab == 2
-                        ? (_videos.isEmpty
-                            ? const EmptyView(text: '还没有点赞的视频')
-                            : _VideoGrid(
-                                videos: _videos,
-                                onTapVideo: (v) => LiveRoutes.pushId(
-                                  context,
-                                  RoutePaths.videoDetail,
-                                  v.id,
-                                ),
-                                emptyText: '',
-                              ))
-                        : (_posts.isEmpty
-                            ? EmptyView(
-                                text: _tab == 0 ? '还没有点赞的作品' : '还没有收藏的作品')
-                            : _WorksGrid(
-                                posts: _posts,
-                                onTapPost: (p) => LiveRoutes.pushId(
-                                  context,
-                                  RoutePaths.postDetail,
-                                  p.id,
-                                ),
-                                emptyText: '',
-                              )),
+                ? ErrorView(message: _error!, onRetry: _load)
+                : _tab == 2
+                ? (_videos.isEmpty
+                      ? const EmptyView(text: '还没有点赞的视频')
+                      : _VideoGrid(
+                          videos: _videos,
+                          onTapVideo: (v) => LiveRoutes.pushId(
+                            context,
+                            RoutePaths.videoDetail,
+                            v.id,
+                          ),
+                          emptyText: '',
+                        ))
+                : (_posts.isEmpty
+                      ? EmptyView(text: _tab == 0 ? '还没有点赞的作品' : '还没有收藏的作品')
+                      : _WorksGrid(
+                          posts: _posts,
+                          onTapPost: (p) => LiveRoutes.pushId(
+                            context,
+                            RoutePaths.postDetail,
+                            p.id,
+                          ),
+                          emptyText: '',
+                        )),
           ),
         ],
       ),
@@ -1720,7 +1832,9 @@ class _LikedTabs extends StatelessWidget {
                         _labels[i],
                         style: TextStyle(
                           fontSize: 12.6,
-                          fontWeight: tab == i ? FontWeight.w700 : FontWeight.w400,
+                          fontWeight: tab == i
+                              ? FontWeight.w700
+                              : FontWeight.w400,
                           color: tab == i
                               ? LiveColors.textPrimary
                               : LiveColors.textSecondary,
@@ -1830,30 +1944,30 @@ class _WatchHistoryScreenState extends State<WatchHistoryScreen> {
             child: _loading
                 ? const LoadingView()
                 : _error != null
-                    ? ErrorView(message: _error!, onRetry: _load)
-                    : _tab == 0
-                        ? _posts.isEmpty
-                            ? const EmptyView(text: '暂无作品浏览历史')
-                            : _WorksGrid(
-                                posts: _posts,
-                                onTapPost: (p) => LiveRoutes.pushId(
-                                  context,
-                                  RoutePaths.postDetail,
-                                  p.id,
-                                ),
-                                emptyText: '',
-                              )
-                        : _videos.isEmpty
-                            ? const EmptyView(text: '暂无视频浏览历史')
-                            : _VideoGrid(
-                                videos: _videos,
-                                onTapVideo: (v) => LiveRoutes.pushId(
-                                  context,
-                                  RoutePaths.videoDetail,
-                                  v.id,
-                                ),
-                                emptyText: '',
-                              ),
+                ? ErrorView(message: _error!, onRetry: _load)
+                : _tab == 0
+                ? _posts.isEmpty
+                      ? const EmptyView(text: '暂无作品浏览历史')
+                      : _WorksGrid(
+                          posts: _posts,
+                          onTapPost: (p) => LiveRoutes.pushId(
+                            context,
+                            RoutePaths.postDetail,
+                            p.id,
+                          ),
+                          emptyText: '',
+                        )
+                : _videos.isEmpty
+                ? const EmptyView(text: '暂无视频浏览历史')
+                : _VideoGrid(
+                    videos: _videos,
+                    onTapVideo: (v) => LiveRoutes.pushId(
+                      context,
+                      RoutePaths.videoDetail,
+                      v.id,
+                    ),
+                    emptyText: '',
+                  ),
           ),
         ],
       ),
@@ -1955,7 +2069,9 @@ class _MyContentScreenState extends State<MyContentScreen> {
                               _labels[i],
                               style: TextStyle(
                                 fontSize: 12,
-                                fontWeight: _tab == i ? FontWeight.w700 : FontWeight.w400,
+                                fontWeight: _tab == i
+                                    ? FontWeight.w700
+                                    : FontWeight.w400,
                                 color: _tab == i
                                     ? LiveColors.textPrimary
                                     : LiveColors.textSecondary,
@@ -1973,30 +2089,30 @@ class _MyContentScreenState extends State<MyContentScreen> {
             child: _loading
                 ? const LoadingView()
                 : _error != null
-                    ? ErrorView(message: _error!, onRetry: _load)
-                    : _tab == 1
-                        ? (_videos.isEmpty
-                            ? const EmptyView(text: '暂无视频')
-                            : _VideoGrid(
-                                videos: _videos,
-                                onTapVideo: (v) => LiveRoutes.pushId(
-                                  context,
-                                  RoutePaths.videoDetail,
-                                  v.id,
-                                ),
-                                emptyText: '',
-                              ))
-                        : (_posts.isEmpty
-                            ? const EmptyView(text: '暂无内容')
-                            : _WorksGrid(
-                                posts: _posts,
-                                onTapPost: (p) => LiveRoutes.pushId(
-                                  context,
-                                  RoutePaths.postDetail,
-                                  p.id,
-                                ),
-                                emptyText: '',
-                              )),
+                ? ErrorView(message: _error!, onRetry: _load)
+                : _tab == 1
+                ? (_videos.isEmpty
+                      ? const EmptyView(text: '暂无视频')
+                      : _VideoGrid(
+                          videos: _videos,
+                          onTapVideo: (v) => LiveRoutes.pushId(
+                            context,
+                            RoutePaths.videoDetail,
+                            v.id,
+                          ),
+                          emptyText: '',
+                        ))
+                : (_posts.isEmpty
+                      ? const EmptyView(text: '暂无内容')
+                      : _WorksGrid(
+                          posts: _posts,
+                          onTapPost: (p) => LiveRoutes.pushId(
+                            context,
+                            RoutePaths.postDetail,
+                            p.id,
+                          ),
+                          emptyText: '',
+                        )),
           ),
         ],
       ),
@@ -2039,21 +2155,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (ok == true && mounted) await LiveRoutes.logout(context);
   }
 
-  /// 切换账号：先弹窗确认，再退出当前账号返回登录页。
+  /// 切换账号：进入账号切换页，保留各账号登录态、可免密快速切回。
   Future<void> _switchAccount() async {
-    final ok = await _showConfirmDialog(
-      title: context.l10n.settingsSwitchConfirmTitle,
-      desc: context.l10n.settingsSwitchConfirmDesc,
-      actionLabel: context.l10n.settingsSwitchAction,
-    );
-    if (ok == true && mounted) await LiveRoutes.logout(context);
+    await LiveRoutes.push(context, RoutePaths.profileSwitchAccount);
   }
 
   String _languageLabel() => switch (LocaleStore.instance.languageCode) {
-        'zh' => context.l10n.settingsLanguageChinese,
-        'en' => context.l10n.settingsLanguageEnglish,
-        _ => context.l10n.settingsLanguageSystem,
-      };
+    'zh' => context.l10n.settingsLanguageChinese,
+    'en' => context.l10n.settingsLanguageEnglish,
+    _ => context.l10n.settingsLanguageSystem,
+  };
 
   Future<void> _pickLanguage() async {
     final l10n = context.l10n;
@@ -2082,8 +2193,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (selected == null || !mounted) return;
-    await LocaleStore.instance
-        .setLanguage(selected == 'system' ? null : selected);
+    await LocaleStore.instance.setLanguage(
+      selected == 'system' ? null : selected,
+    );
     if (mounted) setState(() {});
   }
 
@@ -2582,7 +2694,11 @@ class _SettingsSwitch extends StatelessWidget {
 }
 
 class FollowScreen extends StatefulWidget {
-  const FollowScreen({super.key, required this.targetId, this.initialTab = 'followers'});
+  const FollowScreen({
+    super.key,
+    required this.targetId,
+    this.initialTab = 'followers',
+  });
 
   final int targetId;
   final String initialTab;
@@ -2623,8 +2739,7 @@ class _FollowScreenState extends State<FollowScreen> {
       if (mounted) {
         final status = results[0] as FollowStatus;
         setState(() {
-          _userName =
-              status.nickname.isNotEmpty ? status.nickname : '关注与粉丝';
+          _userName = status.nickname.isNotEmpty ? status.nickname : '关注与粉丝';
           _followerCount = status.followerCount;
           _followingCount = status.followingCount;
           _users = (results[1] as Page<FollowUser>).items;
@@ -2643,12 +2758,18 @@ class _FollowScreenState extends State<FollowScreen> {
       final status = await FollowService.instance.setFollow(u.id, !u.following);
       if (mounted) {
         setState(() {
-          _users = _users.map((x) => x.id == u.id ? FollowUser(
-                id: u.id,
-                nickname: u.nickname,
-                avatar: u.avatar,
-                following: status.following,
-              ) : x).toList();
+          _users = _users
+              .map(
+                (x) => x.id == u.id
+                    ? FollowUser(
+                        id: u.id,
+                        nickname: u.nickname,
+                        avatar: u.avatar,
+                        following: status.following,
+                      )
+                    : x,
+              )
+              .toList();
         });
       }
     } on ApiException catch (e) {
@@ -2680,61 +2801,75 @@ class _FollowScreenState extends State<FollowScreen> {
             child: _loading
                 ? const LoadingView()
                 : _error != null
-                    ? ErrorView(message: _error!, onRetry: _load)
-                    : _users.isEmpty
-                        ? const EmptyView(text: '暂无用户')
-                        : ListView.separated(
-                            padding: const EdgeInsets.all(18),
-                            itemCount: _users.length,
-                            separatorBuilder: (_, _) => const Divider(height: 1, color: LiveColors.divider),
-                            itemBuilder: (_, i) {
-                              final u = _users[i];
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                child: Row(
-                                  children: [
-                                    Avatar(url: u.avatar, name: u.nickname, size: 44),
-                                    const SizedBox(width: 12),
-                                    Expanded(
+                ? ErrorView(message: _error!, onRetry: _load)
+                : _users.isEmpty
+                ? const EmptyView(text: '暂无用户')
+                : ListView.separated(
+                    padding: const EdgeInsets.all(18),
+                    itemCount: _users.length,
+                    separatorBuilder: (_, _) =>
+                        const Divider(height: 1, color: LiveColors.divider),
+                    itemBuilder: (_, i) {
+                      final u = _users[i];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: Row(
+                          children: [
+                            Avatar(url: u.avatar, name: u.nickname, size: 44),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                u.nickname,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: LiveColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 74,
+                              height: 34,
+                              child: _busy.contains(u.id)
+                                  ? const Center(
+                                      child: SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: LiveColors.brand,
+                                        ),
+                                      ),
+                                    )
+                                  : OutlinedButton(
+                                      onPressed: () => _toggle(u),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: EdgeInsets.zero,
+                                        foregroundColor: u.following
+                                            ? LiveColors.textSecondary
+                                            : LiveColors.brand,
+                                        side: BorderSide(
+                                          color: u.following
+                                              ? LiveColors.divider
+                                              : LiveColors.brand,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                      ),
                                       child: Text(
-                                        u.nickname,
-                                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: LiveColors.textPrimary),
+                                        u.following ? '已关注' : '关注',
+                                        style: const TextStyle(fontSize: 12),
                                       ),
                                     ),
-                                    SizedBox(
-                                      width: 74,
-                                      height: 34,
-                                      child: _busy.contains(u.id)
-                                          ? const Center(
-                                              child: SizedBox(
-                                                width: 16,
-                                                height: 16,
-                                                child: CircularProgressIndicator(strokeWidth: 2, color: LiveColors.brand),
-                                              ),
-                                            )
-                                          : OutlinedButton(
-                                              onPressed: () => _toggle(u),
-                                              style: OutlinedButton.styleFrom(
-                                                padding: EdgeInsets.zero,
-                                                foregroundColor: u.following ? LiveColors.textSecondary : LiveColors.brand,
-                                                side: BorderSide(
-                                                  color: u.following
-                                                      ? LiveColors.divider
-                                                      : LiveColors.brand,
-                                                ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(10),
-                                                ),
-                                              ),
-                                              child: Text(u.following ? '已关注' : '关注',
-                                                  style: const TextStyle(fontSize: 12)),
-                                            ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
