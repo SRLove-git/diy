@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
 import '../../api/api_client.dart';
 import '../../api/auth_store.dart';
@@ -22,14 +23,85 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _accountCtrl = TextEditingController();
   final _pwdCtrl = TextEditingController();
+  late final TapGestureRecognizer _agreementRecognizer;
+  late final TapGestureRecognizer _privacyRecognizer;
   bool _loading = false;
   bool _obscure = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _agreementRecognizer = TapGestureRecognizer()
+      ..onTap = () {
+        if (!mounted) return;
+        LiveRoutes.push(context, RoutePaths.profileUserAgreement);
+      };
+    _privacyRecognizer = TapGestureRecognizer()
+      ..onTap = () {
+        if (!mounted) return;
+        LiveRoutes.push(context, RoutePaths.profilePrivacyPolicy);
+      };
+  }
 
   @override
   void dispose() {
     _accountCtrl.dispose();
     _pwdCtrl.dispose();
+    _agreementRecognizer.dispose();
+    _privacyRecognizer.dispose();
     super.dispose();
+  }
+
+  /// 底部协议提示：将文案中的《用户协议》《隐私政策》渲染为可点击链接。
+  /// 若当前语言下文案不包含对应名称，则回退为纯文本提示。
+  Widget _agreeTerms(BuildContext context) {
+    final l10n = context.l10n;
+    final sentence = l10n.loginAgreeTerms;
+    final agreement = l10n.settingsUserAgreement;
+    final privacy = l10n.settingsPrivacyPolicy;
+    final a = sentence.indexOf(agreement);
+    final p = sentence.indexOf(privacy);
+
+    const style = TextStyle(fontSize: 11, color: LiveColors.textTertiary);
+    const linkStyle = TextStyle(
+      fontSize: 11,
+      color: LiveColors.textSecondary,
+      decoration: TextDecoration.underline,
+      decorationColor: LiveColors.textSecondary,
+    );
+    if (a < 0 || p < 0 || a == p) {
+      return Text(sentence, style: style, textAlign: TextAlign.center);
+    }
+
+    // 按出现顺序切分：前段文字 + 第一个链接 + 中段 + 第二个链接 + 尾段。
+    final first = a < p ? a : p;
+    final firstEnd = first + (a < p ? agreement.length : privacy.length);
+    final second = a < p ? p : a;
+    final secondEnd = second + (a < p ? privacy.length : agreement.length);
+    final firstRecognizer = a < p ? _agreementRecognizer : _privacyRecognizer;
+    final secondRecognizer = a < p ? _privacyRecognizer : _agreementRecognizer;
+
+    return Text.rich(
+      TextSpan(
+        style: style,
+        children: [
+          TextSpan(text: sentence.substring(0, first)),
+          TextSpan(
+            text: sentence.substring(first, firstEnd),
+            style: linkStyle,
+            recognizer: firstRecognizer,
+          ),
+          TextSpan(text: sentence.substring(firstEnd, second)),
+          TextSpan(
+            text: sentence.substring(second, secondEnd),
+            style: linkStyle,
+            recognizer: secondRecognizer,
+          ),
+          TextSpan(text: sentence.substring(secondEnd)),
+        ],
+      ),
+      textAlign: TextAlign.center,
+    );
   }
 
   Future<void> _login() async {
@@ -154,12 +226,7 @@ class _LoginScreenState extends State<LoginScreen> {
           // 协议文字固定在页面底部略上位置，不随内容滚动。
           Padding(
             padding: const EdgeInsets.only(bottom: 28, top: 8),
-            child: Center(
-              child: Text(
-                l10n.loginAgreeTerms,
-                style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary),
-              ),
-            ),
+            child: Center(child: _agreeTerms(context)),
           ),
         ],
       ),

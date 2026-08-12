@@ -65,6 +65,8 @@ class RoutePaths {
   static const profileChangePassword = '/profile/change-password';
   static const profileLiked = '/profile/liked';
   static const profileHistory = '/profile/history';
+  static const profileUserAgreement = '/profile/user-agreement';
+  static const profilePrivacyPolicy = '/profile/privacy-policy';
 }
 
 /// 实时页面导航（go_router 封装）。

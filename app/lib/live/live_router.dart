@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../api/auth_store.dart';
 import '../api/models.dart';
 import '../api/services.dart';
+import '../l10n/l10n_ext.dart';
+import 'legal_docs.dart';
 import 'live_routes.dart';
 import 'live_theme.dart';
 import 'live_widgets.dart';
@@ -13,6 +15,7 @@ import 'screens/auth_screens.dart';
 import 'screens/chat_screens.dart';
 // import 'screens/community_screens.dart'; // 社区前期暂不开放（分支已注释）
 import 'screens/home_screen.dart';
+import 'screens/legal_screen.dart';
 import 'screens/member_screens.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/post_screens.dart';
@@ -40,11 +43,14 @@ final GoRouter appRouter = GoRouter(
     }
     final loggedIn = auth.isLoggedIn;
     final onLogin = loc.startsWith(RoutePaths.login);
+    // 用户协议 / 隐私政策在未登录时也可访问（应用商店审核要求）。
+    final onLegal = loc == RoutePaths.profileUserAgreement ||
+        loc == RoutePaths.profilePrivacyPolicy;
     // 恢复完成：Splash 收敛到对应首页
     if (loc == RoutePaths.splash) {
       return loggedIn ? RoutePaths.home : RoutePaths.login;
     }
-    if (!loggedIn && !onLogin) return RoutePaths.login;
+    if (!loggedIn && !onLogin && !onLegal) return RoutePaths.login;
     if (loggedIn && onLogin) return RoutePaths.home;
     return null;
   },
@@ -457,6 +463,25 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: RoutePaths.profileSettings,
       builder: (_, _) => LiveHost(child: const SettingsScreen()),
+    ),
+    // ===== 法律文档 =====
+    GoRoute(
+      path: RoutePaths.profileUserAgreement,
+      builder: (context, _) => LiveHost(
+        child: LegalDocScreen(
+          title: context.l10n.settingsUserAgreement,
+          body: legalUserAgreementText,
+        ),
+      ),
+    ),
+    GoRoute(
+      path: RoutePaths.profilePrivacyPolicy,
+      builder: (context, _) => LiveHost(
+        child: LegalDocScreen(
+          title: context.l10n.settingsPrivacyPolicy,
+          body: legalPrivacyPolicyText,
+        ),
+      ),
     ),
     GoRoute(
       path: RoutePaths.profileChangePassword,

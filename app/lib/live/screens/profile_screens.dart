@@ -2266,13 +2266,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _SettingsInfoRow(
                       title: l10n.settingsUserAgreement,
                       chevron: true,
-                      onTap: () => showLiveSnack(context, l10n.settingsUserAgreementSoon),
+                      onTap: () => LiveRoutes.push(
+                        context,
+                        RoutePaths.profileUserAgreement,
+                      ),
                     ),
                     const Divider(height: 1, color: LiveColors.divider),
                     _SettingsInfoRow(
                       title: l10n.settingsPrivacyPolicy,
                       chevron: true,
-                      onTap: () => showLiveSnack(context, l10n.settingsPrivacyPolicySoon),
+                      onTap: () => LiveRoutes.push(
+                        context,
+                        RoutePaths.profilePrivacyPolicy,
+                      ),
                     ),
                   ],
                 ),
