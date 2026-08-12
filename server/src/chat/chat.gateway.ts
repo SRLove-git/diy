@@ -18,6 +18,7 @@ import type { IncomingMessage } from 'http';
 import type Redis from 'ioredis';
 import { WebSocket } from 'ws';
 import type { JwtPayload } from '../auth/auth.service';
+import { verifyJwtWithRotationSync } from '../auth/jwt-secrets';
 import { kickKey } from '../auth/session-keys';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { CHAT_CHANNEL } from './chat-events';
@@ -155,9 +156,12 @@ export class ChatGateway
         'ws://localhost',
       ).searchParams.get('token');
       if (!token) throw new Error('缺少 token');
-      const payload = this.jwt.verify<JwtPayload>(token, {
-        secret: this.config.get<string>('JWT_SECRET'),
-      });
+      const payload = verifyJwtWithRotationSync<JwtPayload>(
+        this.jwt,
+        token,
+        this.config,
+        'JWT_SECRET',
+      );
       if (payload.type !== 'access' || !payload.sub)
         throw new Error('token 类型错误');
       userId = payload.sub;

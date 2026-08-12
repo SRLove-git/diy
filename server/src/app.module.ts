@@ -14,6 +14,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { FollowsModule } from './follows/follows.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { BootstrapService } from './bootstrap/bootstrap.service';
+import { MigrationsService } from './bootstrap/migrations.service';
 import { GlobalJwtModule } from './common/global-jwt.module';
 import { HealthController } from './health/health.controller';
 import { MusicModule } from './music/music.module';
@@ -52,7 +53,9 @@ import { HttpExceptionFilter } from './common/http-exception.filter';
         maxQueryExecutionTime: 2000,
         // 迁移文件：生产通过 migration:run（或 DB_MIGRATIONS_RUN=true 启动时执行）管理 schema
         migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
-        migrationsRun: config.get<string>('DB_MIGRATIONS_RUN') === 'true',
+        // 迁移由 MigrationsService 在 MySQL 命名锁下执行（多副本并发安全），
+        // 关闭框架自带的 migrationsRun 以避免绕过锁并发执行
+        migrationsRun: false,
         // 开发环境自动建表；生产默认关闭（首次部署可设 DB_SYNC=true 建表一次，建完改回 false 重启）
         synchronize:
           config.get<string>('NODE_ENV') !== 'production' ||
@@ -80,6 +83,7 @@ import { HttpExceptionFilter } from './common/http-exception.filter';
   providers: [
     AppService,
     BootstrapService,
+    MigrationsService,
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
   ],
 })

@@ -11,6 +11,7 @@ import type Redis from 'ioredis';
 import type { Request } from 'express';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { JwtPayload } from './auth.service';
+import { verifyJwtWithRotation } from './jwt-secrets';
 import { kickKey } from './session-keys';
 
 interface AuthedRequest extends Request {
@@ -33,9 +34,12 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('未登录');
 
     try {
-      const payload = await this.jwt.verifyAsync<JwtPayload>(header.slice(7), {
-        secret: this.config.get<string>('JWT_SECRET'),
-      });
+      const payload = await verifyJwtWithRotation<JwtPayload>(
+        this.jwt,
+        header.slice(7),
+        this.config,
+        'JWT_SECRET',
+      );
       if (payload.type !== 'access') throw new Error('wrong token type');
 
       // 强制下线/封禁后立即拒绝所有旧 access token

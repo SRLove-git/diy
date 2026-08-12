@@ -15,6 +15,7 @@ import { REDIS_CLIENT } from '../redis/redis.module';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 import { hashPassword, verifyPassword } from './password.util';
+import { verifyJwtWithRotation } from './jwt-secrets';
 import { kickKey } from './session-keys';
 
 export interface JwtPayload {
@@ -178,9 +179,12 @@ export class AuthService {
   async refresh(refreshToken: string) {
     let payload: JwtPayload;
     try {
-      payload = await this.jwt.verifyAsync(refreshToken, {
-        secret: this.config.get<string>('JWT_REFRESH_SECRET'),
-      });
+      payload = await verifyJwtWithRotation<JwtPayload>(
+        this.jwt,
+        refreshToken,
+        this.config,
+        'JWT_REFRESH_SECRET',
+      );
     } catch {
       throw new UnauthorizedException('登录已过期，请重新登录');
     }
