@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Coupon, UserCoupon } from '../members/coupon.entity';
+import { Appointment } from './appointment.entity';
 import { AppointmentTable } from './appointment-table.entity';
 import {
   AppointmentsService,
@@ -62,11 +63,18 @@ function buildService() {
   redis.del.mockResolvedValue(1);
   redis.set.mockResolvedValue('OK');
   redis.get.mockResolvedValue(null); // availability 缓存默认未命中
-  const userCouponRepo: { findOne: jest.Mock; save: jest.Mock } = {
+  const userCouponRepo: {
+    findOne: jest.Mock;
+    findOneBy: jest.Mock;
+    save: jest.Mock;
+  } = {
     findOne: jest.fn(),
+    findOneBy: jest.fn(),
     save: jest.fn(),
   };
   const couponRepo: { findOneBy: jest.Mock } = { findOneBy: jest.fn() };
+  const appointmentEmRepo = { findOne: jest.fn() };
+  appointmentEmRepo.findOne.mockResolvedValue(null); // 默认没有重复绑定
   const em = {
     find: jest.fn(),
     query: jest.fn(),
@@ -76,6 +84,7 @@ function buildService() {
     findOne: jest.fn(),
     findOneBy: jest.fn(),
     getRepository: jest.fn((cls: unknown): unknown => {
+      if (cls === Appointment) return appointmentEmRepo;
       if (cls === UserCoupon) return userCouponRepo;
       if (cls === Coupon) return couponRepo;
       return {};
@@ -97,6 +106,7 @@ function buildService() {
     activities as never,
     activitySessionsRepo as never,
     memberships as never,
+    userCouponRepo as never,
     users as never,
     gateway as never,
     redis as never,
@@ -116,6 +126,7 @@ function buildService() {
     redis,
     userCouponRepo,
     couponRepo,
+    appointmentEmRepo,
     em,
     dataSource,
   };
@@ -274,6 +285,14 @@ describe('AppointmentsService', () => {
         id: 9,
         userId: 7,
         couponId: 5,
+        code: '888001',
+        status: 'unused',
+      });
+      m.userCouponRepo.findOneBy.mockResolvedValue({
+        id: 9,
+        userId: 7,
+        couponId: 5,
+        code: '888001',
         status: 'unused',
       });
       m.couponRepo.findOneBy.mockResolvedValue({
@@ -293,9 +312,10 @@ describe('AppointmentsService', () => {
       expect(result.amount).toBe(139.6); // 159.6 - 20
       expect(result.couponDiscount).toBe(20);
       expect(result.couponTitle).toBe('满100减20');
-      expect(m.userCouponRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'used' }),
-      );
+      expect(result.couponCode).toBe('888001');
+      // 优惠券不在下单时核销，仅绑定到预约，到店核销预约时一并核销
+      expect(m.userCouponRepo.save).not.toHaveBeenCalled();
+      expect(result.userCouponId).toBe(9);
     });
   });
 
@@ -303,17 +323,18 @@ describe('AppointmentsService', () => {
     it('booked → in_service：记录上钟/下钟时间', async () => {
       const m = buildService();
       const endTime = timeStr(2 * 3600_000);
-      m.appointments.findOneBy.mockResolvedValue({
+      m.appointmentEmRepo.findOne.mockResolvedValue({
         id: 1,
         code: '123456',
         userId: 7,
+        userCouponId: null,
         status: 'booked',
         date: dateStr(0),
         startTime: '09:00',
         endTime,
         scheduledEnd: () => new Date(`${dateStr(0)}T${endTime}:00`),
       });
-      m.appointments.save.mockImplementation((x: unknown) =>
+      m.appointmentEmRepo.save = jest.fn((x: unknown) =>
         Promise.resolve(x),
       );
 
@@ -323,12 +344,58 @@ describe('AppointmentsService', () => {
       expect(result.checkInTime).toBeInstanceOf(Date);
       expect(result.serviceStartTime).toBeInstanceOf(Date);
       expect(result.checkedInBy).toBe(7);
-      expect(m.appointments.save).toHaveBeenCalled();
+      expect(m.appointmentEmRepo.save).toHaveBeenCalled();
+    });
+
+    it('预约带优惠券：核销预约时一并核销优惠券', async () => {
+      const m = buildService();
+      const endTime = timeStr(2 * 3600_000);
+      m.appointmentEmRepo.findOne.mockResolvedValue({
+        id: 1,
+        code: '123456',
+        userId: 7,
+        userCouponId: 9,
+        status: 'booked',
+        date: dateStr(0),
+        startTime: '09:00',
+        endTime,
+        scheduledEnd: () => new Date(`${dateStr(0)}T${endTime}:00`),
+      });
+      m.appointmentEmRepo.save = jest.fn((x: unknown) =>
+        Promise.resolve(x),
+      );
+      m.userCouponRepo.findOne.mockResolvedValue({
+        id: 9,
+        userId: 7,
+        couponId: 5,
+        code: '888001',
+        status: 'unused',
+      });
+      m.couponRepo.findOneBy.mockResolvedValue({
+        id: 5,
+        title: '满100减20',
+        amount: '¥20',
+        threshold: '无门槛',
+        enabled: true,
+        expireAt: new Date(Date.now() + 86400_000),
+      });
+      m.userCouponRepo.save.mockImplementation((x: unknown) =>
+        Promise.resolve(x),
+      );
+
+      await m.svc.checkIn('123456', 7);
+
+      expect(m.userCouponRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'used',
+          redeemedBy: 7,
+        }),
+      );
     });
 
     it('已核销的预约不可重复核销', async () => {
       const m = buildService();
-      m.appointments.findOneBy.mockResolvedValue({
+      m.appointmentEmRepo.findOne.mockResolvedValue({
         id: 1,
         code: '123456',
         status: 'in_service',
@@ -341,7 +408,7 @@ describe('AppointmentsService', () => {
 
     it('待确认的预约不可核销，提示等待门店确认', async () => {
       const m = buildService();
-      m.appointments.findOneBy.mockResolvedValue({
+      m.appointmentEmRepo.findOne.mockResolvedValue({
         id: 1,
         code: '123456',
         status: 'pending',

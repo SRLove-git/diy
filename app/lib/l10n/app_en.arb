@@ -311,6 +311,17 @@
   "appointmentBookingType": "Booking type",
   "appointmentOriginalPrice": "Original price",
   "appointmentCoupon": "Coupon",
+  "appointmentNoCoupons": "No coupons available",
+  "appointmentCouponRedeemLabel": "Coupon redeem code",
+  "appointmentCouponCode": "Coupon code {code}",
+  "@appointmentCouponCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "appointmentCouponRedeemHint": "Show both codes at the store; the coupon will be redeemed together with the appointment.",
   "appointmentPayable": "Amount due",
   "appointmentViewQr": "View QR code",
   "appointmentRemainingTime": "Time remaining (starts on scan, no extension)",

@@ -606,6 +606,11 @@ onUnmounted(() => {
               <span class="muted">{{ $t('时间', 'Time') }}</span>
               {{ checkinResult.date }} {{ checkinResult.startTime }}-{{ checkinResult.endTime }}
             </p>
+            <p v-if="checkinResult.couponTitle">
+              <span class="muted">{{ $t('优惠券', 'Coupon') }}</span>
+              {{ checkinResult.couponTitle }}（-{{ checkinResult.couponDiscount }}）
+              · <span style="color: #2e9e5b">{{ $t('已一并核销', 'Redeemed together') }}</span>
+            </p>
             <p>
               <span class="muted">{{ $t('状态', 'Status') }}</span>
               <span class="tag" style="color: #2e9e5b; border-color: #2e9e5b">

@@ -30,6 +30,10 @@ export interface Appointment {
   code: string
   status: 'pending' | 'booked' | 'checked_in' | 'in_service' | 'completed' | 'cancelled'
   note: string
+  userCouponId: number | null
+  couponTitle: string
+  couponDiscount: number
+  couponCode?: string | null
   checkInTime: string | null
   serviceStartTime: string | null
   serviceEndTime: string | null

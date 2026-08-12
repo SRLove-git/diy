@@ -430,8 +430,10 @@ class Appointment {
     required this.payMethod,
     required this.status,
     this.note = '',
+    this.userCouponId,
     this.couponTitle = '',
     this.couponDiscount = 0,
+    this.couponCode,
     this.checkInTime,
     this.serviceStartTime,
     this.serviceEndTime,
@@ -464,8 +466,10 @@ class Appointment {
   final String payMethod;
   final String status;
   final String note;
+  final int? userCouponId;
   final String couponTitle;
   final double couponDiscount;
+  final String? couponCode;
   final DateTime? checkInTime;
   final DateTime? serviceStartTime;
   final DateTime? serviceEndTime;
@@ -558,8 +562,10 @@ class Appointment {
       payMethod: json['payMethod'] as String? ?? '',
       status: json['status'] as String? ?? 'booked',
       note: json['note'] as String? ?? '',
+      userCouponId: (json['userCouponId'] as num?)?.toInt(),
       couponTitle: json['couponTitle'] as String? ?? '',
       couponDiscount: _num(json['couponDiscount'])?.toDouble() ?? 0,
+      couponCode: json['couponCode'] as String?,
       checkInTime: dt(json['checkInTime']),
       serviceStartTime: dt(json['serviceStartTime']),
       serviceEndTime: dt(json['serviceEndTime']),
@@ -1128,6 +1134,7 @@ class Coupon {
     required this.id,
     required this.title,
     required this.amount,
+    this.amountRaw = '',
     this.threshold = '无门槛',
     this.expireAt,
     this.stock = 0,
@@ -1144,6 +1151,7 @@ class Coupon {
   final int id;
   final String title;
   final double amount;
+  final String amountRaw;
   final String threshold;
   final DateTime? expireAt;
   final int stock;
@@ -1163,6 +1171,7 @@ class Coupon {
   factory Coupon.fromJson(Map<String, dynamic> json) => Coupon(
     id: (json['id'] as num?)?.toInt() ?? 0,
     title: json['title'] as String? ?? '',
+    amountRaw: json['amount'] as String? ?? '',
     amount: _num(json['amount'])?.toDouble() ?? 0,
     threshold: json['threshold'] as String? ?? '无门槛',
     expireAt: json['expireAt'] == null

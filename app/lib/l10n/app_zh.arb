@@ -511,6 +511,17 @@
   "appointmentBookingType": "预约方式",
   "appointmentOriginalPrice": "原价",
   "appointmentCoupon": "优惠券",
+  "appointmentNoCoupons": "暂无可用优惠券",
+  "appointmentCouponRedeemLabel": "优惠券核销码",
+  "appointmentCouponCode": "优惠券码 {code}",
+  "@appointmentCouponCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "appointmentCouponRedeemHint": "到店出示预约码与优惠券核销码，核销预约时一并核销优惠券",
   "appointmentPayable": "应付金额",
   "appointmentViewQr": "查看二维码",
   "appointmentRemainingTime": "剩余时间（扫码即开始计时，不顺延）",

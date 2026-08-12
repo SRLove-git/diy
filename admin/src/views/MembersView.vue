@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
+import jsQR from 'jsqr'
 import {
   memberApi,
   type Coupon,
@@ -73,6 +74,13 @@ const redeemQuerying = ref(false)
 const redeemBusy = ref(false)
 const redeemResult = ref<UserCoupon | null>(null)
 const redeemError = ref('')
+// 扫码核销
+const showScanModal = ref(false)
+const scanError = ref('')
+const scanning = ref(false)
+const scanVideoEl = ref<HTMLVideoElement | null>(null)
+let scanStream: MediaStream | null = null
+let scanTimer: number | undefined
 
 function resetPlanForm() {
   editingPlanId.value = null
@@ -423,6 +431,75 @@ function openRedeemCoupon() {
   redeemModalOpen.value = true
 }
 
+/** 打开扫码弹窗并启动摄像头 */
+function openScanModal() {
+  showScanModal.value = true
+  scanError.value = ''
+  scanning.value = false
+  nextTick(startScanner)
+}
+
+async function startScanner() {
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+      audio: false,
+    })
+    const video = scanVideoEl.value
+    if (!video) {
+      stopScanner()
+      return
+    }
+    video.srcObject = scanStream
+    await video.play()
+    scanning.value = true
+    scanTimer = window.setInterval(scanFrame, 200)
+  } catch {
+    scanError.value = t(
+      '无法打开摄像头，请检查浏览器权限，或使用手动输入核销码',
+      'Unable to open the camera. Please check browser permissions or enter the code manually.',
+    )
+  }
+}
+
+function scanFrame() {
+  const video = scanVideoEl.value
+  if (!video || video.readyState < 2) return
+  const canvas = document.createElement('canvas')
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) return
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  const result = jsQR(img.data, img.width, img.height)
+  // 顾客优惠券二维码内容即 6 位核销码
+  if (result && /^\d{6}$/.test(result.data)) {
+    stopScanner()
+    showScanModal.value = false
+    openRedeemCoupon()
+    redeemCode.value = result.data
+    queryRedeemCode()
+  }
+}
+
+function stopScanner() {
+  if (scanTimer) {
+    clearInterval(scanTimer)
+    scanTimer = undefined
+  }
+  if (scanStream) {
+    scanStream.getTracks().forEach((t) => t.stop())
+    scanStream = null
+  }
+  if (scanVideoEl.value) scanVideoEl.value.srcObject = null
+}
+
+function closeScanModal() {
+  stopScanner()
+  showScanModal.value = false
+}
+
 function closeRedeemCoupon() {
   redeemModalOpen.value = false
   redeemCode.value = ''
@@ -484,6 +561,10 @@ function formatTime(value: string) {
 }
 
 onMounted(loadAll)
+
+onUnmounted(() => {
+  stopScanner()
+})
 </script>
 
 <template>
@@ -736,7 +817,10 @@ onMounted(loadAll)
             {{ $t('维护优惠券面额、门槛、库存、到期时间和会员限制', 'Manage coupon amounts, thresholds, stock, expiry and member restrictions.') }}
           </div>
           <div class="actions">
-            <button class="btn btn-success" @click="openRedeemCoupon">
+            <button class="btn btn-success scan-entry" @click="openScanModal">
+              {{ $t('扫码核销', 'Scan to redeem') }}
+            </button>
+            <button class="btn" @click="openRedeemCoupon">
               {{ $t('核销码核销', 'Redeem by code') }}
             </button>
             <button class="btn" @click="openCreateCoupon">{{ $t('新增优惠券', 'New coupon') }}</button>
@@ -914,6 +998,32 @@ onMounted(loadAll)
         <div class="modal-actions">
           <button class="btn btn-sm" @click="closeCouponDialog">{{ $t('取消', 'Cancel') }}</button>
           <button class="btn btn-sm" :disabled="saving" @click="saveCoupon">{{ $t('保存', 'Save') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 扫码核销弹窗 -->
+    <div v-if="showScanModal" class="modal-overlay" @click.self="closeScanModal">
+      <div class="modal scan-modal">
+        <h3>{{ $t('扫码核销', 'Scan to redeem') }}</h3>
+        <p class="modal-desc">
+          {{ $t('将摄像头对准顾客出示的优惠券二维码，识别后自动填入核销码。', 'Point the camera at the customer coupon QR code; the code will be filled in automatically.') }}
+        </p>
+        <div class="scan-box">
+          <video ref="scanVideoEl" autoplay playsinline muted></video>
+          <div v-if="scanError" class="scan-error">{{ scanError }}</div>
+          <div v-else-if="scanning" class="scan-tip">
+            {{ $t('正在识别二维码…', 'Scanning QR code…') }}
+          </div>
+        </div>
+        <div class="scan-manual">
+          <span class="muted">{{ $t('无法扫码？', 'Cannot scan?') }}</span>
+          <button class="btn btn-sm" @click="closeScanModal(); openRedeemCoupon()">
+            {{ $t('手动输入核销码', 'Enter code manually') }}
+          </button>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-sm" @click="closeScanModal">{{ $t('取消', 'Cancel') }}</button>
         </div>
       </div>
     </div>
@@ -1137,6 +1247,43 @@ onMounted(loadAll)
   font-size: 18px;
   letter-spacing: 3px;
   box-sizing: border-box;
+}
+.scan-modal .scan-box {
+  position: relative;
+  margin: 12px 0 10px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #141414;
+  aspect-ratio: 1;
+}
+.scan-modal .scan-box video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.scan-modal .scan-tip,
+.scan-modal .scan-error {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px;
+  text-align: center;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+}
+.scan-modal .scan-error {
+  top: 0;
+  bottom: auto;
+  color: #ffb4ab;
+}
+.scan-modal .scan-manual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
 }
 .redeem-error { color: #d9453e; font-size: 13px; margin: 10px 0 0; }
 .redeem-result {

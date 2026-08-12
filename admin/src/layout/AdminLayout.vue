@@ -40,12 +40,6 @@ watch(() => route.path, refreshPending)
         <RouterLink v-if="auth.hasPermission('stores.manage')" to="/stores">
           {{ $t('门店管理', 'Stores') }}
         </RouterLink>
-        <RouterLink v-if="auth.hasPermission('content.moderation')" to="/moderation">
-          <span>{{ $t('内容审核', 'Moderation') }}</span>
-          <span v-if="pending.posts + pending.videos > 0" class="badge">
-            {{ badgeText(pending.posts + pending.videos) }}
-          </span>
-        </RouterLink>
         <RouterLink v-if="auth.hasPermission('orders.manage')" to="/tables">
           {{ $t('桌位看板', 'Table Board') }}
         </RouterLink>

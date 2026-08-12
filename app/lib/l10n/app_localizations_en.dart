@@ -956,6 +956,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appointmentCoupon => 'Coupon';
 
   @override
+  String get appointmentNoCoupons => 'No coupons available';
+
+  @override
+  String get appointmentCouponRedeemLabel => 'Coupon redeem code';
+
+  @override
+  String appointmentCouponCode(String code) {
+    return 'Coupon code $code';
+  }
+
+  @override
+  String get appointmentCouponRedeemHint =>
+      'Show both codes at the store; the coupon will be redeemed together with the appointment.';
+
+  @override
   String get appointmentPayable => 'Amount due';
 
   @override

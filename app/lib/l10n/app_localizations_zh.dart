@@ -929,6 +929,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appointmentCoupon => '优惠券';
 
   @override
+  String get appointmentNoCoupons => '暂无可用优惠券';
+
+  @override
+  String get appointmentCouponRedeemLabel => '优惠券核销码';
+
+  @override
+  String appointmentCouponCode(String code) {
+    return '优惠券码 $code';
+  }
+
+  @override
+  String get appointmentCouponRedeemHint => '到店出示预约码与优惠券核销码，核销预约时一并核销优惠券';
+
+  @override
   String get appointmentPayable => '应付金额';
 
   @override

@@ -75,6 +75,8 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     private readonly activitySessionsRepo: Repository<ActivitySession>,
     @InjectRepository(Membership)
     private readonly memberships: Repository<Membership>,
+    @InjectRepository(UserCoupon)
+    private readonly userCoupons: Repository<UserCoupon>,
     private readonly users: UsersService,
     private readonly gateway: ChatGateway,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
@@ -647,7 +649,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       });
       // 3) 落库后失效该店该日 availability 缓存
       await this.invalidateAvailability(saved.storeId, saved.date);
-      return saved;
+      return this.withCouponCode(saved);
     } finally {
       await this.redis.del(lockKey).catch(() => undefined);
     }
@@ -786,8 +788,9 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * 在创建预约的事务内校验并使用优惠券：
-   * 校验归属/状态/有效期/门槛 → 计算抵扣 → 将券标记为已使用。
-   * 对用户券行加悲观锁，防止同一张券并发重复使用。
+   * 校验归属/状态/有效期/门槛 → 计算抵扣 → 将券绑定到本预约
+   * （不在此核销，到店核销预约时一并核销）。
+   * 对用户券行加悲观锁，防止同一张券并发重复绑定。
    */
   private async applyCoupon(
     em: EntityManager,
@@ -797,6 +800,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
   ): Promise<{ discountCents: number; title: string }> {
     const ownedRepo = em.getRepository(UserCoupon);
     const couponRepo = em.getRepository(Coupon);
+    const appointmentRepo = em.getRepository(Appointment);
 
     const owned = await ownedRepo.findOne({
       where: { id: userCouponId, userId },
@@ -804,6 +808,17 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     });
     if (!owned || owned.status !== 'unused') {
       throw new BadRequestException('优惠券不可用（未领取或已使用）');
+    }
+
+    // 同一张券不允许同时绑定到另一笔未完成预约
+    const bound = await appointmentRepo.findOne({
+      where: {
+        userCouponId,
+        status: In(['pending', 'booked', 'checked_in', 'in_service']),
+      },
+    });
+    if (bound) {
+      throw new BadRequestException('该优惠券已用于其他预约');
     }
 
     const coupon = await couponRepo.findOneBy({ id: owned.couponId });
@@ -824,11 +839,45 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
         ? percentOffCents(amountCents, parsed.value)
         : Math.min(yuanToCents(parsed.value), amountCents);
 
+    return { discountCents, title: coupon.title };
+  }
+
+  /**
+   * 到店核销预约时，一并核销绑定的优惠券（幂等：已核销/已过期则跳过）。
+   * 必须在核销预约的同一事务内调用，保证预约上钟与优惠券核销原子完成。
+   */
+  private async redeemBoundCoupon(
+    em: EntityManager,
+    userCouponId: number,
+    operatorId?: number,
+  ): Promise<void> {
+    const ownedRepo = em.getRepository(UserCoupon);
+    const owned = await ownedRepo.findOne({
+      where: { id: userCouponId },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (!owned || owned.status !== 'unused') return;
+    const coupon = await em
+      .getRepository(Coupon)
+      .findOneBy({ id: owned.couponId });
+    if (!coupon || coupon.expireAt <= new Date()) return;
     owned.status = 'used';
     owned.usedAt = new Date();
+    if (operatorId) owned.redeemedBy = operatorId;
     await ownedRepo.save(owned);
+  }
 
-    return { discountCents, title: coupon.title };
+  /** 附加优惠券核销码（预约码与券码同页展示用），未用券返回 null */
+  private async withCouponCode<T extends Appointment>(
+    appt: T,
+  ): Promise<T & { couponCode: string | null }> {
+    if (!appt.userCouponId) return { ...appt, couponCode: null };
+    const owned = await this.userCoupons.findOneBy({ id: appt.userCouponId });
+    // 券码仅在核销前有效：已核销的券不再展示（历史订单下单即核销的数据自动隐藏）
+    return {
+      ...appt,
+      couponCode: owned?.status === 'unused' ? owned.code : null,
+    };
   }
 
   /** 解析券额：`¥20` → 现金 20；`8.8 折` → 88% 支付 */
@@ -916,7 +965,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       // 读详情时触发的即时下钟同样会释放桌位，需同步失效 availability 缓存
       await this.invalidateAvailability(appt.storeId, appt.date);
     }
-    return appt;
+    return this.withCouponCode(appt);
   }
 
   /**
@@ -937,39 +986,53 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     return saved;
   }
 
-  /** 扫码/输码核销：顾客到店核销即上钟，状态 booked → in_service（上钟时间以扫码时刻为准） */
+  /**
+   * 扫码/输码核销：顾客到店核销即上钟，状态 booked → in_service
+   * （上钟时间以扫码时刻为准）。预约绑定了优惠券时，在同一事务内一并核销。
+   */
   async checkIn(code: string, operatorId?: number): Promise<Appointment> {
-    const appt = await this.appointments.findOneBy({ code });
-    if (!appt) throw new NotFoundException('预约码无效');
-    if (appt.status !== 'booked') {
-      throw new BadRequestException(
-        appt.status === 'cancelled'
-          ? '该预约已取消'
-          : appt.status === 'pending'
-            ? '该预约待门店确认，确认后方可到店核销'
-            : '该预约码已核销，不可重复核销',
-      );
-    }
+    const saved = await this.dataSource.transaction(async (em) => {
+      const apptRepo = em.getRepository(Appointment);
+      const appt = await apptRepo.findOne({
+        where: { code },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!appt) throw new NotFoundException('预约码无效');
+      if (appt.status !== 'booked') {
+        throw new BadRequestException(
+          appt.status === 'cancelled'
+            ? '该预约已取消'
+            : appt.status === 'pending'
+              ? '该预约待门店确认，确认后方可到店核销'
+              : '该预约码已核销，不可重复核销',
+        );
+      }
 
-    // 校验预约日期：仅可当天核销
-    const today = this.todayStr();
-    if (appt.date !== today) {
-      throw new BadRequestException(
-        `预约日期为 ${appt.date}，仅可在预约当天核销`,
-      );
-    }
-    // 校验核销时间：仅可在预约时段内核销
-    this.assertCheckInTime(appt);
+      // 校验预约日期：仅可当天核销
+      const today = this.todayStr();
+      if (appt.date !== today) {
+        throw new BadRequestException(
+          `预约日期为 ${appt.date}，仅可在预约当天核销`,
+        );
+      }
+      // 校验核销时间：仅可在预约时段内核销
+      this.assertCheckInTime(appt);
 
-    // 核销即上钟：无需用户端再手动启动，计时从扫码时刻开始
-    const now = new Date();
-    appt.status = 'in_service';
-    appt.checkInTime = now;
-    appt.serviceStartTime = now;
-    // 结束时间固定为预约时段（不因迟到顺延），计时剩余 = 结束时间 - 扫码时间
-    appt.serviceEndTime = this.scheduledEnd(appt);
-    if (operatorId) appt.checkedInBy = operatorId;
-    const saved = await this.appointments.save(appt);
+      // 核销即上钟：无需用户端再手动启动，计时从扫码时刻开始
+      const now = new Date();
+      appt.status = 'in_service';
+      appt.checkInTime = now;
+      appt.serviceStartTime = now;
+      // 结束时间固定为预约时段（不因迟到顺延），计时剩余 = 结束时间 - 扫码时间
+      appt.serviceEndTime = this.scheduledEnd(appt);
+      if (operatorId) appt.checkedInBy = operatorId;
+      const savedAppt = await apptRepo.save(appt);
+      // 预约带优惠券：核销预约时一并核销优惠券
+      if (savedAppt.userCouponId != null) {
+        await this.redeemBoundCoupon(em, savedAppt.userCouponId, operatorId);
+      }
+      return savedAppt;
+    });
     this.broadcastAppointment(saved);
     await this.invalidateAvailability(saved.storeId, saved.date);
     return saved;
@@ -1034,7 +1097,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     if (appt.status !== 'pending' && appt.status !== 'booked') {
       throw new BadRequestException('该预约码已核销，不可重复使用');
     }
-    return appt;
+    return this.withCouponCode(appt);
   }
 
   /** 管理端：预约列表（分页，可按状态/门店/日期筛选），附带用户邮箱/昵称 */
@@ -1125,29 +1188,40 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
 
   /** 管理端核销（按 ID，店员代操作）：核销即上钟，扫码/输码即开始计时 */
   async adminCheckIn(id: number, operatorId?: number): Promise<Appointment> {
-    const appt = await this.appointments.findOneBy({ id });
-    if (!appt) throw new NotFoundException('预约单不存在');
-    if (appt.status !== 'booked') {
-      throw new BadRequestException(
-        appt.status === 'cancelled'
-          ? '该预约已取消'
-          : '该预约码已核销，不可重复核销',
-      );
-    }
-    // 校验核销日期/时间：仅可在预约当天且预约时段内核销
-    if (appt.date !== this.todayStr()) {
-      throw new BadRequestException(
-        `预约日期为 ${appt.date}，仅可在预约当天核销`,
-      );
-    }
-    this.assertCheckInTime(appt);
-    const now = new Date();
-    appt.status = 'in_service';
-    appt.checkInTime = now;
-    appt.serviceStartTime = now;
-    appt.serviceEndTime = this.scheduledEnd(appt);
-    if (operatorId) appt.checkedInBy = operatorId;
-    const saved = await this.appointments.save(appt);
+    const saved = await this.dataSource.transaction(async (em) => {
+      const apptRepo = em.getRepository(Appointment);
+      const appt = await apptRepo.findOne({
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!appt) throw new NotFoundException('预约单不存在');
+      if (appt.status !== 'booked') {
+        throw new BadRequestException(
+          appt.status === 'cancelled'
+            ? '该预约已取消'
+            : '该预约码已核销，不可重复核销',
+        );
+      }
+      // 校验核销日期/时间：仅可在预约当天且预约时段内核销
+      if (appt.date !== this.todayStr()) {
+        throw new BadRequestException(
+          `预约日期为 ${appt.date}，仅可在预约当天核销`,
+        );
+      }
+      this.assertCheckInTime(appt);
+      const now = new Date();
+      appt.status = 'in_service';
+      appt.checkInTime = now;
+      appt.serviceStartTime = now;
+      appt.serviceEndTime = this.scheduledEnd(appt);
+      if (operatorId) appt.checkedInBy = operatorId;
+      const savedAppt = await apptRepo.save(appt);
+      // 预约带优惠券：核销预约时一并核销优惠券
+      if (savedAppt.userCouponId != null) {
+        await this.redeemBoundCoupon(em, savedAppt.userCouponId, operatorId);
+      }
+      return savedAppt;
+    });
     this.broadcastAppointment(saved);
     await this.invalidateAvailability(saved.storeId, saved.date);
     return saved;

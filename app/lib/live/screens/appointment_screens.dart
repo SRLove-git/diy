@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -272,10 +273,8 @@ class AppointmentConfirmScreen extends StatefulWidget {
 }
 
 class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
-  // ── 线上支付（暂不接入）：优惠券 / 支付方式选择，先注释 ──
-  // List<Coupon> _coupons = [];
-  // Coupon? _selected;
-  // String _payMethod = 'wechat';
+  List<Coupon> _coupons = [];
+  Coupon? _selected;
   bool _loading = false;
   bool _isMember = false;
 
@@ -291,20 +290,15 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
         .catchError((_) {
           // 会员状态获取失败时按非会员预览，最终金额以服务端结算为准
         });
+    // 加载卡包可用优惠券：下单只绑定，到店核销预约时一并核销
+    MemberService.instance.wallet().then((list) {
+      if (mounted) {
+        setState(() {
+          _coupons = list.where((c) => c.usable).toList();
+        });
+      }
+    }).catchError((_) {});
   }
-
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   MemberService.instance.wallet().then((list) {
-  //     if (mounted) {
-  //       setState(() {
-  //         _coupons = list.where((c) => c.usable).toList();
-  //         if (_coupons.isNotEmpty) _selected = _coupons.first;
-  //       });
-  //     }
-  //   }).catchError((_) {});
-  // }
 
   /// 门市单价（原价基准，$/人，含时长）
   double get _normalPrice {
@@ -384,8 +378,23 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
 
   /// 周末加价金额（实际小计 × 加价比例）
   double get _surchargeAmount => _subtotalBase * (_surchargeRate - 1);
-  // ── 线上支付（暂不接入）：优惠券抵扣固定为 0 ──
-  double get _discount => 0;
+
+  /// 优惠券抵扣预览（与服务端结算口径一致）：现金券取 min(面额, 应付)，折扣券按折数
+  double get _couponDiscount {
+    final c = _selected;
+    if (c == null) return 0;
+    final base = _subtotalBase + _surchargeAmount;
+    final percent = RegExp(r'(\d+(?:\.\d+)?)\s*折').firstMatch(c.amountRaw);
+    if (percent != null) {
+      final off = double.tryParse(percent.group(1) ?? '') ?? 10;
+      return base * (1 - off / 10);
+    }
+    final cash = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(c.amountRaw);
+    final value = double.tryParse(cash?.group(1) ?? '') ?? c.amount;
+    return math.min(value, base);
+  }
+
+  double get _discount => _couponDiscount;
   double get _total =>
       (_subtotalBase + _surchargeAmount - _discount).clamp(0, double.infinity);
 
@@ -436,6 +445,7 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
         'type': widget.type,
         'peopleCount': widget.peopleCount,
         if (widget.note.isNotEmpty) 'note': widget.note,
+        if (_selected != null) 'userCouponId': _selected!.userCouponId,
       };
       if (widget.type == 'activity') {
         body['activityId'] = widget.activity!.id;
@@ -504,32 +514,36 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
                     value: l10n.appointmentPeople(widget.peopleCount),
                   ),
                 const Divider(height: 32, color: LiveColors.divider),
-                // ── 线上支付（暂不接入）：优惠券 / 支付方式选择，先注释 ──
-                // Text('优惠券', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-                // const SizedBox(height: 8),
-                // if (_coupons.isEmpty)
-                //   const Text('暂无可用优惠券', style: TextStyle(fontSize: 13, color: LiveColors.textTertiary))
-                // else
-                //   ..._coupons.map((c) => _CouponTile(
-                //         coupon: c,
-                //         selected: _selected?.userCouponId == c.userCouponId,
-                //         onTap: () => setState(() => _selected = _selected?.userCouponId == c.userCouponId ? null : c),
-                //       )),
-                // const Divider(height: 32, color: LiveColors.divider),
-                // const Text('支付方式', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-                // const SizedBox(height: 8),
-                // _PayTile(
-                //   label: '微信支付',
-                //   icon: Icons.wechat,
-                //   selected: _payMethod == 'wechat',
-                //   onTap: () => setState(() => _payMethod = 'wechat'),
-                // ),
-                // _PayTile(
-                //   label: '支付宝',
-                //   icon: Icons.account_balance_wallet_outlined,
-                //   selected: _payMethod == 'alipay',
-                //   onTap: () => setState(() => _payMethod = 'alipay'),
-                // ),
+                Text(
+                  l10n.appointmentCoupon,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (_coupons.isEmpty)
+                  Text(
+                    l10n.appointmentNoCoupons,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: LiveColors.textTertiary,
+                    ),
+                  )
+                else
+                  ..._coupons.map(
+                    (c) => _CouponTile(
+                      coupon: c,
+                      selected: _selected?.userCouponId == c.userCouponId,
+                      onTap: () => setState(
+                        () => _selected =
+                            _selected?.userCouponId == c.userCouponId
+                            ? null
+                            : c,
+                      ),
+                    ),
+                  ),
+                const Divider(height: 32, color: LiveColors.divider),
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
@@ -684,55 +698,84 @@ class _PriceRow extends StatelessWidget {
 }
 
 // ── 线上支付（暂不接入）：优惠券 / 支付方式组件，先注释 ──
-// class _CouponTile extends StatelessWidget {
-//   const _CouponTile({required this.coupon, required this.selected, required this.onTap});
-//
-//   final Coupon coupon;
-//   final bool selected;
-//   final VoidCallback onTap;
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return InkWell(
-//       onTap: onTap,
-//       child: Container(
-//         margin: const EdgeInsets.only(bottom: 8),
-//         padding: const EdgeInsets.all(12),
-//         decoration: BoxDecoration(
-//           color: selected ? LiveColors.brandLight : LiveColors.card,
-//           borderRadius: BorderRadius.circular(12),
-//           border: Border.all(color: selected ? LiveColors.brand : LiveColors.divider, width: selected ? 1.2 : 1),
-//         ),
-//         child: Row(
-//           children: [
-//             Text(
-//               '\$${coupon.amount.toStringAsFixed(0)}',
-//               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: LiveColors.brand),
-//             ),
-//             const SizedBox(width: 10),
-//             Expanded(
-//               child: Column(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   Text(coupon.title,
-//                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: LiveColors.textPrimary)),
-//                   Text('${coupon.threshold} · 有效期至 ${fmtTime(coupon.expireAt, withYear: true)}',
-//                       style: const TextStyle(fontSize: 11, color: LiveColors.textTertiary)),
-//                 ],
-//               ),
-//             ),
-//             Icon(
-//               selected ? Icons.check_circle : Icons.radio_button_unchecked,
-//               size: 20,
-//               color: selected ? LiveColors.brand : LiveColors.textTertiary,
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-//
+class _CouponTile extends StatelessWidget {
+  const _CouponTile({
+    required this.coupon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Coupon coupon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final amount = coupon.amountRaw.isEmpty
+        ? '\$${coupon.amount.toStringAsFixed(0)}'
+        : coupon.amountRaw;
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: selected ? LiveColors.brandLight : LiveColors.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? LiveColors.brand : LiveColors.divider,
+            width: selected ? 1.2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Text(
+              amount,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: LiveColors.brand,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    coupon.title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: LiveColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    '${coupon.threshold} · 有效期至 ${fmtTime(coupon.expireAt, withYear: true)}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: LiveColors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              selected
+                  ? Icons.check_circle
+                  : Icons.radio_button_unchecked,
+              size: 20,
+              color: selected
+                  ? LiveColors.brand
+                  : LiveColors.textTertiary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // class _PayTile extends StatelessWidget {
 //   const _PayTile({required this.label, required this.icon, required this.selected, required this.onTap});
 //
@@ -877,6 +920,38 @@ class AppointmentSuccessScreen extends StatelessWidget {
                               color: LiveColors.textSecondary,
                             ),
                           ),
+                          if (appointment.couponCode != null &&
+                              appointment.couponCode!.isNotEmpty) ...[
+                            const SizedBox(height: 14),
+                            const Divider(height: 1, color: LiveColors.divider),
+                            const SizedBox(height: 14),
+                            Text(
+                              l10n.appointmentCouponRedeemLabel,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: LiveColors.brand,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            SelectableText(
+                              appointment.couponCode!,
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 4,
+                                color: LiveColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              l10n.appointmentCouponRedeemHint,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: LiveColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
               ),
@@ -1868,7 +1943,11 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                       l10n.appointmentAmount,
                       '\$${a.amount.toStringAsFixed(2)}',
                     ),
-                    // if (a.couponDiscount > 0) _DetailRow('优惠券', '${a.couponTitle} -\$${a.couponDiscount.toStringAsFixed(2)}'),
+                    if (a.couponDiscount > 0)
+                      _DetailRow(
+                        l10n.appointmentCoupon,
+                        '${a.couponTitle} -\$${a.couponDiscount.toStringAsFixed(2)}',
+                      ),
                     if (a.note.isNotEmpty)
                       _DetailRow(l10n.appointmentNote, a.note),
                     if (a.status == 'booked' ||
@@ -2111,6 +2190,64 @@ class _QrCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               context.l10n.appointmentQrDestroyedHint,
+              style: const TextStyle(
+                fontSize: 11,
+                color: LiveColors.textTertiary,
+              ),
+            ),
+          ],
+          // 预约绑定了优惠券：同一页面展示优惠券核销码，到店一并核销
+          if (!_destroyed &&
+              appointment.couponCode != null &&
+              appointment.couponCode!.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: LiveColors.divider),
+            const SizedBox(height: 16),
+            Text(
+              context.l10n.appointmentCouponRedeemLabel,
+              style: const TextStyle(
+                fontSize: 13,
+                color: LiveColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            QrImageView(
+              data: appointment.couponCode!,
+              version: QrVersions.auto,
+              size: 180,
+              backgroundColor: LiveColors.bg,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: LiveColors.brand,
+              ),
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: LiveColors.brand,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              context.l10n.appointmentCouponCode(appointment.couponCode!),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: LiveColors.textPrimary,
+              ),
+            ),
+            if (appointment.couponTitle.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                '${context.l10n.appointmentCoupon}：${appointment.couponTitle}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: LiveColors.textTertiary,
+                ),
+              ),
+            ],
+            const SizedBox(height: 6),
+            Text(
+              context.l10n.appointmentCouponRedeemHint,
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 11,
                 color: LiveColors.textTertiary,

@@ -1820,6 +1820,30 @@ abstract class AppLocalizations {
   /// **'优惠券'**
   String get appointmentCoupon;
 
+  /// No description provided for @appointmentNoCoupons.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无可用优惠券'**
+  String get appointmentNoCoupons;
+
+  /// No description provided for @appointmentCouponRedeemLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'优惠券核销码'**
+  String get appointmentCouponRedeemLabel;
+
+  /// No description provided for @appointmentCouponCode.
+  ///
+  /// In zh, this message translates to:
+  /// **'优惠券码 {code}'**
+  String appointmentCouponCode(String code);
+
+  /// No description provided for @appointmentCouponRedeemHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'到店出示预约码与优惠券核销码，核销预约时一并核销优惠券'**
+  String get appointmentCouponRedeemHint;
+
   /// No description provided for @appointmentPayable.
   ///
   /// In zh, this message translates to:
