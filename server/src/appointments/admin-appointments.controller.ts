@@ -13,7 +13,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { AdminGuard } from '../stores/admin.guard';
-import { CheckInDto } from './appointment.dto';
+import { CheckInDto, WalkInDto } from './appointment.dto';
 import { AppointmentsService } from './appointments.service';
 
 /** 管理端：预约订单管理（需 admin 角色） */
@@ -59,6 +59,12 @@ export class AdminAppointmentsController {
   @Post('checkin-code')
   checkInByCode(@Body() dto: CheckInDto, @CurrentUser() user: AuthUser) {
     return this.appointments.checkIn(dto.code, user.id);
+  }
+
+  /** 线下散客开台（无需注册）：创建即服务中开始计时，到点自动下钟 */
+  @Post('walkin')
+  walkIn(@Body() dto: WalkInDto, @CurrentUser() user: AuthUser) {
+    return this.appointments.adminWalkIn(dto, user.id);
   }
 
   /** 取消预约（店员代操作） */

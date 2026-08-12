@@ -19,6 +19,7 @@ function logout() {
       <nav>
         <RouterLink to="/dashboard">{{ $t('数据看板', 'Dashboard') }}</RouterLink>
         <RouterLink to="/stores">{{ $t('门店管理', 'Stores') }}</RouterLink>
+        <RouterLink to="/tables">{{ $t('桌位看板', 'Table Board') }}</RouterLink>
         <RouterLink to="/activities">{{ $t('活动管理', 'Activities') }}</RouterLink>
         <RouterLink to="/orders">{{ $t('订单管理', 'Orders') }}</RouterLink>
         <!-- 社区 / Reels 前期暂不开放，管理入口先隐藏 -->

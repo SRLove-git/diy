@@ -10,13 +10,11 @@ function buildService() {
   };
   const jwt = {};
   const config = {};
-  const email = {};
   const svc = new AuthService(
     redis as never,
     users as never,
     jwt as never,
     config as never,
-    email as never,
   );
   return { svc, users };
 }

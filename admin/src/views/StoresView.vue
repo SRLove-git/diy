@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import {
   storeApi,
   type Store,
@@ -24,6 +24,13 @@ const tables = ref<StoreTable[]>([])
 const currentStore = ref<Store>()
 const newTable = ref({ name: '', capacity: 2, enabled: true })
 const tableDrafts = ref<Record<number, { name: string; capacity: number; enabled: boolean }>>({})
+
+/** 列表始终按桌位名排序（数字感知：A2 排在 A10 前），新增/改名后自动归位 */
+const sortedTables = computed(() =>
+  [...tables.value].sort(
+    (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }) || a.id - b.id,
+  ),
+)
 
 // 时段管理（预约已改为按时长，时段不再使用，先隐藏）
 // const showSlots = ref(false)
@@ -156,7 +163,7 @@ function openTableManager(s: Store) {
 }
 
 async function addTable() {
-  if (!newTable.value.name) return
+  // 桌位名由服务端按容量规则自动生成（A=1人桌 / B=2人桌 / C=4人桌 + 序号）
   try {
     const { data } = await storeApi.addTable(currentStore.value!.id, newTable.value)
     tables.value.push(data)
@@ -176,7 +183,7 @@ function editTable(t: StoreTable) {
 
 async function saveTable(table: StoreTable) {
   const draft = tableDrafts.value[table.id]
-  if (!draft || !draft.name) return
+  if (!draft) return
   try {
     const { data } = await storeApi.updateTable(table.id, draft)
     const idx = tables.value.findIndex((x) => x.id === table.id)
@@ -421,6 +428,9 @@ onMounted(load)
     <div v-if="showTables" class="mask">
       <div class="dialog wide">
         <h3>{{ $t('桌位配置 · {name}', 'Table setup · {name}', { name: currentStore?.name ?? '' }) }}</h3>
+        <p style="margin:0 0 10px;color:#8a8a93;font-size:12px">
+          {{ $t('桌位名按容量自动生成：A=1人桌 / B=2人桌 / C=4人桌，序号为同类型最小空闲号；座位号 = 桌名-序号（如 B1-2）。修改容量会自动重命名。', 'Names auto-generate from capacity: A=1 / B=2 / C=4 seats, index = smallest free; seat = name-N (e.g. B1-2). Changing capacity renames the table.') }}
+        </p>
         <table class="grid">
           <thead>
             <tr>
@@ -431,10 +441,16 @@ onMounted(load)
             </tr>
           </thead>
           <tbody>
-            <tr v-for="t in tables" :key="t.id">
+            <tr v-for="t in sortedTables" :key="t.id">
               <template v-if="tableDrafts[t.id]">
-                <td><input v-model="tableDrafts[t.id].name" /></td>
-                <td><input v-model.number="tableDrafts[t.id].capacity" type="number" min="1" /></td>
+                <td>{{ tableDrafts[t.id].name }}</td>
+                <td>
+                  <select v-model.number="tableDrafts[t.id].capacity">
+                    <option :value="1">{{ $t('1人桌（A）', '1-seat (A)') }}</option>
+                    <option :value="2">{{ $t('2人桌（B）', '2-seat (B)') }}</option>
+                    <option :value="4">{{ $t('4人桌（C）', '4-seat (C)') }}</option>
+                  </select>
+                </td>
                 <td><label><input v-model="tableDrafts[t.id].enabled" type="checkbox" /> {{ $t('启用', 'Enabled') }}</label></td>
                 <td class="ops">
                   <button class="primary" @click="saveTable(t)">{{ $t('保存', 'Save') }}</button>
@@ -461,8 +477,12 @@ onMounted(load)
           </tbody>
         </table>
         <div class="row">
-          <input v-model="newTable.name" :placeholder="$t('桌位名，如 B1', 'Table name, e.g. B1')" />
-          <input v-model.number="newTable.capacity" type="number" min="1" :placeholder="$t('人数', 'Capacity')" />
+          <span style="color:#8a8a93;font-size:13px">{{ $t('桌位名自动生成', 'Name auto-generated') }}</span>
+          <select v-model.number="newTable.capacity">
+            <option :value="1">{{ $t('1人桌（A）', '1-seat (A)') }}</option>
+            <option :value="2">{{ $t('2人桌（B）', '2-seat (B)') }}</option>
+            <option :value="4">{{ $t('4人桌（C）', '4-seat (C)') }}</option>
+          </select>
           <label class="check-label"><input v-model="newTable.enabled" type="checkbox" /> {{ $t('启用', 'Enabled') }}</label>
           <button class="primary" @click="addTable">{{ $t('添加', 'Add') }}</button>
         </div>

@@ -36,7 +36,7 @@ import { StoreTable } from '../stores/store-table.entity';
 import { StorePackage } from '../stores/store-package.entity';
 import { UsersService } from '../users/users.service';
 import { Appointment } from './appointment.entity';
-import { CreateAppointmentDto } from './appointment.dto';
+import { CreateAppointmentDto, WalkInDto } from './appointment.dto';
 
 @Injectable()
 export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
@@ -969,6 +969,194 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     const saved = await this.appointments.save(appt);
     this.broadcastAppointment(saved);
     return saved;
+  }
+
+  /** 线下散客占位账号：开台单挂在该用户下（无密码无法登录，仅作归属与展示） */
+  private static readonly WALK_IN_USER = {
+    username: 'walkin',
+    email: 'walkin@local',
+    nickname: '线下散客',
+    avatar: '',
+  };
+
+  /**
+   * 管理端：线下散客直接开台上钟（顾客无需注册）。
+   * 创建即服务中：开始 = 当前时刻，结束 = 当前 + 时长（全天 = 营业结束），
+   * 结束时间固定不顺延，到点由自动下钟任务完成；金额按门市/多人同行价计算（线下收款，payStatus=unpaid）。
+   */
+  async adminWalkIn(dto: WalkInDto, operatorId: number): Promise<Appointment> {
+    const store = await this.stores.findOneBy({
+      id: dto.storeId,
+      enabled: true,
+    });
+    if (!store) throw new NotFoundException('门店不存在');
+
+    // 桌位解析与人数校验：与线上预约同一套规则（一单可多桌，按顺序坐满）
+    const requestedIds = [...new Set(dto.tableIds)];
+    if (!requestedIds.length) {
+      throw new BadRequestException('开台需要选择桌位');
+    }
+    const tableRows = await this.tables.find({
+      where: { id: In(requestedIds), storeId: store.id, enabled: true },
+    });
+    if (tableRows.length !== requestedIds.length) {
+      throw new NotFoundException('部分桌位不存在或已停用');
+    }
+    tableRows.sort(
+      (a, b) => requestedIds.indexOf(a.id) - requestedIds.indexOf(b.id),
+    );
+    const totalCapacity = tableRows.reduce((s, t) => s + t.capacity, 0);
+    if (dto.peopleCount > totalCapacity) {
+      throw new BadRequestException(
+        `所选桌位最多容纳 ${totalCapacity} 人，当前 ${dto.peopleCount} 人，请增加桌位`,
+      );
+    }
+    let remainingPeople = dto.peopleCount;
+    const seats = tableRows.map((t) => {
+      const people = Math.min(t.capacity, remainingPeople);
+      remainingPeople -= people;
+      return { id: t.id, name: t.name, capacity: t.capacity, people };
+    });
+
+    // 时段：开始 = 当前时刻；hourly 按小时顺延，all_day 到营业结束；结束不得超出营业时间
+    const now = new Date();
+    const date = this.todayStr();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const startTime = this.formatMinutes(nowMin);
+    const range = this.businessHoursRange(store);
+    const closeMin = Math.min(this.minutes(range.end), 24 * 60 - 1);
+    const bookingType = dto.bookingType ?? 'hourly';
+
+    let endTime: string;
+    let durationHours: number;
+    let normalPrice: number;
+    let groupPrice: number;
+    if (bookingType === 'all_day') {
+      if (closeMin <= nowMin) {
+        throw new BadRequestException('今日营业时间已结束，无法开台');
+      }
+      endTime = range.end;
+      durationHours = Math.max(1, Math.ceil((closeMin - nowMin) / 60));
+      const fallback = centsToYuan(
+        yuanToCents(store.price ?? 39.9) * durationHours,
+      );
+      normalPrice = store.allDayPrice ?? fallback;
+      groupPrice = store.allDayGroupPrice ?? normalPrice;
+    } else {
+      if (!dto.durationHours || dto.durationHours < 1) {
+        throw new BadRequestException('按小时开台需要选择时长');
+      }
+      durationHours = dto.durationHours;
+      if (nowMin + durationHours * 60 > closeMin) {
+        throw new BadRequestException(
+          `超出营业时间（营业至 ${range.end}），请缩短时长`,
+        );
+      }
+      endTime = this.formatMinutes(nowMin + durationHours * 60);
+      normalPrice = centsToYuan(
+        yuanToCents(store.price ?? 39.9) * durationHours,
+      );
+      groupPrice =
+        store.groupPrice != null
+          ? centsToYuan(yuanToCents(store.groupPrice) * durationHours)
+          : normalPrice;
+    }
+
+    // 金额：散客无会员身份，≥2 人走多人同行价；周末加价规则与线上一致
+    const people = dto.peopleCount;
+    let amountCents =
+      people >= 2
+        ? yuanToCents(groupPrice) * people
+        : yuanToCents(normalPrice) * people;
+    let originalAmountCents = yuanToCents(normalPrice) * people;
+    const surcharge = store.weekendSurchargePercent ?? 0;
+    if (isSurchargeDate(date) && surcharge > 0) {
+      const rate = 100 + surcharge;
+      amountCents = Math.round((amountCents * rate) / 100);
+      originalAmountCents = Math.round((originalAmountCents * rate) / 100);
+    }
+
+    // 线下散客占位账号（首次开台时自动创建）
+    const walkIn = await this.users.findByUsernameOrCreate(
+      AppointmentsService.WALK_IN_USER,
+    );
+
+    // 与线上预约同一套防超卖：桌位分布式锁 + 事务内时间段重叠校验
+    const lockKey = `booking:lock:${store.id}:${[...requestedIds]
+      .sort((a, b) => a - b)
+      .join(',')}:${date}`;
+    const acquired = await this.redis.set(lockKey, '1', 'EX', 10, 'NX');
+    if (!acquired) {
+      throw new BadRequestException('该桌位正在开台，请稍后重试');
+    }
+
+    try {
+      const saved = await this.dataSource.transaction(async (em) => {
+        const active = await em.find(Appointment, {
+          where: {
+            storeId: store.id,
+            date,
+            status: Not(In(['cancelled', 'completed'])),
+          },
+        });
+        // 时间段重叠判定：existing.start < new.end && existing.end > new.start
+        const conflict = active.find((a) => {
+          const apptTableIds = a.tables?.length
+            ? a.tables.map((t) => t.id)
+            : a.tableId != null
+              ? [a.tableId]
+              : [];
+          const sharesTable = requestedIds.some((id) =>
+            apptTableIds.includes(id),
+          );
+          return sharesTable && a.startTime < endTime && a.endTime > startTime;
+        });
+        if (conflict) {
+          const conflictTables = (
+            conflict.tables?.length
+              ? conflict.tables.map((t) => t.name)
+              : [conflict.tableName]
+          ).join('、');
+          throw new BadRequestException(
+            `桌位 ${conflictTables} ${conflict.startTime}-${conflict.endTime} 已有预约，请缩短时长或更换桌位`,
+          );
+        }
+
+        const appointment = em.create(Appointment, {
+          userId: walkIn.id,
+          storeId: store.id,
+          storeName: store.name,
+          tableId: seats[0].id,
+          tableName: seats[0].name,
+          tables: seats,
+          slotId: null,
+          bookingType,
+          durationHours,
+          packageId: null,
+          packageName: '',
+          date,
+          startTime,
+          endTime,
+          peopleCount: dto.peopleCount,
+          // 开台即上钟：直接服务中，到点自动下钟
+          status: 'in_service' as const,
+          code: await this.generateCode(em),
+          note: dto.note ?? '',
+          amount: centsToYuan(amountCents),
+          originalAmount: centsToYuan(originalAmountCents),
+          payStatus: 'unpaid' as const,
+          checkInTime: now,
+          serviceStartTime: now,
+          serviceEndTime: new Date(`${date}T${endTime}:00`),
+          checkedInBy: operatorId,
+        });
+        return em.save(appointment);
+      });
+      this.broadcastAppointment(saved);
+      return saved;
+    } finally {
+      await this.redis.del(lockKey).catch(() => undefined);
+    }
   }
 
   /** 查询某门店某日桌位可用性：返回每个桌位已占用时段窗口，客户端按预约时段重叠判断 */

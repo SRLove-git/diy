@@ -14,6 +14,8 @@
     "test:app": "cd app && flutter test",
     "build:app:ios": "cd app && flutter build ios --release --dart-define=API_BASE_URL=http://192.168.10.130:3000",
     "build": "npm run build:server && npm run build:admin",
-    "test": "npm run test:server && npm run test:app"
+    "test": "npm run test:server && npm run test:app",
+    "stress": "node loadtest/stress.js",
+    "stress:smoke": "k6 run loadtest/k6/load.js"
   }
 }

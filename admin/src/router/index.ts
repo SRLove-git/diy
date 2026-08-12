@@ -21,6 +21,11 @@ const router = createRouter({
           meta: { title: '门店管理', titleEn: 'Stores' },
         },
         {
+          path: 'tables',
+          component: () => import('../views/TablesView.vue'),
+          meta: { title: '桌位看板', titleEn: 'Table Board' },
+        },
+        {
           path: 'activities',
           component: () => import('../views/ActivitiesView.vue'),
           meta: { title: '活动管理', titleEn: 'Activities' },

@@ -16,15 +16,12 @@ const trim = ({ value }: { value: unknown }) =>
 const lowerTrim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim().toLowerCase() : value;
 
-/** 发送邮箱验证码 */
-export class SendEmailCodeDto {
+/** 注册：用户名 + 密码 + 邮箱绑定 */
+export class RegisterDto {
   @Transform(lowerTrim)
   @IsEmail({}, { message: '邮箱格式不正确' })
   email: string;
-}
 
-/** 注册：用户名 + 密码 + 邮箱绑定（需邮箱验证码） */
-export class RegisterDto extends SendEmailCodeDto {
   @Transform(trim)
   @IsString()
   @MinLength(2, { message: '用户名至少 2 位' })
@@ -38,9 +35,6 @@ export class RegisterDto extends SendEmailCodeDto {
   @MinLength(6, { message: '密码至少 6 位' })
   @MaxLength(32, { message: '密码最多 32 位' })
   password: string;
-
-  @Matches(/^\d{6}$/, { message: '验证码为 6 位数字' })
-  emailCode: string;
 }
 
 /** 用户名 / 邮箱 + 密码登录 */
@@ -50,17 +44,6 @@ export class LoginDto {
   @MinLength(2, { message: '用户名或邮箱至少 2 位' })
   @MaxLength(255, { message: '用户名或邮箱过长' })
   account: string;
-
-  @IsString()
-  @MinLength(6, { message: '密码至少 6 位' })
-  @MaxLength(32, { message: '密码最多 32 位' })
-  password: string;
-}
-
-/** 忘记密码：邮箱验证码校验 + 写入新密码 */
-export class ResetPasswordDto extends SendEmailCodeDto {
-  @Matches(/^\d{6}$/, { message: '验证码为 6 位数字' })
-  emailCode: string;
 
   @IsString()
   @MinLength(6, { message: '密码至少 6 位' })

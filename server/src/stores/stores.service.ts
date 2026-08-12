@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Store } from './store.entity';
@@ -84,15 +88,56 @@ export class StoresService {
     await this.stores.remove(store);
   }
 
+  /** 桌位命名规则：字母 = 人数（A=1人桌 / B=2人桌 / C=4人桌） */
+  private static readonly capacityPrefix: Record<number, string> = {
+    1: 'A',
+    2: 'B',
+    4: 'C',
+  };
+
+  /**
+   * 按容量规则生成桌位名：前缀 + 同类型最小空闲序号（如 B2 = 第二个二人桌）。
+   * 座位号由桌位名派生：B1-2 = 第一个二人桌的 2 号座位。
+   */
+  private async nextTableName(
+    storeId: number,
+    capacity: number,
+  ): Promise<string> {
+    const prefix = StoresService.capacityPrefix[capacity];
+    if (!prefix) {
+      throw new BadRequestException('桌位容量仅支持 1 / 2 / 4 人');
+    }
+    const siblings = await this.tables.find({ where: { storeId } });
+    const used = new Set(
+      siblings
+        .filter((t) => t.name.startsWith(prefix))
+        .map((t) => parseInt(t.name.slice(prefix.length), 10))
+        .filter((n) => !Number.isNaN(n)),
+    );
+    let i = 1;
+    while (used.has(i)) i++;
+    return `${prefix}${i}`;
+  }
+
   async addTable(storeId: number, dto: CreateTableDto): Promise<StoreTable> {
     await this.adminDetail(storeId);
-    return this.tables.save(this.tables.create({ storeId, ...dto }));
+    // 桌位名按容量规则自动生成，忽略入参 name
+    const name = await this.nextTableName(storeId, dto.capacity);
+    return this.tables.save(this.tables.create({ storeId, ...dto, name }));
   }
 
   async updateTable(id: number, dto: UpdateTableDto): Promise<StoreTable> {
     const table = await this.tables.findOneBy({ id });
     if (!table) throw new NotFoundException('桌位不存在');
-    Object.assign(table, dto);
+    const capacityChanged =
+      dto.capacity != null && dto.capacity !== table.capacity;
+    // 桌位名不允许手改：忽略入参 name，容量变化时按规则重新生成
+    const rest = { ...dto };
+    delete rest.name;
+    Object.assign(table, rest);
+    if (capacityChanged) {
+      table.name = await this.nextTableName(table.storeId, table.capacity);
+    }
     return this.tables.save(table);
   }
 

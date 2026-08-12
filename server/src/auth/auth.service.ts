@@ -11,7 +11,6 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
 import type Redis from 'ioredis';
-import { EmailService } from '../email/email.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { UsersService } from '../users/users.service';
 import { hashPassword, verifyPassword } from './password.util';
@@ -23,12 +22,7 @@ export interface JwtPayload {
   jti?: string;
 }
 
-const EMAIL_CODE_TTL = 300; // 验证码 5 分钟有效
-const EMAIL_LIMIT_TTL = 60; // 同一邮箱 60 秒限发一次
-const EMAIL_IP_LIMIT_TTL = 3600; // 同一 IP 每小时限发次数窗口
-const EMAIL_IP_LIMIT_MAX = 10; // 同一 IP 每小时最多发送 10 条
 const REFRESH_TTL = 30 * 24 * 3600; // 刷新令牌 30 天
-const MAX_ATTEMPTS = 5; // 验证码 10 分钟内最多尝试 5 次
 const PASSWORD_ATTEMPT_MAX = 5; // 密码登录 10 分钟内最多失败 5 次
 const PASSWORD_LOCK_TTL = 600; // 连续失败后锁定 10 分钟
 
@@ -39,58 +33,16 @@ export class AuthService {
     private readonly users: UsersService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
-    private readonly email: EmailService,
   ) {}
 
-  /** 发送邮箱验证码（含防刷：60 秒/邮箱 + 每小时/IP 上限） */
-  async sendEmailCode(email: string, ip?: string) {
-    const normalized = email.trim().toLowerCase();
-    // 先做 IP 维度限流（有则计次），再锁邮箱，避免被批量刷号
-    if (ip) {
-      const ipKey = `email:limit-ip:${ip}`;
-      const ipCount = await this.redis.incr(ipKey);
-      if (ipCount === 1) await this.redis.expire(ipKey, EMAIL_IP_LIMIT_TTL);
-      if (ipCount > EMAIL_IP_LIMIT_MAX) {
-        throw new BadRequestException('发送过于频繁，请稍后再试');
-      }
-    }
-    const locked = await this.redis.set(
-      `email:limit:${normalized}`,
-      '1',
-      'EX',
-      EMAIL_LIMIT_TTL,
-      'NX',
-    );
-    if (!locked) throw new BadRequestException('发送过于频繁，请 60 秒后再试');
-
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    await this.redis.set(
-      `email:code:${normalized}`,
-      code,
-      'EX',
-      EMAIL_CODE_TTL,
-    );
-    await this.email.send(
-      normalized,
-      '【DIY手作工坊】邮箱验证码',
-      `您的验证码是 ${code}，5 分钟内有效。请勿泄露给他人。`,
-    );
-
-    // 开发环境：返回验证码便于联调，生产环境不返回
-    const isDev = this.config.get<string>('NODE_ENV') !== 'production';
-    return isDev ? { sent: true, code } : { sent: true };
-  }
-
-  /** 注册：用户名 + 密码 + 邮箱绑定（邮箱验证码校验通过后建号并自动登录） */
+  /** 注册：用户名 + 密码 + 邮箱绑定（建号并自动登录） */
   async register(dto: {
     username: string;
     email: string;
     password: string;
-    emailCode: string;
   }) {
     const username = dto.username.trim();
     const email = dto.email.trim().toLowerCase();
-    await this.verifyEmailCode(email, dto.emailCode);
 
     if (await this.users.findByUsername(username)) {
       throw new ConflictException('用户名已被占用');
@@ -130,19 +82,6 @@ export class AuthService {
 
     const tokens = await this.signTokens(user.id);
     return { userId: user.id, ...tokens };
-  }
-
-  /** 忘记密码：邮箱验证码校验通过后写入新密码 */
-  async resetPassword(email: string, code: string, password: string) {
-    const normalized = email.trim().toLowerCase();
-    await this.verifyEmailCode(normalized, code);
-    const user = await this.users.findByEmail(normalized);
-    if (!user) {
-      throw new BadRequestException('该邮箱未注册，请先注册账号');
-    }
-    if (user.isBanned) throw new ForbiddenException('账号已被禁用');
-    await this.users.setPasswordHash(user.id, await hashPassword(password));
-    return { sent: true };
   }
 
   /** 修改登录密码（登录态下）：校验原密码后写入新密码 */
@@ -188,23 +127,6 @@ export class AuthService {
   /** 登录成功后清除失败计数与锁定 */
   private async clearLoginFailures(key: string) {
     await this.redis.del(`login:attempt:${key}`, `login:lock:${key}`);
-  }
-
-  /** 校验邮箱验证码（含防爆破），校验成功后验证码即焚 */
-  private async verifyEmailCode(email: string, code: string) {
-    const attemptKey = `email:attempt:${email}`;
-    const attempts = await this.redis.incr(attemptKey);
-    if (attempts === 1) await this.redis.expire(attemptKey, 600);
-    if (attempts > MAX_ATTEMPTS)
-      throw new BadRequestException('尝试次数过多，请稍后再试');
-
-    const saved = await this.redis.get(`email:code:${email}`);
-    if (!saved || saved !== code) {
-      throw new BadRequestException('验证码错误或已过期');
-    }
-
-    // 一次性验证码，用后即焚
-    await this.redis.del(`email:code:${email}`, attemptKey);
   }
 
   /** 刷新令牌（轮换制：旧 refresh 立即失效） */

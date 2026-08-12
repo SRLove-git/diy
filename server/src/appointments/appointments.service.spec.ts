@@ -43,7 +43,7 @@ function buildService() {
   const activities = { findOneBy: jest.fn() };
   const activitySessionsRepo = { findOneBy: jest.fn(), find: jest.fn() };
   const memberships = { findOneBy: jest.fn() };
-  const users = {};
+  const users = { findByUsernameOrCreate: jest.fn() };
   const gateway = { sendAppointment: jest.fn() };
   const redis = {
     set: jest.fn(),
@@ -98,6 +98,7 @@ function buildService() {
     activities,
     activitySessionsRepo,
     memberships,
+    users,
     redis,
     userCouponRepo,
     couponRepo,
@@ -381,6 +382,117 @@ describe('AppointmentsService', () => {
       await expect(m.svc.adminConfirm(1)).rejects.toThrow(
         '预约日期已过，无法确认',
       );
+    });
+  });
+
+  describe('adminWalkIn', () => {
+    it('散客开台：直接服务中，开始=当前、结束=当前+时长，挂在占位账号下', async () => {
+      const m = buildService();
+      m.stores.findOneBy.mockResolvedValue({
+        id: 1,
+        name: '门店A',
+        businessHours: '09:00-23:00',
+        price: 30,
+        groupPrice: 25,
+        memberPrice: null,
+        allDayPrice: null,
+        weekendSurchargePercent: 0,
+      });
+      m.tables.find.mockResolvedValue([{ id: 1, name: 'B1', capacity: 2 }]);
+      m.users.findByUsernameOrCreate.mockResolvedValue({ id: 999 });
+      m.em.find.mockResolvedValue([]);
+      m.em.findOne.mockResolvedValue(null); // generateCode 查重
+      m.em.create.mockImplementation(
+        (_cls: unknown, data: Record<string, unknown>) => ({ ...data }),
+      );
+      m.em.save.mockImplementation((x: unknown) => Promise.resolve(x));
+
+      const result = await m.svc.adminWalkIn(
+        {
+          storeId: 1,
+          tableIds: [1],
+          peopleCount: 2,
+          bookingType: 'hourly',
+          durationHours: 2,
+        },
+        5,
+      );
+
+      expect(result.status).toBe('in_service');
+      expect(result.userId).toBe(999);
+      expect(result.checkedInBy).toBe(5);
+      expect(result.payStatus).toBe('unpaid');
+      expect(result.serviceStartTime).toBeInstanceOf(Date);
+      expect(result.serviceEndTime).toBeInstanceOf(Date);
+      // 散客无会员身份：多人同行价 25 元/人/小时 × 2 小时 × 2 人 = 100
+      expect(result.amount).toBe(100);
+      expect(m.redis.del).toHaveBeenCalled(); // 无论成败释放分布式锁
+    });
+
+    it('与当日已有预约时段重叠时拒绝开台', async () => {
+      const m = buildService();
+      m.stores.findOneBy.mockResolvedValue({
+        id: 1,
+        name: '门店A',
+        businessHours: '09:00-23:00',
+        price: 30,
+        groupPrice: 25,
+      });
+      m.tables.find.mockResolvedValue([{ id: 1, name: 'B1', capacity: 2 }]);
+      m.users.findByUsernameOrCreate.mockResolvedValue({ id: 999 });
+      // 全天占用的有效预约：任何开台时段都会与之重叠
+      m.em.find.mockResolvedValue([
+        {
+          id: 9,
+          tableId: 1,
+          tables: [{ id: 1, name: 'B1' }],
+          startTime: '00:00',
+          endTime: '23:59',
+          tableName: 'B1',
+        },
+      ]);
+
+      await expect(
+        m.svc.adminWalkIn(
+          { storeId: 1, tableIds: [1], peopleCount: 1, durationHours: 1 },
+          5,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('人数超过桌位容量时拒绝开台', async () => {
+      const m = buildService();
+      m.stores.findOneBy.mockResolvedValue({
+        id: 1,
+        name: '门店A',
+        businessHours: '09:00-23:00',
+      });
+      m.tables.find.mockResolvedValue([{ id: 1, name: 'B1', capacity: 2 }]);
+
+      await expect(
+        m.svc.adminWalkIn(
+          { storeId: 1, tableIds: [1], peopleCount: 3, durationHours: 1 },
+          5,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('时长超出营业时间时拒绝开台', async () => {
+      const m = buildService();
+      m.stores.findOneBy.mockResolvedValue({
+        id: 1,
+        name: '门店A',
+        businessHours: '09:00-21:00',
+        price: 30,
+      });
+      m.tables.find.mockResolvedValue([{ id: 1, name: 'B1', capacity: 2 }]);
+
+      await expect(
+        m.svc.adminWalkIn(
+          { storeId: 1, tableIds: [1], peopleCount: 1, durationHours: 24 },
+          5,
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

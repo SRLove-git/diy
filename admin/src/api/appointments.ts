@@ -46,6 +46,15 @@ export interface AppointmentListParams {
   limit?: number
 }
 
+export interface WalkInPayload {
+  storeId: number
+  tableIds: number[]
+  peopleCount: number
+  bookingType?: 'hourly' | 'all_day'
+  durationHours?: number
+  note?: string
+}
+
 export const appointmentApi = {
   /** 管理端：所有预约列表（分页） */
   list: (params?: AppointmentListParams): Promise<[Appointment[], number]> =>
@@ -84,4 +93,10 @@ export const appointmentApi = {
   /** 管理端下钟 */
   clockOut: (id: number) =>
     http.post<Appointment>(`/admin/appointments/${id}/clockout`),
+
+  /** 线下散客开台：创建即服务中，直接开始计时 */
+  walkIn: (d: WalkInPayload) =>
+    http
+      .post<Appointment>('/admin/appointments/walkin', d)
+      .then((r) => r.data),
 }

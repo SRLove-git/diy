@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  Max,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -93,4 +94,37 @@ export class CheckInDto {
   /** 6 位预约码 */
   @Matches(/^\d{6}$/, { message: '预约码为 6 位数字' })
   code: string;
+}
+
+/** 管理端线下开台：散客免注册，创建即服务中（上钟），到点自动下钟 */
+export class WalkInDto {
+  @IsInt()
+  storeId: number;
+
+  /** 开台桌位（支持多桌） */
+  @IsArray()
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  tableIds: number[];
+
+  @IsInt()
+  @Min(1, { message: '人数至少 1 人' })
+  peopleCount: number;
+
+  /** hourly 按小时（默认）/ all_day 全天至打烊 */
+  @IsOptional()
+  @IsIn(['hourly', 'all_day'])
+  bookingType?: 'hourly' | 'all_day';
+
+  /** 时长（小时），hourly 必填且 ≥1 */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(24)
+  durationHours?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  note?: string;
 }

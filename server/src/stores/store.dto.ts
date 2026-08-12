@@ -101,10 +101,13 @@ export class CreateStoreDto {
 export class UpdateStoreDto extends PartialType(CreateStoreDto) {}
 
 export class CreateTableDto {
+  /** 桌位名：留空时按容量规则自动生成（A=1人桌 / B=2人桌 / C=4人桌 + 序号） */
+  @IsOptional()
   @IsString()
   @MaxLength(50)
-  name: string;
+  name?: string;
 
+  /** 容纳人数：仅支持 1 / 2 / 4（对应桌位名前缀 A / B / C） */
   @IsInt()
   @Min(1)
   capacity: number;
