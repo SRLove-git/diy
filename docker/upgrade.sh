@@ -82,13 +82,15 @@ ssh "$SERVER" \
 
 log "8/8 清理旧镜像（保留最近 ${KEEP_TAGS} 个 tag）"
 ssh "$SERVER" \
-  "docker images --format '{{.Repository}}:{{.Tag}}|{{.CreatedAt}}' \
-   | grep -E '^(diy-server|diy-admin|diy-backup):' \
-   | grep -v ':latest' \
-   | sort -t'|' -k2 \
-   | head -n -${KEEP_TAGS} \
-   | cut -d'|' -f1 \
-   | xargs -r -n1 sh -c 'docker rmi \"\$0\" >/dev/null 2>&1 || true'"
+  "for repo in diy-server diy-admin diy-backup; do
+     docker images --format '{{.Repository}}:{{.Tag}}|{{.CreatedAt}}' \
+       | grep -E \"^\${repo}:\" \
+       | grep -v ':latest' \
+       | sort -t'|' -k2 \
+       | head -n -${KEEP_TAGS} \
+       | cut -d'|' -f1 \
+       | xargs -r -n1 sh -c 'docker rmi \"\$0\" >/dev/null 2>&1 || true'
+   done"
 
 rm -f "$PKG"
 
