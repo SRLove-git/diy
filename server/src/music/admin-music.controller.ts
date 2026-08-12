@@ -35,6 +35,7 @@ import {
   UPLOAD_PROVIDER,
   type UploadProvider,
 } from '../uploads/uploads.provider';
+import { MediaCleanupService } from '../uploads/media-cleanup.service';
 import { UpdateMusicDto, UploadMusicFieldsDto } from './music.dto';
 import { MusicService } from './music.service';
 
@@ -126,6 +127,7 @@ export class AdminMusicController {
     private readonly music: MusicService,
     @Inject(UPLOAD_PROVIDER)
     private readonly uploader: UploadProvider,
+    private readonly cleanup: MediaCleanupService,
   ) {}
 
   /** 曲库列表（歌名/歌手模糊搜索，分页） */
@@ -249,6 +251,11 @@ export class AdminMusicController {
 
     const updated = await this.music.update(id, { musicUrl, cover: coverUrl });
     if (!updated) throw new NotFoundException('曲目不存在');
+    // 替换成功后清理旧文件并刷新 CDN 缓存（尽力而为）
+    await this.cleanup.deleteAndPurge([
+      audio ? item.musicUrl : null,
+      cover ? item.cover : null,
+    ]);
     return updated;
   }
 
@@ -266,8 +273,11 @@ export class AdminMusicController {
   /** 删除曲目 */
   @Delete(':id')
   async remove(@Param('id', ParseIntPipe) id: number) {
+    const item = await this.music.findById(id);
+    if (!item) throw new NotFoundException('曲目不存在');
     const ok = await this.music.remove(id);
     if (!ok) throw new NotFoundException('曲目不存在');
+    await this.cleanup.deleteAndPurge([item.musicUrl, item.cover]);
     return { deleted: true };
   }
 }

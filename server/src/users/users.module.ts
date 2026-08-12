@@ -23,6 +23,7 @@ import { NotificationRead } from '../notifications/notification-read.entity';
 import { Video } from '../videos/video.entity';
 import { VideoLike } from '../videos/video-like.entity';
 import { VideoComment } from '../videos/video-comment.entity';
+import { UploadsModule } from '../uploads/uploads.module';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { AdminUsersController } from './admin-users.controller';
@@ -54,6 +55,7 @@ import { AdminUsersController } from './admin-users.controller';
       GroupMessageDeletion,
     ]),
     JwtModule.register({}),
+    UploadsModule,
   ],
   controllers: [UsersController, AdminUsersController],
   providers: [UsersService],

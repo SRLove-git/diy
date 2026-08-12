@@ -13,8 +13,12 @@ import { GroupMember } from './group-member.entity';
 import { GroupMessage } from './group-message.entity';
 import { GroupRead } from './group-read.entity';
 import { BlocksService } from './blocks.service';
-import { isValidChatContent } from './chat.service';
-import type { MessageContentType } from './chat.service';
+import {
+  isValidChatContent,
+  messageMediaUrls,
+  type MessageContentType,
+} from './media.util';
+import { MediaCleanupService } from '../uploads/media-cleanup.service';
 
 /** 群聊消息类型归一化 */
 function normalizeType(t: string): MessageContentType {
@@ -44,6 +48,7 @@ export class GroupsService {
     @InjectRepository(User)
     private readonly users: Repository<User>,
     private readonly blocks: BlocksService,
+    private readonly mediaCleanup: MediaCleanupService,
   ) {}
 
   // ──── 建群 ────
@@ -352,10 +357,18 @@ export class GroupsService {
   async dissolve(ownerId: number, groupId: number) {
     await this.assertOwner(groupId, ownerId);
     const memberIds = await this.groupMemberIds(groupId);
+    const messages = await this.messages.find({
+      where: { groupId },
+      select: { id: true, contentType: true, content: true },
+    });
     await this.messages.delete({ groupId });
     await this.reads.delete({ groupId });
     await this.members.delete({ groupId });
     await this.groups.delete({ id: groupId });
+    // 群解散后清理媒体文件并刷新 CDN 缓存（尽力而为）
+    await this.mediaCleanup.deleteAndPurge(
+      messages.flatMap((m) => messageMediaUrls(m.contentType, m.content)),
+    );
     return { memberIds };
   }
 

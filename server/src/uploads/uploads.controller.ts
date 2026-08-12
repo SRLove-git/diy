@@ -124,7 +124,8 @@ const ALLOWED_FOLDERS = new Set(['chat', 'avatar', 'post']);
  * POST /api/uploads/images（multipart 字段 file，需登录）。
  * multer 先写入系统临时目录，随后交给 UploadProvider 持久化：
  * - local（默认）：移动到 {UPLOAD_DIR}/{folder}/{yyyy}/{mm}/，返回相对路径
- * - oss（预留）：配置 UPLOAD_PROVIDER=oss 并实现对象存储后启用
+ * - s3（UPLOAD_PROVIDER=s3）：流式写入对象存储（阿里云 OSS 等），
+ *   返回 CDN（S3_PUBLIC_URL_BASE）或 bucket 默认域名的完整 URL
  *
  * 返回的 url 作为图片消息 content 存储；本地模式由 main.ts 以 /uploads 前缀托管静态资源。
  */

@@ -10,46 +10,27 @@ import { In, IsNull, Repository } from 'typeorm';
 import type Redis from 'ioredis';
 import { FollowsService } from '../follows/follows.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
+import { MediaCleanupService } from '../uploads/media-cleanup.service';
 import { User } from '../users/user.entity';
 import { BlocksService } from './blocks.service';
 import { Conversation } from './conversation.entity';
+import {
+  isValidChatContent,
+  messageMediaUrls,
+  type MessageContentType,
+} from './media.util';
 import { Message } from './message.entity';
 import { MessageStatus } from './message_status.entity';
 
-/** 消息内容类型：text 文本/表情；image 图片；video 视频（content 存 /uploads/video/... 相对路径）；voice 语音（content 存 {url,duration} JSON） */
-export type MessageContentType = 'text' | 'image' | 'voice' | 'video';
+// 兼容旧引用路径（网关/群聊服务等）；新代码请直接 import 自 ./media.util
+export {
+  isValidChatContent,
+  messageMediaUrls,
+  type MessageContentType,
+} from './media.util';
 
 /** 未互相关注时，单会话最多可发送的消息条数 */
 const CHAT_LIMIT = 3;
-
-/** 聊天媒体内容必须是本站上传的相对路径（图片走 chat/，视频走 video/） */
-const MEDIA_URL_RE = /^\/uploads\/(chat|video)\/[\w./-]+$/;
-
-/** 语音内容校验：JSON { url, duration }，url 必须是本站上传路径 */
-function isValidVoiceContent(content: string): boolean {
-  try {
-    const j = JSON.parse(content) as { url?: unknown; duration?: unknown };
-    return (
-      typeof j.url === 'string' &&
-      MEDIA_URL_RE.test(j.url) &&
-      typeof j.duration === 'number' &&
-      j.duration >= 0
-    );
-  } catch {
-    return false;
-  }
-}
-
-/** 消息内容合法性校验（单聊/群聊共用） */
-export function isValidChatContent(
-  type: MessageContentType,
-  content: string,
-): boolean {
-  const body = content.trim();
-  if (type === 'image' || type === 'video') return MEDIA_URL_RE.test(body);
-  if (type === 'voice') return isValidVoiceContent(body);
-  return body.length > 0;
-}
 
 /** 可 unref 的本地超时：用于 Promise.race 兜底，不阻止进程优雅退出 */
 function timeoutAfter(ms: number): Promise<null> {
@@ -74,6 +55,7 @@ export class ChatService {
     private readonly blocks: BlocksService,
     @Inject(REDIS_CLIENT)
     private readonly redis: Redis,
+    private readonly mediaCleanup: MediaCleanupService,
   ) {}
 
   private peerIdOf(conv: Conversation, userId: number): number {
@@ -272,6 +254,10 @@ export class ChatService {
     conversationId: number,
   ): Promise<void> {
     await this.findConversationForUser(conversationId, userId);
+    const messages = await this.messages.find({
+      where: { conversationId },
+      select: { id: true, contentType: true, content: true },
+    });
     await this.messages.manager.transaction(async (em) => {
       await em
         .createQueryBuilder()
@@ -285,6 +271,10 @@ export class ChatService {
       await em.delete(Message, { conversationId });
       await em.delete(Conversation, { id: conversationId });
     });
+    // 会话双方都不可见后清理媒体文件并刷新 CDN 缓存（尽力而为）
+    await this.mediaCleanup.deleteAndPurge(
+      messages.flatMap((m) => messageMediaUrls(m.contentType, m.content)),
+    );
   }
 
   /** 清空聊天记录：仅对自己隐藏本会话全部消息（message_status.deletedAt），对端不受影响 */

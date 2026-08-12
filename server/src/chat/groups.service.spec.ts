@@ -52,6 +52,7 @@ describe('GroupsService.myGroups', () => {
       reads as never,
       users as never,
       {} as never,
+      {} as never,
     );
     // myGroups 内部只关心 formatGroup 返回的 unreadCount，这里直接透传
     (

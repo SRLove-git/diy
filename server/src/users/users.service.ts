@@ -6,10 +6,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type Redis from 'ioredis';
-import { FindOptionsWhere, In, IsNull, Like, Repository } from 'typeorm';
+import { In, IsNull, Like, Repository } from 'typeorm';
 import { FORCE_OFFLINE_TTL, kickKey } from '../auth/session-keys';
 import { publishKickEvent } from '../chat/chat-events';
+import { messageMediaUrls } from '../chat/media.util';
 import { REDIS_CLIENT } from '../redis/redis.module';
+import { MediaCleanupService } from '../uploads/media-cleanup.service';
 import { Appointment } from '../appointments/appointment.entity';
 import { Conversation } from '../chat/conversation.entity';
 import { Group } from '../chat/group.entity';
@@ -81,6 +83,7 @@ export class UsersService {
     private readonly groupReads: Repository<GroupRead>,
     @InjectRepository(GroupMessageDeletion)
     private readonly groupMessageDeletions: Repository<GroupMessageDeletion>,
+    private readonly mediaCleanup: MediaCleanupService,
   ) {}
 
   findByEmail(email: string): Promise<User | null> {
@@ -236,6 +239,7 @@ export class UsersService {
     },
   ) {
     const user = await this.users.findOneBy({ id });
+    const oldAvatar = user?.avatar ?? '';
     const data: Record<string, unknown> = {};
     if (patch.nickname !== undefined) data.nickname = patch.nickname.trim();
     if (patch.avatar !== undefined) data.avatar = patch.avatar;
@@ -265,7 +269,12 @@ export class UsersService {
         );
       }
     }
-    return this.users.update({ id }, data);
+    const updated = await this.users.update({ id }, data);
+    // 头像替换成功后删除旧头像并刷新 CDN 缓存（尽力而为）
+    if (patch.avatar !== undefined && oldAvatar && oldAvatar !== patch.avatar) {
+      await this.mediaCleanup.deleteAndPurge([oldAvatar]);
+    }
+    return updated;
   }
 
   setPasswordHash(id: number, hash: string) {
@@ -355,12 +364,16 @@ export class UsersService {
   async deleteWorks(
     userId: number,
   ): Promise<{ posts: number; videos: number }> {
-    const postIds = (
-      await this.posts.find({ where: { userId }, select: { id: true } })
-    ).map((p) => p.id);
-    const videoIds = (
-      await this.videos.find({ where: { userId }, select: { id: true } })
-    ).map((v) => v.id);
+    const posts = await this.posts.find({
+      where: { userId },
+      select: { id: true, images: true, medias: true },
+    });
+    const videos = await this.videos.find({
+      where: { userId },
+      select: { id: true, videoUrl: true, cover: true, photos: true },
+    });
+    const postIds = posts.map((p) => p.id);
+    const videoIds = videos.map((v) => v.id);
 
     if (postIds.length) {
       await Promise.all([
@@ -378,6 +391,15 @@ export class UsersService {
       ]);
       await this.videos.delete(videoIds);
     }
+    // 作品删除后清理存储对象并刷新 CDN 缓存（尽力而为）
+    const urls = [
+      ...posts.flatMap((p) => [
+        ...(p.images ?? []),
+        ...(p.medias?.map((m) => m.url) ?? []),
+      ]),
+      ...videos.flatMap((v) => [v.videoUrl, v.cover, ...(v.photos ?? [])]),
+    ];
+    await this.mediaCleanup.deleteAndPurge(urls);
     return { posts: postIds.length, videos: videoIds.length };
   }
 
@@ -419,6 +441,24 @@ export class UsersService {
       })
     ).map((g) => g.id);
 
+    // 聊天媒体文件：删库前先取出内容，删除后统一清理存储对象
+    const chatMediaMessages = await this.messages.find({
+      where: [
+        { senderId: userId },
+        ...(conversationIds.length
+          ? [{ conversationId: In(conversationIds) }]
+          : []),
+      ],
+      select: { id: true, contentType: true, content: true },
+    });
+    const groupMediaMessages = await this.groupMessages.find({
+      where: [
+        { senderId: userId },
+        ...(groupIds.length ? [{ groupId: In(groupIds) }] : []),
+      ],
+      select: { id: true, contentType: true, content: true },
+    });
+
     if (conversationIds.length) {
       const messageIds = (
         await this.messages.find({
@@ -458,7 +498,13 @@ export class UsersService {
       this.groupMessages.delete({ senderId: userId }),
     ]);
 
-    // 4. 删除用户账号
+    // 4. 清理聊天媒体文件（尽力而为）
+    const chatUrls = [...chatMediaMessages, ...groupMediaMessages].flatMap(
+      (m) => messageMediaUrls(m.contentType, m.content),
+    );
+    await this.mediaCleanup.deleteAndPurge(chatUrls);
+
+    // 5. 删除用户账号
     await this.users.delete({ id: userId });
     return { posts, videos };
   }

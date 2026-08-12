@@ -41,6 +41,7 @@ describe('ChatService.getMessages', () => {
       {} as never,
       blocks as never,
       {} as never,
+      {} as never,
     );
   }
 
@@ -90,6 +91,7 @@ describe('ChatService.getMessages', () => {
       follows as never,
       blocks as never,
       {} as never,
+      {} as never,
     );
 
     await expect(service.sendMessage(32, 10, 'text', 'hello')).rejects.toThrow(
@@ -110,6 +112,7 @@ describe('ChatService.onlineUserIds', () => {
       {} as never,
       {} as never,
       redis as never,
+      {} as never,
     );
   }
 

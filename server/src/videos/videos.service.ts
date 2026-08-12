@@ -12,6 +12,7 @@ import { Follow } from '../follows/follow.entity';
 import { User } from '../users/user.entity';
 import { AudioMixService } from './audio-mix.service';
 import { FeedCacheService } from '../common/feed-cache.service';
+import { MediaCleanupService } from '../uploads/media-cleanup.service';
 import { Video } from './video.entity';
 import { VideoComment } from './video-comment.entity';
 import { VideoCommentLike } from './video-comment-like.entity';
@@ -85,6 +86,7 @@ export class VideosService {
     private readonly mixer: AudioMixService,
     private readonly feedCache: FeedCacheService,
     private readonly notifications: NotificationsService,
+    private readonly mediaCleanup: MediaCleanupService,
   ) {}
 
   /** 发送短视频互动通知（失败不影响主流程），跳过自己给自己发 */
@@ -454,6 +456,7 @@ export class VideosService {
   async hardDelete(id: number): Promise<void> {
     const video = await this.videos.findOneBy({ id });
     if (!video) throw new NotFoundException('视频不存在');
+    const urls = [video.videoUrl, video.cover, ...(video.photos ?? [])];
     await Promise.all([
       this.likes.delete({ videoId: id }),
       this.comments.delete({ videoId: id }),
@@ -461,6 +464,8 @@ export class VideosService {
     ]);
     await this.videos.delete({ id });
     await this.feedCache.bumpContentVersion();
+    // 物理删除后清理存储对象并刷新 CDN 缓存（尽力而为）
+    await this.mediaCleanup.deleteAndPurge(urls);
   }
 
   /** 用户端：删除自己的视频/照片作品（校验归属后物理删除） */

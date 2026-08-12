@@ -18,6 +18,7 @@ import { GroupsController } from './groups.controller';
 import { GroupsService } from './groups.service';
 import { Message } from './message.entity';
 import { MessageStatus } from './message_status.entity';
+import { UploadsModule } from '../uploads/uploads.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { MessageStatus } from './message_status.entity';
       User,
     ]),
     FollowsModule,
+    UploadsModule,
   ],
   controllers: [ChatController, GroupsController, BlocksController],
   providers: [ChatService, GroupsService, BlocksService, ChatGateway],

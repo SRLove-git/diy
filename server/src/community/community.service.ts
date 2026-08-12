@@ -21,6 +21,7 @@ import { CreatePostDto, UpdatePostStatusDto } from './post.dto';
 import { CreateCommentDto } from './comment.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ModerationService } from '../moderation/moderation.service';
+import { MediaCleanupService } from '../uploads/media-cleanup.service';
 import type { NotificationCategory } from '../notifications/notification.entity';
 
 /** 作者简要信息（嵌入列表响应中，避免 N+1 查询） */
@@ -53,6 +54,7 @@ export class CommunityService {
     private readonly feedCache: FeedCacheService,
     private readonly notifications: NotificationsService,
     private readonly moderation: ModerationService,
+    private readonly mediaCleanup: MediaCleanupService,
   ) {}
 
   /** 发送互动通知（失败不影响主流程），仅通知内容作者本人且跳过自己给自己发 */
@@ -349,6 +351,10 @@ export class CommunityService {
   async hardDelete(id: number): Promise<void> {
     const post = await this.posts.findOneBy({ id });
     if (!post) throw new NotFoundException('作品不存在');
+    const urls = [
+      ...(post.images ?? []),
+      ...(post.medias?.map((m) => m.url) ?? []),
+    ];
     await Promise.all([
       this.likes.delete({ postId: id }),
       this.comments.delete({ postId: id }),
@@ -357,6 +363,8 @@ export class CommunityService {
     ]);
     await this.posts.delete({ id });
     await this.feedCache.bumpContentVersion();
+    // 物理删除后清理存储对象并刷新 CDN 缓存（尽力而为）
+    await this.mediaCleanup.deleteAndPurge(urls);
   }
 
   /** 用户端：删除自己的作品（校验归属后物理删除） */
