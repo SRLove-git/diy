@@ -18,12 +18,11 @@ http.interceptors.response.use(
       window.location.hash = '#/login'
     }
     if (err.response?.status === 403) {
+      // 角色权限不足：提示但保留登录态（不强制登出，避免审计员等角色反复被踢）
       alert(
         err.response?.data?.message ??
-          t('无管理权限，请使用管理员账号登录', 'No admin permission. Please log in with an admin account.'),
+          t('当前管理员角色无权执行此操作', 'Your admin role does not have permission for this action.'),
       )
-      localStorage.removeItem('admin_token')
-      window.location.hash = '#/login'
     }
     return Promise.reject(err)
   },

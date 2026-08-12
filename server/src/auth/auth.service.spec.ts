@@ -10,13 +10,15 @@ function buildService() {
   };
   const jwt = {};
   const config = {};
+  const captcha = { verify: jest.fn().mockResolvedValue(true) };
   const svc = new AuthService(
     redis as never,
     users as never,
     jwt as never,
     config as never,
+    captcha as never,
   );
-  return { svc, users };
+  return { svc, users, captcha };
 }
 
 describe('AuthService.changePassword', () => {
@@ -86,13 +88,15 @@ function buildRegisterService() {
   const config = {
     get: jest.fn((_key: string, fallback?: unknown) => fallback),
   };
+  const captcha = { verify: jest.fn().mockResolvedValue(true) };
   const svc = new AuthService(
     redis as never,
     users as never,
     jwt as never,
     config as never,
+    captcha as never,
   );
-  return { svc, users, redis };
+  return { svc, users, redis, captcha };
 }
 
 describe('AuthService.register（设备账号数限制）', () => {

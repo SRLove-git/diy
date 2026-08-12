@@ -95,9 +95,9 @@ export const memberApi = {
   deleteMembership(id: number) {
     return http.delete(`/admin/members/${id}`)
   },
-  listOrders(page = 1, keyword?: string) {
+  listOrders(page = 1, keyword?: string, status?: string) {
     return http.get<[MemberOrder[], number]>('/admin/members/orders', {
-      params: { page, ...(keyword ? { keyword } : {}) },
+      params: { page, ...(keyword ? { keyword } : {}), ...(status ? { status } : {}) },
     })
   },
   confirmOrder(id: number) {

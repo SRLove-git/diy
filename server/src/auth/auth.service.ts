@@ -11,6 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
 import type Redis from 'ioredis';
+import { CaptchaService } from '../common/captcha.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
@@ -28,6 +29,11 @@ const REFRESH_TTL = 30 * 24 * 3600; // 刷新令牌 30 天
 const PASSWORD_ATTEMPT_MAX = 5; // 密码登录 10 分钟内最多失败 5 次
 const PASSWORD_LOCK_TTL = 600; // 连续失败后锁定 10 分钟
 
+/** 同一 IP 24 小时内最大注册数（REGISTER_IP_MAX 可覆盖） */
+const REGISTER_IP_MAX_DEFAULT = 5;
+/** IP 注册计数窗口（小时，REGISTER_IP_WINDOW_H 可覆盖） */
+const REGISTER_IP_WINDOW_H_DEFAULT = 24;
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -35,6 +41,7 @@ export class AuthService {
     private readonly users: UsersService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly captcha: CaptchaService,
   ) {}
 
   /** 注册：用户名 + 密码 + 邮箱绑定（建号并自动登录） */
@@ -43,10 +50,14 @@ export class AuthService {
     email: string;
     password: string;
     deviceId?: string;
+    captchaToken?: string;
   }) {
     const username = dto.username.trim();
     const email = dto.email.trim().toLowerCase();
 
+    if (!(await this.captcha.verify(dto.captchaToken))) {
+      throw new BadRequestException('请完成人机验证');
+    }
     if (await this.users.findByUsername(username)) {
       throw new ConflictException('用户名已被占用');
     }
@@ -108,7 +119,14 @@ export class AuthService {
   }
 
   /** 用户名 / 邮箱 + 密码登录 */
-  async login(account: string, password: string) {
+  async login(
+    account: string,
+    password: string,
+    captchaToken?: string,
+  ) {
+    if (!(await this.captcha.verify(captchaToken))) {
+      throw new BadRequestException('请完成人机验证');
+    }
     const normalized = account.trim();
     const lockKey = `acct:${normalized.toLowerCase()}`;
     await this.checkLoginLock(lockKey);
@@ -128,6 +146,35 @@ export class AuthService {
 
     const tokens = await this.signTokens(user.id);
     return { userId: user.id, ...tokens };
+  }
+
+  /**
+   * IP 维度注册限制：同一 IP 24 小时内最多注册 REGISTER_IP_MAX 个账号。
+   * Redis 异常时降级放行（避免注册链路被缓存故障阻断）。
+   */
+  async assertIpRegisterAllowed(ip?: string): Promise<void> {
+    if (!ip) return;
+    try {
+      const max = this.config.get<number>(
+        'REGISTER_IP_MAX',
+        REGISTER_IP_MAX_DEFAULT,
+      );
+      const windowH = this.config.get<number>(
+        'REGISTER_IP_WINDOW_H',
+        REGISTER_IP_WINDOW_H_DEFAULT,
+      );
+      const key = `register:ip:${ip}`;
+      const count = await this.redis.incr(key);
+      if (count === 1) {
+        await this.redis.expire(key, Math.max(1, windowH) * 3600);
+      }
+      if (count > max) {
+        throw new BadRequestException('该网络注册过于频繁，请稍后再试');
+      }
+    } catch (e) {
+      if (e instanceof BadRequestException) throw e;
+      // Redis 不可用时降级放行
+    }
   }
 
   /** 修改登录密码（登录态下）：校验原密码后写入新密码 */

@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FollowsModule } from '../follows/follows.module';
+import { UsersModule } from '../users/users.module';
 import { User } from '../users/user.entity';
 import { Block } from './block.entity';
 import { BlocksController } from './blocks.controller';
 import { BlocksService } from './blocks.service';
+import { AdminChatController } from './admin-chat.controller';
 import { ChatController } from './chat.controller';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
@@ -36,8 +38,14 @@ import { UploadsModule } from '../uploads/uploads.module';
     ]),
     FollowsModule,
     UploadsModule,
+    UsersModule,
   ],
-  controllers: [ChatController, GroupsController, BlocksController],
+  controllers: [
+    ChatController,
+    GroupsController,
+    BlocksController,
+    AdminChatController,
+  ],
   providers: [ChatService, GroupsService, BlocksService, ChatGateway],
   exports: [ChatService, GroupsService, BlocksService, ChatGateway],
 })

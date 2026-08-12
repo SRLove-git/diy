@@ -11,6 +11,11 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AdminGuard } from './admin.guard';
+import { PERMISSIONS } from '../common/admin-permissions';
+import {
+  AdminPermissionsGuard,
+  Permissions,
+} from '../common/permissions.guard';
 import {
   CreateSlotDto,
   CreateStoreDto,
@@ -25,7 +30,8 @@ import { StoresService } from './stores.service';
 
 /** 管理端：门店 / 桌位 / 时段配置（需 admin 角色） */
 @Controller('admin/stores')
-@UseGuards(JwtAuthGuard, AdminGuard)
+@UseGuards(JwtAuthGuard, AdminGuard, AdminPermissionsGuard)
+@Permissions(PERMISSIONS.STORES_MANAGE)
 export class AdminStoresController {
   constructor(private readonly stores: StoresService) {}
 

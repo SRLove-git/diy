@@ -22,6 +22,12 @@ export class RegisterDto {
   @IsEmail({}, { message: '邮箱格式不正确' })
   email: string;
 
+  /** 人机验证 token（开启 CAPTCHA_PROVIDER 后必填） */
+  @IsOptional()
+  @IsString()
+  @MaxLength(1024, { message: '验证参数过长' })
+  captchaToken?: string;
+
   /** 设备标识（MAC/安装ID）：同一设备最多注册 3 个账号，App 端安装后生成并持久化 */
   @IsOptional()
   @Transform(trim)
@@ -56,6 +62,12 @@ export class LoginDto {
   @MinLength(6, { message: '密码至少 6 位' })
   @MaxLength(32, { message: '密码最多 32 位' })
   password: string;
+
+  /** 人机验证 token（开启 CAPTCHA_PROVIDER 后必填） */
+  @IsOptional()
+  @IsString()
+  @MaxLength(1024, { message: '验证参数过长' })
+  captchaToken?: string;
 }
 
 /** 修改登录密码（登录态下）：需校验原密码 */

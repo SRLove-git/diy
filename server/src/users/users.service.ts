@@ -10,6 +10,7 @@ import { In, IsNull, Like, Repository } from 'typeorm';
 import { FORCE_OFFLINE_TTL, kickKey } from '../auth/session-keys';
 import { publishKickEvent } from '../chat/chat-events';
 import { messageMediaUrls } from '../chat/media.util';
+import { maskEmail } from '../common/security.util';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { MediaCleanupService } from '../uploads/media-cleanup.service';
 import { Appointment } from '../appointments/appointment.entity';
@@ -34,6 +35,9 @@ import { VideoComment } from '../videos/video-comment.entity';
 import { VideoLike } from '../videos/video-like.entity';
 import { History } from './history.entity';
 import { User } from './user.entity';
+
+/** 管理端展示用安全用户：不含密码哈希 */
+export type SafeUser = Omit<User, 'passwordHash'>;
 
 @Injectable()
 export class UsersService {
@@ -152,13 +156,13 @@ export class UsersService {
         nickname: user.nickname || `用户 #${user.id}`,
         avatar: user.avatar,
         username: user.username ?? '',
-        email: user.email ?? '',
+        email: maskEmail(user.email) ?? '',
       },
     ];
   }
 
   /** 管理端：按用户名/邮箱/昵称模糊搜索用户（订单按用户筛选用） */
-  async findByKeyword(keyword: string): Promise<User[]> {
+  async findByKeyword(keyword: string): Promise<SafeUser[]> {
     const kw = (keyword ?? '').trim();
     if (!kw) return [];
     // 中文搜索走 FULLTEXT（ngram 分词，最小单元为 2，单字无法命中）；
@@ -178,7 +182,7 @@ export class UsersService {
         .getMany();
       if (rows.length) return rows;
     }
-    return this.users.find({
+    const rows = await this.users.find({
       where: [
         { username: Like(`${kw}%`) },
         { email: Like(`${kw}%`) },
@@ -186,6 +190,8 @@ export class UsersService {
       ],
       take: 200,
     });
+    // 脱敏：管理端列表/搜索不暴露完整邮箱与密码哈希
+    return rows.map((u) => UsersService.toSafeUser(u));
   }
 
   /** 探测 ft_users_search 全文索引是否存在（结果进程内缓存） */
@@ -281,6 +287,12 @@ export class UsersService {
     return this.users.update({ id }, { passwordHash: hash });
   }
 
+  /** 管理端展示用安全副本：剔除密码哈希，邮箱脱敏 */
+  private static toSafeUser(u: User) {
+    const { passwordHash, ...safe } = u;
+    return { ...safe, email: maskEmail(u.email) };
+  }
+
   /** 设置用户名（首次设置不限；修改需距上次修改满一年，用于设置密码时一并写入） */
   async setUsername(id: number, username: string) {
     const user = await this.users.findOneBy({ id });
@@ -317,33 +329,40 @@ export class UsersService {
     return this.users.update({ id }, { role });
   }
 
+  /** 设置管理端角色（仅 role=admin 的管理员账号有意义） */
+  async setAdminRole(id: number, adminRole: User['adminRole']): Promise<void> {
+    await this.users.update({ id }, { adminRole });
+  }
+
   /** 管理端：用户列表（分页，可选用户名/邮箱/昵称搜索） */
   async findAll(
     page = 1,
     search?: string,
     pageSize = 20,
-  ): Promise<[User[], number]> {
+  ): Promise<[SafeUser[], number]> {
     const keyword = (search ?? '').trim();
     if (keyword) {
       // 与会员/预约管理端一致：走 findByKeyword（中文 FULLTEXT / 英文前缀 LIKE）
       const matched = await this.findByKeyword(keyword);
       if (!matched.length) return [[], 0];
-      return this.users.findAndCount({
+      const [rows, total] = await this.users.findAndCount({
         where: { id: In(matched.map((u) => u.id)) },
         order: { createdAt: 'DESC' },
         skip: (page - 1) * pageSize,
         take: pageSize,
       });
+      return [rows.map((u) => UsersService.toSafeUser(u)), total];
     }
-    return this.users.findAndCount({
+    const [rows, total] = await this.users.findAndCount({
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
+    return [rows.map((u) => UsersService.toSafeUser(u)), total];
   }
 
   /** 管理端：封禁/解封用户（封禁时同时强制下线，解封时清除下线标记） */
-  async toggleBan(id: number, isBanned: boolean): Promise<User> {
+  async toggleBan(id: number, isBanned: boolean): Promise<SafeUser> {
     await this.users.update({ id }, { isBanned });
     if (isBanned) {
       await this.redis.set(kickKey(id), '1', 'EX', FORCE_OFFLINE_TTL);
@@ -351,7 +370,8 @@ export class UsersService {
     } else {
       await this.redis.del(kickKey(id));
     }
-    return this.users.findOneBy({ id }) as Promise<User>;
+    const user = await this.users.findOneBy({ id });
+    return user ? UsersService.toSafeUser(user) : (null as unknown as SafeUser);
   }
 
   /** 管理端：强制下线（立即使该用户全部现有会话失效，用户可重新登录） */

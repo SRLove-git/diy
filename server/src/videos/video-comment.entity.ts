@@ -36,6 +36,10 @@ export class VideoComment {
   @Column({ type: 'int', default: 0 })
   likeCount: number;
 
+  /** 管理端隐藏（违规评论）：隐藏后对全体用户不可见，作者侧保留 */
+  @Column({ type: 'boolean', default: false })
+  isHidden: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 }

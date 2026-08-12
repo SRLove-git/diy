@@ -12,7 +12,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Audit } from '../audit/audit.decorator';
 import { AdminGuard } from '../stores/admin.guard';
+import { PERMISSIONS } from '../common/admin-permissions';
+import {
+  AdminPermissionsGuard,
+  Permissions,
+} from '../common/permissions.guard';
 import {
   SaveCouponDto,
   SaveMembershipDto,
@@ -22,7 +28,8 @@ import {
 import { MembersService } from './members.service';
 
 @Controller('admin/members')
-@UseGuards(JwtAuthGuard, AdminGuard)
+@UseGuards(JwtAuthGuard, AdminGuard, AdminPermissionsGuard)
+@Permissions(PERMISSIONS.MEMBERS_MANAGE)
 export class AdminMembersController {
   constructor(private readonly members: MembersService) {}
   @Get() memberships(
@@ -31,30 +38,41 @@ export class AdminMembersController {
   ) {
     return this.members.listMemberships(page, keyword?.trim());
   }
-  @Post() createMembership(@Body() dto: SaveMembershipDto) {
+  @Post()
+  @Audit('membership.create', 'membership')
+  createMembership(@Body() dto: SaveMembershipDto) {
     return this.members.saveMembership(dto);
   }
-  @Patch(':id') updateMembership(
+  @Patch(':id')
+  @Audit('membership.update', 'membership')
+  updateMembership(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateMembershipDto,
   ) {
     return this.members.saveMembership(dto, id);
   }
-  @Delete(':id') removeMembership(@Param('id', ParseIntPipe) id: number) {
+  @Delete(':id')
+  @Audit('membership.delete', 'membership')
+  removeMembership(@Param('id', ParseIntPipe) id: number) {
     return this.members.removeMembership(id);
   }
   @Get('orders') orders(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('keyword') keyword?: string,
+    @Query('status') status?: string,
   ) {
-    return this.members.adminListOrders(page, keyword?.trim());
+    return this.members.adminListOrders(page, keyword?.trim(), status);
   }
-  @Post('orders/:id/confirm') confirmOrder(
+  @Post('orders/:id/confirm')
+  @Audit('membership.order_confirm', 'order')
+  confirmOrder(
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.members.adminConfirmOrder(id);
   }
-  @Post('orders/:id/cancel') cancelOrder(
+  @Post('orders/:id/cancel')
+  @Audit('membership.order_cancel', 'order')
+  cancelOrder(
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.members.adminCancelOrder(id);
@@ -62,16 +80,22 @@ export class AdminMembersController {
   @Get('plans') plans() {
     return this.members.listPlans(true);
   }
-  @Post('plans') createPlan(@Body() dto: SavePlanDto) {
+  @Post('plans')
+  @Audit('membership.plan_create', 'plan')
+  createPlan(@Body() dto: SavePlanDto) {
     return this.members.savePlan(dto);
   }
-  @Patch('plans/:id') updatePlan(
+  @Patch('plans/:id')
+  @Audit('membership.plan_update', 'plan')
+  updatePlan(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SavePlanDto,
   ) {
     return this.members.savePlan(dto, id);
   }
-  @Patch('plans/:id/enabled') togglePlan(
+  @Patch('plans/:id/enabled')
+  @Audit('membership.plan_toggle', 'plan')
+  togglePlan(
     @Param('id', ParseIntPipe) id: number,
     @Body('enabled') enabled: boolean,
   ) {
@@ -80,16 +104,22 @@ export class AdminMembersController {
   @Get('coupons') coupons() {
     return this.members.listAllCoupons();
   }
-  @Post('coupons') createCoupon(@Body() dto: SaveCouponDto) {
+  @Post('coupons')
+  @Audit('membership.coupon_create', 'coupon')
+  createCoupon(@Body() dto: SaveCouponDto) {
     return this.members.saveCoupon(dto);
   }
-  @Patch('coupons/:id') updateCoupon(
+  @Patch('coupons/:id')
+  @Audit('membership.coupon_update', 'coupon')
+  updateCoupon(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SaveCouponDto,
   ) {
     return this.members.saveCoupon(dto, id);
   }
-  @Patch('coupons/:id/enabled') toggleCoupon(
+  @Patch('coupons/:id/enabled')
+  @Audit('membership.coupon_toggle', 'coupon')
+  toggleCoupon(
     @Param('id', ParseIntPipe) id: number,
     @Body('enabled') enabled: boolean,
   ) {

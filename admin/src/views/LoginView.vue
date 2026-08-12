@@ -28,7 +28,13 @@ async function login() {
       password: password.value,
     })
     auth.setToken(data.accessToken)
-    router.push('/stores')
+    const me = await auth.refreshMe()
+    if (me.role !== 'admin') {
+      auth.clear()
+      error.value = t('该账号不是管理员，无法登录后台', 'This account is not an admin.')
+      return
+    }
+    router.push('/dashboard')
   } catch (e: any) {
     error.value =
       e.response?.data?.message || t('登录失败', 'Login failed')

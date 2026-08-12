@@ -16,9 +16,36 @@ const router = createRouter({
           meta: { title: '数据看板', titleEn: 'Dashboard' },
         },
         {
+          path: 'admins',
+          component: () => import('../views/AdminAccountsView.vue'),
+          meta: {
+            title: '管理员账号',
+            titleEn: 'Admin Accounts',
+            permission: 'admin.manage',
+          },
+        },
+        {
           path: 'stores',
           component: () => import('../views/StoresView.vue'),
           meta: { title: '门店管理', titleEn: 'Stores' },
+        },
+        {
+          path: 'moderation',
+          component: () => import('../views/ModerationView.vue'),
+          meta: {
+            title: '内容审核',
+            titleEn: 'Moderation',
+            permission: 'content.moderation',
+          },
+        },
+        {
+          path: 'audit-logs',
+          component: () => import('../views/AuditLogsView.vue'),
+          meta: {
+            title: '审计日志',
+            titleEn: 'Audit Logs',
+            permission: 'audit.view',
+          },
         },
         {
           path: 'tables',
@@ -35,27 +62,42 @@ const router = createRouter({
           component: () => import('../views/OrdersView.vue'),
           meta: { title: '订单管理', titleEn: 'Orders' },
         },
-        // 社区 / Reels 前期暂不开放，路由先注释（恢复时取消注释）
-        // {
-        //   path: 'posts',
-        //   component: () => import('../views/PostsView.vue'),
-        //   meta: { title: '社区管理', titleEn: 'Posts' },
-        // },
-        // {
-        //   path: 'videos',
-        //   component: () => import('../views/VideosView.vue'),
-        //   meta: { title: '视频管理', titleEn: 'Videos' },
-        // },
-        // Reels 前期暂不开放，曲库路由先注释（恢复时取消注释）
-        // {
-        //   path: 'music',
-        //   component: () => import('../views/MusicView.vue'),
-        //   meta: { title: '曲库管理', titleEn: 'Music' },
-        // },
+        {
+          path: 'posts',
+          component: () => import('../views/PostsView.vue'),
+          meta: {
+            title: '社区管理',
+            titleEn: 'Posts',
+            permission: 'content.moderation',
+          },
+        },
+        {
+          path: 'videos',
+          component: () => import('../views/VideosView.vue'),
+          meta: {
+            title: '视频管理',
+            titleEn: 'Videos',
+            permission: 'content.moderation',
+          },
+        },
+        {
+          path: 'music',
+          component: () => import('../views/MusicView.vue'),
+          meta: {
+            title: '曲库管理',
+            titleEn: 'Music',
+            permission: 'content.moderation',
+          },
+        },
         {
           path: 'users',
           component: () => import('../views/UsersView.vue'),
           meta: { title: '用户管理', titleEn: 'Users' },
+        },
+        {
+          path: 'alerts',
+          component: () => import('../views/AlertsView.vue'),
+          meta: { title: '通知中心', titleEn: 'Alert Center' },
         },
         {
           path: 'notifications',
@@ -72,9 +114,23 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   if (to.path !== '/login' && !auth.loggedIn) return '/login'
   if (to.path === '/login' && auth.loggedIn) return '/'
+  // 有 token 但尚未加载管理员信息时先拉取（含刷新页面场景）
+  if (to.path !== '/login' && auth.loggedIn && !auth.me) {
+    try {
+      await auth.refreshMe()
+    } catch {
+      return '/login'
+    }
+  }
+  // 角色权限校验：无权限跳回看板（看板对所有管理角色开放）
+  const permission = to.meta.permission as string | undefined
+  if (permission && !auth.hasPermission(permission)) {
+    return '/dashboard'
+  }
+  return true
 })
 
 export default router

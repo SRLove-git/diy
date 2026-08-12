@@ -636,7 +636,7 @@ export class VideosService {
 
   async getComments(videoId: number, page = 1, pageSize = 50, userId?: number) {
     const [topLevel, total] = await this.comments.findAndCount({
-      where: { videoId, parentId: IsNull() },
+      where: { videoId, parentId: IsNull(), isHidden: false },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -645,7 +645,7 @@ export class VideosService {
 
     const topIds = topLevel.map((c) => c.id);
     const replies = await this.comments.find({
-      where: { parentId: In(topIds) },
+      where: { parentId: In(topIds), isHidden: false },
       order: { createdAt: 'ASC' },
     });
     const all = [...topLevel, ...replies];

@@ -532,7 +532,7 @@ export class CommunityService {
   async getComments(postId: number, page = 1, pageSize = 20, userId?: number) {
     // 顶级评论分页（倒序），回复跟随顶级评论一起返回
     const [topLevel, total] = await this.comments.findAndCount({
-      where: { postId, parentId: IsNull() },
+      where: { postId, parentId: IsNull(), isHidden: false },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -541,7 +541,7 @@ export class CommunityService {
 
     const topIds = topLevel.map((c) => c.id);
     const replies = await this.comments.find({
-      where: { parentId: In(topIds) },
+      where: { parentId: In(topIds), isHidden: false },
       order: { createdAt: 'ASC' },
     });
     const all = [...topLevel, ...replies];

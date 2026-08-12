@@ -14,6 +14,7 @@ import {
   Repository,
 } from 'typeorm';
 import { UsersService } from '../users/users.service';
+import { maskEmail } from '../common/security.util';
 import { Coupon, UserCoupon } from './coupon.entity';
 import {
   SaveCouponDto,
@@ -176,10 +177,12 @@ export class MembersService implements OnModuleInit {
   async adminListOrders(
     page = 1,
     keyword?: string,
+    status?: string,
   ): Promise<
     [Array<MemberOrder & { userEmail?: string; userNickname?: string }>, number]
   > {
     const where: FindOptionsWhere<MemberOrder> = {};
+    if (status) where.status = status as MemberOrder['status'];
     if (keyword?.trim()) {
       const matched = await this.users.findByKeyword(keyword.trim());
       const userIds = matched.map((u) => u.id);
@@ -200,7 +203,7 @@ export class MembersService implements OnModuleInit {
         const user = userMap.get(i.userId);
         return {
           ...i,
-          userEmail: user?.email ?? undefined,
+          userEmail: user?.email ? maskEmail(user.email) ?? undefined : undefined,
           userNickname: user?.nickname || `用户 #${i.userId}`,
         };
       }),

@@ -13,6 +13,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { ArgumentsHost } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { randomUUID } from 'crypto';
@@ -22,6 +23,7 @@ import { tmpdir } from 'os';
 import { extname, join } from 'path';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { BotGuard } from '../common/bot.guard';
 import { UPLOAD_PROVIDER, type UploadProvider } from './uploads.provider';
 
 /** 允许上传的图片类型 */
@@ -130,7 +132,8 @@ const ALLOWED_FOLDERS = new Set(['chat', 'avatar', 'post']);
  * 返回的 url 作为图片消息 content 存储；本地模式由 main.ts 以 /uploads 前缀托管静态资源。
  */
 @Controller('uploads')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, BotGuard)
+@Throttle({ default: { limit: 20, ttl: 60000, blockDuration: 120000 } })
 @UseFilters(UploadSizeExceptionFilter)
 export class UploadsController {
   constructor(

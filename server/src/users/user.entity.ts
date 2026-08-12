@@ -83,6 +83,14 @@ export class User {
   @Column({ type: 'enum', enum: ['user', 'admin'], default: 'user' })
   role: 'user' | 'admin';
 
+  /** 管理端角色（仅 role=admin 时有效）：super_admin / operator / moderator / auditor */
+  @Column({
+    type: 'enum',
+    enum: ['super_admin', 'operator', 'moderator', 'auditor'],
+    nullable: true,
+  })
+  adminRole: 'super_admin' | 'operator' | 'moderator' | 'auditor' | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -356,6 +356,10 @@ export class GroupsService {
   /** 群主解散群聊（删除群及全部成员/消息/已读记录） */
   async dissolve(ownerId: number, groupId: number) {
     await this.assertOwner(groupId, ownerId);
+    return this.dissolveInternal(groupId);
+  }
+
+  private async dissolveInternal(groupId: number) {
     const memberIds = await this.groupMemberIds(groupId);
     const messages = await this.messages.find({
       where: { groupId },
@@ -370,6 +374,119 @@ export class GroupsService {
       messages.flatMap((m) => messageMediaUrls(m.contentType, m.content)),
     );
     return { memberIds };
+  }
+
+  // ──── 管理端巡查 ────
+
+  /** 管理端：群聊列表（关键词倒序分页，附带成员数与群主信息） */
+  async adminListGroups(
+    keyword?: string,
+    page = 1,
+    pageSize = 20,
+  ): Promise<[Array<Record<string, unknown>>, number]> {
+    const qb = this.groups
+      .createQueryBuilder('g')
+      .orderBy('g.lastMessageAt', 'DESC')
+      .skip((page - 1) * pageSize)
+      .take(pageSize);
+    const kw = (keyword ?? '').trim();
+    if (kw) qb.andWhere('g.name LIKE :kw', { kw: `%${kw}%` });
+    const [groups, total] = await qb.getManyAndCount();
+    if (!groups.length) return [[], total];
+
+    const ids = groups.map((g) => g.id);
+    const counts = await this.members
+      .createQueryBuilder('gm')
+      .select('gm.groupId', 'groupId')
+      .addSelect('COUNT(*)', 'cnt')
+      .where('gm.groupId IN (:...ids)', { ids })
+      .groupBy('gm.groupId')
+      .getRawMany<{ groupId: string; cnt: string }>();
+    const countMap = new Map(
+      counts.map((c) => [Number(c.groupId), Number(c.cnt)]),
+    );
+
+    const ownerIds = [...new Set(groups.map((g) => g.ownerId))];
+    const owners = await this.users.find({ where: { id: In(ownerIds) } });
+    const ownerMap = new Map(owners.map((u) => [u.id, u]));
+
+    return [
+      groups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        ownerId: g.ownerId,
+        owner: ownerMap.has(g.ownerId)
+          ? {
+              id: g.ownerId,
+              username: ownerMap.get(g.ownerId)!.username,
+              nickname: ownerMap.get(g.ownerId)!.nickname,
+            }
+          : null,
+        memberCount: countMap.get(g.id) ?? 0,
+        lastMessagePreview: g.lastMessagePreview,
+        lastMessageAt: g.lastMessageAt,
+        createdAt: g.createdAt,
+      })),
+      total,
+    ];
+  }
+
+  /** 管理端：解散任意群聊（无需群主身份） */
+  async adminDissolve(groupId: number): Promise<{ memberIds: number[] }> {
+    const group = await this.groups.findOneBy({ id: groupId });
+    if (!group) throw new NotFoundException('群聊不存在');
+    return this.dissolveInternal(groupId);
+  }
+
+  /** 管理端：搜索群消息（关键词倒序分页，附带发送人信息） */
+  async adminSearchGroupMessages(
+    keyword?: string,
+    page = 1,
+    pageSize = 20,
+  ): Promise<
+    [
+      Array<
+        GroupMessage & {
+          sender: { id: number; username: string | null; nickname: string };
+        }
+      >,
+      number,
+    ]
+  > {
+    const qb = this.messages
+      .createQueryBuilder('m')
+      .orderBy('m.id', 'DESC')
+      .skip((page - 1) * pageSize)
+      .take(pageSize);
+    const kw = (keyword ?? '').trim();
+    if (kw) qb.andWhere('m.content LIKE :kw', { kw: `%${kw}%` });
+    const [rows, total] = await qb.getManyAndCount();
+    const senderIds = [
+      ...new Set(
+        rows.map((m) => m.senderId).filter((id): id is number => id != null),
+      ),
+    ];
+    const senders = await this.users.find({ where: { id: In(senderIds) } });
+    const map = new Map(senders.map((u) => [u.id, u]));
+    const items = rows.map((m) => ({
+      ...m,
+      sender: map.has(m.senderId)
+        ? {
+            id: m.senderId,
+            username: map.get(m.senderId)!.username,
+            nickname: map.get(m.senderId)!.nickname,
+          }
+        : { id: m.senderId, username: null, nickname: `用户 #${m.senderId}` },
+    }));
+    return [items, total];
+  }
+
+  /** 管理端：撤回群消息（对全体成员立即不可见） */
+  async adminRecallGroupMessage(messageId: number): Promise<{ ok: true }> {
+    const message = await this.messages.findOneBy({ id: messageId });
+    if (!message) throw new NotFoundException('消息不存在');
+    await this.messages.update(messageId, { recalledAt: new Date() });
+    return { ok: true };
   }
 
   /** 群主修改群名称 */

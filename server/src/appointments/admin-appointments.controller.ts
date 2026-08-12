@@ -13,12 +13,18 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { AdminGuard } from '../stores/admin.guard';
+import { PERMISSIONS } from '../common/admin-permissions';
+import {
+  AdminPermissionsGuard,
+  Permissions,
+} from '../common/permissions.guard';
 import { CheckInDto, WalkInDto } from './appointment.dto';
 import { AppointmentsService } from './appointments.service';
 
 /** 管理端：预约订单管理（需 admin 角色） */
 @Controller('admin/appointments')
-@UseGuards(JwtAuthGuard, AdminGuard)
+@UseGuards(JwtAuthGuard, AdminGuard, AdminPermissionsGuard)
+@Permissions(PERMISSIONS.ORDERS_MANAGE)
 export class AdminAppointmentsController {
   constructor(private readonly appointments: AppointmentsService) {}
 

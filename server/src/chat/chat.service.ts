@@ -529,6 +529,68 @@ export class ChatService {
     return { readAt, peerId };
   }
 
+  // ──── 管理端巡查 ────
+
+  /** 管理端：搜索私聊消息（关键词倒序分页，附带发送人信息） */
+  async adminSearchMessages(
+    keyword?: string,
+    page = 1,
+    pageSize = 20,
+  ): Promise<
+    [
+      Array<
+        Message & {
+          sender: { id: number; username: string | null; nickname: string };
+        }
+      >,
+      number,
+    ]
+  > {
+    const qb = this.messages
+      .createQueryBuilder('m')
+      .orderBy('m.id', 'DESC')
+      .skip((page - 1) * pageSize)
+      .take(pageSize);
+    const kw = (keyword ?? '').trim();
+    if (kw) qb.andWhere('m.content LIKE :kw', { kw: `%${kw}%` });
+    const [rows, total] = await qb.getManyAndCount();
+    return [await this.attachSenders(rows), total];
+  }
+
+  /** 管理端：撤回私聊消息（对双方立即不可见） */
+  async adminRecallMessage(messageId: number): Promise<{ ok: true }> {
+    const message = await this.messages.findOneBy({ id: messageId });
+    if (!message) throw new NotFoundException('消息不存在');
+    await this.messages.update(messageId, { recalledAt: new Date() });
+    return { ok: true };
+  }
+
+  private async attachSenders(items: Message[]): Promise<
+    Array<
+      Message & {
+        sender: { id: number; username: string | null; nickname: string };
+      }
+    >
+  > {
+    const senderIds = [
+      ...new Set(
+        items.map((m) => m.senderId).filter((id): id is number => id != null),
+      ),
+    ];
+    const senders = await this.users.find({ where: { id: In(senderIds) } });
+    const map = new Map(senders.map((u) => [u.id, u]));
+    return items.map((m) => ({
+      ...m,
+      sender: map.has(m.senderId)
+        ? {
+            id: m.senderId,
+            username: map.get(m.senderId)!.username,
+            nickname: map.get(m.senderId)!.nickname,
+          }
+        : { id: m.senderId, username: null, nickname: `用户 #${m.senderId}` },
+    }));
+  }
+
   /** 格式化单条会话为前端友好格式（用于 createOrGet 等单条查询） */
   private _formatConv(conv: Conversation, peerId: number, peerUser: User) {
     return {

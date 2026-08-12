@@ -5,6 +5,7 @@ import { Appointment } from '../appointments/appointment.entity';
 import { Comment } from '../community/comment.entity';
 import { Like } from '../community/like.entity';
 import { Post } from '../community/post.entity';
+import { MemberOrder } from '../members/member-order.entity';
 import { User } from '../users/user.entity';
 import { Video } from '../videos/video.entity';
 
@@ -23,6 +24,8 @@ export class DashboardService {
     private readonly commentRepo: Repository<Comment>,
     @InjectRepository(Video)
     private readonly videoRepo: Repository<Video>,
+    @InjectRepository(MemberOrder)
+    private readonly memberOrderRepo: Repository<MemberOrder>,
   ) {}
 
   async getOverview() {
@@ -153,5 +156,23 @@ export class DashboardService {
     );
 
     return results;
+  }
+
+  /** 管理端待处理事项汇总：供左侧栏角标与通知中心使用 */
+  async getPendingSummary() {
+    const [pendingAppointments, pendingMemberOrders, pendingPosts, pendingVideos] =
+      await Promise.all([
+        this.appointmentRepo.count({ where: { status: 'pending' } }),
+        this.memberOrderRepo.count({ where: { status: 'pending' } }),
+        this.postRepo.count({ where: { status: 'pending' } }),
+        this.videoRepo.count({ where: { status: 'pending' } }),
+      ]);
+
+    return {
+      pendingAppointments,
+      pendingMemberOrders,
+      pendingPosts,
+      pendingVideos,
+    };
   }
 }

@@ -30,7 +30,13 @@ import { diskStorage } from 'multer';
 import { tmpdir } from 'os';
 import { extname, join } from 'path';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Audit } from '../audit/audit.decorator';
 import { AdminGuard } from '../stores/admin.guard';
+import { PERMISSIONS } from '../common/admin-permissions';
+import {
+  AdminPermissionsGuard,
+  Permissions,
+} from '../common/permissions.guard';
 import {
   UPLOAD_PROVIDER,
   type UploadProvider,
@@ -120,7 +126,8 @@ function cleanup(file?: Express.Multer.File) {
  * - title / artist / duration：文本字段
  */
 @Controller('admin/musics')
-@UseGuards(JwtAuthGuard, AdminGuard)
+@UseGuards(JwtAuthGuard, AdminGuard, AdminPermissionsGuard)
+@Permissions(PERMISSIONS.CONTENT_MODERATION)
 @UseFilters(UploadSizeExceptionFilter)
 export class AdminMusicController {
   constructor(
@@ -143,6 +150,7 @@ export class AdminMusicController {
 
   /** 上传音频+封面，新建曲目 */
   @Post('upload')
+  @Audit('music.upload', 'music')
   @UseInterceptors(
     FileFieldsInterceptor(
       [
@@ -197,6 +205,7 @@ export class AdminMusicController {
 
   /** 替换已有曲目的音频/封面文件（至少一个） */
   @Post(':id/files')
+  @Audit('music.files_replace', 'music')
   @UseInterceptors(
     FileFieldsInterceptor(
       [
@@ -261,6 +270,7 @@ export class AdminMusicController {
 
   /** 更新曲目元数据 */
   @Patch(':id')
+  @Audit('music.update', 'music')
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateMusicDto,
@@ -272,6 +282,7 @@ export class AdminMusicController {
 
   /** 删除曲目 */
   @Delete(':id')
+  @Audit('music.delete', 'music')
   async remove(@Param('id', ParseIntPipe) id: number) {
     const item = await this.music.findById(id);
     if (!item) throw new NotFoundException('曲目不存在');

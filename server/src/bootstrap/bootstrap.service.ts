@@ -134,9 +134,12 @@ const DEMO_MUSIC: DemoMusic[] = [
 @Injectable()
 export class BootstrapService implements OnApplicationBootstrap {
   private readonly logger = new Logger(BootstrapService.name);
-  private readonly ADMIN_USERNAME = 'admin';
-  private readonly ADMIN_EMAIL = 'admin@example.com';
-  private readonly ADMIN_PASSWORD = 'admin123456';
+  private readonly ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+  private readonly ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@example.com';
+  // 生产必须显式配置初始密码；未配置时跳过自动创建，避免默认弱口令上线
+  private readonly ADMIN_PASSWORD =
+    process.env.ADMIN_INITIAL_PASSWORD ||
+    (process.env.NODE_ENV === 'production' ? '' : 'admin123456');
 
   constructor(
     private readonly users: UsersService,
@@ -146,14 +149,21 @@ export class BootstrapService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap() {
-    if (process.env.NODE_ENV === 'production') return;
     await this.ensureAdmin();
+    if (process.env.NODE_ENV === 'production') return;
     await this.seedDemoVideos();
     await this.seedDemoMusic();
     await this.seedDemoNotifications();
   }
 
   private async ensureAdmin() {
+    if (process.env.NODE_ENV === 'production' && !this.ADMIN_PASSWORD) {
+      this.logger.warn(
+        '生产环境未配置 ADMIN_INITIAL_PASSWORD，跳过自动创建管理员；' +
+          '请通过环境变量注入初始管理员或手动在库中创建 role=admin 的账号',
+      );
+      return;
+    }
     let admin = await this.users.findByUsername(this.ADMIN_USERNAME);
     if (!admin) {
       // 兼容旧版手机号体系遗留的管理员：补全用户名/邮箱/密码，避免重复建号
@@ -173,6 +183,7 @@ export class BootstrapService implements OnApplicationBootstrap {
         email: this.ADMIN_EMAIL,
         passwordHash: await hashPassword(this.ADMIN_PASSWORD),
         role: 'admin',
+        adminRole: 'super_admin',
         nickname: '管理员',
       });
       this.logger.log(
@@ -181,6 +192,10 @@ export class BootstrapService implements OnApplicationBootstrap {
     } else if (admin.role !== 'admin') {
       await this.users.setRole(admin.id, 'admin');
       this.logger.log(`已将 ${this.ADMIN_USERNAME} 角色更新为 admin`);
+    }
+    if (!admin.adminRole) {
+      await this.users.setAdminRole(admin.id, 'super_admin');
+      this.logger.log(`已将 ${this.ADMIN_USERNAME} 设为 super_admin`);
     }
     if (!admin.passwordHash) {
       await this.users.setPasswordHash(

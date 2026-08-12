@@ -89,6 +89,12 @@ npm run migration:revert                                # 回滚最近一次迁�
 | `DB_MIGRATIONS_RUN` | 启动时自动执行数据库迁移（生产默认 true） |
 | `DB_POOL_SIZE` | MySQL 连接池大小（默认 20，按服务器内存与并发调整，需 ≤ MySQL max_connections） |
 | `TRUST_PROXY` | nginx 反代后置 true，让 `req.ip` 取真实客户端 IP（验证码/登录防刷按 IP 限流依赖它） |
+| `THROTTLE_LIMIT/TTL_MS/BLOCK_MS` | API 全局限流：每 IP 每分钟请求数（默认 300）、窗口（默认 60s）、超限封锁时长（默认 300s） |
+| `AUTH_THROTTLE_LIMIT` | 认证接口限流上限（默认 10 次/分钟，注册/登录路由再收紧到 5 次/分钟） |
+| `BLOCK_BOT_UA` | 置 `true` 启用爬虫 UA 拦截（注册/登录/上传接口拒绝 python-requests、curl、Scrapy 等已知脚本 UA） |
+| `CAPTCHA_PROVIDER` | 人机验证：`turnstile`（Cloudflare）或 `hcaptcha`；留空关闭。开启后注册/登录需携带 `captchaToken` |
+| `TURNSTILE_SECRET / HCAPTCHA_SECRET` | 对应人机验证提供商的站点密钥 |
+| `REGISTER_IP_MAX / REGISTER_IP_WINDOW_H` | 同一 IP 在窗口内（默认 24h）最大注册数（默认 5） |
 
 ### 基础设施配置调优
 

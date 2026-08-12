@@ -29,10 +29,20 @@ export interface TrendItem {
   videos: number
 }
 
+export interface PendingSummary {
+  pendingAppointments: number
+  pendingMemberOrders: number
+  pendingPosts: number
+  pendingVideos: number
+}
+
 export const dashboardApi = {
   overview: () =>
     http.get('/admin/dashboard/overview').then((r) => r.data as DashboardOverview),
 
   trends: () =>
     http.get('/admin/dashboard/trends').then((r) => r.data as TrendItem[]),
+
+  pendingSummary: () =>
+    http.get('/admin/dashboard/pending-summary').then((r) => r.data as PendingSummary),
 }

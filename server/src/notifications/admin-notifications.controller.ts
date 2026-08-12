@@ -11,19 +11,27 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Audit } from '../audit/audit.decorator';
 import { AdminGuard } from '../stores/admin.guard';
+import { PERMISSIONS } from '../common/admin-permissions';
+import {
+  AdminPermissionsGuard,
+  Permissions,
+} from '../common/permissions.guard';
 import type { NotificationCategory } from './notification.entity';
 import { NotificationsService } from './notifications.service';
 
 /** 管理端：通知管理 + 模板管理（需 admin 角色） */
 @Controller('admin/notifications')
-@UseGuards(JwtAuthGuard, AdminGuard)
+@UseGuards(JwtAuthGuard, AdminGuard, AdminPermissionsGuard)
+@Permissions(PERMISSIONS.NOTIFICATIONS_MANAGE)
 export class AdminNotificationsController {
   constructor(private readonly svc: NotificationsService) {}
 
   // ─── 通知发送 ───
 
   @Post()
+  @Audit('notification.send', 'notification')
   send(
     @Body()
     body: {
@@ -47,6 +55,7 @@ export class AdminNotificationsController {
   }
 
   @Delete(':id')
+  @Audit('notification.delete', 'notification')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.svc.remove(id);
   }
@@ -59,6 +68,7 @@ export class AdminNotificationsController {
   }
 
   @Post('templates')
+  @Audit('notification.template_create', 'template')
   createTemplate(
     @Body()
     body: {
@@ -72,6 +82,7 @@ export class AdminNotificationsController {
   }
 
   @Patch('templates/:id')
+  @Audit('notification.template_update', 'template')
   updateTemplate(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: Record<string, any>,
@@ -80,6 +91,7 @@ export class AdminNotificationsController {
   }
 
   @Delete('templates/:id')
+  @Audit('notification.template_delete', 'template')
   removeTemplate(@Param('id', ParseIntPipe) id: number) {
     return this.svc.removeTemplate(id);
   }

@@ -1,12 +1,16 @@
 import { Module } from '@nestjs/common';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { join } from 'path';
+import type Redis from 'ioredis';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { AdminsModule } from './admins/admins.module';
 import { ActivitiesModule } from './activities/activities.module';
+import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
 import { CommunityModule } from './community/community.module';
@@ -26,11 +30,45 @@ import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
 import { VideosModule } from './videos/videos.module';
 import { HttpExceptionFilter } from './common/http-exception.filter';
+import { RedisThrottlerStorage } from './common/redis-throttler.storage';
+import { SecurityModule } from './common/security.module';
+import { REDIS_CLIENT } from './redis/redis.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     GlobalJwtModule,
+    // 全局限流：默认按 IP 全站配额（THROTTLE_LIMIT 次/分钟），
+    // 超限后封锁 THROTTLE_BLOCK_MS；auth 命名限流只作用于 AuthController，
+    // 注册/登录/刷新在路由上再用 @Throttle 收紧。测试与显式关闭时不生效。
+    ThrottlerModule.forRootAsync({
+      inject: [REDIS_CLIENT, ConfigService],
+      useFactory: (redis: Redis, config: ConfigService) => ({
+        errorMessage: '请求过于频繁，请稍后再试',
+        storage: new RedisThrottlerStorage(redis),
+        // 统一 key：default:<ip> / auth:<ip>（跨路由共享配额，防爬虫轮换路径）
+        generateKey: (_context, tracker, name) => `${name}:${tracker}`,
+        skipIf: () =>
+          process.env.NODE_ENV === 'test' ||
+          process.env.THROTTLE_DISABLED === 'true',
+        throttlers: [
+          {
+            name: 'default',
+            ttl: config.get<number>('THROTTLE_TTL_MS', 60000),
+            limit: config.get<number>('THROTTLE_LIMIT', 300),
+            blockDuration: config.get<number>('THROTTLE_BLOCK_MS', 300000),
+          },
+          {
+            name: 'auth',
+            ttl: 60000,
+            limit: config.get<number>('AUTH_THROTTLE_LIMIT', 10),
+            blockDuration: 600000,
+            // 只对 AuthController 生效，其他路由不受 auth 配额影响
+            skipIf: (ctx) => ctx.getClass().name !== 'AuthController',
+          },
+        ],
+      }),
+    }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -63,7 +101,10 @@ import { HttpExceptionFilter } from './common/http-exception.filter';
       }),
     }),
     RedisModule,
+    SecurityModule,
+    AuditModule,
     UsersModule,
+    AdminsModule,
     AuthModule,
     StoresModule,
     AppointmentsModule,
@@ -85,6 +126,7 @@ import { HttpExceptionFilter } from './common/http-exception.filter';
     BootstrapService,
     MigrationsService,
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}
