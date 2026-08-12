@@ -2,6 +2,8 @@
 # 用法：docker compose -f docker/compose.prod.yml up -d --build
 # 注意：server 默认 3 个副本（deploy.replicas: 3，Compose v2+ 支持），无需每次 --scale；
 #      需要调整副本数时：--scale server=N
+# 镜像 tag：./docker/upgrade.sh 构建时自动使用 diy-server:<日期>-<git短sha> 并同步 :latest，
+#      旧 tag 保留最近 3 个（KEEP_TAGS 可覆盖）；手动构建用 ${SERVER_IMAGE:-diy-server:latest}
 # 注意：正式部署时以环境变量/密钥管理注入 DB 密码与 JWT_SECRET
 services:
   mysql:
