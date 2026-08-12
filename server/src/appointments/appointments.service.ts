@@ -879,9 +879,20 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** 按预约码查询（运营/核销用） */
+  /**
+   * 按预约码查询（核销前确认用）。
+   * 核销码只在核销前有效：核销完成后立即失效（in_service/completed 均不可再查询），
+   * 已取消的单同样不可再查询使用。
+   */
   async findByCode(code: string): Promise<Appointment> {
     const appt = await this.appointments.findOneBy({ code });
     if (!appt) throw new NotFoundException('预约码无效');
+    if (appt.status === 'cancelled') {
+      throw new BadRequestException('该预约已取消');
+    }
+    if (appt.status !== 'pending' && appt.status !== 'booked') {
+      throw new BadRequestException('该预约码已核销，不可重复使用');
+    }
     return appt;
   }
 

@@ -353,6 +353,53 @@ describe('AppointmentsService', () => {
     });
   });
 
+  describe('findByCode', () => {
+    it('待核销（booked）的预约码可查询', async () => {
+      const m = buildService();
+      m.appointments.findOneBy.mockResolvedValue({ id: 1, status: 'booked' });
+
+      const result = await m.svc.findByCode('123456');
+
+      expect(result.id).toBe(1);
+    });
+
+    it('核销后（in_service）预约码立即失效，不可再查询', async () => {
+      const m = buildService();
+      m.appointments.findOneBy.mockResolvedValue({
+        id: 1,
+        status: 'in_service',
+      });
+
+      await expect(m.svc.findByCode('123456')).rejects.toThrow(
+        '该预约码已核销，不可重复使用',
+      );
+    });
+
+    it('已完成（completed）的预约码不可再查询', async () => {
+      const m = buildService();
+      m.appointments.findOneBy.mockResolvedValue({
+        id: 1,
+        status: 'completed',
+      });
+
+      await expect(m.svc.findByCode('123456')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('已取消（cancelled）的预约码不可再查询', async () => {
+      const m = buildService();
+      m.appointments.findOneBy.mockResolvedValue({
+        id: 1,
+        status: 'cancelled',
+      });
+
+      await expect(m.svc.findByCode('123456')).rejects.toThrow(
+        '该预约已取消',
+      );
+    });
+  });
+
   describe('adminConfirm', () => {
     it('pending → booked：确认后才可到店核销', async () => {
       const m = buildService();
