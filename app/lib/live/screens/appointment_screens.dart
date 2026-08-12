@@ -2124,8 +2124,8 @@ class _QrCard extends StatelessWidget {
   }
 }
 
-/// 已核销预约码：显示为「销毁」形状的二维码图标，
-/// 即原二维码灰显 + 红色斜杠 + 已核销印章。
+/// 已核销预约码：显示为「销毁」状态的二维码图标，
+/// 即圆点模块的二维码灰显 + 微旋转的圆形「已核销」印章。
 class _DestroyedQr extends StatelessWidget {
   const _DestroyedQr({required this.appointment, required this.size});
 
@@ -2134,54 +2134,82 @@ class _DestroyedQr extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const sealColor = LiveColors.danger;
     return SizedBox(
       width: size,
       height: size,
       child: Stack(
         alignment: Alignment.center,
         children: [
+          // 底图：圆点模块 + 低透明度灰显，与可用的方形二维码形成「已失效」差异。
           Opacity(
-            opacity: 0.22,
+            opacity: 0.16,
             child: QrImageView(
               data: appointment.code,
               version: QrVersions.auto,
               size: size,
               backgroundColor: LiveColors.bg,
               eyeStyle: const QrEyeStyle(
-                eyeShape: QrEyeShape.square,
-                color: LiveColors.textPrimary,
+                eyeShape: QrEyeShape.circle,
+                color: LiveColors.textSecondary,
               ),
               dataModuleStyle: const QrDataModuleStyle(
-                dataModuleShape: QrDataModuleShape.square,
-                color: LiveColors.textPrimary,
+                dataModuleShape: QrDataModuleShape.circle,
+                color: LiveColors.textSecondary,
               ),
             ),
           ),
+          // 印章：磨砂白底 + 双环圆形描边 + 微旋转，仿真实盖章质感。
           Transform.rotate(
-            angle: -0.7854,
+            angle: -0.21,
             child: Container(
-              width: size * 1.4,
-              height: size * 0.05,
+              width: size * 0.52,
+              height: size * 0.52,
+              padding: EdgeInsets.all(size * 0.02),
               decoration: BoxDecoration(
-                color: LiveColors.danger.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(99),
+                shape: BoxShape.circle,
+                color: LiveColors.bg.withValues(alpha: 0.78),
+                border: Border.all(
+                  color: sealColor.withValues(alpha: 0.8),
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: sealColor.withValues(alpha: 0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: LiveColors.danger.withValues(alpha: 0.1),
-              border: Border.all(color: LiveColors.danger, width: 1.5),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              context.l10n.appointmentStatusCheckedIn,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: LiveColors.danger,
-                letterSpacing: 1,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: sealColor.withValues(alpha: 0.45),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.check,
+                      size: size * 0.12,
+                      color: sealColor.withValues(alpha: 0.9),
+                    ),
+                    SizedBox(height: size * 0.012),
+                    Text(
+                      context.l10n.appointmentStatusCheckedIn,
+                      style: TextStyle(
+                        fontSize: size * 0.082,
+                        fontWeight: FontWeight.w800,
+                        color: sealColor.withValues(alpha: 0.9),
+                        letterSpacing: 2,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

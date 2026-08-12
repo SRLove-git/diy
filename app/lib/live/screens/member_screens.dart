@@ -1130,7 +1130,7 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  b,
+                                  context.memberBenefit(b),
                                   style: const TextStyle(
                                     fontSize: 13,
                                     color: LiveColors.textPrimary,

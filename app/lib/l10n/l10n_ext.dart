@@ -23,3 +23,15 @@ extension MemberNameX on BuildContext {
     };
   }
 }
+
+/// 服务端返回的中文会员权益文案在英文模式下的映射；
+/// 中文模式或未收录的权益原样返回。
+extension MemberBenefitX on BuildContext {
+  String memberBenefit(String zh) {
+    if (Localizations.localeOf(this).languageCode != 'en') return zh;
+    return switch (zh) {
+      '全场消费8折专属优惠' => 'Exclusive 20% off on all purchases',
+      _ => zh,
+    };
+  }
+}
