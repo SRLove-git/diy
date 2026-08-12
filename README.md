@@ -81,7 +81,10 @@ npm run migration:revert                                # 回滚最近一次迁�
 | `SMTP_HOST/PORT/USER/PASS/FROM` | 邮件发送（验证码）。**生产必须配置**，未配置时验证码只打印在服务端日志 |
 | `CORS_ORIGINS` | 跨域白名单（逗号分隔）；生产未配置默认禁止跨域（原生 App 不受影响） |
 | `CONTENT_KEYWORDS` | 内容机审默认关键词（逗号分隔），管理端 `/api/admin/moderation/keywords` 可运行时增删 |
-| `UPLOAD_PROVIDER=s3` | 对象存储（AWS S3 / MinIO / OSS / COS），需配 `S3_BUCKET/S3_ACCESS_KEY/S3_SECRET_KEY` 等；默认 `local` 本地磁盘 |
+| `UPLOAD_PROVIDER=s3` | 对象存储（阿里云 OSS 等 S3 兼容服务），需配 `S3_BUCKET/S3_ACCESS_KEY/S3_SECRET_KEY` 等；默认 `local` 本地磁盘 |
+| `S3_PUBLIC_URL_BASE` | 对象存储对外访问域名/CDN（如 `https://cdn.example.com`），未配置时回退 bucket 默认域名 |
+| `CDN_PROVIDER` | CDN 缓存刷新：`none`（默认，不刷新）/ `aliyun`；删除或替换媒体后自动 purge |
+| `ALIYUN_CDN_ACCESS_KEY_ID/SECRET` | `CDN_PROVIDER=aliyun` 时的阿里云 CDN 密钥（RAM 子账号最小授权：`RefreshObjectCaches`） |
 | `DB_MIGRATIONS_RUN` | 启动时自动执行数据库迁移（生产默认 true） |
 | `DB_POOL_SIZE` | MySQL 连接池大小（默认 20，按服务器内存与并发调整，需 ≤ MySQL max_connections） |
 | `TRUST_PROXY` | nginx 反代后置 true，让 `req.ip` 取真实客户端 IP（验证码/登录防刷按 IP 限流依赖它） |

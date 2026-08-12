@@ -106,6 +106,10 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY:-}
       S3_PUBLIC_URL_BASE: ${S3_PUBLIC_URL_BASE:-}
       S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}
+      # CDN 缓存刷新：none（默认，不刷新）/ aliyun
+      CDN_PROVIDER: ${CDN_PROVIDER:-none}
+      ALIYUN_CDN_ACCESS_KEY_ID: ${ALIYUN_CDN_ACCESS_KEY_ID:-}
+      ALIYUN_CDN_ACCESS_KEY_SECRET: ${ALIYUN_CDN_ACCESS_KEY_SECRET:-}
     depends_on:
       mysql:
         condition: service_healthy
