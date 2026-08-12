@@ -1,18 +1,14 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
- * 预约-桌位关联表：把一单多桌关系从 appointments.tables JSON 列
- * 抽成 appointment_tables 关联表，替代查询里的 JSON_TABLE 展开。
- *
- * - (appointmentId, tableId) 唯一索引：一单同桌只记一次；
- * - (storeId, date, tableId) 复合索引：availability 与冲突校验一步收窄，
- *   storeId/date 冗余存储，无需回表 appointments 过滤。
- * - 历史数据回填：JSON 数组展开 + 单桌（JSON 为空时）回退 tableId。
- * - 只对 appointments 建外键（ON DELETE CASCADE）；不建 store_tables 外键，
- *   避免历史预约引用已删除桌位导致迁移失败，脏 tableId 不影响可用性查询。
+ * 一次性完成关联表改造（未正式部署、无旧数据，根上不需要 JSON 列）：
+ * 1) 建 appointment_tables（一单多桌关系，替代 appointments.tables JSON 列）；
+ * 2) 建索引与外键；
+ * 3) 删列兜底：若某环境曾用旧 InitialSchema 建过 tables 列（如压测库），
+ *    这里判存在后删除；全新库从未建过该列，此步直接跳过。
  */
-export class AddAppointmentTables1788500000000 implements MigrationInterface {
-  name = 'AddAppointmentTables1788500000000';
+export class AddAppointmentTablesAndDropJson1789000000000 implements MigrationInterface {
+  name = 'AddAppointmentTablesAndDropJson1789000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
@@ -25,25 +21,6 @@ export class AddAppointmentTables1788500000000 implements MigrationInterface {
         \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
         PRIMARY KEY (\`id\`)
       ) ENGINE=InnoDB
-    `);
-
-    // 回填 1) 多桌预约：tables JSON 数组展开（DISTINCT 兜底重复桌位）
-    await queryRunner.query(`
-      INSERT IGNORE INTO \`appointment_tables\` (\`appointmentId\`, \`tableId\`, \`storeId\`, \`date\`)
-      SELECT DISTINCT a.id, t.tid, a.storeId, a.date
-      FROM \`appointments\` a
-      JOIN JSON_TABLE(a.tables, '$[*]' COLUMNS (tid INT PATH '$.id')) t
-        ON a.tables IS NOT NULL AND JSON_LENGTH(a.tables) > 0
-      WHERE t.tid IS NOT NULL AND a.storeId IS NOT NULL
-    `);
-
-    // 回填 2) 单桌预约：tables JSON 为空/缺失时回退 tableId
-    await queryRunner.query(`
-      INSERT IGNORE INTO \`appointment_tables\` (\`appointmentId\`, \`tableId\`, \`storeId\`, \`date\`)
-      SELECT a.id, a.tableId, a.storeId, a.date
-      FROM \`appointments\` a
-      WHERE a.tableId IS NOT NULL AND a.storeId IS NOT NULL
-        AND (a.tables IS NULL OR JSON_LENGTH(a.tables) = 0)
     `);
 
     await this.ensureIndex(
@@ -61,9 +38,34 @@ export class AddAppointmentTables1788500000000 implements MigrationInterface {
       'FK_appointment_tables_appointment',
       'ALTER TABLE `appointment_tables` ADD CONSTRAINT `FK_appointment_tables_appointment` FOREIGN KEY (`appointmentId`) REFERENCES `appointments`(`id`) ON DELETE CASCADE',
     );
+
+    // 最后删旧 JSON 列（判存在，幂等）
+    const cols = (await queryRunner.query(
+      `SELECT 1 FROM information_schema.columns
+       WHERE table_schema = DATABASE() AND table_name = 'appointments' AND column_name = 'tables'
+       LIMIT 1`,
+    )) as unknown as Array<Record<string, unknown>>;
+    if (cols.length) {
+      await queryRunner.query(
+        'ALTER TABLE `appointments` DROP COLUMN `tables`',
+      );
+    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    // 先恢复 JSON 列并从关联表聚合回填（仅 id，保底可恢复）
+    await queryRunner.query(
+      'ALTER TABLE `appointments` ADD COLUMN `tables` json NULL',
+    );
+    await queryRunner.query(`
+      UPDATE \`appointments\` a
+      LEFT JOIN (
+        SELECT appointmentId, JSON_ARRAYAGG(JSON_OBJECT('id', tableId)) AS j
+        FROM appointment_tables
+        GROUP BY appointmentId
+      ) x ON x.appointmentId = a.id
+      SET a.tables = x.j
+    `);
     await queryRunner
       .query(
         'ALTER TABLE `appointment_tables` DROP FOREIGN KEY `FK_appointment_tables_appointment`',
