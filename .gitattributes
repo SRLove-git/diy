@@ -1,0 +1,2 @@
+# Windows 检出时保持 LF，避免 shell 脚本 shebang（#!/bin/sh\r）被 CRLF 破坏导致容器启动失败
+*.sh text eol=lf
