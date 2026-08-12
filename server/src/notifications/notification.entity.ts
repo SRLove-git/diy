@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
@@ -19,6 +20,7 @@ export type NotificationCategory =
   | 'member';
 
 @Entity('notifications')
+@Index(['sent', 'createdAt']) // 通知列表/未读数（按时间倒序过滤已发送）
 export class Notification {
   @PrimaryGeneratedColumn()
   id: number;

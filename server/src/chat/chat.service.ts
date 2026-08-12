@@ -293,25 +293,21 @@ export class ChatService {
     conversationId: number,
   ): Promise<{ count: number }> {
     await this.findConversationForUser(conversationId, userId);
-    const ids = await this.messages.find({
-      where: { conversationId },
-      select: { id: true },
-    });
-    if (ids.length === 0) return { count: 0 };
     const now = new Date();
-    const rows = ids.map((m) => ({
-      messageId: m.id,
-      userId,
-      readAt: now,
-      deletedAt: now,
-    }));
-    await this.messageStatus
-      .createQueryBuilder()
-      .insert()
-      .values(rows)
-      .orUpdate(['deletedAt', 'readAt'], ['messageId', 'userId'])
-      .execute();
-    return { count: ids.length };
+    const [countRows] = await this.messages.manager.query(
+      'SELECT COUNT(*) AS cnt FROM messages WHERE conversationId = ?',
+      [conversationId],
+    );
+    const count = Number(countRows?.cnt ?? 0);
+    if (count === 0) return { count: 0 };
+    // 一次性 INSERT ... SELECT，避免把会话全部消息 id 拉进内存逐条写状态
+    await this.messageStatus.manager.query(
+      `INSERT INTO message_status (messageId, userId, readAt, deletedAt)
+       SELECT m.id, ?, ?, ? FROM messages m WHERE m.conversationId = ?
+       ON DUPLICATE KEY UPDATE deletedAt = VALUES(deletedAt), readAt = VALUES(readAt)`,
+      [userId, now, now, conversationId],
+    );
+    return { count };
   }
 
   /** 游标分页拉取历史消息（按时间升序返回） */

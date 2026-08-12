@@ -789,15 +789,12 @@ export class VideosService {
 
   /** 记录浏览（浏览量 +1） */
   async recordView(id: number): Promise<void> {
-    const video = await this.videos.findOneBy({ id });
-    if (!video || video.status === 'rejected') return;
+    // 直接原子自增：省掉前置 SELECT；视频不存在时 increment 影响 0 行，静默忽略
     await this.videos.increment({ id }, 'viewCount', 1);
   }
 
   /** 记录分享（分享数 +1） */
   async recordShare(id: number): Promise<void> {
-    const video = await this.videos.findOneBy({ id });
-    if (!video || video.status === 'rejected') return;
     await this.videos.increment({ id }, 'shareCount', 1);
   }
 }

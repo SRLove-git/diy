@@ -29,6 +29,8 @@ export type PayStatus = 'unpaid' | 'paid';
 @Entity('appointments')
 @Index(['storeId', 'tableId', 'date']) // 防超卖：同店同桌同日期按时间段重叠校验
 @Index(['status', 'date', 'endTime']) // 自动下钟轮询：只扫已过期预约，避免全表拉取
+@Index(['userId', 'createdAt']) // 我的预约列表
+@Index(['code'], { unique: true }) // 核销/按码查询：唯一索引加速并兜底重复码
 export class Appointment {
   @PrimaryGeneratedColumn()
   id: number;

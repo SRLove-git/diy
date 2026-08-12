@@ -78,6 +78,8 @@ npm run migration:revert                                # 回滚最近一次迁�
 | `CONTENT_KEYWORDS` | 内容机审默认关键词（逗号分隔），管理端 `/api/admin/moderation/keywords` 可运行时增删 |
 | `UPLOAD_PROVIDER=s3` | 对象存储（AWS S3 / MinIO / OSS / COS），需配 `S3_BUCKET/S3_ACCESS_KEY/S3_SECRET_KEY` 等；默认 `local` 本地磁盘 |
 | `DB_MIGRATIONS_RUN` | 启动时自动执行数据库迁移（生产默认 true） |
+| `DB_POOL_SIZE` | MySQL 连接池大小（默认 20，按服务器内存与并发调整，需 ≤ MySQL max_connections） |
+| `TRUST_PROXY` | nginx 反代后置 true，让 `req.ip` 取真实客户端 IP（验证码/登录防刷按 IP 限流依赖它） |
 
 ## CI
 

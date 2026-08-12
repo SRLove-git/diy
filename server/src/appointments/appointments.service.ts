@@ -187,6 +187,49 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * 按小时预约的档位单价（元/人，含整段时长）：
+   * - 时长恰好等于套餐时长 → 按套餐价计费；
+   * - 时长超过套餐 → 套餐价 + 超出小时 × 小时单价；
+   * - 时长小于最小套餐 → 无适用套餐，按普通小时价。
+   */
+  private hourlyUnitPrices(
+    store: Store,
+    packages: StorePackage[],
+    hours: number,
+  ): { normal: number; member: number; group: number } {
+    const hourlyRate = yuanToCents(store.price ?? 39.9);
+    const memberRate =
+      store.memberPrice != null ? yuanToCents(store.memberPrice) : null;
+    const groupRate =
+      store.groupPrice != null ? yuanToCents(store.groupPrice) : null;
+    const pkg = [...packages]
+      .sort((a, b) => b.hours - a.hours)
+      .find((p) => p.hours <= hours);
+
+    if (!pkg) {
+      const normal = hourlyRate * hours;
+      return {
+        normal: centsToYuan(normal),
+        member: centsToYuan((memberRate ?? hourlyRate) * hours),
+        group: centsToYuan((groupRate ?? hourlyRate) * hours),
+      };
+    }
+
+    const extra = hours - pkg.hours;
+    return {
+      normal: centsToYuan(yuanToCents(pkg.price) + hourlyRate * extra),
+      member: centsToYuan(
+        yuanToCents(pkg.memberPrice ?? pkg.price) +
+          (memberRate ?? hourlyRate) * extra,
+      ),
+      group: centsToYuan(
+        yuanToCents(pkg.groupPrice ?? pkg.price) +
+          (groupRate ?? hourlyRate) * extra,
+      ),
+    };
+  }
+
+  /**
    * 创建门店预约：门店/时段/人数校验 → Redis 分布式锁 → 事务内冲突校验 + 落库。
    * 防超卖策略：同店同桌同时段仅允许 1 条未取消预约，先经 Redis 锁串行化，
    * 再由数据库唯一组合兜底（@Index 四列 + 事务内再查）。
@@ -312,17 +355,15 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       endTime = this.formatMinutes(
         this.minutes(startTime) + durationHours * 60,
       );
-      normalPrice = centsToYuan(
-        yuanToCents(store.price ?? 39.9) * durationHours,
-      );
-      memberPrice =
-        store.memberPrice != null
-          ? centsToYuan(yuanToCents(store.memberPrice) * durationHours)
-          : normalPrice;
-      groupPrice =
-        store.groupPrice != null
-          ? centsToYuan(yuanToCents(store.groupPrice) * durationHours)
-          : normalPrice;
+      // 时长恰好等于套餐按套餐价，超出套餐的时长按小时单价追加
+      const hourlyPackages =
+        (await this.packages.find({
+          where: { storeId: store.id, enabled: true },
+        })) ?? [];
+      const units = this.hourlyUnitPrices(store, hourlyPackages, durationHours);
+      normalPrice = units.normal;
+      memberPrice = units.member;
+      groupPrice = units.group;
     }
 
     // 预约时段必须落在营业时间内且不跨天
@@ -386,26 +427,15 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     try {
       // 2) 事务：冲突校验（含 DB 组合索引兜底）+ 预约码生成 + 落库
       return await this.dataSource.transaction(async (em) => {
-        // 冲突校验：扫描该门店当日全部有效预约，按桌位（含一单多桌）+ 时间段重叠判断
-        const active = await em.find(Appointment, {
-          where: {
-            storeId: dto.storeId,
-            date: dto.date,
-            status: Not(In(['cancelled', 'completed'])),
-          },
-        });
-        // 时间段重叠判定：existing.start < new.end && existing.end > new.start
-        const conflict = active.find((a) => {
-          const apptTableIds = a.tables?.length
-            ? a.tables.map((t) => t.id)
-            : a.tableId != null
-              ? [a.tableId]
-              : [];
-          const sharesTable = requestedIds.some((id) =>
-            apptTableIds.includes(id),
-          );
-          return sharesTable && a.startTime < endTime && a.endTime > startTime;
-        });
+        // 冲突校验：SQL 端按桌位（含一单多桌 JSON 展开）+ 时间段重叠判断，避免整表拉取
+        const conflict = await this.findOverlapConflict(
+          em,
+          dto.storeId!,
+          dto.date!,
+          requestedIds,
+          startTime,
+          endTime,
+        );
         if (conflict) {
           const conflictTables = (
             conflict.tables?.length
@@ -1053,13 +1083,14 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
         );
       }
       endTime = this.formatMinutes(nowMin + durationHours * 60);
-      normalPrice = centsToYuan(
-        yuanToCents(store.price ?? 39.9) * durationHours,
-      );
-      groupPrice =
-        store.groupPrice != null
-          ? centsToYuan(yuanToCents(store.groupPrice) * durationHours)
-          : normalPrice;
+      // 与线上预约同一套规则：时长恰等套餐按套餐价，超出部分按小时单价
+      const hourlyPackages =
+        (await this.packages.find({
+          where: { storeId: store.id, enabled: true },
+        })) ?? [];
+      const units = this.hourlyUnitPrices(store, hourlyPackages, durationHours);
+      normalPrice = units.normal;
+      groupPrice = units.group;
     }
 
     // 金额：散客无会员身份，≥2 人走多人同行价；周末加价规则与线上一致
@@ -1092,25 +1123,15 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
 
     try {
       const saved = await this.dataSource.transaction(async (em) => {
-        const active = await em.find(Appointment, {
-          where: {
-            storeId: store.id,
-            date,
-            status: Not(In(['cancelled', 'completed'])),
-          },
-        });
-        // 时间段重叠判定：existing.start < new.end && existing.end > new.start
-        const conflict = active.find((a) => {
-          const apptTableIds = a.tables?.length
-            ? a.tables.map((t) => t.id)
-            : a.tableId != null
-              ? [a.tableId]
-              : [];
-          const sharesTable = requestedIds.some((id) =>
-            apptTableIds.includes(id),
-          );
-          return sharesTable && a.startTime < endTime && a.endTime > startTime;
-        });
+        // 冲突校验：SQL 端按桌位（含一单多桌 JSON 展开）+ 时间段重叠判断
+        const conflict = await this.findOverlapConflict(
+          em,
+          store.id,
+          date,
+          requestedIds,
+          startTime,
+          endTime,
+        );
         if (conflict) {
           const conflictTables = (
             conflict.tables?.length
@@ -1168,32 +1189,31 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       where: { storeId, enabled: true },
       order: { id: 'ASC' },
     });
-    const taken = await this.appointments.find({
-      where: {
-        storeId,
-        date,
-        status: Not(In(['cancelled', 'completed'])),
-      },
-    });
+    // 只取占用窗口所需列，SQL 端按一单多桌 JSON 展开（tables 为空时回退 tableId 单桌）
+    const taken = await this.dataSource.query(
+      `SELECT COALESCE(t.tid, a.tableId) AS tableId, a.startTime, a.endTime, a.status
+       FROM appointments a
+       LEFT JOIN JSON_TABLE(a.tables, '$[*]' COLUMNS (tid INT PATH '$.id')) t
+         ON a.tables IS NOT NULL AND JSON_LENGTH(a.tables) > 0
+       WHERE a.storeId = ? AND a.date = ?
+         AND a.status NOT IN ('cancelled', 'completed')
+       ORDER BY a.startTime ASC`,
+      [storeId, date],
+    );
     // 按桌位聚合占用窗口（一单多桌：预约的每张桌都算占用）
     const windowByTable = new Map<
       number,
       Array<{ startTime: string; endTime: string; status: string }>
     >();
-    for (const a of taken) {
-      const ids = a.tables?.length
-        ? a.tables.map((t) => t.id)
-        : a.tableId != null
-          ? [a.tableId]
-          : [];
-      for (const id of ids) {
-        if (!windowByTable.has(id)) windowByTable.set(id, []);
-        windowByTable.get(id)!.push({
-          startTime: a.startTime,
-          endTime: a.endTime,
-          status: a.status,
-        });
-      }
+    for (const row of taken) {
+      if (row.tableId == null) continue;
+      const id = Number(row.tableId);
+      if (!windowByTable.has(id)) windowByTable.set(id, []);
+      windowByTable.get(id)!.push({
+        startTime: row.startTime,
+        endTime: row.endTime,
+        status: row.status,
+      });
     }
 
     return tables.map((t) => ({
@@ -1202,6 +1222,54 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       capacity: t.capacity,
       bookedWindows: windowByTable.get(t.id) ?? [],
     }));
+  }
+
+  /**
+   * SQL 端时间段重叠冲突检查（含一单多桌：JSON_TABLE 展开 tables 列）。
+   * 相比把当日全部预约拉进内存再 JS 判断，这里只返回命中的一行，
+   * 由 (storeId, tableId, date) 与 (status, date, endTime) 索引收窄扫描范围。
+   * 重叠判定：existing.start < new.end && existing.end > new.start
+   */
+  private async findOverlapConflict(
+    em: EntityManager,
+    storeId: number,
+    date: string,
+    tableIds: number[],
+    startTime: string,
+    endTime: string,
+  ): Promise<{
+    tables: Array<{ id: number; name: string }>;
+    tableId: number | null;
+    tableName: string;
+    startTime: string;
+    endTime: string;
+  } | null> {
+    if (!tableIds.length) return null;
+    const placeholders = tableIds.map(() => '?').join(',');
+    const rows = await em.query(
+      `SELECT a.tableId, a.tableName, a.tables, a.startTime, a.endTime
+       FROM appointments a
+       LEFT JOIN JSON_TABLE(a.tables, '$[*]' COLUMNS (tid INT PATH '$.id')) t
+         ON a.tables IS NOT NULL AND JSON_LENGTH(a.tables) > 0
+       WHERE a.storeId = ? AND a.date = ?
+         AND a.status NOT IN ('cancelled', 'completed')
+         AND COALESCE(t.tid, a.tableId) IN (${placeholders})
+         AND a.startTime < ? AND a.endTime > ?
+       LIMIT 1`,
+      [storeId, date, ...tableIds, endTime, startTime],
+    );
+    if (!rows.length) return null;
+    const row = rows[0];
+    return {
+      tableId: row.tableId != null ? Number(row.tableId) : null,
+      tableName: row.tableName ?? '',
+      tables:
+        typeof row.tables === 'string'
+          ? (JSON.parse(row.tables) as Array<{ id: number; name: string }>)
+          : (row.tables ?? []),
+      startTime: row.startTime,
+      endTime: row.endTime,
+    };
   }
 
   /** 生成唯一 6 位数字预约码（重试兜底） */

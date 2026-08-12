@@ -14,6 +14,7 @@ export type VideoStatus = 'pending' | 'approved' | 'rejected';
 @Entity('videos')
 @Index(['status'])
 @Index(['userId'])
+@Index(['status', 'createdAt']) // 信息流：状态过滤 + 时间倒序，避免 filesort
 export class Video {
   @PrimaryGeneratedColumn()
   id: number;

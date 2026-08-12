@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { FindOptionsWhere, In, Raw, Repository } from 'typeorm';
 import { ChatGateway } from '../chat/chat.gateway';
 import type { AppLocale } from '../common/i18n';
 import { User } from '../users/user.entity';
@@ -117,20 +117,27 @@ export class NotificationsService {
     locale: AppLocale = 'zh',
   ) {
     const role = await this.resolveRole(userId);
-    const applicable = await this.applicableNotifications(userId, role);
-    const ids = applicable.map((n) => n.id);
-    if (!ids.length) return { items: [], total: 0, unread: 0, page, pageSize };
+    const where = this.applicableWhere(userId, role);
+    const [pageItems, total] = await this.notificationRepo.findAndCount({
+      where,
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    if (!pageItems.length) {
+      return { items: [], total, unread: 0, page, pageSize };
+    }
 
     const readRows = await this.readRepo.find({
-      where: { userId, notificationId: In(ids) },
+      where: {
+        userId,
+        notificationId: In(pageItems.map((n) => n.id)),
+      },
       select: { notificationId: true },
     });
     const readSet = new Set(readRows.map((r) => r.notificationId));
 
-    const total = applicable.length;
-    const unread = applicable.filter((n) => !readSet.has(n.id)).length;
-    const start = (page - 1) * pageSize;
-    const pageItems = applicable.slice(start, start + pageSize);
+    const unread = await this.unreadCountByWhere(userId, role, where);
 
     return {
       items: pageItems.map((n) => ({
@@ -155,14 +162,7 @@ export class NotificationsService {
   /** 未读通知数 */
   async unreadCount(userId: number): Promise<number> {
     const role = await this.resolveRole(userId);
-    const applicable = await this.applicableNotifications(userId, role);
-    if (!applicable.length) return 0;
-    const rows = await this.readRepo.find({
-      where: { userId },
-      select: { notificationId: true },
-    });
-    const readSet = new Set(rows.map((r) => r.notificationId));
-    return applicable.filter((n) => !readSet.has(n.id)).length;
+    return this.unreadCountByWhere(userId, role, this.applicableWhere(userId, role));
   }
 
   /** 标记单条已读 */
@@ -179,47 +179,69 @@ export class NotificationsService {
   /** 全部标记已读 */
   async markAllRead(userId: number) {
     const role = await this.resolveRole(userId);
-    const applicable = await this.applicableNotifications(userId, role);
-    for (const n of applicable) {
-      await this.saveRead(userId, n.id);
-    }
+    const ids = await this.applicableIds(userId, role);
+    if (!ids.length) return { ok: true };
+    // 批量写入已读（已存在行被 IGNORE 跳过），避免逐条 exists+insert
+    await this.readRepo.manager.query(
+      'INSERT IGNORE INTO notification_reads (userId, notificationId) VALUES ?',
+      [ids.map((id) => [userId, id])],
+    );
     return { ok: true };
   }
 
-  /** 当前用户可见的通知实体（按发送时间倒序） */
-  private async applicableNotifications(
+  /**
+   * 当前用户可见通知的 SQL 条件（与 appliesTo 语义一致，过滤下沉到数据库，
+   * 避免每次请求把整表通知读进内存再过滤）。
+   */
+  private applicableWhere(
     userId: number,
-    role: string,
-  ): Promise<Notification[]> {
+    role: 'user' | 'admin',
+  ): FindOptionsWhere<Notification>[] {
+    return [
+      { sent: true, targetType: 'all' },
+      { sent: true, targetType: 'role', targetRole: role },
+      {
+        sent: true,
+        targetType: 'user',
+        // targetUserIds 是逗号分隔的 id 字符串：FIND_IN_SET 精确匹配，避免 LIKE 误匹配（如 5 命中 15）
+        targetUserIds: Raw(
+          (alias) => `FIND_IN_SET(:uid, ${alias}) > 0`,
+          { uid: String(userId) },
+        ),
+      },
+    ];
+  }
+
+  /** 当前用户可见的通知 id（仅取主键列，开销远小于加载整行） */
+  private async applicableIds(
+    userId: number,
+    role: 'user' | 'admin',
+  ): Promise<number[]> {
     const rows = await this.notificationRepo.find({
-      where: { sent: true },
-      order: { createdAt: 'DESC' },
+      where: this.applicableWhere(userId, role),
+      select: { id: true },
     });
-    return rows.filter((n) => this.appliesTo(n, userId, role));
+    return rows.map((n) => n.id);
+  }
+
+  /** 未读数 = 可见通知总数 - 其中已读数量 */
+  private async unreadCountByWhere(
+    userId: number,
+    role: 'user' | 'admin',
+    where: FindOptionsWhere<Notification>[],
+  ): Promise<number> {
+    const ids = await this.applicableIds(userId, role);
+    if (!ids.length) return 0;
+    const read = await this.readRepo.count({
+      where: { userId, notificationId: In(ids) },
+    });
+    return Math.max(0, ids.length - read);
   }
 
   /** 用户角色（兜底普通用户） */
-  private async resolveRole(userId: number): Promise<string> {
+  private async resolveRole(userId: number): Promise<'user' | 'admin'> {
     const user = await this.userRepo.findOneBy({ id: userId });
     return user?.role ?? 'user';
-  }
-
-  /** 通知是否对当前用户可见 */
-  private appliesTo(n: Notification, userId: number, role: string): boolean {
-    switch (n.targetType) {
-      case 'all':
-        return true;
-      case 'role':
-        return n.targetRole === role;
-      case 'user':
-        return (n.targetUserIds ?? '')
-          .split(',')
-          .map(Number)
-          .filter(Boolean)
-          .includes(userId);
-      default:
-        return false;
-    }
   }
 
   /** 幂等写入已读记录 */

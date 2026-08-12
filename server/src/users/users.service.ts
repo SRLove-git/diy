@@ -39,6 +39,9 @@ export class UsersService {
   private static readonly USERNAME_CHANGE_INTERVAL_MS =
     365 * 24 * 60 * 60 * 1000;
 
+  /** FULLTEXT 索引可用性（迁移建立；dev synchronize 会忽略/删除，需探测后回退 LIKE） */
+  private fulltextReady: boolean | null = null;
+
   constructor(
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @InjectRepository(User) private readonly users: Repository<User>,
@@ -155,14 +158,48 @@ export class UsersService {
   async findByKeyword(keyword: string): Promise<User[]> {
     const kw = (keyword ?? '').trim();
     if (!kw) return [];
+    // 中文搜索走 FULLTEXT（ngram 分词，最小单元为 2，单字无法命中）；
+    // 英文/单字回退 LIKE：username/email 前缀匹配可命中唯一索引，nickname 子串兜底
+    if (
+      /[\u4e00-\u9fff]/.test(kw) &&
+      kw.length >= 2 &&
+      (await this.isFulltextReady())
+    ) {
+      const rows = await this.users
+        .createQueryBuilder('u')
+        .where(
+          'MATCH(u.username, u.email, u.nickname) AGAINST (:kw IN BOOLEAN MODE)',
+          { kw },
+        )
+        .take(200)
+        .getMany();
+      if (rows.length) return rows;
+    }
     return this.users.find({
       where: [
-        { username: Like(`%${kw}%`) },
-        { email: Like(`%${kw}%`) },
-        { nickname: Like(`%${kw}%`) },
+        { username: Like(`${kw}%`) },
+        { email: Like(`${kw}%`) },
+        { nickname: Like(`${kw}%`) },
       ],
       take: 200,
     });
+  }
+
+  /** 探测 ft_users_search 全文索引是否存在（结果进程内缓存） */
+  private async isFulltextReady(): Promise<boolean> {
+    if (this.fulltextReady == null) {
+      try {
+        const rows = await this.users.manager.query(
+          `SELECT 1 FROM information_schema.statistics
+           WHERE table_schema = DATABASE() AND table_name = 'users' AND index_name = 'ft_users_search'
+           LIMIT 1`,
+        );
+        this.fulltextReady = rows.length > 0;
+      } catch {
+        this.fulltextReady = false;
+      }
+    }
+    return this.fulltextReady;
   }
 
   findById(id: number): Promise<User | null> {
@@ -273,15 +310,18 @@ export class UsersService {
     pageSize = 20,
   ): Promise<[User[], number]> {
     const keyword = (search ?? '').trim();
-    const where: FindOptionsWhere<User> | FindOptionsWhere<User>[] = keyword
-      ? [
-          { username: Like(`%${keyword}%`) },
-          { email: Like(`%${keyword}%`) },
-          { nickname: Like(`%${keyword}%`) },
-        ]
-      : {};
+    if (keyword) {
+      // 与会员/预约管理端一致：走 findByKeyword（中文 FULLTEXT / 英文前缀 LIKE）
+      const matched = await this.findByKeyword(keyword);
+      if (!matched.length) return [[], 0];
+      return this.users.findAndCount({
+        where: { id: In(matched.map((u) => u.id)) },
+        order: { createdAt: 'DESC' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      });
+    }
     return this.users.findAndCount({
-      where,
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
       take: pageSize,

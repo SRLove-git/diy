@@ -22,6 +22,7 @@ export interface PostMedia {
 @Entity('posts')
 @Index(['status'])
 @Index(['userId'])
+@Index(['status', 'createdAt']) // 信息流：状态过滤 + 时间倒序，避免 filesort
 export class Post {
   @PrimaryGeneratedColumn()
   id: number;

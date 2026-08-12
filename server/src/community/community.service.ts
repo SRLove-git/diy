@@ -280,15 +280,12 @@ export class CommunityService {
 
   /** 记录浏览（浏览量 +1） */
   async recordView(id: number): Promise<void> {
-    const post = await this.posts.findOneBy({ id });
-    if (!post || post.status === 'rejected') return;
+    // 直接原子自增：省掉前置 SELECT；作品不存在时 increment 影响 0 行，静默忽略
     await this.posts.increment({ id }, 'viewCount', 1);
   }
 
   /** 记录分享（分享数 +1） */
   async recordShare(id: number): Promise<void> {
-    const post = await this.posts.findOneBy({ id });
-    if (!post || post.status === 'rejected') return;
     await this.posts.increment({ id }, 'shareCount', 1);
   }
 

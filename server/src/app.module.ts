@@ -40,6 +40,16 @@ import { HttpExceptionFilter } from './common/http-exception.filter';
         password: config.get<string>('DB_PASSWORD', 'root'),
         database: config.get<string>('DB_NAME', 'diy'),
         autoLoadEntities: true,
+        // 连接池：mysql2 默认 10 个连接，并发上来后是明显瓶颈；
+        // DB_POOL_SIZE 按服务器内存/实例数调整，并保证 MySQL max_connections 匹配
+        extra: {
+          connectionLimit: config.get<number>('DB_POOL_SIZE', 20),
+          enableKeepAlive: true,
+          keepAliveInitialDelay: 0,
+          queueLimit: 0,
+        },
+        // 超过 2s 的查询打印警告日志（配合慢查询定位问题）
+        maxQueryExecutionTime: 2000,
         // 迁移文件：生产通过 migration:run（或 DB_MIGRATIONS_RUN=true 启动时执行）管理 schema
         migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
         migrationsRun: config.get<string>('DB_MIGRATIONS_RUN') === 'true',

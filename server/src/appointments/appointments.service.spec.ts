@@ -39,7 +39,7 @@ function buildService() {
   };
   const stores = { findOneBy: jest.fn() };
   const tables = { find: jest.fn() };
-  const packages = { findOneBy: jest.fn() };
+  const packages = { findOneBy: jest.fn(), find: jest.fn() };
   const activities = { findOneBy: jest.fn() };
   const activitySessionsRepo = { findOneBy: jest.fn(), find: jest.fn() };
   const memberships = { findOneBy: jest.fn() };
@@ -61,6 +61,7 @@ function buildService() {
   const couponRepo: { findOneBy: jest.Mock } = { findOneBy: jest.fn() };
   const em = {
     find: jest.fn(),
+    query: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
     findOne: jest.fn(),
@@ -71,6 +72,7 @@ function buildService() {
       return {};
     }),
   };
+  em.query.mockResolvedValue([]); // 默认无时段冲突
   const dataSource = {
     transaction: jest.fn((cb: (manager: typeof em) => unknown) => cb(em)),
   };
@@ -164,14 +166,13 @@ describe('AppointmentsService', () => {
       m.tables.find.mockResolvedValue([{ id: 1, name: 'A1', capacity: 4 }]);
       m.memberships.findOneBy.mockResolvedValue(null);
       m.redis.set.mockResolvedValue('OK');
-      m.em.find.mockResolvedValue([
+      m.em.query.mockResolvedValue([
         {
-          id: 9,
           tableId: 1,
-          tables: [{ id: 1 }],
+          tableName: 'A1',
+          tables: [{ id: 1, name: 'A1' }],
           startTime: '09:30',
           endTime: '11:00',
-          tableName: 'A1',
         },
       ]);
 
@@ -441,14 +442,13 @@ describe('AppointmentsService', () => {
       m.tables.find.mockResolvedValue([{ id: 1, name: 'B1', capacity: 2 }]);
       m.users.findByUsernameOrCreate.mockResolvedValue({ id: 999 });
       // 全天占用的有效预约：任何开台时段都会与之重叠
-      m.em.find.mockResolvedValue([
+      m.em.query.mockResolvedValue([
         {
-          id: 9,
           tableId: 1,
+          tableName: 'B1',
           tables: [{ id: 1, name: 'B1' }],
           startTime: '00:00',
           endTime: '23:59',
-          tableName: 'B1',
         },
       ]);
 
@@ -700,6 +700,218 @@ describe('AppointmentsService', () => {
         peopleCount: 1,
       } as never)) as { amount: number };
       expect(member.amount).toBe(39.9);
+    });
+  });
+
+  describe('createStore 按小时套餐计价', () => {
+    function setup(packages: Record<string, unknown>[]) {
+      const m = buildService();
+      m.stores.findOneBy.mockResolvedValue({
+        id: 1,
+        name: '门店A',
+        businessHours: '10:00-21:00',
+        price: 9.9,
+        memberPrice: 8,
+        groupPrice: 9,
+        allDayPrice: null,
+        weekendSurchargePercent: 0,
+      });
+      m.tables.find.mockResolvedValue([{ id: 1, name: 'A1', capacity: 8 }]);
+      m.packages.find.mockResolvedValue(packages);
+      m.memberships.findOneBy.mockResolvedValue(null);
+      m.redis.set.mockResolvedValue('OK');
+      m.em.find.mockResolvedValue([]);
+      m.em.findOne.mockResolvedValue(null);
+      m.em.create.mockImplementation(
+        (_cls: unknown, data: Record<string, unknown>) => ({
+          status: 'booked',
+          ...data,
+        }),
+      );
+      m.em.save.mockImplementation((x: unknown) => Promise.resolve(x));
+      return m;
+    }
+
+    it('时长恰好等于套餐：按套餐价计费', async () => {
+      const m = setup([
+        {
+          id: 1,
+          storeId: 1,
+          name: '2小时套餐',
+          hours: 2,
+          price: 18,
+          memberPrice: 15,
+          groupPrice: 16,
+          enabled: true,
+        },
+      ]);
+
+      const group = (await m.svc.create(7, {
+        ...baseDto,
+        peopleCount: 2,
+        startTime: '10:00',
+        durationHours: 2,
+      })) as { amount: number; originalAmount: number };
+      // 套餐同行价 16 × 2 = 32；原价 18 × 2 = 36
+      expect(group.amount).toBe(32);
+      expect(group.originalAmount).toBe(36);
+
+      m.memberships.findOneBy.mockResolvedValue({
+        expireAt: new Date(Date.now() + 86400_000),
+      });
+      const member = (await m.svc.create(7, {
+        ...baseDto,
+        peopleCount: 1,
+        startTime: '12:00',
+        durationHours: 2,
+      })) as { amount: number };
+      expect(member.amount).toBe(15);
+    });
+
+    it('时长超过套餐：套餐价 + 超出小时按小时单价', async () => {
+      const m = setup([
+        {
+          id: 1,
+          storeId: 1,
+          name: '2小时套餐',
+          hours: 2,
+          price: 18,
+          memberPrice: 15,
+          groupPrice: 16,
+          enabled: true,
+        },
+      ]);
+
+      const group = (await m.svc.create(7, {
+        ...baseDto,
+        peopleCount: 2,
+        startTime: '10:00',
+        durationHours: 3,
+      })) as { amount: number; originalAmount: number };
+      // 同行：套餐 16 + 超出 1 小时 × 9 = 25/人，× 2 = 50；原价 18 + 9.9 = 27.9/人，× 2 = 55.8
+      expect(group.amount).toBe(50);
+      expect(group.originalAmount).toBe(55.8);
+
+      m.memberships.findOneBy.mockResolvedValue({
+        expireAt: new Date(Date.now() + 86400_000),
+      });
+      const member = (await m.svc.create(7, {
+        ...baseDto,
+        peopleCount: 1,
+        startTime: '12:00',
+        durationHours: 3,
+      })) as { amount: number };
+      // 会员：套餐 15 + 超出 1 小时 × 8 = 23
+      expect(member.amount).toBe(23);
+    });
+
+    it('时长小于最小套餐：无适用套餐，按普通小时价', async () => {
+      const m = setup([
+        {
+          id: 1,
+          storeId: 1,
+          name: '2小时套餐',
+          hours: 2,
+          price: 18,
+          memberPrice: 15,
+          groupPrice: 16,
+          enabled: true,
+        },
+      ]);
+
+      const result = (await m.svc.create(7, {
+        ...baseDto,
+        peopleCount: 2,
+        startTime: '10:00',
+        durationHours: 1,
+      })) as { amount: number; originalAmount: number };
+      // 9 × 2 = 18；原价 9.9 × 2 = 19.8
+      expect(result.amount).toBe(18);
+      expect(result.originalAmount).toBe(19.8);
+    });
+
+    it('时长超过最大套餐：按最大套餐 + 超出小时计费', async () => {
+      const m = setup([
+        {
+          id: 1,
+          storeId: 1,
+          name: '2小时套餐',
+          hours: 2,
+          price: 18,
+          memberPrice: 15,
+          groupPrice: 16,
+          enabled: true,
+        },
+        {
+          id: 2,
+          storeId: 1,
+          name: '4小时套餐',
+          hours: 4,
+          price: 30,
+          memberPrice: 26,
+          groupPrice: 27,
+          enabled: true,
+        },
+      ]);
+
+      const group = (await m.svc.create(7, {
+        ...baseDto,
+        peopleCount: 2,
+        startTime: '10:00',
+        durationHours: 5,
+      })) as { amount: number };
+      // 4 小时套餐同行 27 + 超出 1 小时 × 9 = 36/人，× 2 = 72
+      expect(group.amount).toBe(72);
+    });
+  });
+
+  describe('adminWalkIn 按小时套餐计价', () => {
+    it('时长超过套餐：套餐价 + 超出小时按小时单价', async () => {
+      const m = buildService();
+      m.stores.findOneBy.mockResolvedValue({
+        id: 1,
+        name: '门店A',
+        businessHours: '09:00-23:00',
+        price: 30,
+        groupPrice: 25,
+        memberPrice: null,
+        allDayPrice: null,
+        weekendSurchargePercent: 0,
+      });
+      m.tables.find.mockResolvedValue([{ id: 1, name: 'B1', capacity: 2 }]);
+      m.packages.find.mockResolvedValue([
+        {
+          id: 1,
+          storeId: 1,
+          name: '2小时套餐',
+          hours: 2,
+          price: 50,
+          memberPrice: null,
+          groupPrice: 45,
+          enabled: true,
+        },
+      ]);
+      m.users.findByUsernameOrCreate.mockResolvedValue({ id: 999 });
+      m.em.find.mockResolvedValue([]);
+      m.em.findOne.mockResolvedValue(null); // generateCode 查重
+      m.em.create.mockImplementation(
+        (_cls: unknown, data: Record<string, unknown>) => ({ ...data }),
+      );
+      m.em.save.mockImplementation((x: unknown) => Promise.resolve(x));
+
+      const result = await m.svc.adminWalkIn(
+        {
+          storeId: 1,
+          tableIds: [1],
+          peopleCount: 2,
+          bookingType: 'hourly',
+          durationHours: 3,
+        },
+        5,
+      );
+
+      // 套餐同行 45 + 超出 1 小时 × 25 = 70/人，× 2 = 140
+      expect(result.amount).toBe(140);
     });
   });
 });

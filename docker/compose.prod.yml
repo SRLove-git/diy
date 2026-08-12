@@ -6,6 +6,9 @@ services:
     image: mysql:8.0
     container_name: diy-mysql-prod
     restart: unless-stopped
+    command:
+      - --slow-query-log=1
+      - --long-query-time=1
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-change-me}
       MYSQL_DATABASE: diy
@@ -58,6 +61,8 @@ services:
       CONTENT_KEYWORDS: ${CONTENT_KEYWORDS:-}
       # 生产 schema 由迁移管理：启动时自动执行 migrations/ 中的迁移（含首次建表）
       DB_MIGRATIONS_RUN: ${DB_MIGRATIONS_RUN:-true}
+      # 反代后识别真实客户端 IP（按 IP 限流依赖）
+      TRUST_PROXY: ${TRUST_PROXY:-true}
       # SMTP 邮件（验证码）：未配置时开发模式会打印到日志，生产必须配置
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-465}

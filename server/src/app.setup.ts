@@ -43,6 +43,14 @@ export function configureApp(app: INestApplication): void {
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
+  // 反向代理（nginx）后正确识别客户端 IP：
+  // 验证码防刷等按 IP 限流的逻辑依赖 req.ip，未配置时所有请求都取自代理地址，
+  // 会导致全站共享同一个限流配额。仅在生产经 nginx 暴露时开启（TRUST_PROXY=true）。
+  if (process.env.TRUST_PROXY === 'true') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (app.getHttpAdapter().getInstance() as any).set('trust proxy', 1);
+  }
+
   const origins = corsOrigins();
   app.enableCors({
     // 配置 CORS_ORIGINS 时严格按白名单；生产未配置默认禁止跨域（原生 App 不受 CORS 限制）；
