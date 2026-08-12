@@ -2055,6 +2055,12 @@ class _QrCard extends StatelessWidget {
 
   final Appointment appointment;
 
+  /// 已核销 / 服务中 / 已完成的预约码已使用，二维码显示为销毁形状。
+  bool get _destroyed =>
+      appointment.status == 'checked_in' ||
+      appointment.status == 'in_service' ||
+      appointment.status == 'completed';
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -2067,27 +2073,32 @@ class _QrCard extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            context.l10n.appointmentShowQr,
+            _destroyed
+                ? context.l10n.appointmentQrDestroyed
+                : context.l10n.appointmentShowQr,
             style: const TextStyle(
               fontSize: 13,
               color: LiveColors.textSecondary,
             ),
           ),
           const SizedBox(height: 12),
-          QrImageView(
-            data: appointment.code,
-            version: QrVersions.auto,
-            size: 180,
-            backgroundColor: LiveColors.bg,
-            eyeStyle: const QrEyeStyle(
-              eyeShape: QrEyeShape.square,
-              color: LiveColors.textPrimary,
+          if (_destroyed)
+            _DestroyedQr(appointment: appointment, size: 180)
+          else
+            QrImageView(
+              data: appointment.code,
+              version: QrVersions.auto,
+              size: 180,
+              backgroundColor: LiveColors.bg,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: LiveColors.textPrimary,
+              ),
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: LiveColors.textPrimary,
+              ),
             ),
-            dataModuleStyle: const QrDataModuleStyle(
-              dataModuleShape: QrDataModuleShape.square,
-              color: LiveColors.textPrimary,
-            ),
-          ),
           const SizedBox(height: 10),
           Text(
             context.l10n.appointmentQrCode(appointment.code),
@@ -2095,6 +2106,83 @@ class _QrCard extends StatelessWidget {
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: LiveColors.textPrimary,
+            ),
+          ),
+          if (_destroyed) ...[
+            const SizedBox(height: 4),
+            Text(
+              context.l10n.appointmentQrDestroyedHint,
+              style: const TextStyle(
+                fontSize: 11,
+                color: LiveColors.textTertiary,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 已核销预约码：显示为「销毁」形状的二维码图标，
+/// 即原二维码灰显 + 红色斜杠 + 已核销印章。
+class _DestroyedQr extends StatelessWidget {
+  const _DestroyedQr({required this.appointment, required this.size});
+
+  final Appointment appointment;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Opacity(
+            opacity: 0.22,
+            child: QrImageView(
+              data: appointment.code,
+              version: QrVersions.auto,
+              size: size,
+              backgroundColor: LiveColors.bg,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: LiveColors.textPrimary,
+              ),
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: LiveColors.textPrimary,
+              ),
+            ),
+          ),
+          Transform.rotate(
+            angle: -0.7854,
+            child: Container(
+              width: size * 1.4,
+              height: size * 0.05,
+              decoration: BoxDecoration(
+                color: LiveColors.danger.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: LiveColors.danger.withValues(alpha: 0.1),
+              border: Border.all(color: LiveColors.danger, width: 1.5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              context.l10n.appointmentStatusCheckedIn,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: LiveColors.danger,
+                letterSpacing: 1,
+              ),
             ),
           ),
         ],
@@ -2178,6 +2266,10 @@ class CheckinQrScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 已核销 / 服务中 / 已完成的预约码已使用，二维码显示为销毁形状。
+    final destroyed = appointment.status == 'checked_in' ||
+        appointment.status == 'in_service' ||
+        appointment.status == 'completed';
     return LivePage(
       child: Column(
         children: [
@@ -2189,7 +2281,9 @@ class CheckinQrScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 Center(
                   child: Text(
-                    context.l10n.appointmentShowStaff,
+                    destroyed
+                        ? context.l10n.appointmentQrDestroyed
+                        : context.l10n.appointmentShowStaff,
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -2248,42 +2342,59 @@ class CheckinQrScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: LiveColors.cardBorder),
                     ),
-                    child: QrImageView(
-                      data: appointment.code,
-                      version: QrVersions.auto,
-                      size: 200,
-                      backgroundColor: LiveColors.bg,
-                      eyeStyle: const QrEyeStyle(
-                        eyeShape: QrEyeShape.square,
-                        color: LiveColors.textPrimary,
-                      ),
-                      dataModuleStyle: const QrDataModuleStyle(
-                        dataModuleShape: QrDataModuleShape.square,
-                        color: LiveColors.textPrimary,
-                      ),
-                    ),
+                    child: destroyed
+                        ? _DestroyedQr(appointment: appointment, size: 200)
+                        : QrImageView(
+                            data: appointment.code,
+                            version: QrVersions.auto,
+                            size: 200,
+                            backgroundColor: LiveColors.bg,
+                            eyeStyle: const QrEyeStyle(
+                              eyeShape: QrEyeShape.square,
+                              color: LiveColors.textPrimary,
+                            ),
+                            dataModuleStyle: const QrDataModuleStyle(
+                              dataModuleShape: QrDataModuleShape.square,
+                              color: LiveColors.textPrimary,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                Center(
-                  child: Text(
-                    context.l10n.appointmentQrRefresh,
-                    style: const TextStyle(
-                      fontSize: 11.6,
-                      color: LiveColors.textTertiary,
+                if (destroyed)
+                  Center(
+                    child: Text(
+                      context.l10n.appointmentQrDestroyedHint,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: LiveColors.textTertiary,
+                      ),
+                    ),
+                  )
+                else ...[
+                  Center(
+                    child: Text(
+                      context.l10n.appointmentQrRefresh,
+                      style: const TextStyle(
+                        fontSize: 11.6,
+                        color: LiveColors.textTertiary,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Center(
-                  child: Text(
-                    context.l10n.appointmentValidUntilAt(appointment.endTime),
-                    style: const TextStyle(
-                      fontSize: 11.6,
-                      color: LiveColors.textTertiary,
+                  const SizedBox(height: 4),
+                  Center(
+                    child: Text(
+                      context.l10n.appointmentValidUntilAt(
+                        appointment.endTime,
+                      ),
+                      style: const TextStyle(
+                        fontSize: 11.6,
+                        color: LiveColors.textTertiary,
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

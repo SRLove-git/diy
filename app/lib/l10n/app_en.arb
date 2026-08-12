@@ -290,6 +290,8 @@
   "appointmentCodeLabel": "Code",
   "appointmentQrRefresh": "QR code refreshes every 30 seconds",
   "appointmentValidUntilAt": "Valid until {time}",
+  "appointmentQrDestroyed": "QR code destroyed",
+  "appointmentQrDestroyedHint": "This code has already been used and can no longer be checked in.",
   "appointmentServiceEnd": "Session Ended",
   "appointmentServiceEndDesc": "Your session time has been recorded. Hope to see you again!",
   "appointmentStore": "Store",

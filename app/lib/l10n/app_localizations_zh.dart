@@ -934,6 +934,12 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get appointmentQrDestroyed => '二维码已销毁';
+
+  @override
+  String get appointmentQrDestroyedHint => '该核销码已使用，无法再次核销';
+
+  @override
   String get appointmentServiceEnd => '体验结束';
 
   @override

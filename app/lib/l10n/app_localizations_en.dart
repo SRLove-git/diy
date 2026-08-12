@@ -960,6 +960,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get appointmentQrDestroyed => 'QR code destroyed';
+
+  @override
+  String get appointmentQrDestroyedHint =>
+      'This code has already been used and can no longer be checked in.';
+
+  @override
   String get appointmentServiceEnd => 'Session Ended';
 
   @override

@@ -497,6 +497,8 @@
       }
     }
   },
+  "appointmentQrDestroyed": "二维码已销毁",
+  "appointmentQrDestroyedHint": "该核销码已使用，无法再次核销",
   "appointmentServiceEnd": "体验结束",
   "appointmentServiceEndDesc": "已为您记录本次体验时长，欢迎再次光临",
   "appointmentStore": "门店",

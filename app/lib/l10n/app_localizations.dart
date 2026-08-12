@@ -1838,6 +1838,18 @@ abstract class AppLocalizations {
   /// **'有效期至 {time}'**
   String appointmentValidUntilAt(String time);
 
+  /// No description provided for @appointmentQrDestroyed.
+  ///
+  /// In zh, this message translates to:
+  /// **'二维码已销毁'**
+  String get appointmentQrDestroyed;
+
+  /// No description provided for @appointmentQrDestroyedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'该核销码已使用，无法再次核销'**
+  String get appointmentQrDestroyedHint;
+
   /// No description provided for @appointmentServiceEnd.
   ///
   /// In zh, this message translates to:
