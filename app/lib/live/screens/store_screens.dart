@@ -716,9 +716,18 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
 
   Widget _startTimeChips(Store store, int hours) {
     final opts = _startOptions(store, hours);
-    if (opts.isEmpty) return EmptyView(text: context.l10n.storeNoStartTimes);
+    if (opts.isEmpty) {
+      // 当前日期已无可预约的开始时间（如今天营业时段已过）：
+      // 清空残留的选择，避免带着已过时段继续进入选桌
+      if (_startTime != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _startTime = null);
+        });
+      }
+      return EmptyView(text: context.l10n.storeNoStartTimes);
+    }
     if (_startTime != null && !opts.contains(_startTime)) {
-      // 时长/套餐变化后同步重置为第一个可选开始时间
+      // 时长/套餐/日期变化后同步重置为第一个可选开始时间
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() => _startTime = opts.first);
       });
@@ -754,6 +763,15 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
     return list;
   }
 
+  /// 日期/时长变化后重新校验已选开始时间：
+  /// 若新条件下不可用则重置为第一个可选；无可选时清空。
+  void _syncStartTime(Store store, int hours) {
+    final opts = _startOptions(store, hours);
+    if (_startTime != null && !opts.contains(_startTime)) {
+      _startTime = opts.isEmpty ? null : opts.first;
+    }
+  }
+
   int _selectedHours(Store store) {
     if (_bookingType == 'package') return _package?.hours ?? 0;
     if (_bookingType == 'all_day') {
@@ -771,6 +789,8 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
     if (start == null) return null;
     final hours = _selectedHours(store);
     if (hours <= 0) return null;
+    // 兜底：已选开始时间不在当前日期可选项中（如已过时段）时视为未完成选择
+    if (!_startOptions(store, hours).contains(start)) return null;
     return (start, _addHours(start, hours));
   }
 
@@ -884,6 +904,9 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
             onTap: () {
               setState(() {
                 _date = d;
+                // 切换日期后按新日期重新校验开始时间，
+                // 避免「先选时间、后选日期」时带着已过时段继续选桌
+                _syncStartTime(store, _selectedHours(store));
               });
             },
             borderRadius: BorderRadius.circular(12),
