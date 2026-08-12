@@ -1232,6 +1232,12 @@ abstract class AppLocalizations {
   /// **'{days} 天有效期'**
   String memberPurchaseDays(int days);
 
+  /// No description provided for @memberPlanDuration.
+  ///
+  /// In zh, this message translates to:
+  /// **'{days} 天'**
+  String memberPlanDuration(int days);
+
   /// No description provided for @memberPayDetails.
   ///
   /// In zh, this message translates to:

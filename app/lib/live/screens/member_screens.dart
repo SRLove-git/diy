@@ -198,7 +198,9 @@ class _MemberCenterScreenState extends State<MemberCenterScreen> {
                       _SectionTitle(
                         title: l10n.memberOpenRenew,
                         more: data.membership.isActive
-                            ? l10n.memberCurrent(data.membership.levelName)
+                            ? l10n.memberCurrent(
+                                context.memberName(data.membership.levelName),
+                              )
                             : null,
                       ),
                       Row(
@@ -577,7 +579,9 @@ class _MembershipCardState extends State<_MembershipCard>
                                         const SizedBox(width: 4),
                                         Text(
                                           l10n.memberLevel(
-                                            membership.levelName,
+                                            context.memberName(
+                                              membership.levelName,
+                                            ),
                                           ),
                                           style: const TextStyle(
                                             fontSize: 13,
@@ -957,7 +961,7 @@ class _PlanCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    plan.name,
+                    context.memberName(plan.name),
                     style: const TextStyle(
                       fontSize: 13,
                       color: LiveColors.textSecondary,
@@ -975,7 +979,7 @@ class _PlanCard extends StatelessWidget {
                     child: Center(
                       child: Text(
                         plan.badge.isNotEmpty
-                            ? plan.badge
+                            ? context.memberName(plan.badge)
                             : l10n.memberRecommended,
                         style: const TextStyle(
                           fontSize: 10,
@@ -1012,7 +1016,7 @@ class _PlanCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '${plan.durationDays} 天',
+              l10n.memberPlanDuration(plan.durationDays),
               style: const TextStyle(
                 fontSize: 11,
                 color: LiveColors.textTertiary,
@@ -1075,7 +1079,7 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
     final l10n = context.l10n;
     if (_submitted) {
       return MemberOrderSubmittedView(
-        planName: widget.plan.name,
+        planName: context.memberName(widget.plan.name),
         durationDays: widget.plan.durationDays,
         onDone: () => Navigator.of(context).pop(true),
       );
@@ -1089,7 +1093,7 @@ class _MemberPurchaseScreenState extends State<MemberPurchaseScreen> {
               padding: const EdgeInsets.all(18),
               children: [
                 Text(
-                  widget.plan.name,
+                  context.memberName(widget.plan.name),
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,

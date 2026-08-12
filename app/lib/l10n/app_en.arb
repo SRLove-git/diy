@@ -189,6 +189,7 @@
   "memberPendingHint": "{count} membership application(s) pending store confirmation. Pay at the store and we will activate it for you",
   "memberPurchaseTitle": "Membership",
   "memberPurchaseDays": "{days}-day validity",
+  "memberPlanDuration": "{days} days",
   "memberPayDetails": "Payment Details",
   "memberOriginalPrice": "Original price",
   "memberDiscount": "Limited-time discount",

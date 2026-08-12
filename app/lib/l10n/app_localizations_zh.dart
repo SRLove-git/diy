@@ -597,6 +597,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String memberPlanDuration(int days) {
+    return '$days 天';
+  }
+
+  @override
   String get memberPayDetails => '支付明细';
 
   @override

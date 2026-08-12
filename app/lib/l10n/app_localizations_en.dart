@@ -609,6 +609,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String memberPlanDuration(int days) {
+    return '$days days';
+  }
+
+  @override
   String get memberPayDetails => 'Payment Details';
 
   @override
