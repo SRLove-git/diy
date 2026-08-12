@@ -2,7 +2,8 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { WsAdapter } from '@nestjs/platform-ws';
 import helmet from 'helmet';
 import express from 'express';
-import { join } from 'path';
+import { join, resolve } from 'path';
+import { uploadRoot } from './uploads/uploads.provider';
 
 /** 解析 CORS_ORIGINS（逗号分隔的白名单）；未配置返回 null */
 function corsOrigins(): string[] | null {
@@ -21,11 +22,10 @@ export function configureApp(app: INestApplication): void {
   // 聊天 WebSocket（原生 ws，与 HTTP 共用端口，路径 /ws）
   app.useWebSocketAdapter(new WsAdapter(app));
 
-  // 聊天图片等上传文件静态托管（UPLOAD_DIR 默认 uploads，相对进程工作目录）
-  app.use(
-    '/uploads',
-    express.static(join(process.cwd(), process.env.UPLOAD_DIR ?? 'uploads')),
-  );
+  // 聊天图片等上传文件静态托管（UPLOAD_DIR 支持相对与绝对路径，统一用 uploadRoot() 计算）
+  // 注意：path.join 遇绝对路径会拼出错误路径（如 /app/app/uploads），
+  // 导致上传的图片 URL 全部 404，必须用 resolve 处理绝对路径。
+  app.use('/uploads', express.static(resolve(process.cwd(), uploadRoot())));
   // 开发环境演示短视频与曲库音频（bootstrap 种子引用的真实资产）
   app.use(
     '/assets/demo',
