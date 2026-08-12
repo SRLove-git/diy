@@ -82,7 +82,10 @@ async function login() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f7f5f2;
+  background:
+    radial-gradient(1000px 500px at 20% -10%, rgba(232, 99, 58, 0.08), transparent 60%),
+    radial-gradient(800px 400px at 90% 110%, rgba(232, 99, 58, 0.06), transparent 60%),
+    var(--bg);
 }
 .lang-toggle {
   position: fixed;
@@ -90,57 +93,114 @@ async function login() {
   right: 18px;
   height: 34px;
   padding: 0 14px;
-  border: 1px solid #eceae6;
-  border-radius: 8px;
-  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--primary);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
+}
+.lang-toggle:hover {
+  background: var(--primary-weak);
+  border-color: transparent;
 }
 .login-card {
-  width: 360px;
-  background: #fff;
-  border-radius: 12px;
-  padding: 32px;
+  width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 36px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  gap: 14px;
+  box-shadow: var(--shadow-lg);
 }
 h1 {
-  font-size: 18px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   text-align: center;
-  margin: 0 0 12px;
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+h1::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--primary);
+  box-shadow: 0 0 12px rgba(232, 99, 58, 0.55);
 }
 input {
-  height: 44px;
-  border: 1px solid #eceae6;
-  border-radius: 10px;
-  padding: 0 12px;
+  height: 46px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0 14px;
   font-size: 15px;
+  background: var(--surface-muted);
+  transition:
+    border-color var(--duration) var(--ease),
+    background var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
+}
+input::placeholder {
+  color: var(--text-faint);
+}
+input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px rgba(232, 99, 58, 0.14);
 }
 button {
-  height: 44px;
+  height: 46px;
   border: none;
-  border-radius: 10px;
-  background: #e8633a;
+  border-radius: 12px;
+  background: var(--primary);
   color: #fff;
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   cursor: pointer;
+  box-shadow: 0 6px 16px rgba(232, 99, 58, 0.32);
+  transition:
+    background var(--duration) var(--ease),
+    transform var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
+}
+button:hover:not(:disabled) {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(232, 99, 58, 0.38);
+}
+button:active:not(:disabled) {
+  background: var(--primary-active);
+  transform: translateY(0);
+  box-shadow: 0 3px 10px rgba(232, 99, 58, 0.3);
 }
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 .error {
-  color: #d9453e;
+  color: var(--danger);
+  background: var(--danger-weak);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
   font-size: 13px;
   margin: 0;
 }
 .hint {
-  color: #8a8a8a;
+  color: var(--text-muted);
   font-size: 12px;
   text-align: center;
-  margin: 0;
+  margin: 2px 0 0;
 }
 </style>

@@ -16,8 +16,8 @@ function logout() {
 
 onMounted(() => {
   refreshPending()
-  // 每 30 秒静默刷新一次待处理计数，保持角标与通知中心同步
-  pendingTimer = window.setInterval(refreshPending, 30000)
+  // 每 5 秒静默刷新一次待处理计数，让角标接近即时同步
+  pendingTimer = window.setInterval(refreshPending, 5000)
 })
 
 onUnmounted(() => {
@@ -55,15 +55,6 @@ watch(() => route.path, refreshPending)
         <RouterLink v-if="auth.hasPermission('orders.manage')" to="/orders">
           <span>{{ $t('订单管理', 'Orders') }}</span>
           <span v-if="pending.appointments" class="badge">{{ badgeText(pending.appointments) }}</span>
-        </RouterLink>
-        <RouterLink v-if="auth.hasPermission('content.moderation')" to="/posts">
-          {{ $t('社区管理', 'Posts') }}
-        </RouterLink>
-        <RouterLink v-if="auth.hasPermission('content.moderation')" to="/videos">
-          {{ $t('视频管理', 'Videos') }}
-        </RouterLink>
-        <RouterLink v-if="auth.hasPermission('content.moderation')" to="/music">
-          {{ $t('曲库管理', 'Music') }}
         </RouterLink>
         <RouterLink v-if="auth.hasPermission('users.manage')" to="/users">
           {{ $t('用户管理', 'Users') }}
@@ -114,67 +105,120 @@ watch(() => route.path, refreshPending)
   min-height: 100vh;
 }
 aside {
-  width: 200px;
-  background: #2b2b2b;
+  width: 216px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #28221e 0%, #211c18 100%);
   color: #fff;
-  padding: 16px;
+  padding: 20px 14px;
 }
 .logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 24px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 20px;
+  padding: 0 8px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.logo::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--primary);
+  box-shadow: 0 0 10px rgba(232, 99, 58, 0.6);
+  flex-shrink: 0;
+}
+nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 nav a {
   display: block;
   position: relative;
-  color: #ddd;
+  color: #b3aaa1;
   text-decoration: none;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+nav a:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
 }
 nav a .badge {
   position: absolute;
-  right: 8px;
+  right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 6px;
   border-radius: 999px;
-  background: #d9453e;
+  background: var(--danger);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
-  line-height: 18px;
+  line-height: 19px;
   text-align: center;
   box-sizing: border-box;
+  font-variant-numeric: tabular-nums;
 }
 nav a.router-link-active {
-  background: #e8633a;
+  background: var(--primary);
   color: #fff;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(232, 99, 58, 0.38);
+}
+nav a.router-link-active .badge {
+  background: rgba(255, 255, 255, 0.24);
 }
 main {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
 header {
-  height: 52px;
+  height: 56px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
-  background: #fff;
-  border-bottom: 1px solid #eceae6;
-  font-size: 14px;
+  padding: 0 24px;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 header button {
-  border: 1px solid #eceae6;
-  background: #fff;
-  border-radius: 8px;
-  padding: 6px 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 7px 15px;
+  font-size: 13px;
   cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+header button:hover {
+  background: var(--surface-muted);
+  border-color: var(--border-strong);
 }
 .header-actions {
   display: flex;
@@ -183,9 +227,15 @@ header button {
 }
 .lang-btn {
   font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-weak);
+  border-color: transparent !important;
+}
+.lang-btn:hover {
+  background: #ffe4d6 !important;
 }
 .content {
-  padding: 20px;
+  padding: 24px;
   flex: 1;
 }
 </style>

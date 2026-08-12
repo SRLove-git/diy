@@ -69,6 +69,6 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   me(@CurrentUser() user: AuthUser) {
-    return this.users.findById(user.id);
+    return this.users.findSafeById(user.id);
   }
 }

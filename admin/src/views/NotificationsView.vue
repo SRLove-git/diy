@@ -416,72 +416,110 @@ onMounted(() => {
 <style scoped>
 .notifications { display: flex; flex-direction: column; gap: 16px; }
 .toolbar { display: flex; justify-content: space-between; align-items: center; }
-.toolbar h2 { margin: 0; font-size: 18px; }
+.toolbar h2 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: 0.01em; color: var(--text); }
 
-.tabs { display: flex; gap: 0; border-bottom: 2px solid #eceae6; }
+/* 标签页：下划线式，激活态品牌橙 */
+.tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); }
 .tab {
   padding: 10px 20px;
   border: none;
   background: none;
   font-size: 14px;
   cursor: pointer;
-  color: #8a8a8a;
+  color: var(--text-muted);
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
+  transition:
+    color var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
 }
+.tab:hover { color: var(--text); }
 .tab.active {
-  color: #e8633a;
-  border-bottom-color: #e8633a;
+  color: var(--primary);
+  border-bottom-color: var(--primary);
   font-weight: 600;
 }
 
-.state { text-align: center; padding: 40px; color: #8a8a8a; }
-.error { color: #d9453e; }
+.state { text-align: center; padding: 40px; color: var(--text-muted); }
+.error { color: var(--danger); }
 
+/* 表格：白卡片容器 + 柔和行 hover */
 .table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  font-variant-numeric: tabular-nums;
 }
 .table th, .table td {
-  padding: 10px 8px;
-  border-bottom: 1px solid #eceae6;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: middle;
 }
 .table th {
-  background: #f7f5f2;
-  font-weight: 600;
-  color: #2b2b2b;
-}
-
-.tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 6px;
+  background: var(--surface-muted);
   font-size: 12px;
   font-weight: 600;
-  background: #f4f4f5;
-  color: #909399;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
 }
-.tag-normal { background: #f0f9eb; color: #2E9E5B; }
-.tag-banned { background: #fef0f0; color: #D9453E; }
+.table thead th:first-child { border-top-left-radius: calc(var(--radius) - 1px); }
+.table thead th:last-child { border-top-right-radius: calc(var(--radius) - 1px); }
+.table tbody tr { transition: background var(--duration) var(--ease); }
+.table tbody tr:hover { background: var(--surface-muted); }
+.table tbody tr:last-child td { border-bottom: none; }
+.table tbody tr:last-child td:first-child { border-bottom-left-radius: calc(var(--radius) - 1px); }
+.table tbody tr:last-child td:last-child { border-bottom-right-radius: calc(var(--radius) - 1px); }
+
+/* 胶囊标签：浅底 + 饱和色文字 */
+.tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.tag-normal { background: var(--success-weak); color: var(--success); border-color: transparent; }
+.tag-banned { background: var(--danger-weak); color: var(--danger); border-color: transparent; }
 
 .actions { white-space: nowrap; }
 
+/* 按钮：主按钮品牌橙实色，配 hover/active 微交互 */
 .btn {
-  background: #e8633a;
+  background: var(--primary);
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 8px 16px;
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease),
+    border-color var(--duration) var(--ease),
+    transform var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
 }
+.btn:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); }
+.btn:active:not(:disabled) { background: var(--primary-active); transform: translateY(0); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .btn-sm { padding: 4px 10px; font-size: 12px; margin-right: 4px; }
-.btn-danger { background: #d9453e; }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* 危险按钮：浅红软风格，hover 转实色 */
+.btn-danger { background: var(--danger-weak); color: var(--danger); }
+.btn-danger:hover:not(:disabled),
+.btn-danger:active:not(:disabled) { background: var(--danger); color: #fff; }
+
+/* 分页：幽灵按钮 + 数字等宽 */
 .pagination {
   display: flex;
   align-items: center;
@@ -489,47 +527,86 @@ onMounted(() => {
   gap: 12px;
   padding: 8px 0;
 }
-.page-info { font-size: 13px; color: #8a8a8a; }
+.pagination .btn {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.pagination .btn:hover:not(:disabled),
+.pagination .btn:active:not(:disabled) {
+  background: var(--surface-muted);
+  border-color: var(--border-strong);
+}
+.page-info { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
 /* 弹窗 */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(41, 32, 24, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
 }
 .modal {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   padding: 24px;
   width: 400px;
   max-width: 90vw;
 }
 .modal-wide { width: 560px; }
-.modal h3 { margin: 0 0 16px; font-size: 16px; }
+.modal h3 { margin: 0 0 16px; font-size: 16px; font-weight: 600; }
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
 }
+/* 弹窗内的取消按钮用幽灵风格 */
+.modal-actions .btn:first-child {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.modal-actions .btn:first-child:hover:not(:disabled),
+.modal-actions .btn:first-child:active:not(:disabled) {
+  background: var(--surface-muted);
+  border-color: var(--border-strong);
+}
 
 /* 表单 */
 .form { display: flex; flex-direction: column; gap: 8px; }
-.form label { font-size: 13px; font-weight: 600; color: #2b2b2b; }
+.form label { font-size: 13px; font-weight: 600; color: var(--text); }
 .form input,
 .form select,
 .form textarea {
   padding: 8px 12px;
-  border: 1px solid #eceae6;
-  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 13px;
   width: 100%;
+  background: var(--surface);
+  transition:
+    border-color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
 }
+.form input,
+.form select { height: 38px; padding: 0 12px; }
 .form textarea { resize: vertical; }
+.form input::placeholder,
+.form textarea::placeholder { color: var(--text-faint); }
+.form input:focus,
+.form select:focus,
+.form textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(232, 99, 58, 0.14);
+}
 .channels { display: flex; gap: 16px; }
 .cb { display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer; }
+.cb input { accent-color: var(--primary); cursor: pointer; }
 </style>

@@ -589,6 +589,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get memberPendingOnce => '您已提交会员开通申请，待门店确认后可再次申请';
+
+  @override
   String get memberPurchaseTitle => '开通会员';
 
   @override

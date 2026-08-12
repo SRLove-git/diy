@@ -181,58 +181,94 @@ const maxVal = computed(() => {
 <style scoped>
 .dashboard { display: flex; flex-direction: column; gap: 20px; }
 .toolbar { display: flex; justify-content: space-between; align-items: center; }
-.toolbar h2 { margin: 0; font-size: 18px; }
+.toolbar h2 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: 0.01em; color: var(--text); }
 
-.state { text-align: center; padding: 40px; color: #8a8a8a; }
-.error { color: #d9453e; }
+.state { text-align: center; padding: 40px; color: var(--text-muted); }
+.error { color: var(--danger); }
+.state.error { background: var(--danger-weak); border-radius: var(--radius-sm); }
 
+/* 幽灵按钮：白底细边，hover 转浅灰底 */
 .btn {
-  background: #e8633a;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
   padding: 8px 16px;
   font-size: 13px;
   cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease),
+    color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
 }
+.btn:hover:not(:disabled) { background: var(--surface-muted); border-color: var(--border-strong); }
+.btn:active:not(:disabled) { background: var(--border); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-sm { padding: 4px 10px; font-size: 12px; }
 
-/* 卡片 */
+/* 指标卡片 */
 .cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
 .card {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: var(--shadow-sm);
 }
-.card-label { font-size: 13px; color: #8a8a8a; margin-bottom: 8px; }
-.card-value { font-size: 28px; font-weight: 700; color: #2b2b2b; margin-bottom: 4px; }
-.card-sub { font-size: 12px; color: #8a8a8a; }
+.card-label { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+.card-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.card-sub { font-size: 12px; color: var(--text-muted); }
 
-/* 图表 */
+/* 图表区块 */
+.chart-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
 .chart-section h3 {
   font-size: 15px;
+  font-weight: 600;
   margin: 0 0 12px;
-  color: #2b2b2b;
+  color: var(--text);
 }
 .table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 .table th, .table td {
-  padding: 8px;
-  border-bottom: 1px solid #eceae6;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
   text-align: center;
 }
 .table th {
-  background: #f7f5f2;
+  background: var(--surface-muted);
+  color: var(--text-muted);
   font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.03em;
 }
+.table th:first-child { border-top-left-radius: var(--radius-sm); }
+.table th:last-child { border-top-right-radius: var(--radius-sm); }
+.table tbody tr { transition: background var(--duration) var(--ease); }
+.table tbody tr:hover { background: var(--surface-muted); }
+.table tbody tr:last-child td { border-bottom: none; }
 
 /* 柱状图 */
 .bar-chart {
@@ -249,7 +285,10 @@ const maxVal = computed(() => {
   align-items: center;
   height: 100%;
   gap: 6px;
+  border-radius: var(--radius-sm);
+  transition: background var(--duration) var(--ease);
 }
+.bar-col:hover { background: var(--surface-muted); }
 .bar-group {
   flex: 1;
   width: 100%;
@@ -260,16 +299,16 @@ const maxVal = computed(() => {
 }
 .bar {
   width: 14px;
-  border-radius: 3px 3px 0 0;
+  border-radius: 4px 4px 0 0;
   min-height: 3px;
-  transition: height 0.3s;
+  transition: height 0.3s var(--ease);
 }
-.bar-u { background: #42a5f5; }
-.bar-a { background: #e8633a; }
-.bar-p { background: #66bb6a; }
+.bar-u { background: var(--info); }
+.bar-a { background: var(--primary); }
+.bar-p { background: var(--success); }
 .bar-label {
   font-size: 11px;
-  color: #8a8a8a;
+  color: var(--text-muted);
   margin-top: 4px;
 }
 
@@ -284,30 +323,24 @@ const maxVal = computed(() => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #8a8a8a;
+  color: var(--text-muted);
 }
 .dot {
   width: 10px;
   height: 10px;
-  border-radius: 2px;
+  border-radius: 3px;
   display: inline-block;
 }
-.dot-u { background: #42a5f5; }
-.dot-a { background: #e8633a; }
-.dot-p { background: #66bb6a; }
+.dot-u { background: var(--info); }
+.dot-a { background: var(--primary); }
+.dot-p { background: var(--success); }
 
-.chart-section {
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-}
-
-/* 待办 */
+/* 待办卡片（可点击，hover 轻微上浮） */
 .todo-section h3 {
   font-size: 15px;
+  font-weight: 600;
   margin: 0 0 12px;
-  color: #2b2b2b;
+  color: var(--text);
 }
 .todo-cards {
   display: grid;
@@ -318,22 +351,31 @@ const maxVal = computed(() => {
   display: flex;
   align-items: center;
   gap: 14px;
-  background: #fff;
-  border: 1px solid #f0eeea;
-  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   padding: 16px 20px;
   text-decoration: none;
-  transition: box-shadow 0.2s;
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
 }
-.todo-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
+.todo-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+  border-color: var(--border-strong);
+}
 .todo-num {
   font-size: 26px;
   font-weight: 700;
-  color: #e8633a;
+  color: var(--primary);
   min-width: 40px;
+  font-variant-numeric: tabular-nums;
 }
-.todo-label { font-size: 13px; color: #8a8a8a; }
+.todo-label { font-size: 13px; color: var(--text-muted); }
 
-.bar-v { background: #ab47bc; }
-.dot-v { background: #ab47bc; }
+.bar-v { background: var(--purple); }
+.dot-v { background: var(--purple); }
 </style>

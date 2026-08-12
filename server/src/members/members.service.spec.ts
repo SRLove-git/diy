@@ -15,10 +15,17 @@ function buildService() {
     create: jest.fn(),
     save: jest.fn(),
     find: jest.fn(),
+    findOne: jest.fn(),
     findOneBy: jest.fn(),
     findAndCount: jest.fn(),
   };
-  const dataSource = {};
+  const dataSource = {
+    transaction: jest.fn((cb: (manager: unknown) => Promise<unknown>) =>
+      cb({
+        getRepository: jest.fn(() => orders),
+      }),
+    ),
+  };
   const users = { findByKeyword: jest.fn(), findByIds: jest.fn() };
   const svc = new MembersService(
     plans as never,
@@ -63,6 +70,26 @@ describe('MembersService', () => {
       m.plans.findOneBy.mockResolvedValue(null);
 
       await expect(m.svc.purchase(7, 999)).rejects.toThrow(NotFoundException);
+    });
+
+    it('已有待确认申请时拒绝再次提交（开通/续费同一规则）', async () => {
+      const m = buildService();
+      m.plans.findOneBy.mockResolvedValue({
+        id: 1,
+        name: '月卡会员',
+        durationDays: 30,
+        price: '19.90',
+        enabled: true,
+      });
+      m.orders.findOne.mockResolvedValue({
+        id: 9,
+        userId: 7,
+        status: 'pending',
+      });
+
+      await expect(m.svc.purchase(7, 1)).rejects.toThrow(BadRequestException);
+      expect(m.orders.create).not.toHaveBeenCalled();
+      expect(m.orders.save).not.toHaveBeenCalled();
     });
   });
 

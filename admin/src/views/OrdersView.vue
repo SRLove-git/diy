@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import jsQR from 'jsqr'
 import { appointmentApi, type Appointment } from '../api/appointments'
 import { storeApi, type Store } from '../api/stores'
+import { refreshPending } from '../stores/pending'
 import { t } from '../i18n'
 
 const orders = ref<Appointment[]>([])
@@ -156,6 +157,7 @@ async function operate(
     if (action === 'clockin') await appointmentApi.clockIn(order.id)
     if (action === 'clockout') await appointmentApi.clockOut(order.id)
     await load()
+    await refreshPending()
   } catch (e: any) {
     alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   } finally {
@@ -284,6 +286,7 @@ async function confirmCancel() {
     await appointmentApi.adminCancel(cancelTarget.value.id)
     cancelTarget.value = null
     await load()
+    await refreshPending()
   } catch (e: any) {
     alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   } finally {
@@ -439,7 +442,7 @@ onUnmounted(() => {
           </td>
           <td>{{ o.storeName }}</td>
           <td>
-            <span v-if="o.type === 'activity'" class="tag" style="color: #e8633a; border-color: #f3c6b6">
+            <span v-if="o.type === 'activity'" class="tag tag-activity">
               {{ $t('活动', 'Activity') }}
             </span>
             <span v-else>{{ tableLabel(o) }}</span>
@@ -640,60 +643,92 @@ onUnmounted(() => {
 <style scoped>
 .orders { display: flex; flex-direction: column; gap: 16px; }
 .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.toolbar h2 { margin: 0; font-size: 18px; }
-.filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.toolbar h2 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: 0.01em; }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .filters select, .filters input {
-  padding: 6px 12px;
-  border: 1px solid #eceae6;
-  border-radius: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
+  transition:
+    border-color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
 }
-.filters .auto-hint {
-  align-self: center;
-  font-size: 12px;
+.filters select:hover, .filters input:hover { border-color: var(--border-strong); }
+.filters select:focus, .filters input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(232, 99, 58, 0.14);
 }
+.filters input::placeholder { color: var(--text-faint); }
+.filters .auto-hint { font-size: 12px; }
 .filters .code-search {
   width: 90px;
   letter-spacing: 1px;
+  font-variant-numeric: tabular-nums;
 }
 .filters .checkin-entry {
   padding: 9px 22px;
   font-size: 14px;
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(46, 158, 91, 0.35);
+  box-shadow: 0 4px 12px rgba(46, 158, 91, 0.24);
+}
+.filters .checkin-entry:hover:not(:disabled) {
+  box-shadow: 0 6px 16px rgba(46, 158, 91, 0.3);
 }
 .filters .scan-entry {
   padding: 9px 18px;
   font-size: 14px;
   font-weight: 600;
 }
-.state { text-align: center; padding: 40px; color: #8a8a8a; }
-.error { color: #d9453e; }
+.state { text-align: center; padding: 40px; color: var(--text-muted); }
+.error { color: var(--danger); }
 .table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 .table th, .table td {
-  padding: 10px 8px;
-  border-bottom: 1px solid #eceae6;
+  padding: 10px 10px;
+  border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: middle;
 }
+.table th:first-child, .table td:first-child { padding-left: 16px; }
+.table th:last-child, .table td:last-child { padding-right: 16px; }
+.table tbody tr { transition: background var(--duration) var(--ease); }
+.table tbody tr:hover { background: var(--surface-muted); }
+.table tbody tr:last-child td { border-bottom: none; }
 .table th {
-  background: #f7f5f2;
-  font-weight: 600;
-  color: #2b2b2b;
-}
-.table code {
-  background: #f7f5f2;
-  padding: 2px 6px;
-  border-radius: 4px;
+  background: var(--surface-muted);
   font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.table td { font-variant-numeric: tabular-nums; }
+.table code {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 .user-cell { display: flex; flex-direction: column; }
 .nickname { font-weight: 500; }
-.sub { font-size: 11px; color: #8a8a8a; }
+.sub { font-size: 11px; color: var(--text-muted); }
 .note-cell { max-width: 120px; }
 .note {
   display: inline-block;
@@ -702,31 +737,63 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: middle;
+  color: var(--text-muted);
 }
 .tag {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 2px 10px;
   border: 1px solid;
-  border-radius: 6px;
+  border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
+.tag-activity { background: var(--primary-weak); color: var(--primary); border-color: transparent; }
 .btn {
-  background: #e8633a;
+  background: var(--primary);
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 8px 16px;
   font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition:
+    background var(--duration) var(--ease),
+    transform var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease),
+    filter var(--duration) var(--ease);
+}
+.btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+.btn:active:not(:disabled) {
+  background: var(--primary-active);
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
 }
 .btn-sm { padding: 4px 10px; font-size: 12px; margin-right: 4px; }
-.btn-success { background: #2e9e5b; }
-.btn-danger { background: #d9453e; }
-.btn-cancel { background: #fff; color: #d9453e; border: 1px solid #f3d0cd; }
-.btn:disabled { opacity: 0.55; cursor: not-allowed; }
-.muted { color: #8a8a8a; }
+.btn-success { background: var(--success); }
+.btn-success:hover:not(:disabled) { background: var(--success); filter: brightness(1.07); }
+.btn-success:active:not(:disabled) { background: var(--success); filter: brightness(0.94); }
+.btn-danger { background: var(--danger); }
+.btn-danger:hover:not(:disabled) { background: var(--danger); filter: brightness(1.07); }
+.btn-danger:active:not(:disabled) { background: var(--danger); filter: brightness(0.94); }
+.btn-cancel {
+  background: var(--surface);
+  color: var(--danger);
+  border: 1px solid rgba(217, 69, 62, 0.3);
+  box-shadow: none;
+}
+.btn-cancel:hover:not(:disabled) {
+  background: var(--danger-weak);
+  border-color: rgba(217, 69, 62, 0.45);
+}
+.btn:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+.muted { color: var(--text-muted); }
 .actions { white-space: nowrap; }
 .pagination {
   display: flex;
@@ -735,50 +802,69 @@ onUnmounted(() => {
   gap: 12px;
   padding: 8px 0;
 }
-.page-info { font-size: 13px; color: #8a8a8a; }
+.page-info { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(41, 32, 24, 0.4);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
 }
 .modal {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   padding: 24px;
   width: 400px;
   max-width: 90vw;
+  animation: modal-in var(--duration) var(--ease);
 }
-.modal h3 { margin: 0 0 16px; font-size: 16px; }
-.modal-desc { margin: 0 0 8px; font-size: 13px; color: #555; }
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.modal h3 { margin: 0 0 16px; font-size: 15px; font-weight: 600; }
+.modal-desc { margin: 0 0 8px; font-size: 13px; color: var(--text-muted); }
 .checkin-modal .checkin-input {
   width: 100%;
   height: 56px;
   margin: 12px 0 4px;
-  border: 2px solid #2e9e5b;
-  border-radius: 12px;
+  border: 2px solid var(--success);
+  border-radius: var(--radius);
+  background: var(--surface-muted);
   text-align: center;
   font-size: 26px;
   font-weight: 700;
   letter-spacing: 10px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
   outline: none;
+  transition:
+    border-color var(--duration) var(--ease),
+    background var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
 }
 .checkin-modal .checkin-input:focus {
-  box-shadow: 0 0 0 3px rgba(46, 158, 91, 0.18);
+  background: var(--surface);
+  box-shadow: 0 0 0 4px rgba(46, 158, 91, 0.14);
 }
 .checkin-modal .checkin-error {
-  margin: 6px 0 0;
-  color: #d9453e;
+  margin: 8px 0 0;
+  color: var(--danger);
+  background: var(--danger-weak);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
   font-size: 13px;
 }
 .scan-modal .scan-box {
   position: relative;
   margin: 12px 0 10px;
-  border-radius: 12px;
+  border-radius: var(--radius);
   overflow: hidden;
   background: #141414;
   aspect-ratio: 1;
@@ -811,6 +897,13 @@ onUnmounted(() => {
   justify-content: center;
   gap: 8px;
   font-size: 13px;
+}
+.result-info {
+  margin-top: 4px;
+  padding: 10px 14px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 .result-info p {
   display: flex;

@@ -1,13 +1,52 @@
+/* Think Origin 管理后台 · 全局设计 Token 体系
+   暖调纸感中性色 + 品牌橙强调，所有视图共用。 */
 :root {
+  /* 品牌色 */
   --primary: #e8633a;
+  --primary-hover: #f0734c;
+  --primary-active: #d4552c;
   --primary-weak: #fff0e8;
+  --primary-softer: #fff8f3;
+
+  /* 中性色（暖灰阶） */
   --bg: #f7f5f2;
-  --text: #2b2b2b;
-  --text-muted: #8a8a8a;
-  --border: #eceae6;
+  --surface: #ffffff;
+  --surface-muted: #faf8f5;
+  --text: #292421;
+  --text-muted: #8a837c;
+  --text-faint: #b8b0a8;
+  --border: #ede9e3;
+  --border-strong: #ddd6cd;
+
+  /* 语义色（文字/图标用饱和色 + 浅色底配对） */
   --danger: #d9453e;
-  --radius: 10px;
-  --shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --danger-weak: #fdecea;
+  --success: #2e9e5b;
+  --success-weak: #e9f5ee;
+  --warning: #b97e1e;
+  --warning-weak: #fdf3e1;
+  --info: #3d7bd6;
+  --info-weak: #ecf2fc;
+  --purple: #7c5cd6;
+  --purple-weak: #f1edfc;
+
+  /* 圆角 */
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+
+  /* 阴影（暖色基底，低透明度分层） */
+  --shadow-sm: 0 1px 2px rgba(41, 32, 24, 0.05);
+  --shadow:
+    0 1px 2px rgba(41, 32, 24, 0.04),
+    0 4px 16px rgba(41, 32, 24, 0.06);
+  --shadow-lg:
+    0 2px 6px rgba(41, 32, 24, 0.05),
+    0 16px 40px rgba(41, 32, 24, 0.1);
+
+  /* 动效 */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --duration: 160ms;
 }
 
 * {
@@ -30,9 +69,11 @@ body {
     'Microsoft YaHei',
     sans-serif;
   font-size: 14px;
+  line-height: 1.5;
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 h1,
@@ -52,4 +93,31 @@ select,
 textarea {
   font-family: inherit;
   font-size: 14px;
+  color: var(--text);
+}
+
+::selection {
+  background: rgba(232, 99, 58, 0.18);
+}
+
+/* 统一焦点环：仅键盘聚焦时显示，兼顾无障碍与视觉干净 */
+:focus-visible {
+  outline: 2px solid rgba(232, 99, 58, 0.55);
+  outline-offset: 2px;
+}
+
+/* 细滚动条，融入暖调底色 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(41, 32, 24, 0.16);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(41, 32, 24, 0.28);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }

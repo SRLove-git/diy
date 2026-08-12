@@ -155,14 +155,28 @@ export class MembersService implements OnModuleInit {
     if (!plan) throw new NotFoundException('套餐不存在或已下架');
     // 线上下单、到店支付：只生成待确认申请，不直接激活会员；
     // 管理端确认（收款后）才真正开通/顺延会员期。
-    const order = this.orders.create({
-      userId,
-      planId: plan.id,
-      planName: plan.name,
-      durationDays: plan.durationDays,
-      amount: Number(plan.price),
+    return this.dataSource.transaction(async (manager) => {
+      const orders = manager.getRepository(MemberOrder);
+      // 限制：一个用户同一时间只能有一笔待确认申请；
+      // 门店确认（或取消）后没有待确认申请，才允许再次提交开通/续费。
+      const pending = await orders.findOne({
+        where: { userId, status: 'pending' },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (pending) {
+        throw new BadRequestException(
+          '您已提交会员开通申请，待门店确认后可再次申请',
+        );
+      }
+      const order = orders.create({
+        userId,
+        planId: plan.id,
+        planName: plan.name,
+        durationDays: plan.durationDays,
+        amount: Number(plan.price),
+      });
+      return orders.save(order);
     });
-    return this.orders.save(order);
   }
 
   /** 我的开通申请列表 */

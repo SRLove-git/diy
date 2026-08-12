@@ -320,32 +320,62 @@ onMounted(load)
 <style scoped>
 .videos { display: flex; flex-direction: column; gap: 16px; }
 .toolbar { display: flex; justify-content: space-between; align-items: center; }
-.toolbar h2 { margin: 0; font-size: 18px; }
+.toolbar h2 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: 0.01em; color: var(--text); }
 .filters { display: flex; gap: 8px; }
 .filters select {
-  padding: 6px 12px;
-  border: 1px solid #eceae6;
-  border-radius: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    border-color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
 }
-.state { text-align: center; padding: 40px; color: #8a8a8a; }
-.error { color: #d9453e; }
+.filters select:hover { border-color: var(--border-strong); }
+.filters select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(232, 99, 58, 0.14);
+}
+.state { text-align: center; padding: 40px; color: var(--text-muted); }
+.error { color: var(--danger); }
+
+/* 表格：白卡片容器 + 柔和行 hover */
 .table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  font-variant-numeric: tabular-nums;
 }
 .table th, .table td {
-  padding: 10px 8px;
-  border-bottom: 1px solid #eceae6;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: middle;
 }
 .table th {
-  background: #f7f5f2;
+  background: var(--surface-muted);
+  font-size: 12px;
   font-weight: 600;
-  color: #2b2b2b;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
 }
+.table thead th:first-child { border-top-left-radius: calc(var(--radius) - 1px); }
+.table thead th:last-child { border-top-right-radius: calc(var(--radius) - 1px); }
+.table tbody tr { transition: background var(--duration) var(--ease); }
+.table tbody tr:hover { background: var(--surface-muted); }
+.table tbody tr:last-child td { border-bottom: none; }
+.table tbody tr:last-child td:first-child { border-bottom-left-radius: calc(var(--radius) - 1px); }
+.table tbody tr:last-child td:last-child { border-bottom-right-radius: calc(var(--radius) - 1px); }
 .content-cell { max-width: 180px; }
 .text-ellipsis {
   display: inline-block;
@@ -359,79 +389,143 @@ onMounted(load)
   width: 48px;
   height: 48px;
   object-fit: cover;
-  border-radius: 6px;
-  border: 1px solid #eceae6;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
 }
+
+/* 话题标签：品牌橙浅底胶囊 */
 .tag {
   display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
   font-size: 11px;
-  color: #e8633a;
+  font-weight: 500;
+  color: var(--primary);
+  background: var(--primary-weak);
   margin-right: 4px;
 }
+
+/* 状态标签：颜色由模板内联绑定，底色用 currentColor 调出同色系浅底 */
 .status-tag {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 2px 10px;
   border: 1px solid;
-  border-radius: 6px;
+  border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+  background: color-mix(in srgb, currentColor 10%, transparent);
 }
 .reject-reason {
   font-size: 12px;
-  color: #d9453e;
+  color: var(--danger);
 }
+
+/* 按钮：主按钮品牌橙实色，配 hover/active 微交互 */
 .btn {
-  background: #e8633a;
+  background: var(--primary);
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 8px 16px;
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease),
+    border-color var(--duration) var(--ease),
+    transform var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
 }
+.btn:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); }
+.btn:active:not(:disabled) { background: var(--primary-active); transform: translateY(0); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .btn-sm { padding: 4px 10px; font-size: 12px; margin-right: 4px; }
-.btn-success { background: #2e9e5b; }
-.btn-danger { background: #d9453e; }
-.btn-delete { background: #fff; color: #d9453e; border: 1px solid #f3d0cd; }
-.muted { color: #8a8a8a; }
+
+/* 通过/上架：浅绿软风格，hover 转实色 */
+.btn-success { background: var(--success-weak); color: var(--success); }
+.btn-success:hover:not(:disabled),
+.btn-success:active:not(:disabled) { background: var(--success); color: #fff; }
+
+/* 驳回/下架：浅红软风格，hover 转实色 */
+.btn-danger { background: var(--danger-weak); color: var(--danger); }
+.btn-danger:hover:not(:disabled),
+.btn-danger:active:not(:disabled) { background: var(--danger); color: #fff; }
+
+/* 永久删除：幽灵红，hover 浅红底 */
+.btn-delete {
+  background: var(--surface);
+  color: var(--danger);
+  border: 1px solid rgba(217, 69, 62, 0.28);
+}
+.btn-delete:hover:not(:disabled),
+.btn-delete:active:not(:disabled) {
+  background: var(--danger-weak);
+  border-color: var(--danger);
+}
+.muted { color: var(--text-muted); }
 .actions { white-space: nowrap; }
 
+/* 弹窗 */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(41, 32, 24, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
 }
 .modal {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   padding: 24px;
   width: 400px;
   max-width: 90vw;
 }
-.modal h3 { margin: 0 0 16px; font-size: 16px; }
+.modal h3 { margin: 0 0 16px; font-size: 16px; font-weight: 600; }
 .modal textarea {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #eceae6;
-  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 13px;
   resize: vertical;
   box-sizing: border-box;
+  background: var(--surface);
+  transition:
+    border-color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
+}
+.modal textarea::placeholder { color: var(--text-faint); }
+.modal textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(232, 99, 58, 0.14);
 }
 .modal-tip {
   margin: 0 0 8px;
   font-size: 13px;
-  color: #555;
+  color: var(--text-muted);
 }
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+}
+/* 弹窗内的取消按钮用幽灵风格 */
+.modal-actions .btn:first-child {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.modal-actions .btn:first-child:hover:not(:disabled),
+.modal-actions .btn:first-child:active:not(:disabled) {
+  background: var(--surface-muted);
+  border-color: var(--border-strong);
 }
 </style>

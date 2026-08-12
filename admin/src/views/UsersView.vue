@@ -245,68 +245,114 @@ onMounted(load)
 <style scoped>
 .users { display: flex; flex-direction: column; gap: 16px; }
 .toolbar { display: flex; justify-content: space-between; align-items: center; }
-.toolbar h2 { margin: 0; font-size: 18px; }
+.toolbar h2 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: 0.01em; color: var(--text); }
 .filters { display: flex; gap: 8px; }
 .filters input {
-  padding: 6px 12px;
-  border: 1px solid #eceae6;
-  border-radius: 8px;
-  font-size: 13px;
+  height: 36px;
   width: 180px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
+  transition:
+    border-color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
 }
-.state { text-align: center; padding: 40px; color: #8a8a8a; }
-.error { color: #d9453e; }
+.filters input::placeholder { color: var(--text-faint); }
+.filters input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(232, 99, 58, 0.14);
+}
+.state { text-align: center; padding: 40px; color: var(--text-muted); }
+.error { color: var(--danger); }
+.state.error { background: var(--danger-weak); border-radius: var(--radius-sm); }
+
+/* 表格卡片 */
 .table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  font-variant-numeric: tabular-nums;
 }
 .table th, .table td {
   padding: 10px 8px;
-  border-bottom: 1px solid #eceae6;
+  border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: middle;
 }
 .table th {
-  background: #f7f5f2;
+  background: var(--surface-muted);
+  color: var(--text-muted);
   font-weight: 600;
-  color: #2b2b2b;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
 }
+.table tbody tr { transition: background var(--duration) var(--ease); }
+.table tbody tr:hover { background: var(--surface-muted); }
+.table tbody tr:last-child td { border-bottom: none; }
+
+/* 胶囊标签：浅色底 + 饱和色文字的软风格 */
 .tag {
   display: inline-block;
-  padding: 2px 8px;
-  border-radius: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+  border: 1px solid transparent;
 }
-.tag-role-admin { background: #fdf6ec; color: #E6A23C; border: 1px solid #f5dab1; }
-.tag-role-user { background: #f4f4f5; color: #909399; border: 1px solid #d4d4d8; }
-.tag-banned { background: #fef0f0; color: #D9453E; border: 1px solid #fbc4c4; }
-.tag-normal { background: #f0f9eb; color: #2E9E5B; border: 1px solid #c2e7b0; }
+.tag-role-admin { background: var(--primary-weak); color: var(--primary); }
+.tag-role-user { background: var(--surface-muted); color: var(--text-muted); border-color: var(--border); }
+.tag-banned { background: var(--danger-weak); color: var(--danger); }
+.tag-normal { background: var(--success-weak); color: var(--success); }
 .avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid #eceae6;
+  border: 1px solid var(--border);
   display: block;
 }
+
+/* 按钮：默认幽灵风格；危险 / 成功为浅底软风格，hover 转实色 */
 .btn {
-  background: #e8633a;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
   padding: 8px 16px;
   font-size: 13px;
   cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease),
+    color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
 }
+.btn:hover:not(:disabled) { background: var(--surface-muted); border-color: var(--border-strong); }
+.btn:active:not(:disabled) { background: var(--border); }
 .btn-sm { padding: 4px 10px; font-size: 12px; margin-right: 4px; }
-.btn-success { background: #2e9e5b; }
-.btn-danger { background: #d9453e; }
-.btn-works { background: #fff; color: #d9453e; border: 1px solid #f3d0cd; }
+.btn-success { background: var(--success-weak); color: var(--success); border-color: transparent; }
+.btn-success:hover:not(:disabled) { background: var(--success); color: #fff; box-shadow: 0 4px 12px rgba(46, 158, 91, 0.28); }
+.btn-success:active:not(:disabled) { background: var(--success); color: #fff; box-shadow: none; }
+.btn-danger { background: var(--danger-weak); color: var(--danger); border-color: transparent; }
+.btn-danger:hover:not(:disabled) { background: var(--danger); color: #fff; box-shadow: 0 4px 12px rgba(217, 69, 62, 0.28); }
+.btn-danger:active:not(:disabled) { background: var(--danger); color: #fff; box-shadow: none; }
+.btn-works { background: var(--surface); color: var(--danger); border-color: var(--danger-weak); }
+.btn-works:hover:not(:disabled) { background: var(--danger-weak); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.muted { color: #8a8a8a; }
+.muted { color: var(--text-muted); }
 .actions { white-space: nowrap; }
 .pagination {
   display: flex;
@@ -315,27 +361,37 @@ onMounted(load)
   gap: 12px;
   padding: 8px 0;
 }
-.page-info { font-size: 13px; color: #8a8a8a; }
+.page-info { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
+/* 弹窗 */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(41, 32, 24, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
 }
 .modal {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
   padding: 24px;
   width: 400px;
   max-width: 90vw;
+  box-shadow: var(--shadow-lg);
 }
-.modal h3 { margin: 0 0 16px; font-size: 16px; }
-.modal-desc { font-size: 13px; color: #8a8a8a; margin: 0 0 8px; }
-.modal-user { font-size: 14px; font-weight: 600; margin: 0 0 16px; }
+.modal h3 { margin: 0 0 16px; font-size: 16px; font-weight: 600; color: var(--text); }
+.modal-desc { font-size: 13px; color: var(--text-muted); margin: 0 0 8px; }
+.modal-user {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
 .modal-actions {
   display: flex;
   justify-content: flex-end;

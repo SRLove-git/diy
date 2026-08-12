@@ -14,7 +14,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   async updateMe(@CurrentUser() user: AuthUser, @Body() dto: UpdateProfileDto) {
     await this.users.updateProfile(user.id, dto);
-    return this.users.findById(user.id);
+    return this.users.findSafeById(user.id);
   }
 
   /** 按用户名搜索用户（添加好友/社区找人） */

@@ -601,6 +601,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get memberPendingOnce =>
+      'You already have a pending application. Wait for the store to confirm before applying again';
+
+  @override
   String get memberPurchaseTitle => 'Membership';
 
   @override

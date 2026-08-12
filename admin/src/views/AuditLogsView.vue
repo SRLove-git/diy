@@ -179,25 +179,74 @@ onMounted(async () => {
 <style scoped>
 .audit { display: flex; flex-direction: column; gap: 16px; }
 .toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-.toolbar h2 { margin: 0; font-size: 18px; }
+.toolbar h2 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: 0.01em; color: var(--text); }
 .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .filters input, .filters select {
-  padding: 6px 10px;
-  border: 1px solid #eceae6;
-  border-radius: 8px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
+  transition:
+    border-color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
 }
 .filters input { width: 160px; }
+.filters input::placeholder { color: var(--text-faint); }
+.filters input:focus, .filters select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(232, 99, 58, 0.14);
+}
 .filter-select { width: 170px; }
-.state { text-align: center; padding: 40px; color: #8a8a8a; }
-.error { color: #d9453e; }
-.table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); }
-.table th, .table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0ede9; font-size: 13px; vertical-align: top; }
-.table th { background: #faf8f6; color: #6b6b6b; font-weight: 600; white-space: nowrap; }
+.state { text-align: center; padding: 40px; color: var(--text-muted); }
+.error { color: var(--danger); }
+.state.error { background: var(--danger-weak); border-radius: var(--radius-sm); }
+
+/* 幽灵按钮（查询 / 重置 / 刷新 / 展开 / 分页共用） */
+.btn {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease),
+    color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
+}
+.btn:hover:not(:disabled) { background: var(--surface-muted); border-color: var(--border-strong); }
+.btn:active:not(:disabled) { background: var(--border); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+
+/* 表格卡片 */
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  font-variant-numeric: tabular-nums;
+}
+.table th, .table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }
+.table th { background: var(--surface-muted); color: var(--text-muted); font-weight: 600; font-size: 12px; letter-spacing: 0.03em; white-space: nowrap; }
+.table tbody tr { transition: background var(--duration) var(--ease); }
+.table tbody tr:hover { background: var(--surface-muted); }
+.table tbody tr:last-child td { border-bottom: none; }
 .nowrap { white-space: nowrap; }
-.muted { color: #9a9a9a; font-size: 12px; }
-.action-tag { display: inline-block; padding: 2px 8px; border-radius: 6px; background: #fdeee8; color: #d95b3a; font-size: 12px; }
-.detail { margin: 8px 0 0; padding: 8px; background: #faf8f6; border-radius: 6px; font-size: 12px; max-height: 240px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+.muted { color: var(--text-muted); font-size: 12px; }
+.action-tag { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--primary-weak); color: var(--primary); font-size: 12px; font-weight: 600; }
+.detail { margin: 8px 0 0; padding: 10px 12px; background: var(--surface-muted); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-muted); font-size: 12px; max-height: 240px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
 .pagination { display: flex; align-items: center; gap: 12px; justify-content: flex-end; }
-.page-info { color: #8a8a8a; font-size: 13px; }
+.page-info { color: var(--text-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 </style>

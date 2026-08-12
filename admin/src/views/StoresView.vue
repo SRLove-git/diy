@@ -428,7 +428,7 @@ onMounted(load)
     <div v-if="showTables" class="mask">
       <div class="dialog wide">
         <h3>{{ $t('桌位配置 · {name}', 'Table setup · {name}', { name: currentStore?.name ?? '' }) }}</h3>
-        <p style="margin:0 0 10px;color:#8a8a93;font-size:12px">
+        <p style="margin:0 0 10px;color:var(--text-muted);font-size:12px">
           {{ $t('桌位名按容量自动生成：A=1人桌 / B=2人桌 / C=4人桌，序号为同类型最小空闲号；座位号 = 桌名-序号（如 B1-2）。修改容量会自动重命名。', 'Names auto-generate from capacity: A=1 / B=2 / C=4 seats, index = smallest free; seat = name-N (e.g. B1-2). Changing capacity renames the table.') }}
         </p>
         <table class="grid">
@@ -477,7 +477,7 @@ onMounted(load)
           </tbody>
         </table>
         <div class="row">
-          <span style="color:#8a8a93;font-size:13px">{{ $t('桌位名自动生成', 'Name auto-generated') }}</span>
+          <span style="color:var(--text-muted);font-size:13px">{{ $t('桌位名自动生成', 'Name auto-generated') }}</span>
           <select v-model.number="newTable.capacity">
             <option :value="1">{{ $t('1人桌（A）', '1-seat (A)') }}</option>
             <option :value="2">{{ $t('2人桌（B）', '2-seat (B)') }}</option>
@@ -612,74 +612,127 @@ onMounted(load)
 </template>
 
 <style scoped>
+.stores { display: flex; flex-direction: column; gap: 16px; }
 .toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
 }
-h2 { margin: 0; font-size: 18px; }
-.state { text-align: center; padding: 40px; color: #8a8a8a; }
-.error { color: #d9453e; }
-.hint-text { font-size: 12px; color: #8a8a8a; margin: 0 0 10px; }
+h2 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: 0.01em; color: var(--text); }
+.state { text-align: center; padding: 40px; color: var(--text-muted); }
+.error { color: var(--danger); }
+.state.error { background: var(--danger-weak); border-radius: var(--radius-sm); }
+.hint-text { font-size: 12px; color: var(--text-muted); margin: 0 0 10px; }
+
+/* 表格卡片 */
 .grid {
   width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-  border-radius: 12px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   overflow: hidden;
   font-size: 14px;
+  box-shadow: var(--shadow-sm);
+  font-variant-numeric: tabular-nums;
 }
 .grid th, .grid td {
   padding: 12px;
-  border-bottom: 1px solid #f0eeea;
+  border-bottom: 1px solid var(--border);
   text-align: left;
 }
-.grid th { background: #faf8f5; color: #8a8a8a; font-weight: 500; }
-.grid input[type="text"], .grid input[type="number"], .grid input[type="time"] {
+.grid th {
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.grid tbody tr { transition: background var(--duration) var(--ease); }
+.grid tbody tr:hover { background: var(--surface-muted); }
+.grid tbody tr:last-child td { border-bottom: none; }
+.grid input[type="text"], .grid input[type="number"], .grid input[type="time"], .grid select {
   width: 100px;
-  padding: 6px 8px;
-  border: 1px solid #eceae6;
-  border-radius: 6px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 13px;
   box-sizing: border-box;
+  background: var(--surface);
+  color: var(--text);
+}
+.grid input:focus, .grid select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(232, 99, 58, 0.14);
 }
 .addr { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.row-off td { color: #b0aca6; }
+.row-off td { color: var(--text-faint); }
 .tag {
   display: inline-block;
-  padding: 2px 8px;
-  border: 1px solid;
-  border-radius: 6px;
+  padding: 2px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
-.tag-on { color: #2e9e5b; border-color: #b7e0c8; background: #f0f9eb; }
-.tag-off { color: #909399; border-color: #d4d4d8; background: #f4f4f5; }
+.tag-on { background: var(--success-weak); color: var(--success); }
+.tag-off { background: var(--surface-muted); color: var(--text-muted); border-color: var(--border); }
+
+/* 行内操作按钮：幽灵风格，danger / primary 为软色或实色 */
 .ops button {
   margin-right: 6px;
-  border: 1px solid #eceae6;
-  background: #fff;
-  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 10px;
   padding: 4px 10px;
   font-size: 13px;
   cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease),
+    color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
 }
-.ops .danger { color: #d9453e; border-color: #f3d0cd; }
+.ops button:hover { background: var(--surface-muted); border-color: var(--border-strong); }
+.ops .danger { color: var(--danger); border-color: transparent; background: var(--danger-weak); }
+.ops .danger:hover { background: var(--danger); color: #fff; box-shadow: 0 4px 12px rgba(217, 69, 62, 0.28); }
+.ops .primary { background: var(--primary); border-color: transparent; color: #fff; font-weight: 600; }
+.ops .primary:hover { background: var(--primary-hover); }
+
 button.primary {
-  background: #e8633a;
+  background: var(--primary);
   color: #fff;
-  border: 1px solid #e8633a;
-  border-radius: 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
   padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+  box-shadow: 0 2px 8px rgba(232, 99, 58, 0.22);
+  transition:
+    background var(--duration) var(--ease),
+    transform var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
 }
-button.primary:disabled { opacity: 0.5; }
+button.primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(232, 99, 58, 0.3);
+}
+button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 弹窗 */
 .mask {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(41, 32, 24, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -687,36 +740,48 @@ button.primary:disabled { opacity: 0.5; }
 }
 .dialog {
   width: 440px;
-  background: #fff;
-  border-radius: 16px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
   padding: 24px;
-  max-height: 80vh;
+  max-height: 84vh;
   overflow: auto;
+  box-shadow: var(--shadow-lg);
 }
 .dialog.wide { width: 680px; }
-.dialog h3 { margin: 0 0 16px; }
+.dialog h3 { margin: 0 0 16px; font-size: 16px; font-weight: 600; color: var(--text); }
 .dialog label {
   display: block;
   font-size: 13px;
-  color: #8a8a8a;
+  color: var(--text-muted);
   margin-bottom: 12px;
 }
 .dialog .check-label {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #2b2b2b;
+  color: var(--text);
+  font-weight: 500;
 }
-.dialog .check-label input { width: auto; margin: 0; }
-.dialog input {
+.dialog .check-label input { width: auto; margin: 0; accent-color: var(--primary); }
+.dialog input, .dialog select {
   width: 100%;
-  height: 40px;
-  border: 1px solid #eceae6;
-  border-radius: 8px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   padding: 0 10px;
   margin-top: 4px;
   box-sizing: border-box;
   font-size: 14px;
+  background: var(--surface);
+  color: var(--text);
+  transition:
+    border-color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
+}
+.dialog input:focus, .dialog select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(232, 99, 58, 0.14);
 }
 .row { display: flex; gap: 8px; align-items: flex-end; margin-top: 12px; flex-wrap: wrap; }
 .row label { flex: 1; }
@@ -729,12 +794,20 @@ button.primary:disabled { opacity: 0.5; }
   margin-top: 16px;
 }
 .actions button:not(.primary) {
-  border: 1px solid #eceae6;
-  background: #fff;
-  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 10px;
   padding: 8px 20px;
+  font-size: 13px;
   cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
 }
-.empty { color: #8a8a8a; text-align: center; padding: 40px 0; }
-.error { color: #d9453e; font-size: 13px; }
+.actions button:not(.primary):hover {
+  background: var(--surface-muted);
+  border-color: var(--border-strong);
+}
+.empty { color: var(--text-muted); text-align: center; padding: 40px 0; }
 </style>

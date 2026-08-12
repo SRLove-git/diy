@@ -1220,6 +1220,12 @@ abstract class AppLocalizations {
   /// **'有 {count} 笔会员开通申请待门店确认，到店支付费用后将为你开通'**
   String memberPendingHint(int count);
 
+  /// No description provided for @memberPendingOnce.
+  ///
+  /// In zh, this message translates to:
+  /// **'您已提交会员开通申请，待门店确认后可再次申请'**
+  String get memberPendingOnce;
+
   /// No description provided for @memberPurchaseTitle.
   ///
   /// In zh, this message translates to:

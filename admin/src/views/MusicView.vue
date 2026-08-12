@@ -249,7 +249,7 @@ onMounted(load)
         />
         <button class="btn" @click="search">{{ $t('搜索', 'Search') }}</button>
         <button class="btn btn-plain" @click="search">{{ $t('刷新', 'Refresh') }}</button>
-        <button class="btn" @click="openUpload">{{ $t('上传曲目', 'Upload track') }}</button>
+        <button class="btn btn-primary" @click="openUpload">{{ $t('上传曲目', 'Upload track') }}</button>
       </div>
     </div>
 
@@ -393,7 +393,7 @@ onMounted(load)
           <button class="btn btn-plain btn-sm" :disabled="saving" @click="closeUpload">
             {{ $t('取消', 'Cancel') }}
           </button>
-          <button class="btn btn-sm" :disabled="saving" @click="saveUpload">
+          <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveUpload">
             {{ saving ? $t('保存中…', 'Saving…') : $t('保存', 'Save') }}
           </button>
         </div>
@@ -423,21 +423,43 @@ onMounted(load)
 <style scoped>
 .music { display: flex; flex-direction: column; gap: 16px; }
 .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.toolbar h2 { margin: 0; font-size: 18px; }
+.toolbar h2 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: 0.01em; color: var(--text); }
 .filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .search-input {
-  padding: 7px 12px;
+  height: 36px;
+  padding: 0 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   width: 200px;
+  background: var(--surface);
+  color: var(--text);
+  transition:
+    border-color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
+}
+.search-input::placeholder { color: var(--text-faint); }
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(232, 99, 58, 0.14);
 }
 .state { text-align: center; padding: 40px; color: var(--text-muted); }
 .error { color: var(--danger); }
+.state.error { background: var(--danger-weak); border-radius: var(--radius-sm); }
+
+/* 表格卡片 */
 .table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  font-variant-numeric: tabular-nums;
 }
 .table th, .table td {
   padding: 10px 8px;
@@ -446,15 +468,21 @@ onMounted(load)
   vertical-align: middle;
 }
 .table th {
-  background: #f7f5f2;
+  background: var(--surface-muted);
+  color: var(--text-muted);
   font-weight: 600;
-  color: var(--text);
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
 }
+.table tbody tr { transition: background var(--duration) var(--ease); }
+.table tbody tr:hover { background: var(--surface-muted); }
+.table tbody tr:last-child td { border-bottom: none; }
 .cover {
   width: 48px;
   height: 48px;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
 }
 .title {
@@ -465,19 +493,49 @@ onMounted(load)
   text-overflow: ellipsis;
   vertical-align: middle;
 }
+
+/* 按钮：默认幽灵风格；btn-primary 品牌橙实色；危险浅底软风格 */
 .btn {
-  background: var(--primary);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
   padding: 8px 16px;
   font-size: 13px;
   cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease),
+    color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
 }
-.btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.btn-plain { background: #fff; color: var(--text); border: 1px solid var(--border); }
+.btn:hover:not(:disabled) { background: var(--surface-muted); border-color: var(--border-strong); }
+.btn:active:not(:disabled) { background: var(--border); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-plain { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
 .btn-sm { padding: 4px 10px; font-size: 12px; }
-.btn-danger { background: var(--danger); }
+.btn-primary {
+  background: var(--primary);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(232, 99, 58, 0.22);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  border-color: transparent;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(232, 99, 58, 0.3);
+}
+.btn-primary:active:not(:disabled) {
+  background: var(--primary-active);
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(232, 99, 58, 0.24);
+}
+.btn-danger { background: var(--danger-weak); color: var(--danger); border-color: transparent; }
+.btn-danger:hover:not(:disabled) { background: var(--danger); color: #fff; box-shadow: 0 4px 12px rgba(217, 69, 62, 0.28); }
+.btn-danger:active:not(:disabled) { background: var(--danger); color: #fff; box-shadow: none; }
 .muted { color: var(--text-muted); }
 .actions { white-space: nowrap; }
 .actions .btn { margin-right: 6px; }
@@ -490,32 +548,46 @@ onMounted(load)
 }
 .pager-buttons { display: flex; gap: 8px; }
 
+/* 弹窗 */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(41, 32, 24, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
 }
 .modal {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
   padding: 24px;
   width: 440px;
   max-width: 92vw;
   max-height: 88vh;
   overflow-y: auto;
+  box-shadow: var(--shadow-lg);
 }
-.modal h3 { margin: 0 0 16px; font-size: 16px; }
-.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; font-size: 13px; color: #555; }
+.modal h3 { margin: 0 0 16px; font-size: 16px; font-weight: 600; color: var(--text); }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; font-size: 13px; color: var(--text-muted); }
 .field input[type='text'],
 .field input[type='number'] {
-  padding: 9px 12px;
+  height: 36px;
+  padding: 0 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
+  transition:
+    border-color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
+}
+.field input[type='text']:focus,
+.field input[type='number']:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(232, 99, 58, 0.14);
 }
 .field input[type='file'] { font-size: 13px; }
 .preview { margin: -4px 0 14px; }
@@ -524,10 +596,10 @@ onMounted(load)
   width: 96px;
   height: 96px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
 }
-.modal-tip { margin: 0 0 8px; font-size: 13px; color: #555; }
+.modal-tip { margin: 0 0 8px; font-size: 13px; color: var(--text-muted); }
 .modal-actions {
   display: flex;
   justify-content: flex-end;

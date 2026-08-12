@@ -215,6 +215,17 @@ export class UsersService {
     return this.users.findOneBy({ id });
   }
 
+  /**
+   * 当前登录用户本人资料：剔除密码哈希，保留完整邮箱（本人可见）。
+   * 与 findById 的区别：findById 返回完整实体（含 passwordHash），仅供内部校验使用，
+   * 任何对外响应都必须走本方法或 toSafeUser。
+   */
+  findSafeById(id: number): Promise<SafeUser | null> {
+    return this.users
+      .findOneBy({ id })
+      .then((u) => (u ? UsersService.toSafeSelf(u) : null));
+  }
+
   /** 批量按 ID 查用户 */
   findByIds(ids: number[]): Promise<User[]> {
     if (!ids.length) return Promise.resolve([]);
@@ -289,8 +300,17 @@ export class UsersService {
 
   /** 管理端展示用安全副本：剔除密码哈希，邮箱脱敏 */
   private static toSafeUser(u: User) {
-    const { passwordHash, ...safe } = u;
-    return { ...safe, email: maskEmail(u.email) };
+    const safe = { ...UsersService.toSafeSelf(u) };
+    safe.email = maskEmail(u.email);
+    return safe;
+  }
+
+  /** 本人资料安全副本：仅剔除密码哈希，邮箱保持原样 */
+  private static toSafeSelf(u: User): SafeUser {
+    const safe: SafeUser = { ...u };
+    // SafeUser 类型上不存在 passwordHash，先以可选形状供 delete 移除
+    delete (safe as { passwordHash?: string | null }).passwordHash;
+    return safe;
   }
 
   /** 设置用户名（首次设置不限；修改需距上次修改满一年，用于设置密码时一并写入） */

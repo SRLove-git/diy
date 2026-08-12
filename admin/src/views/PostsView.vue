@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { postApi, type Post } from '../api/posts'
+import { refreshPending } from '../stores/pending'
 import { i18n, t } from '../i18n'
 
 const posts = ref<Post[]>([])
@@ -27,10 +28,10 @@ const statusLabels: Record<string, string> = {
   rejected: '已驳回',
 }
 
-const statusColors: Record<string, string> = {
-  pending: '#E6A23C',
-  approved: '#2E9E5B',
-  rejected: '#D9453E',
+function statusClass(status: string): string {
+  if (status === 'approved') return 'tag-approved'
+  if (status === 'rejected') return 'tag-rejected'
+  return 'tag-pending'
 }
 
 const statusLabelsEn: Record<string, string> = {
@@ -62,6 +63,7 @@ async function approve(id: number) {
   try {
     await postApi.updateStatus(id, 'approved')
     await load()
+    await refreshPending()
   } catch (e: any) {
     alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   }
@@ -79,6 +81,7 @@ async function confirmReject() {
     rejectingId.value = null
     rejectReason.value = ''
     await load()
+    await refreshPending()
   } catch (e: any) {
     alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   }
@@ -99,6 +102,7 @@ async function confirmRemove() {
     await postApi.remove(removingId.value)
     removingId.value = null
     await load()
+    await refreshPending()
   } catch (e: any) {
     alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   }
@@ -118,6 +122,7 @@ async function confirmDelete() {
     await postApi.hardDelete(deletingId.value)
     deletingId.value = null
     await load()
+    await refreshPending()
   } catch (e: any) {
     alert(e?.response?.data?.message ?? t('删除失败', 'Delete failed'))
   }
@@ -214,10 +219,7 @@ onMounted(load)
             <span v-else v-for="t in p.tags" :key="t" class="tag">#{{ t }}</span>
           </td>
           <td>
-            <span
-              class="status-tag"
-              :style="{ color: statusColors[p.status], borderColor: statusColors[p.status] }"
-            >
+            <span class="status-tag" :class="statusClass(p.status)">
               {{ statusLabel(p.status) }}
             </span>
           </td>
@@ -364,32 +366,59 @@ onMounted(load)
 <style scoped>
 .posts { display: flex; flex-direction: column; gap: 16px; }
 .toolbar { display: flex; justify-content: space-between; align-items: center; }
-.toolbar h2 { margin: 0; font-size: 18px; }
-.filters { display: flex; gap: 8px; }
+.toolbar h2 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: 0.01em; color: var(--text); }
+.filters { display: flex; gap: 8px; align-items: center; }
 .filters select {
-  padding: 6px 12px;
-  border: 1px solid #eceae6;
-  border-radius: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
+  transition:
+    border-color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
 }
-.state { text-align: center; padding: 40px; color: #8a8a8a; }
-.error { color: #d9453e; }
+.filters select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(232, 99, 58, 0.14);
+}
+.state { text-align: center; padding: 40px; color: var(--text-muted); }
+.error { color: var(--danger); }
+.state.error { background: var(--danger-weak); border-radius: var(--radius-sm); }
+
+/* 表格卡片 */
 .table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  font-variant-numeric: tabular-nums;
 }
 .table th, .table td {
   padding: 10px 8px;
-  border-bottom: 1px solid #eceae6;
+  border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: middle;
 }
 .table th {
-  background: #f7f5f2;
+  background: var(--surface-muted);
+  color: var(--text-muted);
   font-weight: 600;
-  color: #2b2b2b;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
 }
+.table tbody tr { transition: background var(--duration) var(--ease); }
+.table tbody tr:hover { background: var(--surface-muted); }
+.table tbody tr:last-child td { border-bottom: none; }
 .content-cell { max-width: 200px; }
 .text-ellipsis {
   white-space: nowrap;
@@ -400,68 +429,98 @@ onMounted(load)
 .tag {
   display: inline-block;
   font-size: 11px;
-  color: #e8633a;
+  color: var(--primary);
+  font-weight: 600;
   margin-right: 4px;
 }
 .status-tag {
   display: inline-block;
-  padding: 2px 8px;
-  border: 1px solid;
-  border-radius: 6px;
+  padding: 2px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
+.tag-pending { background: var(--warning-weak); color: var(--warning); }
+.tag-approved { background: var(--success-weak); color: var(--success); }
+.tag-rejected { background: var(--danger-weak); color: var(--danger); }
 .reject-reason {
   font-size: 12px;
-  color: #d9453e;
+  color: var(--danger);
 }
+
+/* 按钮：默认幽灵风格；成功 / 危险浅底软风格；删除为描边风格 */
 .btn {
-  background: #e8633a;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
   padding: 8px 16px;
   font-size: 13px;
   cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease),
+    color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
 }
+.btn:hover:not(:disabled) { background: var(--surface-muted); border-color: var(--border-strong); }
+.btn:active:not(:disabled) { background: var(--border); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-sm { padding: 4px 10px; font-size: 12px; margin-right: 4px; }
-.btn-success { background: #2e9e5b; }
-.btn-danger { background: #d9453e; }
-.btn-delete { background: #fff; color: #d9453e; border: 1px solid #f3d0cd; }
-.muted { color: #8a8a8a; }
+.btn-success { background: var(--success-weak); color: var(--success); border-color: transparent; }
+.btn-success:hover:not(:disabled) { background: var(--success); color: #fff; box-shadow: 0 4px 12px rgba(46, 158, 91, 0.28); }
+.btn-success:active:not(:disabled) { background: var(--success); color: #fff; box-shadow: none; }
+.btn-danger { background: var(--danger-weak); color: var(--danger); border-color: transparent; }
+.btn-danger:hover:not(:disabled) { background: var(--danger); color: #fff; box-shadow: 0 4px 12px rgba(217, 69, 62, 0.28); }
+.btn-danger:active:not(:disabled) { background: var(--danger); color: #fff; box-shadow: none; }
+.btn-delete { background: var(--surface); color: var(--danger); border-color: var(--danger-weak); }
+.btn-delete:hover:not(:disabled) { background: var(--danger-weak); }
+.muted { color: var(--text-muted); }
 .actions { white-space: nowrap; }
 
+/* 弹窗 */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(41, 32, 24, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
 }
 .modal {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
   padding: 24px;
   width: 400px;
   max-width: 90vw;
+  box-shadow: var(--shadow-lg);
 }
-.modal h3 { margin: 0 0 16px; font-size: 16px; }
+.modal h3 { margin: 0 0 16px; font-size: 16px; font-weight: 600; color: var(--text); }
 .modal textarea {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #eceae6;
-  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 13px;
   resize: vertical;
   box-sizing: border-box;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+}
+.modal textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(232, 99, 58, 0.14);
 }
 .modal-tip {
   margin: 0 0 8px;
   font-size: 13px;
-  color: #555;
+  color: var(--text-muted);
 }
 .modal-actions {
   display: flex;
@@ -470,20 +529,27 @@ onMounted(load)
   margin-top: 16px;
 }
 .img-btn {
-  border: 1px solid #eceae6;
-  background: #fff;
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
   padding: 2px 8px;
   font-size: 12px;
-  color: #e8633a;
+  color: var(--primary);
   cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
 }
+.img-btn:hover { background: var(--primary-weak); border-color: transparent; }
+
+/* 图片预览弹窗 */
 .preview-modal {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
   padding: 20px;
   width: 720px;
   max-width: 94vw;
+  box-shadow: var(--shadow-lg);
 }
 .preview-head {
   display: flex;
@@ -491,15 +557,16 @@ onMounted(load)
   align-items: center;
   margin-bottom: 14px;
 }
-.preview-head h3 { margin: 0; font-size: 15px; }
+.preview-head h3 { margin: 0; font-size: 15px; font-weight: 600; color: var(--text); }
 .preview-body {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 320px;
-  background: #f7f5f2;
-  border-radius: 8px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 .preview-img {
@@ -515,13 +582,15 @@ onMounted(load)
   height: 36px;
   border-radius: 50%;
   border: none;
-  background: rgba(0,0,0,0.45);
+  background: rgba(41, 32, 24, 0.45);
   color: #fff;
   font-size: 22px;
   line-height: 1;
   cursor: pointer;
   z-index: 2;
+  transition: background var(--duration) var(--ease);
 }
+.preview-nav:hover { background: rgba(41, 32, 24, 0.65); }
 .preview-nav.prev { left: 10px; }
 .preview-nav.next { right: 10px; }
 .preview-thumbs {
@@ -537,6 +606,7 @@ onMounted(load)
   border-radius: 6px;
   border: 2px solid transparent;
   cursor: pointer;
+  transition: border-color var(--duration) var(--ease);
 }
-.thumb.active { border-color: #e8633a; }
+.thumb.active { border-color: var(--primary); }
 </style>

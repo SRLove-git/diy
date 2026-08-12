@@ -215,11 +215,24 @@ class _MemberCenterScreenState extends State<MemberCenterScreen> {
                                     data.membership.isActive &&
                                     data.membership.levelName ==
                                         data.plans[i].name,
-                                onTap: () => LiveRoutes.push(
-                                  context,
-                                  RoutePaths.memberPurchase,
-                                  extra: data.plans[i],
-                                ),
+                                onTap: () async {
+                                  if (pendingOrders.isNotEmpty) {
+                                    // 已有待确认申请：门店确认后才能再次提交
+                                    showLiveSnack(
+                                      context,
+                                      l10n.memberPendingOnce,
+                                    );
+                                    return;
+                                  }
+                                  await LiveRoutes.push(
+                                    context,
+                                    RoutePaths.memberPurchase,
+                                    extra: data.plans[i],
+                                  );
+                                  // 返回后刷新，立即看到新提交的申请 / 已开通状态，
+                                  // 无需退出会员套餐模块再进入。
+                                  if (mounted) _retry();
+                                },
                               ),
                             ),
                           ],

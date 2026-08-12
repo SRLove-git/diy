@@ -10,6 +10,7 @@ import {
   type SavePlanPayload,
 } from '../api/members'
 import { i18n, t } from '../i18n'
+import { refreshPending } from '../stores/pending'
 
 const activeTab = ref<'members' | 'orders' | 'plans' | 'coupons'>('members')
 const loading = ref(true)
@@ -258,6 +259,7 @@ async function confirmOrder(item: MemberOrder) {
   try {
     await memberApi.confirmOrder(item.id)
     await loadOrders()
+    await refreshPending()
   } catch (e: any) {
     alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   } finally {
@@ -281,6 +283,7 @@ async function cancelOrder(item: MemberOrder) {
   try {
     await memberApi.cancelOrder(item.id)
     await loadOrders()
+    await refreshPending()
   } catch (e: any) {
     alert(e?.response?.data?.message ?? t('操作失败', 'Operation failed'))
   } finally {
