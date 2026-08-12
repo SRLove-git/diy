@@ -1,0 +1,65 @@
+name: Build Docker Images (amd64)
+
+on:
+  # 手动触发：仓库 Actions 页 → Build Docker Images (amd64) → Run workflow
+  workflow_dispatch:
+  # 也可以打 v* 标签自动触发构建
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    name: Build server + admin images
+    runs-on: ubuntu-latest # GitHub 跑机是 x86_64，原生构建 linux/amd64，无需 QEMU 模拟
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 生成镜像版本号
+        id: meta
+        run: |
+          TAG="$(git rev-parse --short HEAD)-$(date +%Y%m%d)"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: 构建 server 镜像
+        run: docker build -t "diy-server:$TAG" server
+
+      - name: 构建 admin 镜像
+        run: docker build -t "diy-admin:$TAG" admin
+
+      - name: 打包镜像并生成部署说明
+        run: |
+          mkdir -p dist
+          docker save "diy-server:$TAG" "diy-admin:$TAG" \
+            | gzip > "dist/images-$TAG.tar.gz"
+          cat > dist/DEPLOY.txt <<EOF
+          ============================================================
+          diy-images-$TAG 部署到 x86_64 服务器
+          ============================================================
+          1) 本地下载本 artifact（dist/images-$TAG.tar.gz）后：
+
+            scp images-$TAG.tar.gz <用户>@<服务器IP>:/opt/diy/
+
+          2) 服务器上执行：
+
+            cd /opt/diy
+            docker load -i images-$TAG.tar.gz
+            SERVER_IMAGE=diy-server:$TAG ADMIN_IMAGE=diy-admin:$TAG \\
+              docker compose -f docker/compose.prod.yml up -d --no-build --scale server=3
+
+          3) 验证：
+
+            curl http://<服务器IP>:3000/api/health
+
+          ============================================================
+          EOF
+          ls -lh dist/
+
+      - name: 上传 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: diy-images-${{ steps.meta.outputs.tag }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
