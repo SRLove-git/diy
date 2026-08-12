@@ -188,7 +188,14 @@ export class AddPerformanceIndexes1786500100000
       [table, indexName],
     );
     if (!rows.length) {
-      await queryRunner.query(createSql);
+      try {
+        await queryRunner.query(createSql);
+      } catch (e) {
+        // 多副本首次启动时可能并发执行同一迁移：索引已被另一副本创建，
+        // MySQL 重复创建（ER_DUP_KEYNAME）视为成功，避免启动失败
+        const msg = String((e as { message?: string })?.message ?? e);
+        if (!msg.includes('Duplicate key name')) throw e;
+      }
     }
   }
 }

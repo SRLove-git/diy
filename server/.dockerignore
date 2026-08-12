@@ -4,7 +4,7 @@ coverage
 .env
 .env.*
 *.log
-uploads
+/uploads
 .git
 .gitignore
 test

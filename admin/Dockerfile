@@ -1,8 +1,12 @@
+# syntax=docker/dockerfile:1.7
+
 # ---- 构建阶段 ----
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# --mount=type=cache 复用 npm 缓存，重复构建大幅提速
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund
 COPY . .
 RUN npm run build
 
