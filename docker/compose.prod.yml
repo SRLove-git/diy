@@ -167,7 +167,7 @@ services:
       - "8080:80"
 
   # 每日数据库备份：cron 定时导出 MySQL（mysqldump）+ Redis（RDB 快照），
-  # 产物落在宿主机 docker/backups/（与数据卷分离，卷损坏不影响备份）
+  # 产物落在独立数据盘 /data/diy-backups/（与数据卷/系统盘分离，卷损坏不影响备份）
   backup:
     image: ${BACKUP_IMAGE:-diy-backup:latest}
     build:
@@ -199,7 +199,7 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./backups:/backups
+      - /data/diy-backups:/backups
     healthcheck:
       # 健康判定：最近 48h 内有成功备份（.last-success 时间戳）
       test: ["CMD-SHELL", "[ -f /backups/.last-success ] && [ $$(( $$(date +%s) - $$(cat /backups/.last-success) )) -lt 172800 ]"]

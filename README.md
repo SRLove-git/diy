@@ -101,7 +101,7 @@ MySQL / Redis / Nginx 的优化参数集中维护在 `docker/` 下，生产与�
 | `docker/redis/redis.conf` | Redis 生产/开发通用：AOF + RDB 持久化、volatile-lru 淘汰、惰性删除、碎片整理 |
 | `docker/nginx/nginx.conf` | 生产负载均衡（nginx-lb）：gzip、反代头、WebSocket 升级、超时 |
 | `admin/nginx.conf` | 管理后台静态托管：SPA 不缓存 + 哈希资源长缓存、gzip、/api 反代 |
-| `docker/backup/` | 每日备份服务：cron 定时 MySQL dump + Redis RDB 快照，产物在 `docker/backups/` |
+| `docker/backup/` | 每日备份服务：cron 定时 MySQL dump + Redis RDB 快照，产物在 `/data/diy-backups/` |
 
 按部署机内存调整的关键参数（改完需重建容器生效）：
 
@@ -116,13 +116,13 @@ docker compose -f docker/compose.prod.yml up -d --force-recreate mysql redis
 ### 数据库备份与恢复
 
 生产 compose 自带 `backup` 服务：容器内 cron（默认每日 03:00，时区 Asia/Shanghai）执行 MySQL
-`mysqldump` + Redis `--rdb` 快照，gzip 压缩后写入宿主机 `docker/backups/`（与数据卷分离，
+`mysqldump` + Redis `--rdb` 快照，gzip 压缩后写入宿主机 `/data/diy-backups/`（与数据卷分离，
 卷损坏不影响备份），默认保留 7 天。容器启动时会先备份一次，健康检查要求最近 48h 内有成功备份：
 
 ```bash
 # 手动立即备份
 docker compose -f docker/compose.prod.yml exec backup /backup.sh
-ls -lh docker/backups/
+ls -lh /data/diy-backups/
 ```
 
 **首次启用备份**：备份使用独立低权限账号（不用 root），需在 MySQL 里创建一次，并把密码写入
@@ -141,10 +141,10 @@ BACKUP_RETENTION_DAYS=14      # 保留 14 天
 BACKUP_CRON=0 2 * * *         # 每日凌晨 2 点
 ```
 
-**恢复 MySQL**（备份文件取 `docker/backups/` 下最新的 `mysql-*.sql.gz`）：
+**恢复 MySQL**（备份文件取 `/data/diy-backups/` 下最新的 `mysql-*.sql.gz`）：
 
 ```bash
-gunzip -c docker/backups/mysql-<时间戳>.sql.gz | \
+gunzip -c /data/diy-backups/mysql-<时间戳>.sql.gz | \
   docker compose -f docker/compose.prod.yml exec -T mysql sh -c \
   'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" diy'
 ```
@@ -156,7 +156,7 @@ gunzip -c docker/backups/mysql-<时间戳>.sql.gz | \
 docker compose -f docker/compose.prod.yml stop redis
 docker run --rm \
   -v docker_redis-prod-data:/data \
-  -v "$PWD/docker/backups:/backups:ro" \
+  -v "/data/diy-backups:/backups:ro" \
   redis:7-alpine sh -c \
   'gunzip -c /backups/redis-<时间戳>.rdb.gz > /data/dump.rdb && \
    mv /data/appendonly.aof /data/appendonly.aof.old 2>/dev/null || true'
