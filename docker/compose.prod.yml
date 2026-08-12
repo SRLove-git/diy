@@ -1,5 +1,7 @@
 # 生产环境：全链路容器化（MySQL + Redis + server + admin）
 # 用法：docker compose -f docker/compose.prod.yml up -d --build
+# 注意：server 默认 3 个副本（deploy.replicas: 3，Compose v2+ 支持），无需每次 --scale；
+#      需要调整副本数时：--scale server=N
 # 注意：正式部署时以环境变量/密钥管理注入 DB 密码与 JWT_SECRET
 services:
   mysql:
@@ -61,8 +63,10 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    # 多实例扩容：docker compose -f docker/compose.prod.yml up -d --scale server=3，
+    # 多实例：默认 3 副本（deploy.replicas，Compose v2+ 无需 --scale），
     # 外部 3000 由 nginx-lb 负载均衡到各副本；聊天跨实例转发由 Redis pub/sub（chat:events）承载。
+    deploy:
+      replicas: 3
     environment:
       NODE_ENV: production
       PORT: 3000

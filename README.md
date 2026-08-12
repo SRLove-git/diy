@@ -68,8 +68,9 @@ npm run migration:revert                                # 回滚最近一次迁�
 
 - 开发环境仍用 `synchronize` 自动建表，方便迭代；
 - 生产环境在 compose 中默认 `DB_MIGRATIONS_RUN=true`，应用启动时自动执行未跑过的迁移（含首次建表）。
-- 多副本（`--scale server=3`）同时启动时迁移并发安全：bootstrap 通过 MySQL 命名锁
-  （`diy_migrations`）串行化执行，先启动的副本跑完迁移，其余副本等待后自动跳过。
+- 生产 compose 默认 3 个 server 副本（`deploy.replicas: 3`），多副本同时启动时迁移并发安全：
+  bootstrap 通过 MySQL 命名锁（`diy_migrations`）串行化执行，
+  先启动的副本跑完迁移，其余副本等待后自动跳过。
 
 ## 生产环境变量
 
@@ -164,13 +165,13 @@ docker compose -f docker/compose.prod.yml start redis
 
 ### 多副本扩容
 
-生产 compose 内置 `nginx-lb` 负载均衡入口（外部 3000 端口 → server 各副本，含 `/api`、`/ws` WebSocket、上传与静态资源）。扩容时保持单个 `nginx-lb` 不变，只增加 server 副本：
+生产 compose 内置 `nginx-lb` 负载均衡入口（外部 3000 端口 → server 各副本，含 `/api`、`/ws` WebSocket、上传与静态资源），且 server 默认 3 个副本（`deploy.replicas: 3`），直接 `up -d` 即可。需要临时调整副本数时保持单个 `nginx-lb` 不变，只增减 server 副本：
 
 ```bash
 docker compose -f docker/compose.prod.yml up -d --build --scale server=3
 ```
 
-注意：副本数 × `DB_POOL_SIZE` 需 ≤ MySQL `max_connections`（compose 已默认放大到 500）；聊天跨实例转发由 Redis pub/sub 承载，扩副本无需改代码。
+注意：副本数 × `DB_POOL_SIZE` 需 ≤ MySQL `max_connections`（compose 已默认放大到 500，生产 .env 已配 3×50=150）；聊天跨实例转发由 Redis pub/sub 承载，扩副本无需改代码。
 
 ### 本地构建部署（服务器不构建）
 
