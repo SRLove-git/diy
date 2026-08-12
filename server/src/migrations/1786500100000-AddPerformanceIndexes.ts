@@ -118,8 +118,10 @@ export class AddPerformanceIndexes1786500100000
        GROUP BY index_name`,
     );
     for (const row of oldOrderIdx) {
+      // information_schema.statistics 返回的列名可能为大写 INDEX_NAME
+      const idxName = row.index_name ?? row.INDEX_NAME;
       await queryRunner.query(
-        `DROP INDEX \`${row.index_name}\` ON \`member_orders\``,
+        `DROP INDEX \`${idxName}\` ON \`member_orders\``,
       );
     }
     await this.ensureIndex(
