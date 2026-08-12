@@ -6,8 +6,8 @@ services:
     image: mysql:8.0
     container_name: diy-mysql-prod
     restart: unless-stopped
-    # 内存上限：当前 mysqld 实际 ~410M（缓冲池 512M），1G 留足余量，防泄漏拖垮宿主机
-    mem_limit: 1g
+    # 内存上限：缓冲池 4G（14G 生产机约 29%）+ InnoDB 附属结构/连接缓冲，6G 留足余量
+    mem_limit: 6g
     logging:
       driver: json-file
       options:
@@ -30,8 +30,8 @@ services:
     image: redis:7
     container_name: diy-redis-prod
     restart: unless-stopped
-    # 内存上限：maxmemory 256M + 分配器碎片余量
-    mem_limit: 384m
+    # 内存上限：maxmemory 1G + 分配器碎片余量
+    mem_limit: 1.5g
     logging:
       driver: json-file
       options:
@@ -54,8 +54,8 @@ services:
     build:
       context: ../server
     restart: unless-stopped
-    # 内存上限：当前 node 实际 ~120M，压测峰值留 4 倍余量
-    mem_limit: 512m
+    # 内存上限：当前 node 实际 ~120M，5000+ 桌位查询与压测峰值留 6 倍余量
+    mem_limit: 768m
     logging:
       driver: json-file
       options:
@@ -128,7 +128,8 @@ services:
     image: nginx:alpine
     container_name: diy-nginx-lb
     restart: unless-stopped
-    mem_limit: 256m
+    # 大响应（5000+ 桌位 JSON）代理缓冲 + 上传流式转发，留足余量
+    mem_limit: 512m
     logging:
       driver: json-file
       options:
