@@ -731,6 +731,16 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String storePackageMemberPerPerson(String name, String price) {
+    return '$name · 会员 $price/人';
+  }
+
+  @override
+  String storePackageMemberFree(String name) {
+    return '$name · 会员免费';
+  }
+
+  @override
   String get storeAllDay => '全天不限时';
 
   @override

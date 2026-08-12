@@ -1472,6 +1472,18 @@ abstract class AppLocalizations {
   /// **'{name} · {price}/人'**
   String storePackagePerPerson(String name, String price);
 
+  /// No description provided for @storePackageMemberPerPerson.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name} · 会员 {price}/人'**
+  String storePackageMemberPerPerson(String name, String price);
+
+  /// No description provided for @storePackageMemberFree.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name} · 会员免费'**
+  String storePackageMemberFree(String name);
+
   /// No description provided for @storeAllDay.
   ///
   /// In zh, this message translates to:

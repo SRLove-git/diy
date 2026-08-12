@@ -229,6 +229,25 @@
   "storeNoPackages": "No packages configured yet",
   "storeSelectPackage": "Select package",
   "storePackagePerPerson": "{name} · {price}/person",
+  "storePackageMemberPerPerson": "{name} · Member {price}/person",
+  "@storePackageMemberPerPerson": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "storePackageMemberFree": "{name} · Member free",
+  "@storePackageMemberFree": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "storeAllDay": "All-day",
   "storeAllDayDesc": "Unlimited time within opening hours ({hours}); scan to start",
   "storeNextSelectTable": "Next · Select table",

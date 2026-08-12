@@ -5,6 +5,7 @@ import {
   Index,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  VirtualColumn,
 } from 'typeorm';
 
 /** 预约单状态机：待确认 → 待核销 → 服务中 → 已完成；扫码核销即上钟。checked_in 为兼容状态（历史数据/管理端单独上钟） */
@@ -81,14 +82,57 @@ export class Appointment {
   @Column({ length: 50 })
   tableName: string;
 
-  /** 预约桌位明细（一单多桌）：[{id,name,capacity,people}]；旧单桌数据为 null（用 tableId/tableName） */
-  @Column({ type: 'json', nullable: true })
+  /**
+   * 预约桌位明细（一单多桌）：由 appointment_tables 关联表派生，
+   * 替代已删除的 tables JSON 列。形状保持 [{id,name,capacity,people}] 兼容客户端；
+   * people 由客户端派座逻辑使用，当前统一填 0（旧 JSON 同样没有该值）。
+   */
+  @VirtualColumn({
+    type: 'json',
+    query: (alias) =>
+      `(SELECT COALESCE(JSON_ARRAYAGG(JSON_OBJECT(
+           'id', at.tableId,
+           'name', COALESCE(st.name, ''),
+           'capacity', COALESCE(st.capacity, 0),
+           'people', 0
+         )), JSON_ARRAY())
+       FROM appointment_tables at
+       LEFT JOIN store_tables st ON st.id = at.tableId
+       WHERE at.appointmentId = ${alias}.id)`,
+    transformer: {
+      from: (
+        value: unknown,
+      ): Array<{
+        id: number;
+        name: string;
+        capacity: number;
+        people: number;
+      }> => {
+        if (value == null) return [];
+        try {
+          const raw: unknown =
+            typeof value === 'string' ? JSON.parse(value) : value;
+          return Array.isArray(raw)
+            ? (raw as Array<{
+                id: number;
+                name: string;
+                capacity: number;
+                people: number;
+              }>)
+            : [];
+        } catch {
+          return [];
+        }
+      },
+      to: () => null,
+    },
+  })
   tables: Array<{
     id: number;
     name: string;
     capacity: number;
     people: number;
-  }> | null;
+  }> = [];
 
   @Column({ type: 'int', nullable: true })
   slotId: number | null;

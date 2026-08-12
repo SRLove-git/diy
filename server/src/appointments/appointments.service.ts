@@ -37,9 +37,10 @@ import { StorePackage } from '../stores/store-package.entity';
 import { UsersService } from '../users/users.service';
 import { Appointment } from './appointment.entity';
 import { CreateAppointmentDto, WalkInDto } from './appointment.dto';
+import { AppointmentTable } from './appointment-table.entity';
 
 /** 桌位可用性响应项：桌位信息 + 当日已占用时段窗口 */
-type TableAvailabilityItem = {
+export type TableAvailabilityItem = {
   id: number;
   name: string;
   capacity: number;
@@ -133,18 +134,22 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       where: { storeId, enabled: true },
       order: { id: 'ASC' },
     });
-    // 只取占用窗口所需列，SQL 端按一单多桌 JSON 展开（tables 为空时回退 tableId 单桌）。
-    // status 用 IN 枚举有效状态，配合 (storeId, date, status) 索引走范围扫描
-    const taken = await this.dataSource.query(
-      `SELECT COALESCE(t.tid, a.tableId) AS tableId, a.startTime, a.endTime, a.status
-       FROM appointments a
-       LEFT JOIN JSON_TABLE(a.tables, '$[*]' COLUMNS (tid INT PATH '$.id')) t
-         ON a.tables IS NOT NULL AND JSON_LENGTH(a.tables) > 0
-       WHERE a.storeId = ? AND a.date = ?
+    // 只取占用窗口所需列：关联表按 (storeId, date) 前缀收窄后回表 appointments
+    // 取时段与状态；status 用 IN 枚举有效状态，避免 NOT IN 无法走索引
+    const taken = (await this.dataSource.query(
+      `SELECT at.tableId AS tableId, a.startTime, a.endTime, a.status
+       FROM appointment_tables at
+       JOIN appointments a ON a.id = at.appointmentId
+       WHERE at.storeId = ? AND at.date = ?
          AND a.status IN ('pending', 'booked', 'checked_in', 'in_service')
        ORDER BY a.startTime ASC`,
       [storeId, date],
-    );
+    )) as unknown as Array<{
+      tableId: number;
+      startTime: string;
+      endTime: string;
+      status: string;
+    }>;
     // 按桌位聚合占用窗口（一单多桌：预约的每张桌都算占用）
     const windowByTable = new Map<
       number,
@@ -598,7 +603,6 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
           storeName: store.name,
           tableId: seats[0].id,
           tableName: seats[0].name,
-          tables: seats,
           slotId: null,
           bookingType,
           durationHours,
@@ -621,7 +625,25 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
           payMethod: dto.payMethod ?? '',
           paidAt: dto.payMethod ? new Date() : null,
         });
-        return em.save(appointment);
+        const saved = await em.save(appointment);
+        // 一单多桌关系写入关联表（availability / 冲突校验不再走 JSON_TABLE）
+        await em.insert(
+          AppointmentTable,
+          seats.map((s) => ({
+            appointmentId: saved.id,
+            tableId: s.id,
+            storeId: store.id,
+            date: dto.date,
+          })),
+        );
+        // 虚拟列不会在 save 后自动填充，这里按 seats 直接补上，保持响应兼容
+        saved.tables = seats.map((s) => ({
+          id: s.id,
+          name: s.name,
+          capacity: s.capacity,
+          people: 0,
+        }));
+        return saved;
       });
       // 3) 落库后失效该店该日 availability 缓存
       await this.invalidateAvailability(saved.storeId, saved.date);
@@ -1310,7 +1332,6 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
           storeName: store.name,
           tableId: seats[0].id,
           tableName: seats[0].name,
-          tables: seats,
           slotId: null,
           bookingType,
           durationHours,
@@ -1332,7 +1353,24 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
           serviceEndTime: new Date(`${date}T${endTime}:00`),
           checkedInBy: operatorId,
         });
-        return em.save(appointment);
+        const saved = await em.save(appointment);
+        // 开台同样落关联表，availability / 冲突校验才能看到这单的桌位占用
+        await em.insert(
+          AppointmentTable,
+          seats.map((s) => ({
+            appointmentId: saved.id,
+            tableId: s.id,
+            storeId: store.id,
+            date,
+          })),
+        );
+        saved.tables = seats.map((s) => ({
+          id: s.id,
+          name: s.name,
+          capacity: s.capacity,
+          people: 0,
+        }));
+        return saved;
       });
       this.broadcastAppointment(saved);
       await this.invalidateAvailability(saved.storeId, saved.date);
@@ -1377,13 +1415,15 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       const epochAtStart = this.availabilityEpoch;
       let inflight = this.availabilityInflight.get(cacheKey);
       if (!inflight) {
-        inflight = this.computeAvailability(storeId, date, epochAtStart).finally(
-          () => {
-            if (this.availabilityInflight.get(cacheKey) === inflight) {
-              this.availabilityInflight.delete(cacheKey);
-            }
-          },
-        );
+        inflight = this.computeAvailability(
+          storeId,
+          date,
+          epochAtStart,
+        ).finally(() => {
+          if (this.availabilityInflight.get(cacheKey) === inflight) {
+            this.availabilityInflight.delete(cacheKey);
+          }
+        });
         this.availabilityInflight.set(cacheKey, inflight);
       }
       items = await inflight;
@@ -1404,10 +1444,12 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * SQL 端时间段重叠冲突检查（含一单多桌：JSON_TABLE 展开 tables 列）。
-   * 相比把当日全部预约拉进内存再 JS 判断，这里只返回命中的一行，
-   * 由 (storeId, date, status) 先收窄到「该店该日有效预约」，再在结果上做 JSON 展开。
+   * SQL 端时间段重叠冲突检查（一单多桌走 appointment_tables 关联表）。
+   * 相比把当日全部预约拉进内存再 JS 判断，这里只返回命中的一行：
+   * (storeId, date, tableId) 复合索引先按「该店该日 + 目标桌位」收窄，
+   * 再回表 appointments 过滤状态与时段。
    * 重叠判定：existing.start < new.end && existing.end > new.start
+   * 命中后再查一次该单的关联桌位名，用于错误提示（原 tables JSON 已删除）。
    */
   private async findOverlapConflict(
     em: EntityManager,
@@ -1425,27 +1467,38 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
   } | null> {
     if (!tableIds.length) return null;
     const placeholders = tableIds.map(() => '?').join(',');
-    const rows = await em.query(
-      `SELECT a.tableId, a.tableName, a.tables, a.startTime, a.endTime
-       FROM appointments a
-       LEFT JOIN JSON_TABLE(a.tables, '$[*]' COLUMNS (tid INT PATH '$.id')) t
-         ON a.tables IS NOT NULL AND JSON_LENGTH(a.tables) > 0
-       WHERE a.storeId = ? AND a.date = ?
+    const rows = (await em.query(
+      `SELECT a.id AS id, a.tableId, a.tableName, a.startTime, a.endTime
+       FROM appointment_tables at
+       JOIN appointments a ON a.id = at.appointmentId
+       WHERE at.storeId = ? AND at.date = ?
+         AND at.tableId IN (${placeholders})
          AND a.status IN ('pending', 'booked', 'checked_in', 'in_service')
-         AND COALESCE(t.tid, a.tableId) IN (${placeholders})
          AND a.startTime < ? AND a.endTime > ?
        LIMIT 1`,
       [storeId, date, ...tableIds, endTime, startTime],
-    );
+    )) as unknown as Array<{
+      id: number;
+      tableId: number;
+      tableName: string;
+      startTime: string;
+      endTime: string;
+    }>;
     if (!rows.length) return null;
     const row = rows[0];
+    // 取该预约的全部桌位名（一单多桌提示，如「A1、B2」）
+    const tableRows = (await em.query(
+      `SELECT at.tableId, COALESCE(st.name, '') AS name
+       FROM appointment_tables at
+       LEFT JOIN store_tables st ON st.id = at.tableId
+       WHERE at.appointmentId = ?
+       ORDER BY at.tableId`,
+      [row.id],
+    )) as unknown as Array<{ tableId: number; name: string }>;
     return {
       tableId: row.tableId != null ? Number(row.tableId) : null,
       tableName: row.tableName ?? '',
-      tables:
-        typeof row.tables === 'string'
-          ? (JSON.parse(row.tables) as Array<{ id: number; name: string }>)
-          : (row.tables ?? []),
+      tables: tableRows.map((t) => ({ id: Number(t.tableId), name: t.name })),
       startTime: row.startTime,
       endTime: row.endTime,
     };

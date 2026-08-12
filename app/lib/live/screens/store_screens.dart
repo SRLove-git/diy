@@ -575,10 +575,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                           runSpacing: 10,
                           children: store.packages.map((p) {
                             return _ChoiceChip(
-                              label: l10n.storePackagePerPerson(
-                                p.name,
-                                '\$${fmtPrice(p.price)}',
-                              ),
+                              label: _packageLabel(p),
                               selected: _package?.id == p.id,
                               onTap: () => setState(() {
                                 _package = p;
@@ -850,8 +847,25 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
       return store.allDayPrice ??
           (store.price * ((_selectedHours(store) == 0 ? 1 : _selectedHours(store))));
     }
-    final units = store.hourlyUnitPrices(hours);
+    final units = store.hourlyUnitPrices(
+      hours,
+      memberRate: store.memberPrice,
+    );
     return _isMember ? units.member : units.normal;
+  }
+
+  /// 套餐选择按钮显示价：会员显示会员价（0 元显示免费），否则显示门市价。
+  String _packageLabel(StorePackage p) {
+    final l10n = context.l10n;
+    if (_isMember && p.memberPrice != null) {
+      return p.memberPrice == 0
+          ? l10n.storePackageMemberFree(p.name)
+          : l10n.storePackageMemberPerPerson(
+              p.name,
+              '\$${fmtPrice(p.memberPrice!)}',
+            );
+    }
+    return l10n.storePackagePerPerson(p.name, '\$${fmtPrice(p.price)}');
   }
 
   Widget _datesRow(Store store) {

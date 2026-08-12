@@ -360,6 +360,25 @@
       }
     }
   },
+  "storePackageMemberPerPerson": "{name} · 会员 {price}/人",
+  "@storePackageMemberPerPerson": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "storePackageMemberFree": "{name} · 会员免费",
+  "@storePackageMemberFree": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "storeAllDay": "全天不限时",
   "storeAllDayDesc": "营业时间（{hours}）内不限时长，到店扫码即开始计时",
   "@storeAllDayDesc": {

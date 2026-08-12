@@ -1,6 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
 import { Coupon, UserCoupon } from '../members/coupon.entity';
-import { AppointmentsService } from './appointments.service';
+import { AppointmentTable } from './appointment-table.entity';
+import {
+  AppointmentsService,
+  TableAvailabilityItem,
+} from './appointments.service';
 
 function dateStr(offsetDays = 0): string {
   const d = new Date();
@@ -68,6 +72,7 @@ function buildService() {
     query: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
+    insert: jest.fn(),
     findOne: jest.fn(),
     findOneBy: jest.fn(),
     getRepository: jest.fn((cls: unknown): unknown => {
@@ -77,6 +82,7 @@ function buildService() {
     }),
   };
   em.query.mockResolvedValue([]); // 默认无时段冲突
+  em.insert.mockResolvedValue({ raw: [], identifiers: [] });
   const dataSource = {
     transaction: jest.fn((cb: (manager: typeof em) => unknown) => cb(em)),
     query: jest.fn(),
@@ -166,6 +172,17 @@ describe('AppointmentsService', () => {
       expect(result.amount).toBe(159.6);
       expect(result.originalAmount).toBe(159.6);
       expect(m.em.save).toHaveBeenCalled();
+      // 一单多桌关系写入 appointment_tables 关联表（availability/冲突校验用）
+      expect(m.em.insert).toHaveBeenCalledWith(
+        AppointmentTable,
+        expect.arrayContaining([
+          expect.objectContaining({
+            tableId: 1,
+            storeId: 1,
+            date: baseDto.date,
+          }),
+        ]),
+      );
       expect(m.redis.del).toHaveBeenCalled(); // 无论成败释放分布式锁
     });
 
@@ -182,15 +199,17 @@ describe('AppointmentsService', () => {
       m.tables.find.mockResolvedValue([{ id: 1, name: 'A1', capacity: 4 }]);
       m.memberships.findOneBy.mockResolvedValue(null);
       m.redis.set.mockResolvedValue('OK');
-      m.em.query.mockResolvedValue([
-        {
-          tableId: 1,
-          tableName: 'A1',
-          tables: [{ id: 1, name: 'A1' }],
-          startTime: '09:30',
-          endTime: '11:00',
-        },
-      ]);
+      m.em.query
+        .mockResolvedValueOnce([
+          {
+            id: 9,
+            tableId: 1,
+            tableName: 'A1',
+            startTime: '09:30',
+            endTime: '11:00',
+          },
+        ])
+        .mockResolvedValueOnce([{ tableId: 1, name: 'A1' }]);
 
       await expect(
         m.svc.create(7, {
@@ -199,6 +218,11 @@ describe('AppointmentsService', () => {
           durationHours: 1,
         }),
       ).rejects.toThrow(BadRequestException);
+      // 冲突校验走 appointment_tables 关联表，不再 JSON_TABLE 展开
+      expect(m.em.query).toHaveBeenCalledWith(
+        expect.stringContaining('FROM appointment_tables'),
+        expect.any(Array),
+      );
     });
 
     it('拒绝预约已过去的时段（服务端兜底）', async () => {
@@ -415,7 +439,10 @@ describe('AppointmentsService', () => {
         },
       ]);
 
-      const result = await m.svc.availability(1, '2026-08-12');
+      const result = (await m.svc.availability(
+        1,
+        '2026-08-12',
+      )) as unknown as TableAvailabilityItem[];
 
       expect(result).toHaveLength(2);
       expect(result[0].bookedWindows).toEqual([
@@ -427,15 +454,18 @@ describe('AppointmentsService', () => {
         'EX',
         expect.any(Number),
       );
+      // 占用窗口查询走 appointment_tables 关联表，不再 JSON_TABLE 展开
+      expect(m.dataSource.query).toHaveBeenCalledWith(
+        expect.stringContaining('FROM appointment_tables'),
+        [1, '2026-08-12'],
+      );
     });
 
     it('缓存命中时直接返回，不查库', async () => {
       const m = buildService();
       m.stores.findOneBy.mockResolvedValue({ id: 1, enabled: true });
       m.redis.get.mockResolvedValue(
-        JSON.stringify([
-          { id: 1, name: 'A1', capacity: 2, bookedWindows: [] },
-        ]),
+        JSON.stringify([{ id: 1, name: 'A1', capacity: 2, bookedWindows: [] }]),
       );
 
       const result = await m.svc.availability(1, '2026-08-12');
@@ -525,9 +555,7 @@ describe('AppointmentsService', () => {
         status: 'cancelled',
       });
 
-      await expect(m.svc.findByCode('123456')).rejects.toThrow(
-        '该预约已取消',
-      );
+      await expect(m.svc.findByCode('123456')).rejects.toThrow('该预约已取消');
     });
   });
 
@@ -616,6 +644,13 @@ describe('AppointmentsService', () => {
       expect(result.serviceEndTime).toBeInstanceOf(Date);
       // 散客无会员身份：多人同行价 25 元/人/小时 × 2 小时 × 2 人 = 100
       expect(result.amount).toBe(100);
+      // 开台也写入关联表，availability/冲突校验才能看到这单的桌位占用
+      expect(m.em.insert).toHaveBeenCalledWith(
+        AppointmentTable,
+        expect.arrayContaining([
+          expect.objectContaining({ tableId: 1, storeId: 1 }),
+        ]),
+      );
       expect(m.redis.del).toHaveBeenCalled(); // 无论成败释放分布式锁
       // 开台后失效当天该店 availability 缓存
       expect(m.redis.del).toHaveBeenCalledWith(
@@ -635,15 +670,17 @@ describe('AppointmentsService', () => {
       m.tables.find.mockResolvedValue([{ id: 1, name: 'B1', capacity: 2 }]);
       m.users.findByUsernameOrCreate.mockResolvedValue({ id: 999 });
       // 全天占用的有效预约：任何开台时段都会与之重叠
-      m.em.query.mockResolvedValue([
-        {
-          tableId: 1,
-          tableName: 'B1',
-          tables: [{ id: 1, name: 'B1' }],
-          startTime: '00:00',
-          endTime: '23:59',
-        },
-      ]);
+      m.em.query
+        .mockResolvedValueOnce([
+          {
+            id: 9,
+            tableId: 1,
+            tableName: 'B1',
+            startTime: '00:00',
+            endTime: '23:59',
+          },
+        ])
+        .mockResolvedValueOnce([{ tableId: 1, name: 'B1' }]);
 
       await expect(
         m.svc.adminWalkIn(

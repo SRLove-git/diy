@@ -747,6 +747,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String storePackageMemberPerPerson(String name, String price) {
+    return '$name · Member $price/person';
+  }
+
+  @override
+  String storePackageMemberFree(String name) {
+    return '$name · Member free';
+  }
+
+  @override
   String get storeAllDay => 'All-day';
 
   @override
