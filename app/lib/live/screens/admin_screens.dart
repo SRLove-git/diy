@@ -2651,7 +2651,7 @@ class _PlanCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  p.name,
+                  context.memberName(p.name),
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,

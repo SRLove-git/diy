@@ -288,9 +288,9 @@ class _ProfileHeader extends StatelessWidget {
               gradient: LiveGradients.brand,
               borderRadius: BorderRadius.circular(11),
             ),
-            child: const Text(
-              '管理员',
-              style: TextStyle(
+            child: Text(
+              l10n.adminStoreBadge,
+              style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,

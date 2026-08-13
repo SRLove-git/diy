@@ -3152,13 +3152,24 @@ class _ExperienceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final date = DateTime.tryParse(appointment.date);
-    final week = date == null ? '' : '周${'一二三四五六日'[date.weekday - 1]}';
+    final week = date == null
+        ? ''
+        : switch (date.weekday) {
+            1 => l10n.weekdayMon,
+            2 => l10n.weekdayTue,
+            3 => l10n.weekdayWed,
+            4 => l10n.weekdayThu,
+            5 => l10n.weekdayFri,
+            6 => l10n.weekdaySat,
+            _ => l10n.weekdaySun,
+          };
     final table = appointment.tableLabel.isNotEmpty
         ? ' · ${appointment.tableLabel}'
         : '';
     final info =
-        '${appointment.date} $week ${appointment.startTime}-${appointment.endTime}$table · ${appointment.peopleCount} 人';
+        '${appointment.date} $week ${appointment.startTime}-${appointment.endTime}$table · ${l10n.appointmentPeople(appointment.peopleCount)}';
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
