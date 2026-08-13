@@ -79,11 +79,19 @@ class AuthService {
   Future<({String id, Uint8List image})> captcha() async {
     final data =
         await ApiClient.instance.get('/captcha') as Map<String, dynamic>;
+    return AuthService.captchaFromJson(data);
+  }
+
+  /// 纯函数：把服务端验证码响应解析为 id + SVG 字节，便于单元测试
+  static ({String id, Uint8List image}) captchaFromJson(
+    Map<String, dynamic> data,
+  ) {
     final id = data['id'] as String;
-    final uri = data['image'] as String;
-    final comma = uri.indexOf(',');
-    final base64 = comma >= 0 ? uri.substring(comma + 1) : uri;
-    return (id: id, image: base64Decode(base64));
+    final image = data['imageBase64'] as String? ?? '';
+    if (image.isEmpty) {
+      throw Exception('captcha image missing');
+    }
+    return (id: id, image: base64Decode(image));
   }
 
   /// 修改登录密码（登录态下，需校验原密码）

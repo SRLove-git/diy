@@ -10,6 +10,8 @@ export interface ImageCaptcha {
   id: string;
   /** SVG data URI（可直接用于 <img src> / Image 组件） */
   image: string;
+  /** SVG 原始字节的 base64（移动端无法渲染 data URI 时使用） */
+  imageBase64: string;
   ttl: number;
 }
 
@@ -180,6 +182,7 @@ export class CaptchaService {
     return {
       id,
       image: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+      imageBase64: Buffer.from(svg, 'utf8').toString('base64'),
       ttl,
     };
   }

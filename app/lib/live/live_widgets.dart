@@ -50,20 +50,27 @@ class LivePage extends StatelessWidget {
     return Scaffold(
       backgroundColor: backgroundColor,
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
-      body: fullBleed
-          ? AnnotatedRegion<SystemUiOverlayStyle>(
-              value: SystemUiOverlayStyle(
-                statusBarColor: Colors.transparent,
-                statusBarIconBrightness: statusBarLight
-                    ? Brightness.light
-                    : Brightness.dark,
-                statusBarBrightness: statusBarLight
-                    ? Brightness.dark
-                    : Brightness.light,
-              ),
-              child: content,
-            )
-          : SafeArea(bottom: false, child: content),
+      // 点击文本框以外的空白区域时收起键盘（登录/注册等所有输入页面通用）。
+      // 子组件（按钮/输入框/图片等）的点击各自会赢下手势竞技场，
+      // 这里只在点击未被消费的空白处触发 unfocus。
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: fullBleed
+            ? AnnotatedRegion<SystemUiOverlayStyle>(
+                value: SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  statusBarIconBrightness: statusBarLight
+                      ? Brightness.light
+                      : Brightness.dark,
+                  statusBarBrightness: statusBarLight
+                      ? Brightness.dark
+                      : Brightness.light,
+                ),
+                child: content,
+              )
+            : SafeArea(bottom: false, child: content),
+      ),
     );
   }
 }
