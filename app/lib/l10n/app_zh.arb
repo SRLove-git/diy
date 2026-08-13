@@ -88,6 +88,7 @@
   "settingsSwitchOther": "其他账号",
   "settingsSwitchCurrentTag": "当前",
   "settingsSwitchSuccess": "已切换账号",
+  "switchSessionExpired": "该账号登录已过期，请重新登录",
   "settingsNotifications": "消息通知",
   "settingsNotificationsSub": "互动、系统消息提醒",
   "settingsVersion": "版本",

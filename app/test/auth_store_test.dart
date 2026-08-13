@@ -166,4 +166,49 @@ void main() {
 
     expect(() => AuthStore.instance.switchTo(999), throwsA(isA<StateError>()));
   });
+
+  test('updateSavedTokens 更新记住账号的 token 并持久化', () async {
+    await AuthStore.instance.save(
+      accessToken: 'at-1',
+      refreshToken: 'rt-1',
+      userId: 1,
+      displayName: '阿哲',
+    );
+
+    await AuthStore.instance.updateSavedTokens(
+      userId: 1,
+      accessToken: 'at-1-new',
+      refreshToken: 'rt-1-new',
+    );
+
+    expect(AuthStore.instance.accountOf(1)?.accessToken, 'at-1-new');
+    expect(AuthStore.instance.accountOf(1)?.refreshToken, 'rt-1-new');
+    // 昵称等信息保留
+    expect(AuthStore.instance.accountOf(1)?.displayName, '阿哲');
+
+    await AuthStore.instance.restore();
+    expect(AuthStore.instance.accountOf(1)?.accessToken, 'at-1-new');
+    expect(AuthStore.instance.accountOf(1)?.refreshToken, 'rt-1-new');
+  });
+
+  test('removeAccount 从记住列表移除账号且不影响当前会话', () async {
+    await AuthStore.instance.save(
+      accessToken: 'at-1',
+      refreshToken: 'rt-1',
+      userId: 1,
+    );
+    await AuthStore.instance.save(
+      accessToken: 'at-2',
+      refreshToken: 'rt-2',
+      userId: 2,
+    );
+
+    await AuthStore.instance.removeAccount(1);
+
+    expect(AuthStore.instance.accountOf(1), isNull);
+    expect(AuthStore.instance.accountOf(2), isNotNull);
+    // 当前登录态不受影响
+    expect(AuthStore.instance.isLoggedIn, isTrue);
+    expect(AuthStore.instance.userId, 2);
+  });
 }

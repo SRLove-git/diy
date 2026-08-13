@@ -6,6 +6,18 @@ import 'api_client.dart';
 import 'auth_store.dart';
 import 'models.dart';
 
+/// 记住账号快速切换前的登录态校验结果。
+enum SavedAccountCheck {
+  /// 登录态有效，可直接切换。
+  ok,
+
+  /// 会话已失效（access / refresh 均不可用），需重新登录。
+  expired,
+
+  /// 网络异常，本次无法完成校验。
+  networkError,
+}
+
 /// 认证 / 用户 / 门店 / 预约 / 活动 / 会员 / 曲库 / 关注 / 上传
 class AuthService {
   AuthService._();
@@ -113,6 +125,38 @@ class AuthService {
     final data =
         await ApiClient.instance.get('/auth/me') as Map<String, dynamic>;
     return User.fromJson(data);
+  }
+
+  /// 校验记住账号的登录态是否仍可用：先用 access token 请求 /auth/me，
+  /// 过期则用 refresh token 续期并把最新 token 写回记住列表。
+  /// 避免用失效会话进入首页后，又被全局 401 处理清掉登录态
+  /// 踢回登录页（闪进闪退）。
+  Future<SavedAccountCheck> checkSavedAccount(SavedAccount account) async {
+    try {
+      await ApiClient.instance.getAs('/auth/me', account.accessToken);
+      return SavedAccountCheck.ok;
+    } on ApiException catch (e) {
+      if (e.statusCode == null || e.statusCode != 401) {
+        return SavedAccountCheck.networkError;
+      }
+    }
+    try {
+      final data = await ApiClient.instance.post(
+        '/auth/refresh',
+        body: {'refreshToken': account.refreshToken},
+        refreshOn401: false,
+      ) as Map<String, dynamic>;
+      await AuthStore.instance.updateSavedTokens(
+        userId: account.userId,
+        accessToken: data['accessToken'] as String,
+        refreshToken: data['refreshToken'] as String,
+      );
+      return SavedAccountCheck.ok;
+    } on ApiException catch (e) {
+      return e.statusCode == null
+          ? SavedAccountCheck.networkError
+          : SavedAccountCheck.expired;
+    }
   }
 }
 

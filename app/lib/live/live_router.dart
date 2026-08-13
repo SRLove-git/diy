@@ -465,7 +465,12 @@ final GoRouter appRouter = GoRouter(
     // ===== 管理端模块（管理员账号首页可见入口） =====
     GoRoute(
       path: RoutePaths.adminRedeem,
-      builder: (_, _) => LiveHost(child: const AdminRedeemScreen()),
+      // 扫码核销页有核销码输入框：键盘弹出时页面不压缩，键盘覆盖下半部分
+      // （与登录页一致），避免页面等比缩小出现上下分层。
+      builder: (_, _) => LiveHost(
+        resizeToAvoidBottomInset: false,
+        child: const AdminRedeemScreen(),
+      ),
     ),
     GoRoute(
       path: RoutePaths.adminScan,
@@ -476,11 +481,21 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: RoutePaths.adminOrders,
-      builder: (_, _) => LiveHost(child: const AdminOrdersScreen()),
+      // 订单页有搜索输入框：键盘弹出时页面不压缩，键盘覆盖下半部分
+      // （与登录页一致），避免页面等比缩小出现上下分层。
+      builder: (_, _) => LiveHost(
+        resizeToAvoidBottomInset: false,
+        child: const AdminOrdersScreen(),
+      ),
     ),
     GoRoute(
       path: RoutePaths.adminMembers,
-      builder: (_, _) => LiveHost(child: const AdminMembersScreen()),
+      // 会员运营页有搜索输入框：键盘弹出时页面不压缩，键盘覆盖下半部分
+      // （与登录页一致），避免页面等比缩小出现上下分层。
+      builder: (_, _) => LiveHost(
+        resizeToAvoidBottomInset: false,
+        child: const AdminMembersScreen(),
+      ),
     ),
     // ===== 个人 =====
     GoRoute(

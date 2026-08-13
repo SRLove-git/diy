@@ -223,6 +223,37 @@ class AuthStore extends ChangeNotifier {
     );
   }
 
+  /// 更新记住账号的 token（快速切换前校验/续期成功后写回，
+  /// 避免下次切换仍带着已失效的旧 token）。
+  Future<void> updateSavedTokens({
+    required int userId,
+    required String accessToken,
+    required String refreshToken,
+  }) async {
+    final index = _accounts.indexWhere((a) => a.userId == userId);
+    if (index < 0) return;
+    final old = _accounts[index];
+    _accounts[index] = SavedAccount(
+      userId: userId,
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      displayName: old.displayName,
+      avatar: old.avatar,
+      role: old.role,
+    );
+    final prefs = await SharedPreferences.getInstance();
+    await _persistAccounts(prefs);
+    notifyListeners();
+  }
+
+  /// 从记住列表移除账号（登录态已失效，无法再免密切换）。
+  Future<void> removeAccount(int userId) async {
+    _accounts.removeWhere((a) => a.userId == userId);
+    final prefs = await SharedPreferences.getInstance();
+    await _persistAccounts(prefs);
+    notifyListeners();
+  }
+
   /// 仅清空当前登录态（会话过期/切换账号时保留记住列表）。
   Future<void> clear() async {
     _accessToken = null;

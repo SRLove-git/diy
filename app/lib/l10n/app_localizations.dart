@@ -584,6 +584,12 @@ abstract class AppLocalizations {
   /// **'已切换账号'**
   String get settingsSwitchSuccess;
 
+  /// No description provided for @switchSessionExpired.
+  ///
+  /// In zh, this message translates to:
+  /// **'该账号登录已过期，请重新登录'**
+  String get switchSessionExpired;
+
   /// No description provided for @settingsNotifications.
   ///
   /// In zh, this message translates to:

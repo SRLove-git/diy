@@ -26,7 +26,11 @@ class ApiClient {
   final http.Client _client = http.Client();
   bool _refreshing = false;
 
-  Map<String, String> _headers({bool json = true, bool auth = true}) {
+  Map<String, String> _headers({
+    bool json = true,
+    bool auth = true,
+    String? token,
+  }) {
     final language =
         LocaleStore.instance.languageCode ??
         (PlatformDispatcher.instance.locale.languageCode == 'zh'
@@ -36,9 +40,9 @@ class ApiClient {
       'Accept-Language': language,
       if (json) 'Content-Type': 'application/json',
     };
-    final token = AuthStore.instance.accessToken;
-    if (auth && token != null && token.isNotEmpty) {
-      h['Authorization'] = 'Bearer $token';
+    final t = token ?? AuthStore.instance.accessToken;
+    if (auth && t != null && t.isNotEmpty) {
+      h['Authorization'] = 'Bearer $t';
     }
     return h;
   }
@@ -63,6 +67,7 @@ class ApiClient {
   Future<dynamic> _send(
     Future<http.Response> Function() send, {
     bool retried = false,
+    bool refreshOn401 = true,
   }) async {
     http.Response res;
     try {
@@ -73,9 +78,12 @@ class ApiClient {
       throw ApiException('网络连接失败，请确认后端服务已启动（$e）');
     }
 
-    if (res.statusCode == 401 && !retried && AuthStore.instance.isLoggedIn) {
+    if (res.statusCode == 401 &&
+        !retried &&
+        refreshOn401 &&
+        AuthStore.instance.isLoggedIn) {
       final ok = await _refresh();
-      if (ok) return _send(send, retried: true);
+      if (ok) return _send(send, retried: true, refreshOn401: refreshOn401);
     }
 
     dynamic body;
@@ -125,12 +133,33 @@ class ApiClient {
     return _send(() => _client.get(_uri(path, query), headers: _headers()));
   }
 
-  Future<dynamic> post(String path, {Object? body, Map<String, dynamic>? query}) {
-    return _send(() => _client.post(
-          _uri(path, query),
-          headers: _headers(),
-          body: body == null ? null : jsonEncode(body),
-        ));
+  /// 用指定 token 发起 GET（校验记住账号登录态用）。
+  /// 401 时不触发全局刷新/清登录态，由调用方决定如何处理。
+  Future<dynamic> getAs(
+    String path,
+    String token, {
+    Map<String, dynamic>? query,
+  }) {
+    return _send(
+      () => _client.get(_uri(path, query), headers: _headers(token: token)),
+      refreshOn401: false,
+    );
+  }
+
+  Future<dynamic> post(
+    String path, {
+    Object? body,
+    Map<String, dynamic>? query,
+    bool refreshOn401 = true,
+  }) {
+    return _send(
+      () => _client.post(
+        _uri(path, query),
+        headers: _headers(),
+        body: body == null ? null : jsonEncode(body),
+      ),
+      refreshOn401: refreshOn401,
+    );
   }
 
   Future<dynamic> patch(String path, {Object? body}) {

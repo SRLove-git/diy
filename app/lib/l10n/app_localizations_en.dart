@@ -258,6 +258,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSwitchSuccess => 'Account switched';
 
   @override
+  String get switchSessionExpired =>
+      'This account session has expired. Please log in again.';
+
+  @override
   String get settingsNotifications => 'Notifications';
 
   @override

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../api/auth_store.dart';
+import '../../api/services.dart';
 import '../../l10n/l10n_ext.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
@@ -34,6 +35,20 @@ class _SwitchAccountScreenState extends State<SwitchAccountScreen> {
 
   Future<void> _switchTo(SavedAccount account) async {
     if (account.userId == AuthStore.instance.userId) return;
+    // 切换前先校验该账号的登录态：失效的会话不再进入首页
+    // （避免闪进闪退），有效会话直接用最新 token 切换。
+    final check = await AuthService.instance.checkSavedAccount(account);
+    if (!mounted) return;
+    if (check == SavedAccountCheck.expired) {
+      await AuthStore.instance.removeAccount(account.userId);
+      if (!mounted) return;
+      showLiveSnack(context, context.l10n.switchSessionExpired);
+      return;
+    }
+    if (check == SavedAccountCheck.networkError) {
+      showLiveSnack(context, context.l10n.serverError);
+      return;
+    }
     await AuthStore.instance.switchTo(account.userId);
     if (!mounted) return;
     showLiveSnack(context, context.l10n.settingsSwitchSuccess);

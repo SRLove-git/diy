@@ -177,6 +177,20 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_loading) return;
     setState(() => _loading = true);
     try {
+      // 切换前先校验该账号的登录态：失效的会话不再进入首页
+      // （避免闪进闪退），有效会话直接用最新 token 切换。
+      final check = await AuthService.instance.checkSavedAccount(account);
+      if (!mounted) return;
+      if (check == SavedAccountCheck.expired) {
+        await AuthStore.instance.removeAccount(account.userId);
+        if (!mounted) return;
+        showLiveSnack(context, context.l10n.switchSessionExpired);
+        return;
+      }
+      if (check == SavedAccountCheck.networkError) {
+        showLiveSnack(context, context.l10n.serverError);
+        return;
+      }
       await AuthStore.instance.switchTo(account.userId);
       if (!mounted) return;
       showLiveSnack(context, context.l10n.settingsSwitchSuccess);

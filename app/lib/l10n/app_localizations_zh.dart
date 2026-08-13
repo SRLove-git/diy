@@ -254,6 +254,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSwitchSuccess => '已切换账号';
 
   @override
+  String get switchSessionExpired => '该账号登录已过期，请重新登录';
+
+  @override
   String get settingsNotifications => '消息通知';
 
   @override
