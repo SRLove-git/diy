@@ -34,7 +34,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>用于发布作品、设置头像和聊天时选择图片</string>
 	<key>NSCameraUsageDescription</key>
-	<string>用于拍摄作品照片并上传</string>
+	<string>用于拍摄作品照片、上传头像以及管理员扫码核销</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>用于发送聊天语音消息</string>
 	<key>UIApplicationSceneManifest</key>

@@ -141,13 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _refreshSavedAccountInfo() async {
     try {
       final u = await AuthService.instance.me();
-      await AuthStore.instance.updateAccountInfo(
-        userId: u.id,
-        displayName: u.nickname.isNotEmpty
-            ? u.nickname
-            : (u.username?.isNotEmpty == true ? u.username : null),
-        avatar: u.avatar.isEmpty ? null : u.avatar,
-      );
+      await AuthStore.instance.applyMe(u);
     } catch (_) {
       // 网络抖动等情况下账号信息稍后可在账号切换页以「用户 #id」展示。
     }

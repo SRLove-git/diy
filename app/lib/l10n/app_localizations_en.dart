@@ -407,6 +407,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeMemberDesc => 'Benefits · Deals';
 
   @override
+  String get adminStoreSection => 'Store Management';
+
+  @override
+  String get adminStoreBadge => 'Admin';
+
+  @override
+  String get adminRedeem => 'Scan & Redeem';
+
+  @override
+  String get adminRedeemDesc => 'Appointments · Coupons';
+
+  @override
+  String get adminOrders => 'Orders';
+
+  @override
+  String get adminOrdersDesc => 'Appointments · Memberships';
+
+  @override
+  String get adminMembers => 'Members';
+
+  @override
+  String get adminMembersDesc => 'Members · Plans · Coupons';
+
+  @override
+  String get adminOrdersTab => 'Appointments';
+
+  @override
+  String get adminMemberOrdersTab => 'Member Orders';
+
+  @override
+  String get adminMembersTab => 'Members';
+
+  @override
+  String get adminPlansTab => 'Plans';
+
+  @override
+  String get adminCouponsTab => 'Coupons';
+
+  @override
   String get homeComingSoon => 'Coming Soon';
 
   @override

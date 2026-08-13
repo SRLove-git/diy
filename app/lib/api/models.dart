@@ -429,6 +429,8 @@ class Appointment {
     required this.payStatus,
     required this.payMethod,
     required this.status,
+    this.userNickname = '',
+    this.userEmail,
     this.note = '',
     this.userCouponId,
     this.couponTitle = '',
@@ -465,6 +467,11 @@ class Appointment {
   final String payStatus;
   final String payMethod;
   final String status;
+
+  /// 管理端列表附带：用户昵称 / 邮箱（普通列表接口不返回）。
+  final String userNickname;
+  final String? userEmail;
+
   final String note;
   final int? userCouponId;
   final String couponTitle;
@@ -561,6 +568,8 @@ class Appointment {
       payStatus: json['payStatus'] as String? ?? 'unpaid',
       payMethod: json['payMethod'] as String? ?? '',
       status: json['status'] as String? ?? 'booked',
+      userNickname: json['userNickname'] as String? ?? '',
+      userEmail: json['userEmail'] as String?,
       note: json['note'] as String? ?? '',
       userCouponId: (json['userCouponId'] as num?)?.toInt(),
       couponTitle: json['couponTitle'] as String? ?? '',
@@ -1058,6 +1067,59 @@ class Membership {
   );
 }
 
+/// 管理端会员列表条目（附带用户显示名）。
+class AdminMembership {
+  const AdminMembership({
+    required this.id,
+    required this.userId,
+    this.userName = '',
+    this.memberNo = '',
+    this.levelName = '手作会员',
+    this.status = 'none',
+    this.expireAt,
+    this.updatedAt,
+  });
+
+  final int id;
+  final int userId;
+  final String userName;
+  final String memberNo;
+  final String levelName;
+  final String status; // active / expired
+  final DateTime? expireAt;
+  final DateTime? updatedAt;
+
+  String get statusLabel => switch (status) {
+    'active' => '已开通',
+    'expired' => '已过期',
+    _ => status,
+  };
+
+  factory AdminMembership.fromJson(Map<String, dynamic> json) {
+    final expireRaw = json['expireAt'];
+    final expire = expireRaw == null
+        ? null
+        : DateTime.tryParse(expireRaw.toString());
+    final rawStatus = json['status'] as String? ?? '';
+    return AdminMembership(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      userId: (json['userId'] as num?)?.toInt() ?? 0,
+      userName: json['userName'] as String? ?? '',
+      memberNo: json['memberNo'] as String? ?? '',
+      levelName: json['levelName'] as String? ?? '手作会员',
+      status: rawStatus.isNotEmpty
+          ? rawStatus
+          : (expire == null || expire.isAfter(DateTime.now())
+                ? 'active'
+                : 'expired'),
+      expireAt: expire,
+      updatedAt: json['updatedAt'] == null
+          ? null
+          : DateTime.tryParse(json['updatedAt'].toString()),
+    );
+  }
+}
+
 class MemberOrder {
   const MemberOrder({
     required this.id,
@@ -1065,6 +1127,8 @@ class MemberOrder {
     required this.durationDays,
     required this.amount,
     required this.status,
+    this.userNickname = '',
+    this.userEmail,
     this.createdAt,
   });
 
@@ -1073,6 +1137,8 @@ class MemberOrder {
   final int durationDays;
   final double amount;
   final String status; // pending / confirmed / cancelled
+  final String userNickname;
+  final String? userEmail;
   final DateTime? createdAt;
 
   String get statusLabel => switch (status) {
@@ -1088,6 +1154,8 @@ class MemberOrder {
     durationDays: (json['durationDays'] as num?)?.toInt() ?? 0,
     amount: _num(json['amount'])?.toDouble() ?? 0,
     status: json['status'] as String? ?? 'pending',
+    userNickname: json['userNickname'] as String? ?? '',
+    userEmail: json['userEmail'] as String?,
     createdAt: json['createdAt'] == null
         ? null
         : DateTime.tryParse(json['createdAt'].toString()),
@@ -1104,6 +1172,7 @@ class MemberPlan {
     this.benefits = const [],
     this.badge = '',
     this.recommended = false,
+    this.enabled = true,
   });
 
   final int id;
@@ -1114,6 +1183,7 @@ class MemberPlan {
   final List<String> benefits;
   final String badge;
   final bool recommended;
+  final bool enabled;
 
   factory MemberPlan.fromJson(Map<String, dynamic> json) => MemberPlan(
     id: (json['id'] as num?)?.toInt() ?? 0,
@@ -1126,6 +1196,7 @@ class MemberPlan {
         const [],
     badge: json['badge'] as String? ?? '',
     recommended: json['recommended'] as bool? ?? false,
+    enabled: json['enabled'] as bool? ?? true,
   );
 }
 
@@ -1139,6 +1210,7 @@ class Coupon {
     this.expireAt,
     this.stock = 0,
     this.membersOnly = true,
+    this.enabled = true,
     this.received = false,
     this.userCouponId,
     this.status = 'unused',
@@ -1146,6 +1218,9 @@ class Coupon {
     this.code = '',
     this.usedAt,
     this.redeemedBy,
+    this.userId,
+    this.userNickname = '',
+    this.userEmail,
   });
 
   final int id;
@@ -1156,6 +1231,7 @@ class Coupon {
   final DateTime? expireAt;
   final int stock;
   final bool membersOnly;
+  final bool enabled;
   final bool received;
   final int? userCouponId;
   final String status;
@@ -1164,21 +1240,34 @@ class Coupon {
   final DateTime? usedAt;
   final int? redeemedBy;
 
+  /// 券码查询 / 核销确认返回：持券用户信息。
+  final int? userId;
+  final String userNickname;
+  final String? userEmail;
+
   bool get usable =>
       status == 'unused' &&
       (expireAt == null || expireAt!.isAfter(DateTime.now()));
 
   factory Coupon.fromJson(Map<String, dynamic> json) => Coupon(
     id: (json['id'] as num?)?.toInt() ?? 0,
-    title: json['title'] as String? ?? '',
-    amountRaw: json['amount'] as String? ?? '',
-    amount: _num(json['amount'])?.toDouble() ?? 0,
-    threshold: json['threshold'] as String? ?? '无门槛',
+    // 核销前确认接口返回 couponTitle/couponAmount/couponThreshold 字段
+    title: (json['title'] as String?) ?? (json['couponTitle'] as String? ?? ''),
+    amountRaw:
+        (json['amount'] as String?) ?? (json['couponAmount']?.toString() ?? ''),
+    amount:
+        _num(json['amount'])?.toDouble() ??
+        _num(json['couponAmount'])?.toDouble() ??
+        0,
+    threshold:
+        (json['threshold'] as String?) ??
+        (json['couponThreshold'] as String? ?? '无门槛'),
     expireAt: json['expireAt'] == null
         ? null
         : DateTime.tryParse(json['expireAt'].toString()),
     stock: (json['stock'] as num?)?.toInt() ?? 0,
     membersOnly: json['membersOnly'] as bool? ?? true,
+    enabled: json['enabled'] as bool? ?? true,
     received: json['received'] as bool? ?? false,
     userCouponId: (json['userCouponId'] as num?)?.toInt(),
     status: json['status'] as String? ?? 'unused',
@@ -1190,6 +1279,9 @@ class Coupon {
         ? null
         : DateTime.tryParse(json['usedAt'].toString()),
     redeemedBy: (json['redeemedBy'] as num?)?.toInt(),
+    userId: (json['userId'] as num?)?.toInt(),
+    userNickname: json['userNickname'] as String? ?? '',
+    userEmail: json['userEmail'] as String?,
   );
 }
 

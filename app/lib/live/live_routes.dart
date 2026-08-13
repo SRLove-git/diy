@@ -60,6 +60,11 @@ class RoutePaths {
   static const memberCoupons = '/member/coupons';
   static const memberCouponCenter = '/member/coupon-center';
   static const memberPurchase = '/member/purchase';
+  // 管理端模块（仅管理员账号在首页可见入口，服务端接口另有 admin 权限兜底）
+  static const adminRedeem = '/admin/redeem';
+  static const adminScan = '/admin/scan';
+  static const adminOrders = '/admin/orders';
+  static const adminMembers = '/admin/members';
   static const profileEdit = '/profile/edit';
   static const profileSettings = '/profile/settings';
   static const profileSwitchAccount = '/profile/switch-account';

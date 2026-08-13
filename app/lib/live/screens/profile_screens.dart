@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart' hide Page;
 import 'package:image_picker/image_picker.dart';
 
 import '../../api/api_client.dart';
+import '../../api/auth_store.dart';
 // import '../../api/chat_services.dart'; // 聊天前期暂不开放（私信入口已注释）
 import '../../api/content_services.dart';
 import '../../api/models.dart';
@@ -47,6 +49,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
     try {
       final me = await AuthService.instance.me();
+      unawaited(AuthStore.instance.applyMe(me));
       // final follow = await FollowService.instance.status(me.id);
       // final results = await Future.wait([
       //   FollowService.instance.status(me.id),
@@ -1158,6 +1161,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     AuthService.instance
         .me()
         .then((u) {
+          unawaited(AuthStore.instance.applyMe(u));
           if (!mounted) return;
           setState(() {
             _avatar = u.avatar;
@@ -2140,6 +2144,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     AuthService.instance
         .me()
         .then((u) {
+          unawaited(AuthStore.instance.applyMe(u));
           if (mounted) setState(() => _user = u);
         })
         .catchError((_) {});

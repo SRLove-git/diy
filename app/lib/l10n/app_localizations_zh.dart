@@ -400,6 +400,45 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeMemberDesc => '权益 · 优惠';
 
   @override
+  String get adminStoreSection => '门店管理';
+
+  @override
+  String get adminStoreBadge => '管理员';
+
+  @override
+  String get adminRedeem => '扫码核销';
+
+  @override
+  String get adminRedeemDesc => '预约 · 券码';
+
+  @override
+  String get adminOrders => '订单管理';
+
+  @override
+  String get adminOrdersDesc => '预约 · 会员订单';
+
+  @override
+  String get adminMembers => '会员运营';
+
+  @override
+  String get adminMembersDesc => '会员 · 套餐 · 优惠券';
+
+  @override
+  String get adminOrdersTab => '预约订单';
+
+  @override
+  String get adminMemberOrdersTab => '会员订单';
+
+  @override
+  String get adminMembersTab => '会员列表';
+
+  @override
+  String get adminPlansTab => '套餐';
+
+  @override
+  String get adminCouponsTab => '优惠券';
+
+  @override
   String get homeComingSoon => '敬请期待';
 
   @override

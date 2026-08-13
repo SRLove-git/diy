@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'models.dart';
+
 /// 本地记住的一个已登录账号（用于「切换账号」时免密快速切回）。
 class SavedAccount {
   const SavedAccount({
@@ -12,6 +14,7 @@ class SavedAccount {
     required this.refreshToken,
     this.displayName,
     this.avatar,
+    this.role,
   });
 
   final int userId;
@@ -22,16 +25,24 @@ class SavedAccount {
   final String? displayName;
   final String? avatar;
 
+  /// 账号角色（admin / user；未拉取到角色信息时为 null）。
+  final String? role;
+
   String get label => displayName != null && displayName!.isNotEmpty
       ? displayName!
       : '用户 #$userId';
 
-  SavedAccount copyWith({String? displayName, String? avatar}) => SavedAccount(
+  SavedAccount copyWith({
+    String? displayName,
+    String? avatar,
+    String? role,
+  }) => SavedAccount(
     userId: userId,
     accessToken: accessToken,
     refreshToken: refreshToken,
     displayName: displayName ?? this.displayName,
     avatar: avatar ?? this.avatar,
+    role: role ?? this.role,
   );
 
   Map<String, dynamic> toJson() => {
@@ -40,6 +51,7 @@ class SavedAccount {
     'refreshToken': refreshToken,
     if (displayName != null) 'displayName': displayName,
     if (avatar != null) 'avatar': avatar,
+    if (role != null) 'role': role,
   };
 
   factory SavedAccount.fromJson(Map<String, dynamic> json) => SavedAccount(
@@ -48,6 +60,7 @@ class SavedAccount {
     refreshToken: json['refreshToken'] as String,
     displayName: json['displayName'] as String?,
     avatar: json['avatar'] as String?,
+    role: json['role'] as String?,
   );
 }
 
@@ -95,6 +108,12 @@ class AuthStore extends ChangeNotifier {
     return null;
   }
 
+  /// 当前账号角色（未拉取到角色时为 null）。
+  String? get currentRole => currentAccount?.role;
+
+  /// 当前账号是否为管理员（管理端角色）。
+  bool get isAdmin => currentRole == 'admin';
+
   SavedAccount? accountOf(int userId) {
     for (final a in _accounts) {
       if (a.userId == userId) return a;
@@ -119,6 +138,7 @@ class AuthStore extends ChangeNotifier {
     required int userId,
     String? displayName,
     String? avatar,
+    String? role,
   }) async {
     _accessToken = accessToken;
     _refreshToken = refreshToken;
@@ -136,6 +156,7 @@ class AuthStore extends ChangeNotifier {
         refreshToken: refreshToken,
         displayName: displayName ?? existing?.displayName,
         avatar: avatar ?? existing?.avatar,
+        role: role ?? existing?.role,
       ),
     );
     if (_accounts.length > maxSavedAccounts) {
@@ -176,16 +197,30 @@ class AuthStore extends ChangeNotifier {
     required int userId,
     String? displayName,
     String? avatar,
+    String? role,
   }) async {
     final index = _accounts.indexWhere((a) => a.userId == userId);
     if (index < 0) return;
     _accounts[index] = _accounts[index].copyWith(
       displayName: displayName,
       avatar: avatar,
+      role: role,
     );
     final prefs = await SharedPreferences.getInstance();
     await _persistAccounts(prefs);
     notifyListeners();
+  }
+
+  /// 用 /auth/me 返回的用户信息刷新本地账号（昵称/头像/角色）。
+  Future<void> applyMe(User user) {
+    return updateAccountInfo(
+      userId: user.id,
+      displayName: user.nickname.isNotEmpty
+          ? user.nickname
+          : (user.username?.isNotEmpty == true ? user.username : null),
+      avatar: user.avatar.isEmpty ? null : user.avatar,
+      role: user.role,
+    );
   }
 
   /// 仅清空当前登录态（会话过期/切换账号时保留记住列表）。

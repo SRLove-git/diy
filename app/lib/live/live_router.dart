@@ -13,6 +13,7 @@ import 'live_routes.dart';
 import 'live_theme.dart';
 import 'live_widgets.dart';
 import 'screens/activity_screens.dart';
+import 'screens/admin_screens.dart';
 import 'screens/appointment_screens.dart';
 import 'screens/auth_screens.dart';
 import 'screens/chat_screens.dart';
@@ -460,6 +461,26 @@ final GoRouter appRouter = GoRouter(
       builder: (_, s) => LiveHost(
         child: MemberPurchaseScreen(plan: s.extra as MemberPlan),
       ),
+    ),
+    // ===== 管理端模块（管理员账号首页可见入口） =====
+    GoRoute(
+      path: RoutePaths.adminRedeem,
+      builder: (_, _) => LiveHost(child: const AdminRedeemScreen()),
+    ),
+    GoRoute(
+      path: RoutePaths.adminScan,
+      builder: (_, _) => LiveHost(
+        resizeToAvoidBottomInset: false,
+        child: const AdminScanScreen(),
+      ),
+    ),
+    GoRoute(
+      path: RoutePaths.adminOrders,
+      builder: (_, _) => LiveHost(child: const AdminOrdersScreen()),
+    ),
+    GoRoute(
+      path: RoutePaths.adminMembers,
+      builder: (_, _) => LiveHost(child: const AdminMembersScreen()),
     ),
     // ===== 个人 =====
     GoRoute(

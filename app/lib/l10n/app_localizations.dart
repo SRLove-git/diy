@@ -872,6 +872,84 @@ abstract class AppLocalizations {
   /// **'权益 · 优惠'**
   String get homeMemberDesc;
 
+  /// No description provided for @adminStoreSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'门店管理'**
+  String get adminStoreSection;
+
+  /// No description provided for @adminStoreBadge.
+  ///
+  /// In zh, this message translates to:
+  /// **'管理员'**
+  String get adminStoreBadge;
+
+  /// No description provided for @adminRedeem.
+  ///
+  /// In zh, this message translates to:
+  /// **'扫码核销'**
+  String get adminRedeem;
+
+  /// No description provided for @adminRedeemDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'预约 · 券码'**
+  String get adminRedeemDesc;
+
+  /// No description provided for @adminOrders.
+  ///
+  /// In zh, this message translates to:
+  /// **'订单管理'**
+  String get adminOrders;
+
+  /// No description provided for @adminOrdersDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'预约 · 会员订单'**
+  String get adminOrdersDesc;
+
+  /// No description provided for @adminMembers.
+  ///
+  /// In zh, this message translates to:
+  /// **'会员运营'**
+  String get adminMembers;
+
+  /// No description provided for @adminMembersDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'会员 · 套餐 · 优惠券'**
+  String get adminMembersDesc;
+
+  /// No description provided for @adminOrdersTab.
+  ///
+  /// In zh, this message translates to:
+  /// **'预约订单'**
+  String get adminOrdersTab;
+
+  /// No description provided for @adminMemberOrdersTab.
+  ///
+  /// In zh, this message translates to:
+  /// **'会员订单'**
+  String get adminMemberOrdersTab;
+
+  /// No description provided for @adminMembersTab.
+  ///
+  /// In zh, this message translates to:
+  /// **'会员列表'**
+  String get adminMembersTab;
+
+  /// No description provided for @adminPlansTab.
+  ///
+  /// In zh, this message translates to:
+  /// **'套餐'**
+  String get adminPlansTab;
+
+  /// No description provided for @adminCouponsTab.
+  ///
+  /// In zh, this message translates to:
+  /// **'优惠券'**
+  String get adminCouponsTab;
+
   /// No description provided for @homeComingSoon.
   ///
   /// In zh, this message translates to:

@@ -43,3 +43,9 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // camera-core 1.5.x 需要 concurrent-futures 1.2.0 提供 CallbackToFutureAdapter，
+    // 显式声明避免 Gradle 解析到 1.1.0 导致 camera_android_camerax 编译失败。
+    implementation("androidx.concurrent:concurrent-futures:1.2.0")
+}

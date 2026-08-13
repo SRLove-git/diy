@@ -1784,11 +1784,27 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   void initState() {
     super.initState();
     _future = AppointmentService.instance.detail(widget.appointmentId);
+    // 店员核销 / 上钟 / 下钟后立即刷新详情，二维码马上显示「已销毁」。
+    HomeOrdersRefresh.instance.addListener(_onOrdersChanged);
+  }
+
+  @override
+  void dispose() {
+    HomeOrdersRefresh.instance.removeListener(_onOrdersChanged);
+    super.dispose();
   }
 
   void _reload() => setState(() {
     _future = AppointmentService.instance.detail(widget.appointmentId);
   });
+
+  /// 本单状态变更（核销 / 上钟 / 下钟）时直接用最新数据重建，
+  /// 无需等网络返回；其他订单的变更不影响本页。
+  void _onOrdersChanged() {
+    final p = HomeOrdersRefresh.instance.pending;
+    if (p == null || p.id != widget.appointmentId) return;
+    setState(() => _future = Future.value(p));
+  }
 
   Future<void> _cancel() async {
     final ok = await showCancelAppointmentDialog(context);
@@ -2445,13 +2461,43 @@ class _PillTabs extends StatelessWidget {
 }
 
 /// 71-核销二维码出示：二维码 + 30 秒刷新提示。
-class CheckinQrScreen extends StatelessWidget {
+/// 店员核销 / 上钟 / 下钟后（管理端核销或 WebSocket 推送）即时刷新，
+/// 二维码立刻切换为「已销毁」图标，无需退出重进。
+class CheckinQrScreen extends StatefulWidget {
   const CheckinQrScreen({super.key, required this.appointment});
 
   final Appointment appointment;
 
   @override
+  State<CheckinQrScreen> createState() => _CheckinQrScreenState();
+}
+
+class _CheckinQrScreenState extends State<CheckinQrScreen> {
+  late Appointment _appointment = widget.appointment;
+
+  @override
+  void initState() {
+    super.initState();
+    HomeOrdersRefresh.instance.addListener(_onOrdersChanged);
+  }
+
+  @override
+  void dispose() {
+    HomeOrdersRefresh.instance.removeListener(_onOrdersChanged);
+    super.dispose();
+  }
+
+  /// 本单被核销（状态变更为已核销 / 服务中 / 已完成）后立即重建页面，
+  /// 让出示中的二维码马上变成「已销毁」印章。
+  void _onOrdersChanged() {
+    final p = HomeOrdersRefresh.instance.pending;
+    if (p == null || p.id != _appointment.id) return;
+    setState(() => _appointment = p);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final appointment = _appointment;
     // 已核销 / 服务中 / 已完成的预约码已使用，二维码显示为销毁形状。
     final destroyed = appointment.status == 'checked_in' ||
         appointment.status == 'in_service' ||

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../api/api_client.dart';
+import '../../api/auth_store.dart';
 import '../../api/chat_services.dart';
 import '../../api/models.dart';
 import '../../api/services.dart';
@@ -25,6 +26,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late Future<({List<Activity> activities, int unread})> _future;
 
+  /// 当前账号是否为管理员（null 表示角色尚未拉取完成）。
+  bool? _isAdmin;
+
   /// 已拉取的订单列表（独立状态，支持后台轮询实时更新）。
   List<Appointment> _orders = [];
 
@@ -41,8 +45,39 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _future = _loadBase();
     _loadOrders();
+    _refreshRole();
+    AuthStore.instance.addListener(_onAuthChanged);
     // 预约成功 / 核销 / 下钟结束后自动刷新订单，无需手动下拉
     HomeOrdersRefresh.instance.addListener(_onOrdersChanged);
+  }
+
+  /// 最近一次已刷新角色的账号（避免 applyMe 的通知触发重复拉取）。
+  int? _roleCheckedUserId;
+
+  void _onAuthChanged() {
+    final uid = AuthStore.instance.userId;
+    final isAdmin = AuthStore.instance.isAdmin;
+    if (_isAdmin != isAdmin) setState(() => _isAdmin = isAdmin);
+    // 切换账号 / 重新登录后拉取新账号角色；同一账号的通知（applyMe）不再重复拉取
+    if (uid != null && uid != _roleCheckedUserId) {
+      _refreshRole();
+    }
+  }
+
+  /// 拉取 /auth/me 的角色信息：管理员显示管理模块，普通用户显示预约/到店/会员。
+  Future<void> _refreshRole() async {
+    final uid = AuthStore.instance.userId;
+    if (uid == null) return;
+    _roleCheckedUserId = uid;
+    try {
+      final u = await AuthService.instance.me();
+      unawaited(AuthStore.instance.applyMe(u));
+      if (!mounted || uid != AuthStore.instance.userId) return;
+      final isAdmin = AuthStore.instance.isAdmin;
+      if (_isAdmin != isAdmin) setState(() => _isAdmin = isAdmin);
+    } catch (_) {
+      // 角色拉取失败保持现状；同一账号的角色后续由 applyMe 的通知带到首页
+    }
   }
 
   @override
@@ -133,6 +168,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void dispose() {
     _expiryTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
+    AuthStore.instance.removeListener(_onAuthChanged);
     HomeOrdersRefresh.instance.removeListener(_onOrdersChanged);
     super.dispose();
   }
@@ -216,14 +252,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     padding: const EdgeInsets.only(bottom: 96),
                     children: [
                       const _TopBar(),
-                      // 「拼豆」板块：入口卡（预约 / 到店 / 会员套餐）
+                      // 门店板块：普通用户三入口（预约 / 到店 / 会员套餐），
+                      // 管理员替换为管理端三入口（扫码核销 / 订单管理 / 会员运营）
                       _SectionHeader(
-                        title: l10n.homeStoreSection,
-                        badge: l10n.homeStoreSectionBadge,
+                        title: _isAdmin == true
+                            ? l10n.adminStoreSection
+                            : l10n.homeStoreSection,
+                        badge: _isAdmin == true
+                            ? l10n.adminStoreBadge
+                            : l10n.homeStoreSectionBadge,
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 18),
                         child: _EntryCardsRow(
+                          admin: _isAdmin == true,
                           onTap: (key) {
                             switch (key) {
                               case 'appoint':
@@ -237,6 +279,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 LiveRoutes.push(
                                   context,
                                   RoutePaths.memberCenter,
+                                );
+                              case 'redeem':
+                                LiveRoutes.push(
+                                  context,
+                                  RoutePaths.adminRedeem,
+                                );
+                              case 'orders':
+                                LiveRoutes.push(
+                                  context,
+                                  RoutePaths.adminOrders,
+                                );
+                              case 'members':
+                                LiveRoutes.push(
+                                  context,
+                                  RoutePaths.adminMembers,
                                 );
                             }
                           },
@@ -661,35 +718,57 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// 三入口卡（预约 / 到店 / 会员套餐）：白卡 + 渐变图标盒，浮于极光背景之上。
+/// 三入口卡（普通用户：预约 / 到店 / 会员套餐；管理员：扫码核销 / 订单管理 / 会员运营）。
 class _EntryCardsRow extends StatelessWidget {
-  const _EntryCardsRow({required this.onTap});
+  const _EntryCardsRow({required this.onTap, this.admin = false});
 
   final void Function(String key) onTap;
+  final bool admin;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final entries = [
-      (
-        key: 'appoint',
-        icon: Icons.pin_drop_outlined,
-        title: l10n.homeBookNow,
-        desc: l10n.homeBookNowDesc,
-      ),
-      (
-        key: 'checkin',
-        icon: Icons.qr_code_scanner,
-        title: l10n.homeCheckIn,
-        desc: l10n.homeCheckInDesc,
-      ),
-      (
-        key: 'member',
-        icon: Icons.card_membership,
-        title: l10n.homeMember,
-        desc: l10n.homeMemberDesc,
-      ),
-    ];
+    final entries = admin
+        ? [
+            (
+              key: 'redeem',
+              icon: Icons.qr_code_scanner,
+              title: l10n.adminRedeem,
+              desc: l10n.adminRedeemDesc,
+            ),
+            (
+              key: 'orders',
+              icon: Icons.receipt_long_outlined,
+              title: l10n.adminOrders,
+              desc: l10n.adminOrdersDesc,
+            ),
+            (
+              key: 'members',
+              icon: Icons.groups_outlined,
+              title: l10n.adminMembers,
+              desc: l10n.adminMembersDesc,
+            ),
+          ]
+        : [
+            (
+              key: 'appoint',
+              icon: Icons.pin_drop_outlined,
+              title: l10n.homeBookNow,
+              desc: l10n.homeBookNowDesc,
+            ),
+            (
+              key: 'checkin',
+              icon: Icons.qr_code_scanner,
+              title: l10n.homeCheckIn,
+              desc: l10n.homeCheckInDesc,
+            ),
+            (
+              key: 'member',
+              icon: Icons.card_membership,
+              title: l10n.homeMember,
+              desc: l10n.homeMemberDesc,
+            ),
+          ];
     return Row(
       children: [
         for (var i = 0; i < entries.length; i++) ...[

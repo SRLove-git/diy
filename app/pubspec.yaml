@@ -39,6 +39,7 @@ dependencies:
   go_router: ^16.0.0
   http: ^1.2.0
   liquid_glass_widgets: ^0.29.5
+  mobile_scanner: ^7.4.0
   image_picker: ^1.1.0
   path_provider: ^2.1.5
   photo_manager: ^3.11.0
