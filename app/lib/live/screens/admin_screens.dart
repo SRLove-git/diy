@@ -209,6 +209,8 @@ class _AdminRedeemScreenState extends State<AdminRedeemScreen> {
                         focusNode: _codeFocus,
                         maxLength: 6,
                         textCapitalization: TextCapitalization.characters,
+                        // 键盘覆盖页面时，聚焦输入框自动上滚到键盘上方（滚动余量 260）
+                        scrollPadding: const EdgeInsets.only(bottom: 260),
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
