@@ -458,6 +458,433 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminCouponsTab => 'Coupons';
 
   @override
+  String get adminAddCoupon => 'Add Coupon';
+
+  @override
+  String get adminAddPlan => 'Add Plan';
+
+  @override
+  String get adminAllCanClaim => 'Everyone';
+
+  @override
+  String get adminAllStores => 'All stores';
+
+  @override
+  String get adminAmountHint => 'e.g. 20 / 12% off';
+
+  @override
+  String get adminAmountText => 'Amount label';
+
+  @override
+  String get adminAppointmentCheckedIn => 'Checked in. Service started';
+
+  @override
+  String get adminAppointmentConfirmed => 'Appointment confirmed';
+
+  @override
+  String get adminApptHintCancelled => 'This booking was cancelled';
+
+  @override
+  String get adminApptHintCheckedIn =>
+      'Already checked in / in service — no need to redeem again';
+
+  @override
+  String get adminApptHintCompleted => 'This booking is completed';
+
+  @override
+  String get adminApptHintPending =>
+      'Waiting for the store to confirm this booking';
+
+  @override
+  String get adminBadge => 'Badge';
+
+  @override
+  String get adminBadgeHint => 'Recommended / Best Value';
+
+  @override
+  String get adminBenefitsHint => 'e.g. Exclusive 20% off on all purchases';
+
+  @override
+  String get adminBenefitsLabel => 'Benefits (one per line)';
+
+  @override
+  String adminCancelMemberOrderDesc(String plan) {
+    return 'Cancel the activation request for “$plan”?';
+  }
+
+  @override
+  String get adminCancelMemberOrderTitle => 'Cancel activation request';
+
+  @override
+  String adminCancelAppointmentDesc(String title) {
+    return 'Cancel the booking “$title”?';
+  }
+
+  @override
+  String get adminCheckInTime => 'Check-in time';
+
+  @override
+  String get adminClockIn => 'Start';
+
+  @override
+  String get adminClockInSuccess => 'Started. Service in progress';
+
+  @override
+  String get adminClockOut => 'Finish';
+
+  @override
+  String get adminClockOutSuccess => 'Service completed';
+
+  @override
+  String adminCodeShort(String code) {
+    return 'Code $code';
+  }
+
+  @override
+  String get adminConfirmMemberAction => 'Activate';
+
+  @override
+  String adminConfirmMemberDesc(
+    String user,
+    String plan,
+    int days,
+    String amount,
+  ) {
+    return 'Activate membership for $user ($plan, $days days, $amount)? Please confirm the in-store payment has been received.';
+  }
+
+  @override
+  String get adminConfirmMemberTitle => 'Confirm membership';
+
+  @override
+  String get adminConfirmRedeem => 'Confirm Redeem';
+
+  @override
+  String adminCouponAmountLine(String amount, String threshold) {
+    return 'Coupon $amount · $threshold';
+  }
+
+  @override
+  String adminCouponCodeStatus(String code, String status) {
+    return 'Code $code · $status';
+  }
+
+  @override
+  String get adminCouponDisabled => 'Coupon disabled';
+
+  @override
+  String adminCouponDiscount(String title, String amount) {
+    return 'Coupon $title (-$amount)';
+  }
+
+  @override
+  String adminCouponEmail(String email) {
+    return 'Email $email';
+  }
+
+  @override
+  String get adminCouponEnabled => 'Coupon enabled';
+
+  @override
+  String get adminCouponHintExpired => 'This coupon has expired';
+
+  @override
+  String get adminCouponHintUsed => 'This coupon has already been redeemed';
+
+  @override
+  String get adminCouponName => 'Coupon name';
+
+  @override
+  String get adminCouponNameHint => 'e.g. 20% off everything';
+
+  @override
+  String get adminCouponRedeemed => 'Coupon redeemed';
+
+  @override
+  String get adminCouponSaved => 'Coupon saved';
+
+  @override
+  String get adminCouponStatusUnused => 'Unredeemed';
+
+  @override
+  String get adminCouponStatusUsed => 'Redeemed';
+
+  @override
+  String adminCouponStockLine(String amount, String threshold, int stock) {
+    return '$amount · $threshold · $stock left';
+  }
+
+  @override
+  String adminCouponUser(String name) {
+    return 'User $name';
+  }
+
+  @override
+  String get adminCouponsManage => 'Coupons';
+
+  @override
+  String get adminDate => 'Date';
+
+  @override
+  String adminDeleteMemberDesc(String no, String name) {
+    return 'Delete member $no ($name)? Their membership will end immediately and cannot be undone.';
+  }
+
+  @override
+  String get adminDeleteMemberTitle => 'Delete member record';
+
+  @override
+  String get adminDurationDays => 'Duration (days)';
+
+  @override
+  String adminDurationHours(int hours) {
+    return '$hours hours';
+  }
+
+  @override
+  String get adminEditCoupon => 'Edit Coupon';
+
+  @override
+  String get adminEditMember => 'Edit Member';
+
+  @override
+  String get adminEditPlan => 'Edit Plan';
+
+  @override
+  String get adminEmail => 'Email';
+
+  @override
+  String get adminExpireTime => 'Expiry time';
+
+  @override
+  String get adminFillByPlan => 'Fill from plan';
+
+  @override
+  String adminLastUpdated(String time) {
+    return 'Updated $time';
+  }
+
+  @override
+  String get adminLevelDefault => 'Handmade Member';
+
+  @override
+  String get adminMemberConfirmed => 'Membership activated';
+
+  @override
+  String get adminMemberCreated => 'Membership activated';
+
+  @override
+  String get adminMemberDeleted => 'Member record deleted';
+
+  @override
+  String get adminMemberLevel => 'Membership level';
+
+  @override
+  String get adminMemberOrderCancelled => 'Activation request cancelled';
+
+  @override
+  String adminMemberOrderId(int id) {
+    return 'Member order #$id';
+  }
+
+  @override
+  String get adminMemberOrdersNo => 'No member orders';
+
+  @override
+  String get adminMemberSaved => 'Membership saved';
+
+  @override
+  String get adminMemberStatusConfirmed => 'Activated';
+
+  @override
+  String get adminMembersOnly => 'Members only';
+
+  @override
+  String get adminMembersOnlyClaim => 'Members only';
+
+  @override
+  String get adminNeedCouponFields => 'Enter a name, amount and threshold';
+
+  @override
+  String get adminNeedExpire => 'Select an expiry date';
+
+  @override
+  String get adminNeedExpireTime => 'Select an expiry time';
+
+  @override
+  String get adminNeedPlanDays => 'Enter a valid duration (days)';
+
+  @override
+  String get adminNeedPlanName => 'Enter a plan name';
+
+  @override
+  String get adminNeedPlanPrice => 'Enter a valid price';
+
+  @override
+  String get adminNeedStock => 'Enter a valid stock';
+
+  @override
+  String get adminNeedThresholdNumber =>
+      'Threshold must be a number (0 = no minimum)';
+
+  @override
+  String get adminNeedUserId => 'Enter a user ID';
+
+  @override
+  String get adminNoCoupons => 'No coupons';
+
+  @override
+  String get adminNoMembers => 'No members';
+
+  @override
+  String get adminNoMore => 'No more';
+
+  @override
+  String get adminNoOrders => 'No orders';
+
+  @override
+  String get adminNoPlanHint => 'No plan — set the expiry manually';
+
+  @override
+  String get adminNoPlanShort => 'No plan';
+
+  @override
+  String get adminNoPlans => 'No plans';
+
+  @override
+  String get adminOpenMember => 'Activate Member';
+
+  @override
+  String adminPlanDays(String plan, int days) {
+    return '$plan · $days days';
+  }
+
+  @override
+  String get adminPlanDisabled => 'Plan unpublished';
+
+  @override
+  String adminPlanDurationPrice(int days, String price) {
+    return '$days days · $price';
+  }
+
+  @override
+  String get adminPlanEnabled => 'Plan published';
+
+  @override
+  String get adminPlanName => 'Plan name';
+
+  @override
+  String get adminPlanNameHint => 'Monthly / Quarterly / Annual';
+
+  @override
+  String adminPlanOption(String name, int days) {
+    return '$name ($days days)';
+  }
+
+  @override
+  String adminPlanOriginalPrice(String price) {
+    return ' (was $price)';
+  }
+
+  @override
+  String get adminPlanSaved => 'Plan saved';
+
+  @override
+  String get adminPlansManage => 'Plans';
+
+  @override
+  String get adminPrice => 'Price';
+
+  @override
+  String get adminPublishNow => 'Publish now';
+
+  @override
+  String get adminQuery => 'Search';
+
+  @override
+  String get adminQuerying => 'Searching…';
+
+  @override
+  String get adminRedeemAction => 'Redeem';
+
+  @override
+  String get adminRedeemCodeHint => '6-digit appointment / coupon code';
+
+  @override
+  String get adminRedeemCodeInvalid => 'Enter the 6-digit redemption code';
+
+  @override
+  String get adminRedeemOrEnter => 'or enter the redemption code';
+
+  @override
+  String get adminRecommendedPlan => 'Recommended plan';
+
+  @override
+  String get adminReset => 'Reset';
+
+  @override
+  String get adminScanAutoHint => 'Point at the QR code to scan automatically';
+
+  @override
+  String get adminScanHint =>
+      'Point at the appointment/coupon QR code to scan automatically';
+
+  @override
+  String get adminScanPrompt => 'Scan the QR code shown by the customer';
+
+  @override
+  String get adminSearchMemberHint => 'Search user / member no.';
+
+  @override
+  String get adminSearchUserHint => 'Search nickname / username / email';
+
+  @override
+  String get adminSelectTime => 'Select time';
+
+  @override
+  String adminServiceDuration(String duration) {
+    return 'Service duration $duration';
+  }
+
+  @override
+  String get adminServiceDurationLabel => 'Service duration';
+
+  @override
+  String get adminStatus => 'Status';
+
+  @override
+  String get adminStock => 'Stock';
+
+  @override
+  String get adminThreshold => 'Minimum spend';
+
+  @override
+  String get adminThresholdHint => '0 = no minimum';
+
+  @override
+  String adminThresholdMin(String amount) {
+    return 'Min. spend $amount';
+  }
+
+  @override
+  String get adminThresholdNone => 'No minimum';
+
+  @override
+  String get adminTimeSlot => 'Time slot';
+
+  @override
+  String get adminTypeTable => 'Type / Table';
+
+  @override
+  String get adminUser => 'User';
+
+  @override
+  String get adminUserIdHint => 'Enter a user ID to activate directly';
+
+  @override
+  String get adminUserIdLabel => 'User ID';
+
+  @override
   String get homeComingSoon => 'Coming Soon';
 
   @override
@@ -613,6 +1040,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get memberMoreCoupons => 'Get more coupons';
+
+  @override
+  String get memberClaim => 'Claim';
+
+  @override
+  String get memberAlreadyClaimed => 'Claimed';
 
   @override
   String get memberClaimed => 'Claimed';

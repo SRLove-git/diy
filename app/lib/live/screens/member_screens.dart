@@ -1546,9 +1546,19 @@ class _CouponTabs extends StatelessWidget {
 }
 
 class _CouponCard extends StatelessWidget {
-  const _CouponCard({required this.coupon});
+  const _CouponCard({
+    required this.coupon,
+    this.onClaim,
+    this.claiming = false,
+  });
 
   final Coupon coupon;
+
+  /// 非空时展示卡片级领取按钮（领券中心用；卡包内已领取的券不展示）。
+  final VoidCallback? onClaim;
+
+  /// 该券是否正在领取中。
+  final bool claiming;
 
   @override
   Widget build(BuildContext context) {
@@ -1612,6 +1622,87 @@ class _CouponCard extends StatelessWidget {
                     _RedeemCodeChip(coupon: coupon),
                   ],
                 ],
+              ),
+            ),
+            if (onClaim != null) ...[
+              const SizedBox(width: 10),
+              _ClaimButton(coupon: coupon, claiming: claiming, onTap: onClaim),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 领券中心单卡领取按钮：已领取置灰标记，领取中显示加载。
+class _ClaimButton extends StatelessWidget {
+  const _ClaimButton({
+    required this.coupon,
+    required this.claiming,
+    this.onTap,
+  });
+
+  final Coupon coupon;
+  final bool claiming;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    if (coupon.received) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: LiveColors.card,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: LiveColors.divider),
+        ),
+        child: Text(
+          l10n.memberAlreadyClaimed,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: LiveColors.textTertiary,
+          ),
+        ),
+      );
+    }
+    if (claiming) {
+      return Container(
+        width: 52,
+        height: 32,
+        alignment: Alignment.center,
+        child: const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: LiveColors.brand,
+          ),
+        ),
+      );
+    }
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: LiveColors.brand,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.download_rounded, size: 14, color: Colors.white),
+            const SizedBox(width: 4),
+            Text(
+              l10n.memberClaim,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
               ),
             ),
           ],
@@ -1763,6 +1854,36 @@ class _CouponCenterScreenState extends State<CouponCenterScreen> {
     }
   }
 
+  /// 一键领取全部：并行领取，完成后统一刷新提示，避免逐个等待 + 重复整页刷新。
+  Future<void> _claimAll(List<Coupon> list) async {
+    final targets = list.where((c) => !c.received).toList();
+    if (targets.isEmpty) return;
+    setState(() => _receiving.addAll(targets.map((c) => c.id)));
+    var succeeded = 0;
+    String? firstError;
+    try {
+      await Future.wait(
+        targets.map((c) async {
+          try {
+            await MemberService.instance.receive(c.id);
+            succeeded++;
+          } on ApiException catch (e) {
+            firstError ??= e.message;
+          }
+        }),
+      );
+    } finally {
+      if (mounted) setState(() => _receiving.clear());
+    }
+    if (!mounted) return;
+    if (firstError != null) {
+      showLiveSnack(context, firstError!);
+    } else if (succeeded > 0) {
+      showLiveSnack(context, context.l10n.memberClaimed);
+    }
+    _retry();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -1807,7 +1928,11 @@ class _CouponCenterScreenState extends State<CouponCenterScreen> {
                               const SizedBox(height: 10),
                           itemBuilder: (_, i) {
                             final c = list[i];
-                            return _CouponCard(coupon: c);
+                            return _CouponCard(
+                              coupon: c,
+                              claiming: _receiving.contains(c.id),
+                              onClaim: c.received ? null : () => _receive(c),
+                            );
                           },
                         ),
                       ),
@@ -1820,11 +1945,10 @@ class _CouponCenterScreenState extends State<CouponCenterScreen> {
                       Expanded(
                         child: PrimaryButton(
                           label: l10n.memberClaimAll,
-                          onTap: () async {
-                            for (final c in list.where((x) => !x.received)) {
-                              await _receive(c);
-                            }
-                          },
+                          loading: _receiving.isNotEmpty,
+                          onTap: _receiving.isEmpty
+                              ? () => _claimAll(list)
+                              : null,
                         ),
                       ),
                     ],

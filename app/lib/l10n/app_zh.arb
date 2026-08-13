@@ -163,6 +163,308 @@
   "adminMembersTab": "会员列表",
   "adminPlansTab": "套餐",
   "adminCouponsTab": "优惠券",
+  "adminAddCoupon": "新增优惠券",
+  "adminAddPlan": "新增套餐",
+  "adminAllCanClaim": "全员可领",
+  "adminAllStores": "全部门店",
+  "adminAmountHint": "20 / 8.8 折",
+  "adminAmountText": "面额文案",
+  "adminAppointmentCheckedIn": "核销成功，已开始服务",
+  "adminAppointmentConfirmed": "已确认预约",
+  "adminApptHintCancelled": "该预约已取消",
+  "adminApptHintCheckedIn": "该预约已核销 / 服务中，无需重复核销",
+  "adminApptHintCompleted": "该预约已完成",
+  "adminApptHintPending": "该预约待门店确认，确认后方可核销",
+  "adminBadge": "角标",
+  "adminBadgeHint": "推荐 / 最划算",
+  "adminBenefitsHint": "全场消费8折专属优惠",
+  "adminBenefitsLabel": "权益列表（一行一条）",
+  "adminCancelMemberOrderDesc": "确定取消「{plan}」的开通申请吗？",
+  "@adminCancelMemberOrderDesc": {
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      }
+    }
+  },
+  "adminCancelMemberOrderTitle": "取消开通申请",
+  "adminCancelAppointmentDesc": "确定取消「{title}」的预约吗？",
+  "@adminCancelAppointmentDesc": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "adminCheckInTime": "核销时间",
+  "adminClockIn": "上钟",
+  "adminClockInSuccess": "已上钟，开始服务",
+  "adminClockOut": "下钟",
+  "adminClockOutSuccess": "已下钟，服务完成",
+  "adminCodeShort": "码 {code}",
+  "@adminCodeShort": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "adminConfirmMemberAction": "确认开通",
+  "adminConfirmMemberDesc": "确认开通 {user} 的会员（{plan}，{days} 天，{amount}）？请先确认已收取到店支付费用。",
+  "@adminConfirmMemberDesc": {
+    "placeholders": {
+      "user": {
+        "type": "String"
+      },
+      "plan": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "adminConfirmMemberTitle": "确认开通会员",
+  "adminConfirmRedeem": "确认核销",
+  "adminCouponAmountLine": "优惠券 {amount} · {threshold}",
+  "@adminCouponAmountLine": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "threshold": {
+        "type": "String"
+      }
+    }
+  },
+  "adminCouponCodeStatus": "核销码 {code} · {status}",
+  "@adminCouponCodeStatus": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "adminCouponDisabled": "已停用优惠券",
+  "adminCouponDiscount": "优惠券 {title}（-{amount}）",
+  "@adminCouponDiscount": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "adminCouponEmail": "邮箱 {email}",
+  "@adminCouponEmail": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "adminCouponEnabled": "已启用优惠券",
+  "adminCouponHintExpired": "该优惠券已过期",
+  "adminCouponHintUsed": "该优惠券已核销，不可重复使用",
+  "adminCouponName": "优惠券名称",
+  "adminCouponNameHint": "全场 8 折券",
+  "adminCouponRedeemed": "优惠券核销成功",
+  "adminCouponSaved": "已保存优惠券",
+  "adminCouponStatusUnused": "未核销",
+  "adminCouponStatusUsed": "已核销",
+  "adminCouponStockLine": "{amount} · {threshold} · 剩余 {stock}",
+  "@adminCouponStockLine": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "threshold": {
+        "type": "String"
+      },
+      "stock": {
+        "type": "int"
+      }
+    }
+  },
+  "adminCouponUser": "用户 {name}",
+  "@adminCouponUser": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminCouponsManage": "优惠券管理",
+  "adminDate": "日期",
+  "adminDeleteMemberDesc": "确认删除会员编号 {no}（{name}）？删除后该用户会员资格立即失效，操作不可恢复。",
+  "@adminDeleteMemberDesc": {
+    "placeholders": {
+      "no": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDeleteMemberTitle": "删除会员记录",
+  "adminDurationDays": "时长（天）",
+  "adminDurationHours": "{hours} 小时",
+  "@adminDurationHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "adminEditCoupon": "编辑优惠券",
+  "adminEditMember": "编辑会员",
+  "adminEditPlan": "编辑套餐",
+  "adminEmail": "邮箱",
+  "adminExpireTime": "到期时间",
+  "adminFillByPlan": "按套餐快捷填充",
+  "adminLastUpdated": "最近更新 {time}",
+  "@adminLastUpdated": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "adminLevelDefault": "手作会员",
+  "adminMemberConfirmed": "已确认开通",
+  "adminMemberCreated": "已开通会员",
+  "adminMemberDeleted": "已删除会员记录",
+  "adminMemberLevel": "会员等级",
+  "adminMemberOrderCancelled": "已取消开通申请",
+  "adminMemberOrderId": "会员订单 #{id}",
+  "@adminMemberOrderId": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "adminMemberOrdersNo": "暂无会员订单",
+  "adminMemberSaved": "已保存会员信息",
+  "adminMemberStatusConfirmed": "已开通",
+  "adminMembersOnly": "仅会员",
+  "adminMembersOnlyClaim": "仅会员可领",
+  "adminNeedCouponFields": "请填写名称、面额和门槛",
+  "adminNeedExpire": "请选择有效期",
+  "adminNeedExpireTime": "请选择到期时间",
+  "adminNeedPlanDays": "请输入正确的时长（天）",
+  "adminNeedPlanName": "请输入套餐名称",
+  "adminNeedPlanPrice": "请输入正确的价格",
+  "adminNeedStock": "请输入正确的库存",
+  "adminNeedThresholdNumber": "门槛请填写数字（0 表示无门槛）",
+  "adminNeedUserId": "请输入用户 ID",
+  "adminNoCoupons": "暂无优惠券",
+  "adminNoMembers": "暂无会员",
+  "adminNoMore": "没有更多了",
+  "adminNoOrders": "暂无订单",
+  "adminNoPlanHint": "不按套餐，手动选择有效期",
+  "adminNoPlanShort": "不按套餐",
+  "adminNoPlans": "暂无套餐",
+  "adminOpenMember": "开通会员",
+  "adminPlanDays": "{plan} · {days} 天",
+  "@adminPlanDays": {
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "adminPlanDisabled": "已下架套餐",
+  "adminPlanDurationPrice": "{days} 天 · {price}",
+  "@adminPlanDurationPrice": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "adminPlanEnabled": "已上架套餐",
+  "adminPlanName": "套餐名称",
+  "adminPlanNameHint": "月卡 / 季卡 / 年卡",
+  "adminPlanOption": "{name}（{days} 天）",
+  "@adminPlanOption": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "adminPlanOriginalPrice": "（原价 {price}）",
+  "@adminPlanOriginalPrice": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "adminPlanSaved": "已保存套餐",
+  "adminPlansManage": "套餐管理",
+  "adminPrice": "售价",
+  "adminPublishNow": "立即上架",
+  "adminQuery": "查询",
+  "adminQuerying": "查询中…",
+  "adminRedeemAction": "核销",
+  "adminRedeemCodeHint": "6 位预约码 / 券码",
+  "adminRedeemCodeInvalid": "请输入 6 位核销码",
+  "adminRedeemOrEnter": "或输入核销码",
+  "adminRecommendedPlan": "推荐套餐",
+  "adminReset": "重置",
+  "adminScanAutoHint": "对准二维码，自动识别核销码",
+  "adminScanHint": "对准预约码 / 券码二维码，自动识别",
+  "adminScanPrompt": "扫描用户出示的二维码",
+  "adminSearchMemberHint": "搜索用户 / 会员编号",
+  "adminSearchUserHint": "搜索用户昵称 / 用户名 / 邮箱",
+  "adminSelectTime": "选择时间",
+  "adminServiceDuration": "服务时长 {duration}",
+  "@adminServiceDuration": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "adminServiceDurationLabel": "服务时长",
+  "adminStatus": "状态",
+  "adminStock": "库存",
+  "adminThreshold": "使用门槛",
+  "adminThresholdHint": "0 表示无门槛",
+  "adminThresholdMin": "满 {amount} 可用",
+  "@adminThresholdMin": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "adminThresholdNone": "无门槛",
+  "adminTimeSlot": "预约时段",
+  "adminTypeTable": "类型 / 桌位",
+  "adminUser": "用户",
+  "adminUserIdHint": "输入用户 ID 直接开通",
+  "adminUserIdLabel": "用户 ID",
   "homeComingSoon": "敬请期待",
   "homeComingSoonMore": "更多活动敬请期待",
   "homeActivitySection": "活动推荐",
@@ -264,6 +566,8 @@
   "memberExclusiveExperience": "会员专属体验",
   "memberMonthlyOnce": "每月 1 次 ›",
   "memberMoreCoupons": "领取更多优惠券",
+  "memberClaim": "领取",
+  "memberAlreadyClaimed": "已领取",
   "memberClaimed": "领取成功",
   "memberCouponCenter": "领券中心",
   "memberClaimAll": "一键领取全部",

@@ -451,6 +451,429 @@ class AppLocalizationsZh extends AppLocalizations {
   String get adminCouponsTab => '优惠券';
 
   @override
+  String get adminAddCoupon => '新增优惠券';
+
+  @override
+  String get adminAddPlan => '新增套餐';
+
+  @override
+  String get adminAllCanClaim => '全员可领';
+
+  @override
+  String get adminAllStores => '全部门店';
+
+  @override
+  String get adminAmountHint => '20 / 8.8 折';
+
+  @override
+  String get adminAmountText => '面额文案';
+
+  @override
+  String get adminAppointmentCheckedIn => '核销成功，已开始服务';
+
+  @override
+  String get adminAppointmentConfirmed => '已确认预约';
+
+  @override
+  String get adminApptHintCancelled => '该预约已取消';
+
+  @override
+  String get adminApptHintCheckedIn => '该预约已核销 / 服务中，无需重复核销';
+
+  @override
+  String get adminApptHintCompleted => '该预约已完成';
+
+  @override
+  String get adminApptHintPending => '该预约待门店确认，确认后方可核销';
+
+  @override
+  String get adminBadge => '角标';
+
+  @override
+  String get adminBadgeHint => '推荐 / 最划算';
+
+  @override
+  String get adminBenefitsHint => '全场消费8折专属优惠';
+
+  @override
+  String get adminBenefitsLabel => '权益列表（一行一条）';
+
+  @override
+  String adminCancelMemberOrderDesc(String plan) {
+    return '确定取消「$plan」的开通申请吗？';
+  }
+
+  @override
+  String get adminCancelMemberOrderTitle => '取消开通申请';
+
+  @override
+  String adminCancelAppointmentDesc(String title) {
+    return '确定取消「$title」的预约吗？';
+  }
+
+  @override
+  String get adminCheckInTime => '核销时间';
+
+  @override
+  String get adminClockIn => '上钟';
+
+  @override
+  String get adminClockInSuccess => '已上钟，开始服务';
+
+  @override
+  String get adminClockOut => '下钟';
+
+  @override
+  String get adminClockOutSuccess => '已下钟，服务完成';
+
+  @override
+  String adminCodeShort(String code) {
+    return '码 $code';
+  }
+
+  @override
+  String get adminConfirmMemberAction => '确认开通';
+
+  @override
+  String adminConfirmMemberDesc(
+    String user,
+    String plan,
+    int days,
+    String amount,
+  ) {
+    return '确认开通 $user 的会员（$plan，$days 天，$amount）？请先确认已收取到店支付费用。';
+  }
+
+  @override
+  String get adminConfirmMemberTitle => '确认开通会员';
+
+  @override
+  String get adminConfirmRedeem => '确认核销';
+
+  @override
+  String adminCouponAmountLine(String amount, String threshold) {
+    return '优惠券 $amount · $threshold';
+  }
+
+  @override
+  String adminCouponCodeStatus(String code, String status) {
+    return '核销码 $code · $status';
+  }
+
+  @override
+  String get adminCouponDisabled => '已停用优惠券';
+
+  @override
+  String adminCouponDiscount(String title, String amount) {
+    return '优惠券 $title（-$amount）';
+  }
+
+  @override
+  String adminCouponEmail(String email) {
+    return '邮箱 $email';
+  }
+
+  @override
+  String get adminCouponEnabled => '已启用优惠券';
+
+  @override
+  String get adminCouponHintExpired => '该优惠券已过期';
+
+  @override
+  String get adminCouponHintUsed => '该优惠券已核销，不可重复使用';
+
+  @override
+  String get adminCouponName => '优惠券名称';
+
+  @override
+  String get adminCouponNameHint => '全场 8 折券';
+
+  @override
+  String get adminCouponRedeemed => '优惠券核销成功';
+
+  @override
+  String get adminCouponSaved => '已保存优惠券';
+
+  @override
+  String get adminCouponStatusUnused => '未核销';
+
+  @override
+  String get adminCouponStatusUsed => '已核销';
+
+  @override
+  String adminCouponStockLine(String amount, String threshold, int stock) {
+    return '$amount · $threshold · 剩余 $stock';
+  }
+
+  @override
+  String adminCouponUser(String name) {
+    return '用户 $name';
+  }
+
+  @override
+  String get adminCouponsManage => '优惠券管理';
+
+  @override
+  String get adminDate => '日期';
+
+  @override
+  String adminDeleteMemberDesc(String no, String name) {
+    return '确认删除会员编号 $no（$name）？删除后该用户会员资格立即失效，操作不可恢复。';
+  }
+
+  @override
+  String get adminDeleteMemberTitle => '删除会员记录';
+
+  @override
+  String get adminDurationDays => '时长（天）';
+
+  @override
+  String adminDurationHours(int hours) {
+    return '$hours 小时';
+  }
+
+  @override
+  String get adminEditCoupon => '编辑优惠券';
+
+  @override
+  String get adminEditMember => '编辑会员';
+
+  @override
+  String get adminEditPlan => '编辑套餐';
+
+  @override
+  String get adminEmail => '邮箱';
+
+  @override
+  String get adminExpireTime => '到期时间';
+
+  @override
+  String get adminFillByPlan => '按套餐快捷填充';
+
+  @override
+  String adminLastUpdated(String time) {
+    return '最近更新 $time';
+  }
+
+  @override
+  String get adminLevelDefault => '手作会员';
+
+  @override
+  String get adminMemberConfirmed => '已确认开通';
+
+  @override
+  String get adminMemberCreated => '已开通会员';
+
+  @override
+  String get adminMemberDeleted => '已删除会员记录';
+
+  @override
+  String get adminMemberLevel => '会员等级';
+
+  @override
+  String get adminMemberOrderCancelled => '已取消开通申请';
+
+  @override
+  String adminMemberOrderId(int id) {
+    return '会员订单 #$id';
+  }
+
+  @override
+  String get adminMemberOrdersNo => '暂无会员订单';
+
+  @override
+  String get adminMemberSaved => '已保存会员信息';
+
+  @override
+  String get adminMemberStatusConfirmed => '已开通';
+
+  @override
+  String get adminMembersOnly => '仅会员';
+
+  @override
+  String get adminMembersOnlyClaim => '仅会员可领';
+
+  @override
+  String get adminNeedCouponFields => '请填写名称、面额和门槛';
+
+  @override
+  String get adminNeedExpire => '请选择有效期';
+
+  @override
+  String get adminNeedExpireTime => '请选择到期时间';
+
+  @override
+  String get adminNeedPlanDays => '请输入正确的时长（天）';
+
+  @override
+  String get adminNeedPlanName => '请输入套餐名称';
+
+  @override
+  String get adminNeedPlanPrice => '请输入正确的价格';
+
+  @override
+  String get adminNeedStock => '请输入正确的库存';
+
+  @override
+  String get adminNeedThresholdNumber => '门槛请填写数字（0 表示无门槛）';
+
+  @override
+  String get adminNeedUserId => '请输入用户 ID';
+
+  @override
+  String get adminNoCoupons => '暂无优惠券';
+
+  @override
+  String get adminNoMembers => '暂无会员';
+
+  @override
+  String get adminNoMore => '没有更多了';
+
+  @override
+  String get adminNoOrders => '暂无订单';
+
+  @override
+  String get adminNoPlanHint => '不按套餐，手动选择有效期';
+
+  @override
+  String get adminNoPlanShort => '不按套餐';
+
+  @override
+  String get adminNoPlans => '暂无套餐';
+
+  @override
+  String get adminOpenMember => '开通会员';
+
+  @override
+  String adminPlanDays(String plan, int days) {
+    return '$plan · $days 天';
+  }
+
+  @override
+  String get adminPlanDisabled => '已下架套餐';
+
+  @override
+  String adminPlanDurationPrice(int days, String price) {
+    return '$days 天 · $price';
+  }
+
+  @override
+  String get adminPlanEnabled => '已上架套餐';
+
+  @override
+  String get adminPlanName => '套餐名称';
+
+  @override
+  String get adminPlanNameHint => '月卡 / 季卡 / 年卡';
+
+  @override
+  String adminPlanOption(String name, int days) {
+    return '$name（$days 天）';
+  }
+
+  @override
+  String adminPlanOriginalPrice(String price) {
+    return '（原价 $price）';
+  }
+
+  @override
+  String get adminPlanSaved => '已保存套餐';
+
+  @override
+  String get adminPlansManage => '套餐管理';
+
+  @override
+  String get adminPrice => '售价';
+
+  @override
+  String get adminPublishNow => '立即上架';
+
+  @override
+  String get adminQuery => '查询';
+
+  @override
+  String get adminQuerying => '查询中…';
+
+  @override
+  String get adminRedeemAction => '核销';
+
+  @override
+  String get adminRedeemCodeHint => '6 位预约码 / 券码';
+
+  @override
+  String get adminRedeemCodeInvalid => '请输入 6 位核销码';
+
+  @override
+  String get adminRedeemOrEnter => '或输入核销码';
+
+  @override
+  String get adminRecommendedPlan => '推荐套餐';
+
+  @override
+  String get adminReset => '重置';
+
+  @override
+  String get adminScanAutoHint => '对准二维码，自动识别核销码';
+
+  @override
+  String get adminScanHint => '对准预约码 / 券码二维码，自动识别';
+
+  @override
+  String get adminScanPrompt => '扫描用户出示的二维码';
+
+  @override
+  String get adminSearchMemberHint => '搜索用户 / 会员编号';
+
+  @override
+  String get adminSearchUserHint => '搜索用户昵称 / 用户名 / 邮箱';
+
+  @override
+  String get adminSelectTime => '选择时间';
+
+  @override
+  String adminServiceDuration(String duration) {
+    return '服务时长 $duration';
+  }
+
+  @override
+  String get adminServiceDurationLabel => '服务时长';
+
+  @override
+  String get adminStatus => '状态';
+
+  @override
+  String get adminStock => '库存';
+
+  @override
+  String get adminThreshold => '使用门槛';
+
+  @override
+  String get adminThresholdHint => '0 表示无门槛';
+
+  @override
+  String adminThresholdMin(String amount) {
+    return '满 $amount 可用';
+  }
+
+  @override
+  String get adminThresholdNone => '无门槛';
+
+  @override
+  String get adminTimeSlot => '预约时段';
+
+  @override
+  String get adminTypeTable => '类型 / 桌位';
+
+  @override
+  String get adminUser => '用户';
+
+  @override
+  String get adminUserIdHint => '输入用户 ID 直接开通';
+
+  @override
+  String get adminUserIdLabel => '用户 ID';
+
+  @override
   String get homeComingSoon => '敬请期待';
 
   @override
@@ -601,6 +1024,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get memberMoreCoupons => '领取更多优惠券';
+
+  @override
+  String get memberClaim => '领取';
+
+  @override
+  String get memberAlreadyClaimed => '已领取';
 
   @override
   String get memberClaimed => '领取成功';

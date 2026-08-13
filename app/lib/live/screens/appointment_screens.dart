@@ -15,6 +15,15 @@ import '../live_theme.dart';
 import '../live_widgets.dart';
 import '../singapore_holidays.dart';
 
+/// 优惠券门槛是否满足（与服务端 parseCouponThreshold 口径一致）：
+/// `无门槛` → 满足；否则解析门槛数字，订单应付金额 ≥ 门槛才可用。
+bool couponMeetsThreshold(String thresholdRaw, double amount) {
+  if (thresholdRaw.contains('无门槛')) return true;
+  final m = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(thresholdRaw);
+  final threshold = m == null ? 0.0 : double.parse(m.group(1)!);
+  return amount + 0.001 >= threshold;
+}
+
 /// 预约状态展示名（跟随语言）。
 String _appointmentStatusLabel(AppLocalizations l10n, String status) =>
     switch (status) {
@@ -273,6 +282,10 @@ class AppointmentConfirmScreen extends StatefulWidget {
 }
 
 class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
+  /// 卡包中未过期未使用的券（原始列表，订单金额变化后重新筛选）。
+  List<Coupon> _walletCoupons = [];
+
+  /// 当前订单可选的券（满足未过期未使用 + 使用门槛）。
   List<Coupon> _coupons = [];
   Coupon? _selected;
   bool _loading = false;
@@ -285,19 +298,40 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
     MemberService.instance
         .myMembership()
         .then((m) {
-          if (mounted && m.isActive) setState(() => _isMember = true);
+          if (!mounted) return;
+          setState(() => _isMember = m.isActive);
+          // 会员身份影响订单金额，重新筛选满足门槛的券
+          _refreshCoupons();
         })
         .catchError((_) {
           // 会员状态获取失败时按非会员预览，最终金额以服务端结算为准
         });
-    // 加载卡包可用优惠券：下单只绑定，到店核销预约时一并核销
-    MemberService.instance.wallet().then((list) {
-      if (mounted) {
-        setState(() {
-          _coupons = list.where((c) => c.usable).toList();
-        });
+    // 加载卡包可用优惠券：下单只绑定，到店核销预约时一并核销。
+    // 仅保留未过期未使用、券模板启用、且满足当前订单使用门槛的券，不可用的券不展示、不可选。
+    MemberService.instance
+        .wallet()
+        .then((list) {
+          if (!mounted) return;
+          _walletCoupons = list.where((c) => c.usable && c.enabled).toList();
+          _refreshCoupons();
+        })
+        .catchError((_) {});
+  }
+
+  /// 优惠券是否满足当前订单使用门槛（与服务端 parseCouponThreshold / 结算口径一致）。
+  bool _meetsThreshold(Coupon c) {
+    return couponMeetsThreshold(c.threshold, _subtotalBase + _surchargeAmount);
+  }
+
+  /// 按当前订单金额重新筛选可选券；已选券若不再满足门槛则自动取消选择。
+  void _refreshCoupons() {
+    setState(() {
+      _coupons = _walletCoupons.where(_meetsThreshold).toList();
+      if (_selected != null &&
+          !_coupons.any((c) => c.userCouponId == _selected!.userCouponId)) {
+        _selected = null;
       }
-    }).catchError((_) {});
+    });
   }
 
   /// 门市单价（原价基准，$/人，含时长）
@@ -535,12 +569,18 @@ class _AppointmentConfirmScreenState extends State<AppointmentConfirmScreen> {
                     (c) => _CouponTile(
                       coupon: c,
                       selected: _selected?.userCouponId == c.userCouponId,
-                      onTap: () => setState(
-                        () => _selected =
-                            _selected?.userCouponId == c.userCouponId
-                            ? null
-                            : c,
-                      ),
+                      onTap: () {
+                        // 兜底：不可用（未使用/未过期/券停用/不满足门槛）的券不可选
+                        if (!c.usable || !c.enabled || !_meetsThreshold(c)) {
+                          return;
+                        }
+                        setState(
+                          () => _selected =
+                              _selected?.userCouponId == c.userCouponId
+                              ? null
+                              : c,
+                        );
+                      },
                     ),
                   ),
                 const Divider(height: 32, color: LiveColors.divider),
@@ -2617,9 +2657,7 @@ class _CheckinQrScreenState extends State<CheckinQrScreen> {
                   const SizedBox(height: 4),
                   Center(
                     child: Text(
-                      context.l10n.appointmentValidUntilAt(
-                        appointment.endTime,
-                      ),
+                      context.l10n.appointmentValidUntilAt(appointment.endTime),
                       style: const TextStyle(
                         fontSize: 11.6,
                         color: LiveColors.textTertiary,

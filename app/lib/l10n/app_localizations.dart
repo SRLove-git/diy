@@ -974,6 +974,767 @@ abstract class AppLocalizations {
   /// **'优惠券'**
   String get adminCouponsTab;
 
+  /// No description provided for @adminAddCoupon.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增优惠券'**
+  String get adminAddCoupon;
+
+  /// No description provided for @adminAddPlan.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增套餐'**
+  String get adminAddPlan;
+
+  /// No description provided for @adminAllCanClaim.
+  ///
+  /// In zh, this message translates to:
+  /// **'全员可领'**
+  String get adminAllCanClaim;
+
+  /// No description provided for @adminAllStores.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部门店'**
+  String get adminAllStores;
+
+  /// No description provided for @adminAmountHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'20 / 8.8 折'**
+  String get adminAmountHint;
+
+  /// No description provided for @adminAmountText.
+  ///
+  /// In zh, this message translates to:
+  /// **'面额文案'**
+  String get adminAmountText;
+
+  /// No description provided for @adminAppointmentCheckedIn.
+  ///
+  /// In zh, this message translates to:
+  /// **'核销成功，已开始服务'**
+  String get adminAppointmentCheckedIn;
+
+  /// No description provided for @adminAppointmentConfirmed.
+  ///
+  /// In zh, this message translates to:
+  /// **'已确认预约'**
+  String get adminAppointmentConfirmed;
+
+  /// No description provided for @adminApptHintCancelled.
+  ///
+  /// In zh, this message translates to:
+  /// **'该预约已取消'**
+  String get adminApptHintCancelled;
+
+  /// No description provided for @adminApptHintCheckedIn.
+  ///
+  /// In zh, this message translates to:
+  /// **'该预约已核销 / 服务中，无需重复核销'**
+  String get adminApptHintCheckedIn;
+
+  /// No description provided for @adminApptHintCompleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'该预约已完成'**
+  String get adminApptHintCompleted;
+
+  /// No description provided for @adminApptHintPending.
+  ///
+  /// In zh, this message translates to:
+  /// **'该预约待门店确认，确认后方可核销'**
+  String get adminApptHintPending;
+
+  /// No description provided for @adminBadge.
+  ///
+  /// In zh, this message translates to:
+  /// **'角标'**
+  String get adminBadge;
+
+  /// No description provided for @adminBadgeHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'推荐 / 最划算'**
+  String get adminBadgeHint;
+
+  /// No description provided for @adminBenefitsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'全场消费8折专属优惠'**
+  String get adminBenefitsHint;
+
+  /// No description provided for @adminBenefitsLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'权益列表（一行一条）'**
+  String get adminBenefitsLabel;
+
+  /// No description provided for @adminCancelMemberOrderDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定取消「{plan}」的开通申请吗？'**
+  String adminCancelMemberOrderDesc(String plan);
+
+  /// No description provided for @adminCancelMemberOrderTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消开通申请'**
+  String get adminCancelMemberOrderTitle;
+
+  /// No description provided for @adminCancelAppointmentDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定取消「{title}」的预约吗？'**
+  String adminCancelAppointmentDesc(String title);
+
+  /// No description provided for @adminCheckInTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'核销时间'**
+  String get adminCheckInTime;
+
+  /// No description provided for @adminClockIn.
+  ///
+  /// In zh, this message translates to:
+  /// **'上钟'**
+  String get adminClockIn;
+
+  /// No description provided for @adminClockInSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已上钟，开始服务'**
+  String get adminClockInSuccess;
+
+  /// No description provided for @adminClockOut.
+  ///
+  /// In zh, this message translates to:
+  /// **'下钟'**
+  String get adminClockOut;
+
+  /// No description provided for @adminClockOutSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已下钟，服务完成'**
+  String get adminClockOutSuccess;
+
+  /// No description provided for @adminCodeShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'码 {code}'**
+  String adminCodeShort(String code);
+
+  /// No description provided for @adminConfirmMemberAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认开通'**
+  String get adminConfirmMemberAction;
+
+  /// No description provided for @adminConfirmMemberDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认开通 {user} 的会员（{plan}，{days} 天，{amount}）？请先确认已收取到店支付费用。'**
+  String adminConfirmMemberDesc(
+    String user,
+    String plan,
+    int days,
+    String amount,
+  );
+
+  /// No description provided for @adminConfirmMemberTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认开通会员'**
+  String get adminConfirmMemberTitle;
+
+  /// No description provided for @adminConfirmRedeem.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认核销'**
+  String get adminConfirmRedeem;
+
+  /// No description provided for @adminCouponAmountLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'优惠券 {amount} · {threshold}'**
+  String adminCouponAmountLine(String amount, String threshold);
+
+  /// No description provided for @adminCouponCodeStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'核销码 {code} · {status}'**
+  String adminCouponCodeStatus(String code, String status);
+
+  /// No description provided for @adminCouponDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已停用优惠券'**
+  String get adminCouponDisabled;
+
+  /// No description provided for @adminCouponDiscount.
+  ///
+  /// In zh, this message translates to:
+  /// **'优惠券 {title}（-{amount}）'**
+  String adminCouponDiscount(String title, String amount);
+
+  /// No description provided for @adminCouponEmail.
+  ///
+  /// In zh, this message translates to:
+  /// **'邮箱 {email}'**
+  String adminCouponEmail(String email);
+
+  /// No description provided for @adminCouponEnabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已启用优惠券'**
+  String get adminCouponEnabled;
+
+  /// No description provided for @adminCouponHintExpired.
+  ///
+  /// In zh, this message translates to:
+  /// **'该优惠券已过期'**
+  String get adminCouponHintExpired;
+
+  /// No description provided for @adminCouponHintUsed.
+  ///
+  /// In zh, this message translates to:
+  /// **'该优惠券已核销，不可重复使用'**
+  String get adminCouponHintUsed;
+
+  /// No description provided for @adminCouponName.
+  ///
+  /// In zh, this message translates to:
+  /// **'优惠券名称'**
+  String get adminCouponName;
+
+  /// No description provided for @adminCouponNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'全场 8 折券'**
+  String get adminCouponNameHint;
+
+  /// No description provided for @adminCouponRedeemed.
+  ///
+  /// In zh, this message translates to:
+  /// **'优惠券核销成功'**
+  String get adminCouponRedeemed;
+
+  /// No description provided for @adminCouponSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存优惠券'**
+  String get adminCouponSaved;
+
+  /// No description provided for @adminCouponStatusUnused.
+  ///
+  /// In zh, this message translates to:
+  /// **'未核销'**
+  String get adminCouponStatusUnused;
+
+  /// No description provided for @adminCouponStatusUsed.
+  ///
+  /// In zh, this message translates to:
+  /// **'已核销'**
+  String get adminCouponStatusUsed;
+
+  /// No description provided for @adminCouponStockLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'{amount} · {threshold} · 剩余 {stock}'**
+  String adminCouponStockLine(String amount, String threshold, int stock);
+
+  /// No description provided for @adminCouponUser.
+  ///
+  /// In zh, this message translates to:
+  /// **'用户 {name}'**
+  String adminCouponUser(String name);
+
+  /// No description provided for @adminCouponsManage.
+  ///
+  /// In zh, this message translates to:
+  /// **'优惠券管理'**
+  String get adminCouponsManage;
+
+  /// No description provided for @adminDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'日期'**
+  String get adminDate;
+
+  /// No description provided for @adminDeleteMemberDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认删除会员编号 {no}（{name}）？删除后该用户会员资格立即失效，操作不可恢复。'**
+  String adminDeleteMemberDesc(String no, String name);
+
+  /// No description provided for @adminDeleteMemberTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除会员记录'**
+  String get adminDeleteMemberTitle;
+
+  /// No description provided for @adminDurationDays.
+  ///
+  /// In zh, this message translates to:
+  /// **'时长（天）'**
+  String get adminDurationDays;
+
+  /// No description provided for @adminDurationHours.
+  ///
+  /// In zh, this message translates to:
+  /// **'{hours} 小时'**
+  String adminDurationHours(int hours);
+
+  /// No description provided for @adminEditCoupon.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑优惠券'**
+  String get adminEditCoupon;
+
+  /// No description provided for @adminEditMember.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑会员'**
+  String get adminEditMember;
+
+  /// No description provided for @adminEditPlan.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑套餐'**
+  String get adminEditPlan;
+
+  /// No description provided for @adminEmail.
+  ///
+  /// In zh, this message translates to:
+  /// **'邮箱'**
+  String get adminEmail;
+
+  /// No description provided for @adminExpireTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'到期时间'**
+  String get adminExpireTime;
+
+  /// No description provided for @adminFillByPlan.
+  ///
+  /// In zh, this message translates to:
+  /// **'按套餐快捷填充'**
+  String get adminFillByPlan;
+
+  /// No description provided for @adminLastUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近更新 {time}'**
+  String adminLastUpdated(String time);
+
+  /// No description provided for @adminLevelDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'手作会员'**
+  String get adminLevelDefault;
+
+  /// No description provided for @adminMemberConfirmed.
+  ///
+  /// In zh, this message translates to:
+  /// **'已确认开通'**
+  String get adminMemberConfirmed;
+
+  /// No description provided for @adminMemberCreated.
+  ///
+  /// In zh, this message translates to:
+  /// **'已开通会员'**
+  String get adminMemberCreated;
+
+  /// No description provided for @adminMemberDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除会员记录'**
+  String get adminMemberDeleted;
+
+  /// No description provided for @adminMemberLevel.
+  ///
+  /// In zh, this message translates to:
+  /// **'会员等级'**
+  String get adminMemberLevel;
+
+  /// No description provided for @adminMemberOrderCancelled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已取消开通申请'**
+  String get adminMemberOrderCancelled;
+
+  /// No description provided for @adminMemberOrderId.
+  ///
+  /// In zh, this message translates to:
+  /// **'会员订单 #{id}'**
+  String adminMemberOrderId(int id);
+
+  /// No description provided for @adminMemberOrdersNo.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无会员订单'**
+  String get adminMemberOrdersNo;
+
+  /// No description provided for @adminMemberSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存会员信息'**
+  String get adminMemberSaved;
+
+  /// No description provided for @adminMemberStatusConfirmed.
+  ///
+  /// In zh, this message translates to:
+  /// **'已开通'**
+  String get adminMemberStatusConfirmed;
+
+  /// No description provided for @adminMembersOnly.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅会员'**
+  String get adminMembersOnly;
+
+  /// No description provided for @adminMembersOnlyClaim.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅会员可领'**
+  String get adminMembersOnlyClaim;
+
+  /// No description provided for @adminNeedCouponFields.
+  ///
+  /// In zh, this message translates to:
+  /// **'请填写名称、面额和门槛'**
+  String get adminNeedCouponFields;
+
+  /// No description provided for @adminNeedExpire.
+  ///
+  /// In zh, this message translates to:
+  /// **'请选择有效期'**
+  String get adminNeedExpire;
+
+  /// No description provided for @adminNeedExpireTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'请选择到期时间'**
+  String get adminNeedExpireTime;
+
+  /// No description provided for @adminNeedPlanDays.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入正确的时长（天）'**
+  String get adminNeedPlanDays;
+
+  /// No description provided for @adminNeedPlanName.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入套餐名称'**
+  String get adminNeedPlanName;
+
+  /// No description provided for @adminNeedPlanPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入正确的价格'**
+  String get adminNeedPlanPrice;
+
+  /// No description provided for @adminNeedStock.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入正确的库存'**
+  String get adminNeedStock;
+
+  /// No description provided for @adminNeedThresholdNumber.
+  ///
+  /// In zh, this message translates to:
+  /// **'门槛请填写数字（0 表示无门槛）'**
+  String get adminNeedThresholdNumber;
+
+  /// No description provided for @adminNeedUserId.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入用户 ID'**
+  String get adminNeedUserId;
+
+  /// No description provided for @adminNoCoupons.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无优惠券'**
+  String get adminNoCoupons;
+
+  /// No description provided for @adminNoMembers.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无会员'**
+  String get adminNoMembers;
+
+  /// No description provided for @adminNoMore.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有更多了'**
+  String get adminNoMore;
+
+  /// No description provided for @adminNoOrders.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无订单'**
+  String get adminNoOrders;
+
+  /// No description provided for @adminNoPlanHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'不按套餐，手动选择有效期'**
+  String get adminNoPlanHint;
+
+  /// No description provided for @adminNoPlanShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'不按套餐'**
+  String get adminNoPlanShort;
+
+  /// No description provided for @adminNoPlans.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无套餐'**
+  String get adminNoPlans;
+
+  /// No description provided for @adminOpenMember.
+  ///
+  /// In zh, this message translates to:
+  /// **'开通会员'**
+  String get adminOpenMember;
+
+  /// No description provided for @adminPlanDays.
+  ///
+  /// In zh, this message translates to:
+  /// **'{plan} · {days} 天'**
+  String adminPlanDays(String plan, int days);
+
+  /// No description provided for @adminPlanDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已下架套餐'**
+  String get adminPlanDisabled;
+
+  /// No description provided for @adminPlanDurationPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'{days} 天 · {price}'**
+  String adminPlanDurationPrice(int days, String price);
+
+  /// No description provided for @adminPlanEnabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已上架套餐'**
+  String get adminPlanEnabled;
+
+  /// No description provided for @adminPlanName.
+  ///
+  /// In zh, this message translates to:
+  /// **'套餐名称'**
+  String get adminPlanName;
+
+  /// No description provided for @adminPlanNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'月卡 / 季卡 / 年卡'**
+  String get adminPlanNameHint;
+
+  /// No description provided for @adminPlanOption.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name}（{days} 天）'**
+  String adminPlanOption(String name, int days);
+
+  /// No description provided for @adminPlanOriginalPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'（原价 {price}）'**
+  String adminPlanOriginalPrice(String price);
+
+  /// No description provided for @adminPlanSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存套餐'**
+  String get adminPlanSaved;
+
+  /// No description provided for @adminPlansManage.
+  ///
+  /// In zh, this message translates to:
+  /// **'套餐管理'**
+  String get adminPlansManage;
+
+  /// No description provided for @adminPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'售价'**
+  String get adminPrice;
+
+  /// No description provided for @adminPublishNow.
+  ///
+  /// In zh, this message translates to:
+  /// **'立即上架'**
+  String get adminPublishNow;
+
+  /// No description provided for @adminQuery.
+  ///
+  /// In zh, this message translates to:
+  /// **'查询'**
+  String get adminQuery;
+
+  /// No description provided for @adminQuerying.
+  ///
+  /// In zh, this message translates to:
+  /// **'查询中…'**
+  String get adminQuerying;
+
+  /// No description provided for @adminRedeemAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'核销'**
+  String get adminRedeemAction;
+
+  /// No description provided for @adminRedeemCodeHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'6 位预约码 / 券码'**
+  String get adminRedeemCodeHint;
+
+  /// No description provided for @adminRedeemCodeInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入 6 位核销码'**
+  String get adminRedeemCodeInvalid;
+
+  /// No description provided for @adminRedeemOrEnter.
+  ///
+  /// In zh, this message translates to:
+  /// **'或输入核销码'**
+  String get adminRedeemOrEnter;
+
+  /// No description provided for @adminRecommendedPlan.
+  ///
+  /// In zh, this message translates to:
+  /// **'推荐套餐'**
+  String get adminRecommendedPlan;
+
+  /// No description provided for @adminReset.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置'**
+  String get adminReset;
+
+  /// No description provided for @adminScanAutoHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'对准二维码，自动识别核销码'**
+  String get adminScanAutoHint;
+
+  /// No description provided for @adminScanHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'对准预约码 / 券码二维码，自动识别'**
+  String get adminScanHint;
+
+  /// No description provided for @adminScanPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'扫描用户出示的二维码'**
+  String get adminScanPrompt;
+
+  /// No description provided for @adminSearchMemberHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索用户 / 会员编号'**
+  String get adminSearchMemberHint;
+
+  /// No description provided for @adminSearchUserHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索用户昵称 / 用户名 / 邮箱'**
+  String get adminSearchUserHint;
+
+  /// No description provided for @adminSelectTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择时间'**
+  String get adminSelectTime;
+
+  /// No description provided for @adminServiceDuration.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务时长 {duration}'**
+  String adminServiceDuration(String duration);
+
+  /// No description provided for @adminServiceDurationLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务时长'**
+  String get adminServiceDurationLabel;
+
+  /// No description provided for @adminStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'状态'**
+  String get adminStatus;
+
+  /// No description provided for @adminStock.
+  ///
+  /// In zh, this message translates to:
+  /// **'库存'**
+  String get adminStock;
+
+  /// No description provided for @adminThreshold.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用门槛'**
+  String get adminThreshold;
+
+  /// No description provided for @adminThresholdHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'0 表示无门槛'**
+  String get adminThresholdHint;
+
+  /// No description provided for @adminThresholdMin.
+  ///
+  /// In zh, this message translates to:
+  /// **'满 {amount} 可用'**
+  String adminThresholdMin(String amount);
+
+  /// No description provided for @adminThresholdNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'无门槛'**
+  String get adminThresholdNone;
+
+  /// No description provided for @adminTimeSlot.
+  ///
+  /// In zh, this message translates to:
+  /// **'预约时段'**
+  String get adminTimeSlot;
+
+  /// No description provided for @adminTypeTable.
+  ///
+  /// In zh, this message translates to:
+  /// **'类型 / 桌位'**
+  String get adminTypeTable;
+
+  /// No description provided for @adminUser.
+  ///
+  /// In zh, this message translates to:
+  /// **'用户'**
+  String get adminUser;
+
+  /// No description provided for @adminUserIdHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入用户 ID 直接开通'**
+  String get adminUserIdHint;
+
+  /// No description provided for @adminUserIdLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'用户 ID'**
+  String get adminUserIdLabel;
+
   /// No description provided for @homeComingSoon.
   ///
   /// In zh, this message translates to:
@@ -1249,6 +2010,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'领取更多优惠券'**
   String get memberMoreCoupons;
+
+  /// No description provided for @memberClaim.
+  ///
+  /// In zh, this message translates to:
+  /// **'领取'**
+  String get memberClaim;
+
+  /// No description provided for @memberAlreadyClaimed.
+  ///
+  /// In zh, this message translates to:
+  /// **'已领取'**
+  String get memberAlreadyClaimed;
 
   /// No description provided for @memberClaimed.
   ///

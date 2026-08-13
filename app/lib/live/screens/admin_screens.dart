@@ -7,6 +7,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../api/api_client.dart';
 import '../../api/models.dart';
 import '../../api/services.dart';
+import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_ext.dart';
 import '../live_routes.dart';
 import '../live_theme.dart';
@@ -45,7 +46,7 @@ class _AdminRedeemScreenState extends State<AdminRedeemScreen> {
   Future<void> _query([String? raw]) async {
     final code = (raw ?? _codeCtrl.text).trim().toUpperCase();
     if (!RegExp(r'^[A-Z0-9]{6}$').hasMatch(code)) {
-      showLiveSnack(context, '请输入 6 位核销码');
+      showLiveSnack(context, context.l10n.adminRedeemCodeInvalid);
       return;
     }
     _codeCtrl.text = code;
@@ -89,7 +90,7 @@ class _AdminRedeemScreenState extends State<AdminRedeemScreen> {
       final a = await AdminAppointmentService.instance.checkInByCode(code);
       if (!mounted) return;
       HomeOrdersRefresh.instance.refresh(a);
-      showLiveSnack(context, '核销成功，已开始服务');
+      showLiveSnack(context, context.l10n.adminAppointmentCheckedIn);
       setState(() => _appointment = a);
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -104,7 +105,7 @@ class _AdminRedeemScreenState extends State<AdminRedeemScreen> {
     try {
       final c = await AdminMemberService.instance.redeemCouponByCode(code);
       if (!mounted) return;
-      showLiveSnack(context, '优惠券核销成功');
+      showLiveSnack(context, context.l10n.adminCouponRedeemed);
       setState(() => _coupon = c);
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -152,27 +153,27 @@ class _AdminRedeemScreenState extends State<AdminRedeemScreen> {
                         ),
                       ],
                     ),
-                    child: const Column(
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.qr_code_scanner,
                           size: 46,
                           color: Colors.white,
                         ),
-                        SizedBox(height: 12),
+                        const SizedBox(height: 12),
                         Text(
-                          '扫描用户出示的二维码',
-                          style: TextStyle(
+                          l10n.adminScanPrompt,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
                           ),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
-                          '对准预约码 / 券码二维码，自动识别',
-                          style: TextStyle(
+                          l10n.adminScanHint,
+                          style: const TextStyle(
                             fontSize: 12,
                             color: Color(0xCCFFFFFF),
                           ),
@@ -188,7 +189,7 @@ class _AdminRedeemScreenState extends State<AdminRedeemScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
-                        '或输入核销码',
+                        l10n.adminRedeemOrEnter,
                         style: const TextStyle(
                           fontSize: 12.6,
                           color: LiveColors.textTertiary,
@@ -216,8 +217,8 @@ class _AdminRedeemScreenState extends State<AdminRedeemScreen> {
                         ),
                         decoration: InputDecoration(
                           counterText: '',
-                          hintText: '6 位预约码 / 券码',
-                          hintStyle: TextStyle(
+                          hintText: l10n.adminRedeemCodeHint,
+                          hintStyle: const TextStyle(
                             fontSize: 13,
                             letterSpacing: 0,
                             color: LiveColors.textTertiary,
@@ -254,7 +255,7 @@ class _AdminRedeemScreenState extends State<AdminRedeemScreen> {
                       width: 76,
                       height: 52,
                       child: PrimaryButton(
-                        label: '查询',
+                        label: l10n.adminQuery,
                         height: 52,
                         loading: _searching,
                         onTap: _searching ? null : _query,
@@ -264,9 +265,9 @@ class _AdminRedeemScreenState extends State<AdminRedeemScreen> {
                 ),
                 const SizedBox(height: 20),
                 if (_searching)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 40),
-                    child: LoadingView(text: '查询中…'),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 40),
+                    child: LoadingView(text: l10n.adminQuerying),
                   )
                 else ...[
                   if (_appointment != null)
@@ -332,20 +333,21 @@ class _RedeemAppointmentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final a = appointment;
+    final l10n = context.l10n;
     final table = a.tableLabel.isEmpty ? '' : ' · ${a.tableLabel}';
     return _ResultCard(
       icon: Icons.event_available_outlined,
       title: a.title,
       lines: [
-        '${a.date} ${a.startTime}-${a.endTime} · ${a.peopleCount} 人$table',
-        '预约码 ${a.code} · ${a.statusLabel}',
-        if (a.amount > 0) '金额 \$${fmtPrice(a.amount)}',
+        '${a.date} ${a.startTime}-${a.endTime} · ${l10n.activityPeople(a.peopleCount)}$table',
+        '${l10n.homeCode(a.code)} · ${_appointmentStatusLabel(l10n, a.status)}',
+        if (a.amount > 0) '${l10n.appointmentAmount} \$${fmtPrice(a.amount)}',
         if (a.couponTitle.isNotEmpty)
-          '优惠券 ${a.couponTitle}（-\$${fmtPrice(a.couponDiscount)}）',
+          l10n.adminCouponDiscount(a.couponTitle, '-\$${fmtPrice(a.couponDiscount)}'),
       ],
       action: switch (a.status) {
         'booked' => _CardAction(
-          label: '确认核销',
+          label: l10n.adminConfirmRedeem,
           loading: redeeming,
           color: LiveColors.brand,
           onTap: onRedeem,
@@ -354,10 +356,10 @@ class _RedeemAppointmentCard extends StatelessWidget {
         _ => null,
       },
       hint: switch (a.status) {
-        'pending' => '该预约待门店确认，确认后方可核销',
-        'checked_in' || 'in_service' => '该预约已核销 / 服务中，无需重复核销',
-        'completed' => '该预约已完成',
-        'cancelled' => '该预约已取消',
+        'pending' => l10n.adminApptHintPending,
+        'checked_in' || 'in_service' => l10n.adminApptHintCheckedIn,
+        'completed' => l10n.adminApptHintCompleted,
+        'cancelled' => l10n.adminApptHintCancelled,
         _ => null,
       },
     );
@@ -378,29 +380,38 @@ class _RedeemCouponCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = coupon;
-    final expire = c.expireAt == null ? '' : '有效期至 ${_fmtDate(c.expireAt!)}';
+    final l10n = context.l10n;
+    final expire =
+        c.expireAt == null ? '' : '${l10n.memberValidUntil} ${_fmtDate(c.expireAt!)}';
     return _ResultCard(
       icon: Icons.confirmation_number_outlined,
       title: c.title,
       lines: [
-        if (c.userNickname.isNotEmpty) '用户 ${c.userNickname}',
-        if (c.userEmail != null && c.userEmail!.isNotEmpty) '邮箱 ${c.userEmail}',
-        '优惠券 \$${fmtPrice(c.amount)} · ${c.threshold}',
-        '核销码 ${c.code} · ${_couponStatusLabel(c.status)}',
+        if (c.userNickname.isNotEmpty) l10n.adminCouponUser(c.userNickname),
+        if (c.userEmail != null && c.userEmail!.isNotEmpty)
+          l10n.adminCouponEmail(c.userEmail!),
+        l10n.adminCouponAmountLine(
+          '\$${fmtPrice(c.amount)}',
+          _couponThresholdLabel(l10n, c.threshold),
+        ),
+        l10n.adminCouponCodeStatus(
+          c.code,
+          _couponStatusLabel(l10n, c.status),
+        ),
         if (expire.isNotEmpty) expire,
       ],
       action: c.status == 'unused'
           ? _CardAction(
-              label: '确认核销',
+              label: l10n.adminConfirmRedeem,
               loading: redeeming,
               color: LiveColors.brand,
               onTap: onRedeem,
             )
           : null,
       hint: c.status == 'used'
-          ? '该优惠券已核销，不可重复使用'
+          ? l10n.adminCouponHintUsed
           : c.status == 'expired'
-          ? '该优惠券已过期'
+          ? l10n.adminCouponHintExpired
           : null,
     );
   }
@@ -575,6 +586,7 @@ class _AdminScanScreenState extends State<AdminScanScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return LivePage(
       fullBleed: true,
       statusBarLight: true,
@@ -596,9 +608,9 @@ class _AdminScanScreenState extends State<AdminScanScreen> {
                       ),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
-                    const Text(
-                      '扫码核销',
-                      style: TextStyle(
+                    Text(
+                      l10n.adminRedeem,
+                      style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
@@ -656,9 +668,9 @@ class _AdminScanScreenState extends State<AdminScanScreen> {
                       color: Colors.black.withValues(alpha: 0.55),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text(
-                      '对准二维码，自动识别核销码',
-                      style: TextStyle(fontSize: 13, color: Colors.white),
+                    child: Text(
+                      l10n.adminScanAutoHint,
+                      style: const TextStyle(fontSize: 13, color: Colors.white),
                     ),
                   ),
                 ),
@@ -716,16 +728,6 @@ class _AppointmentOrdersTab extends StatefulWidget {
 }
 
 class _AppointmentOrdersTabState extends State<_AppointmentOrdersTab> {
-  static const _statuses = [
-    ('', '全部'),
-    ('pending', '待确认'),
-    ('booked', '待核销'),
-    ('checked_in', '已核销'),
-    ('in_service', '服务中'),
-    ('completed', '已完成'),
-    ('cancelled', '已取消'),
-  ];
-
   final _searchCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
@@ -856,13 +858,18 @@ class _AppointmentOrdersTabState extends State<_AppointmentOrdersTab> {
   }
 
   Future<void> _confirmCancel(Appointment a) async {
+    final l10n = context.l10n;
     final ok = await _confirmDialog(
       context,
-      title: '取消预约',
-      desc: '确定取消「${a.title}」的预约吗？',
+      title: l10n.appointmentCancel,
+      desc: l10n.adminCancelAppointmentDesc(a.title),
     );
     if (ok == true && mounted) {
-      await _runAction(a, AdminAppointmentService.instance.cancel, '已取消预约');
+      await _runAction(
+        a,
+        AdminAppointmentService.instance.cancel,
+        context.l10n.appointmentCancelled,
+      );
     }
   }
 
@@ -903,6 +910,7 @@ class _AppointmentOrdersTabState extends State<_AppointmentOrdersTab> {
   }
 
   Widget _buildFilters() {
+    final l10n = context.l10n;
     return Container(
       margin: const EdgeInsets.fromLTRB(18, 6, 18, 4),
       padding: const EdgeInsets.all(12),
@@ -919,9 +927,9 @@ class _AppointmentOrdersTabState extends State<_AppointmentOrdersTab> {
                   child: DropdownButton<int?>(
                     value: _storeId,
                     isExpanded: true,
-                    hint: const Text(
-                      '全部门店',
-                      style: TextStyle(
+                    hint: Text(
+                      l10n.adminAllStores,
+                      style: const TextStyle(
                         fontSize: 13,
                         color: LiveColors.textSecondary,
                       ),
@@ -971,7 +979,7 @@ class _AppointmentOrdersTabState extends State<_AppointmentOrdersTab> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        _date ?? '日期',
+                        _date ?? l10n.adminDate,
                         style: const TextStyle(
                           fontSize: 13,
                           color: LiveColors.textPrimary,
@@ -1012,7 +1020,7 @@ class _AppointmentOrdersTabState extends State<_AppointmentOrdersTab> {
                   ),
                   decoration: InputDecoration(
                     counterText: '',
-                    hintText: '核销码（6 位）',
+                    hintText: l10n.adminRedeemCodeHint,
                     hintStyle: const TextStyle(
                       fontSize: 13,
                       color: LiveColors.textTertiary,
@@ -1044,10 +1052,10 @@ class _AppointmentOrdersTabState extends State<_AppointmentOrdersTab> {
                 ),
               ),
               const SizedBox(width: 8),
-              _ActionChip(label: '查询', onTap: () => _load(reset: true)),
+              _ActionChip(label: l10n.adminQuery, onTap: () => _load(reset: true)),
               const SizedBox(width: 6),
               _ActionChip(
-                label: '重置',
+                label: l10n.adminReset,
                 color: LiveColors.textSecondary,
                 onTap: _resetFilters,
               ),
@@ -1060,6 +1068,16 @@ class _AppointmentOrdersTabState extends State<_AppointmentOrdersTab> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final statuses = [
+      ('', l10n.commonAll),
+      ('pending', l10n.appointmentStatusPending),
+      ('booked', l10n.appointmentStatusBooked),
+      ('checked_in', l10n.appointmentStatusCheckedIn),
+      ('in_service', l10n.appointmentStatusInService),
+      ('completed', l10n.appointmentStatusCompleted),
+      ('cancelled', l10n.appointmentStatusCancelled),
+    ];
     return Column(
       children: [
         Padding(
@@ -1072,7 +1090,7 @@ class _AppointmentOrdersTabState extends State<_AppointmentOrdersTab> {
                   textInputAction: TextInputAction.search,
                   style: const TextStyle(fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: '搜索用户昵称 / 用户名 / 邮箱',
+                    hintText: l10n.adminSearchUserHint,
                     hintStyle: const TextStyle(
                       fontSize: 13,
                       color: LiveColors.textTertiary,
@@ -1095,7 +1113,7 @@ class _AppointmentOrdersTabState extends State<_AppointmentOrdersTab> {
               ),
               const SizedBox(width: 8),
               _ActionChip(
-                label: '核销',
+                label: l10n.adminRedeemAction,
                 color: LiveColors.success,
                 onTap: () => LiveRoutes.push(context, RoutePaths.adminRedeem),
               ),
@@ -1108,7 +1126,7 @@ class _AppointmentOrdersTabState extends State<_AppointmentOrdersTab> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
             children: [
-              for (final (value, label) in _statuses)
+              for (final (value, label) in statuses)
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: _FilterChip(
@@ -1148,10 +1166,10 @@ class _AppointmentOrdersTabState extends State<_AppointmentOrdersTab> {
                           ),
                         ),
                       if (_items.isEmpty && _error == null)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 100),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 100),
                           child: EmptyView(
-                            text: '暂无订单',
+                            text: l10n.adminNoOrders,
                             icon: Icons.receipt_long_outlined,
                           ),
                         ),
@@ -1165,22 +1183,22 @@ class _AppointmentOrdersTabState extends State<_AppointmentOrdersTab> {
                             onConfirm: () => _runAction(
                               a,
                               AdminAppointmentService.instance.confirm,
-                              '已确认预约',
+                              l10n.adminAppointmentConfirmed,
                             ),
                             onCheckIn: () => _runAction(
                               a,
                               AdminAppointmentService.instance.checkIn,
-                              '核销成功，已开始服务',
+                              l10n.adminAppointmentCheckedIn,
                             ),
                             onClockIn: () => _runAction(
                               a,
                               AdminAppointmentService.instance.clockIn,
-                              '已上钟，开始服务',
+                              l10n.adminClockInSuccess,
                             ),
                             onClockOut: () => _runAction(
                               a,
                               AdminAppointmentService.instance.clockOut,
-                              '已下钟，服务完成',
+                              l10n.adminClockOutSuccess,
                             ),
                             onCancel: () => _confirmCancel(a),
                           ),
@@ -1200,12 +1218,12 @@ class _AppointmentOrdersTabState extends State<_AppointmentOrdersTab> {
                           ),
                         ),
                       if (!_hasMore && _items.isNotEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 10),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
                           child: Center(
                             child: Text(
-                              '没有更多了',
-                              style: TextStyle(
+                              l10n.adminNoMore,
+                              style: const TextStyle(
                                 fontSize: 12,
                                 color: LiveColors.textTertiary,
                               ),
@@ -1245,7 +1263,9 @@ class _AppointmentOrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final a = appointment;
-    final user = a.userNickname.isNotEmpty ? a.userNickname : '用户 #${a.userId}';
+    final l10n = context.l10n;
+    final user =
+        a.userNickname.isNotEmpty ? a.userNickname : l10n.commonUserId(a.userId);
     final table = a.tableLabel.isEmpty ? '' : ' · ${a.tableLabel}';
     return InkWell(
       onTap: onTap,
@@ -1275,7 +1295,7 @@ class _AppointmentOrderCard extends StatelessWidget {
                   ),
                 ),
                 TagChip(
-                  label: a.statusLabel,
+                  label: _appointmentStatusLabel(l10n, a.status),
                   color: _appointmentStatusColor(a.status),
                 ),
               ],
@@ -1292,7 +1312,7 @@ class _AppointmentOrderCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              '${a.date} ${a.startTime}-${a.endTime} · ${a.peopleCount} 人$table',
+              '${a.date} ${a.startTime}-${a.endTime} · ${l10n.activityPeople(a.peopleCount)}$table',
               style: const TextStyle(
                 fontSize: 12,
                 color: LiveColors.textTertiary,
@@ -1301,7 +1321,7 @@ class _AppointmentOrderCard extends StatelessWidget {
             if (a.note.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(
-                '备注 ${a.note}',
+                '${l10n.appointmentNote} ${a.note}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -1313,7 +1333,7 @@ class _AppointmentOrderCard extends StatelessWidget {
             if (a.serviceStartTime != null) ...[
               const SizedBox(height: 4),
               Text(
-                '服务时长 ${_serviceDuration(a, now)}',
+                l10n.adminServiceDuration(_serviceDuration(a, now)),
                 style: const TextStyle(
                   fontSize: 11.6,
                   color: LiveColors.success,
@@ -1334,7 +1354,7 @@ class _AppointmentOrderCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  '码 ${a.code}',
+                  l10n.adminCodeShort(a.code),
                   style: const TextStyle(
                     fontSize: 11.6,
                     color: LiveColors.textTertiary,
@@ -1342,25 +1362,25 @@ class _AppointmentOrderCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 if (a.status == 'pending') ...[
-                  _ActionChip(label: '确认', onTap: onConfirm),
+                  _ActionChip(label: l10n.commonConfirm, onTap: onConfirm),
                   const SizedBox(width: 8),
                   _ActionChip(
-                    label: '取消',
+                    label: l10n.commonCancel,
                     color: LiveColors.danger,
                     onTap: onCancel,
                   ),
                 ] else if (a.status == 'booked') ...[
-                  _ActionChip(label: '核销', onTap: onCheckIn),
+                  _ActionChip(label: l10n.adminRedeemAction, onTap: onCheckIn),
                   const SizedBox(width: 8),
                   _ActionChip(
-                    label: '取消',
+                    label: l10n.commonCancel,
                     color: LiveColors.danger,
                     onTap: onCancel,
                   ),
                 ] else if (a.status == 'checked_in') ...[
-                  _ActionChip(label: '上钟', onTap: onClockIn),
+                  _ActionChip(label: l10n.adminClockIn, onTap: onClockIn),
                 ] else if (a.status == 'in_service') ...[
-                  _ActionChip(label: '下钟', onTap: onClockOut),
+                  _ActionChip(label: l10n.adminClockOut, onTap: onClockOut),
                 ],
               ],
             ),
@@ -1381,17 +1401,19 @@ class _OrderDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final a = appointment;
-    final user = a.userNickname.isNotEmpty ? a.userNickname : '用户 #${a.userId}';
+    final l10n = context.l10n;
+    final user =
+        a.userNickname.isNotEmpty ? a.userNickname : l10n.commonUserId(a.userId);
     final table = a.tableLabel.isEmpty ? '—' : a.tableLabel;
     final booking = a.type == 'activity'
-        ? '活动'
+        ? l10n.activityTitle
         : a.bookingType == 'all_day'
-        ? '全天不限时'
+        ? l10n.storeAllDay
         : a.bookingType == 'package' && a.packageName.isNotEmpty
-        ? a.packageName
+        ? context.memberName(a.packageName)
         : a.durationHours != null
-        ? '${a.durationHours} 小时'
-        : '按小时';
+        ? l10n.adminDurationHours(a.durationHours!)
+        : l10n.storeBookingTypeHourly;
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.72,
@@ -1432,36 +1454,48 @@ class _OrderDetailSheet extends StatelessWidget {
                   ),
                 ),
                 TagChip(
-                  label: a.statusLabel,
+                  label: _appointmentStatusLabel(l10n, a.status),
                   color: _appointmentStatusColor(a.status),
                 ),
               ],
             ),
             const SizedBox(height: 6),
-            _detailRow('预约码', a.code),
-            _detailRow('用户', user),
+            _detailRow(l10n.appointmentCodeLabel, a.code),
+            _detailRow(l10n.adminUser, user),
             if (a.userEmail != null && a.userEmail!.isNotEmpty)
-              _detailRow('邮箱', a.userEmail!),
-            _detailRow('门店', a.storeName),
-            _detailRow('类型 / 桌位', a.type == 'activity' ? '活动' : table),
+              _detailRow(l10n.adminEmail, a.userEmail!),
+            _detailRow(l10n.appointmentStore, a.storeName),
             _detailRow(
-              '预约时段',
+              l10n.adminTypeTable,
+              a.type == 'activity' ? l10n.activityTitle : table,
+            ),
+            _detailRow(
+              l10n.adminTimeSlot,
               '$booking · ${a.date} ${a.startTime}-${a.endTime}',
             ),
-            _detailRow('人数', '${a.peopleCount} 人'),
-            _detailRow('金额', '\$${fmtPrice(a.amount)}'),
+            _detailRow(
+              l10n.appointmentPeopleCountLabel,
+              l10n.appointmentPeople(a.peopleCount),
+            ),
+            _detailRow(l10n.appointmentAmount, '\$${fmtPrice(a.amount)}'),
             if (a.couponTitle.isNotEmpty)
               _detailRow(
-                '优惠券',
-                '${a.couponTitle}（-\$${fmtPrice(a.couponDiscount)}）',
+                l10n.appointmentCoupon,
+                l10n.adminCouponDiscount(
+                  a.couponTitle,
+                  '-\$${fmtPrice(a.couponDiscount)}',
+                ),
               ),
-            _detailRow('备注', a.note.isEmpty ? '—' : a.note),
-            _detailRow('状态', a.statusLabel),
-            _detailRow('核销时间', _fmtTime(a.checkInTime)),
-            _detailRow('上钟时间', _fmtTime(a.serviceStartTime)),
-            _detailRow('下钟时间', _fmtTime(a.serviceEndTime)),
+            _detailRow(l10n.appointmentNote, a.note.isEmpty ? '—' : a.note),
             _detailRow(
-              '服务时长',
+              l10n.adminStatus,
+              _appointmentStatusLabel(l10n, a.status),
+            ),
+            _detailRow(l10n.adminCheckInTime, _fmtTime(a.checkInTime)),
+            _detailRow(l10n.appointmentStartTime, _fmtTime(a.serviceStartTime)),
+            _detailRow(l10n.appointmentEndTime, _fmtTime(a.serviceEndTime)),
+            _detailRow(
+              l10n.adminServiceDurationLabel,
               a.serviceStartTime == null ? '—' : _serviceDuration(a, now),
             ),
           ],
@@ -1479,13 +1513,6 @@ class _MemberOrdersTab extends StatefulWidget {
 }
 
 class _MemberOrdersTabState extends State<_MemberOrdersTab> {
-  static const _statuses = [
-    ('', '全部'),
-    ('pending', '待确认'),
-    ('confirmed', '已开通'),
-    ('cancelled', '已取消'),
-  ];
-
   final _searchCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   List<MemberOrder> _items = [];
@@ -1584,31 +1611,53 @@ class _MemberOrdersTabState extends State<_MemberOrdersTab> {
   }
 
   Future<void> _confirmCancel(MemberOrder o) async {
+    final l10n = context.l10n;
     final ok = await _confirmDialog(
       context,
-      title: '取消开通申请',
-      desc: '确定取消「${o.planName}」的开通申请吗？',
+      title: l10n.adminCancelMemberOrderTitle,
+      desc: l10n.adminCancelMemberOrderDesc(o.planName),
     );
     if (ok == true && mounted) {
-      await _runAction(o, AdminMemberService.instance.cancelOrder, '已取消开通申请');
+      await _runAction(
+        o,
+        AdminMemberService.instance.cancelOrder,
+        context.l10n.adminMemberOrderCancelled,
+      );
     }
   }
 
   Future<void> _confirmOrder(MemberOrder o) async {
-    final user = o.userNickname.isNotEmpty ? o.userNickname : '会员订单 #${o.id}';
+    final l10n = context.l10n;
+    final user =
+        o.userNickname.isNotEmpty ? o.userNickname : l10n.adminMemberOrderId(o.id);
     final ok = await _confirmDialog(
       context,
-      title: '确认开通会员',
-      desc:
-          '确认开通 $user 的会员（${o.planName}，${o.durationDays} 天，\$${fmtPrice(o.amount)}）？请先确认已收取到店支付费用。',
+      title: l10n.adminConfirmMemberTitle,
+      desc: l10n.adminConfirmMemberDesc(
+        user,
+        o.planName,
+        o.durationDays,
+        '\$${fmtPrice(o.amount)}',
+      ),
     );
     if (ok == true && mounted) {
-      await _runAction(o, AdminMemberService.instance.confirmOrder, '已确认开通');
+      await _runAction(
+        o,
+        AdminMemberService.instance.confirmOrder,
+        context.l10n.adminMemberConfirmed,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final statuses = [
+      ('', l10n.commonAll),
+      ('pending', l10n.appointmentStatusPending),
+      ('confirmed', l10n.adminMemberStatusConfirmed),
+      ('cancelled', l10n.appointmentStatusCancelled),
+    ];
     return Column(
       children: [
         Padding(
@@ -1618,7 +1667,7 @@ class _MemberOrdersTabState extends State<_MemberOrdersTab> {
             textInputAction: TextInputAction.search,
             style: const TextStyle(fontSize: 14),
             decoration: InputDecoration(
-              hintText: '搜索用户昵称 / 用户名 / 邮箱',
+              hintText: l10n.adminSearchUserHint,
               hintStyle: const TextStyle(
                 fontSize: 13,
                 color: LiveColors.textTertiary,
@@ -1645,7 +1694,7 @@ class _MemberOrdersTabState extends State<_MemberOrdersTab> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
             children: [
-              for (final (value, label) in _statuses)
+              for (final (value, label) in statuses)
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: _FilterChip(
@@ -1684,10 +1733,10 @@ class _MemberOrdersTabState extends State<_MemberOrdersTab> {
                           ),
                         ),
                       if (_items.isEmpty && _error == null)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 100),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 100),
                           child: EmptyView(
-                            text: '暂无会员订单',
+                            text: l10n.adminMemberOrdersNo,
                             icon: Icons.receipt_long_outlined,
                           ),
                         ),
@@ -1715,12 +1764,12 @@ class _MemberOrdersTabState extends State<_MemberOrdersTab> {
                           ),
                         ),
                       if (!_hasMore && _items.isNotEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 10),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
                           child: Center(
                             child: Text(
-                              '没有更多了',
-                              style: TextStyle(
+                              l10n.adminNoMore,
+                              style: const TextStyle(
                                 fontSize: 12,
                                 color: LiveColors.textTertiary,
                               ),
@@ -1750,7 +1799,9 @@ class _MemberOrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final o = order;
-    final user = o.userNickname.isNotEmpty ? o.userNickname : '会员订单 #${o.id}';
+    final l10n = context.l10n;
+    final user =
+        o.userNickname.isNotEmpty ? o.userNickname : l10n.adminMemberOrderId(o.id);
     final createdAt = o.createdAt == null ? '' : _fmtDateTime(o.createdAt!);
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1777,14 +1828,14 @@ class _MemberOrderCard extends StatelessWidget {
                 ),
               ),
               TagChip(
-                label: o.statusLabel,
+                label: _memberOrderStatusLabel(l10n, o.status),
                 color: _memberOrderStatusColor(o.status),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            '${o.planName} · ${o.durationDays} 天',
+            l10n.adminPlanDays(context.memberName(o.planName), o.durationDays),
             style: const TextStyle(
               fontSize: 13,
               color: LiveColors.textSecondary,
@@ -1811,10 +1862,10 @@ class _MemberOrderCard extends StatelessWidget {
               ),
               const Spacer(),
               if (o.status == 'pending') ...[
-                _ActionChip(label: '确认开通', onTap: onConfirm),
+                _ActionChip(label: l10n.adminConfirmMemberAction, onTap: onConfirm),
                 const SizedBox(width: 8),
                 _ActionChip(
-                  label: '取消',
+                  label: l10n.commonCancel,
                   color: LiveColors.danger,
                   onTap: onCancel,
                 ),
@@ -1948,10 +1999,12 @@ class _MembersTabState extends State<_MembersTab> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const _MembershipFormSheet(),
+      builder: (_) => _MembershipFormSheet(
+        defaultLevel: context.l10n.adminLevelDefault,
+      ),
     );
     if (created == true && mounted) {
-      showLiveSnack(context, '已开通会员');
+      showLiveSnack(context, context.l10n.adminMemberCreated);
       await _load(reset: true);
     }
   }
@@ -1964,22 +2017,23 @@ class _MembersTabState extends State<_MembersTab> {
       builder: (_) => _MembershipFormSheet(membership: m),
     );
     if (saved == true && mounted) {
-      showLiveSnack(context, '已保存会员信息');
+      showLiveSnack(context, context.l10n.adminMemberSaved);
       await _load(reset: true);
     }
   }
 
   Future<void> _confirmDelete(AdminMembership m) async {
+    final l10n = context.l10n;
     final ok = await _confirmDialog(
       context,
-      title: '删除会员记录',
-      desc: '确认删除会员编号 ${m.memberNo}（${m.userName}）？删除后该用户会员资格立即失效，操作不可恢复。',
+      title: l10n.adminDeleteMemberTitle,
+      desc: l10n.adminDeleteMemberDesc(m.memberNo, m.userName),
     );
     if (ok != true || !mounted) return;
     try {
       await AdminMemberService.instance.deleteMembership(m.id);
       if (!mounted) return;
-      showLiveSnack(context, '已删除会员记录');
+      showLiveSnack(context, context.l10n.adminMemberDeleted);
       await _load(reset: true);
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -1988,6 +2042,7 @@ class _MembersTabState extends State<_MembersTab> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Column(
       children: [
         Padding(
@@ -2000,7 +2055,7 @@ class _MembersTabState extends State<_MembersTab> {
                   textInputAction: TextInputAction.search,
                   style: const TextStyle(fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: '搜索用户 / 会员编号',
+                    hintText: l10n.adminSearchMemberHint,
                     hintStyle: const TextStyle(
                       fontSize: 13,
                       color: LiveColors.textTertiary,
@@ -2022,7 +2077,7 @@ class _MembersTabState extends State<_MembersTab> {
                 ),
               ),
               const SizedBox(width: 8),
-              _ActionChip(label: '开通会员', onTap: _openCreate),
+              _ActionChip(label: l10n.adminOpenMember, onTap: _openCreate),
             ],
           ),
         ),
@@ -2049,10 +2104,10 @@ class _MembersTabState extends State<_MembersTab> {
                           ),
                         ),
                       if (_items.isEmpty && _error == null)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 100),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 100),
                           child: EmptyView(
-                            text: '暂无会员',
+                            text: l10n.adminNoMembers,
                             icon: Icons.workspace_premium_outlined,
                           ),
                         ),
@@ -2080,12 +2135,12 @@ class _MembersTabState extends State<_MembersTab> {
                           ),
                         ),
                       if (!_hasMore && _items.isNotEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 10),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
                           child: Center(
                             child: Text(
-                              '没有更多了',
-                              style: TextStyle(
+                              l10n.adminNoMore,
+                              style: const TextStyle(
                                 fontSize: 12,
                                 color: LiveColors.textTertiary,
                               ),
@@ -2115,6 +2170,7 @@ class _MembershipCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final m = membership;
+    final l10n = context.l10n;
     final expire = m.expireAt == null ? '—' : _fmtDate(m.expireAt!);
     final updated = m.updatedAt == null ? '' : _fmtDateTime(m.updatedAt!);
     return Container(
@@ -2159,7 +2215,7 @@ class _MembershipCard extends StatelessWidget {
                       ),
                     ),
                     TagChip(
-                      label: m.statusLabel,
+                      label: _membershipStatusLabel(l10n, m.status),
                       color: m.status == 'active'
                           ? LiveColors.success
                           : LiveColors.textTertiary,
@@ -2168,7 +2224,7 @@ class _MembershipCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${m.memberNo} · ${m.levelName}',
+                  '${m.memberNo} · ${context.memberName(m.levelName)}',
                   style: const TextStyle(
                     fontSize: 12.6,
                     color: LiveColors.textSecondary,
@@ -2176,7 +2232,7 @@ class _MembershipCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '有效期至 $expire',
+                  '${l10n.memberValidUntil} $expire',
                   style: const TextStyle(
                     fontSize: 11.6,
                     color: LiveColors.textTertiary,
@@ -2186,7 +2242,7 @@ class _MembershipCard extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
-                      '最近更新 $updated',
+                      l10n.adminLastUpdated(updated),
                       style: const TextStyle(
                         fontSize: 11.6,
                         color: LiveColors.textTertiary,
@@ -2196,10 +2252,10 @@ class _MembershipCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _ActionChip(label: '编辑', onTap: onEdit),
+                    _ActionChip(label: l10n.commonEdit, onTap: onEdit),
                     const SizedBox(width: 8),
                     _ActionChip(
-                      label: '删除',
+                      label: l10n.commonDelete,
                       color: LiveColors.danger,
                       onTap: onDelete,
                     ),
@@ -2216,9 +2272,10 @@ class _MembershipCard extends StatelessWidget {
 
 /// 开通 / 编辑会员底部表单（对齐网页管理端：用户 ID + 等级 + 有效期，可按套餐快捷填充）。
 class _MembershipFormSheet extends StatefulWidget {
-  const _MembershipFormSheet({this.membership});
+  const _MembershipFormSheet({this.membership, this.defaultLevel});
 
   final AdminMembership? membership;
+  final String? defaultLevel;
 
   @override
   State<_MembershipFormSheet> createState() => _MembershipFormSheetState();
@@ -2238,7 +2295,7 @@ class _MembershipFormSheetState extends State<_MembershipFormSheet> {
   void initState() {
     super.initState();
     final m = widget.membership;
-    _levelCtrl.text = m?.levelName ?? '手作会员';
+    _levelCtrl.text = m?.levelName ?? widget.defaultLevel ?? '手作会员';
     _expireAt = m?.expireAt ?? DateTime.now().add(const Duration(days: 30));
     unawaited(_loadPlans());
   }
@@ -2299,14 +2356,14 @@ class _MembershipFormSheetState extends State<_MembershipFormSheet> {
   Future<void> _save() async {
     final expire = _expireAt;
     if (expire == null) {
-      showLiveSnack(context, '请选择有效期');
+      showLiveSnack(context, context.l10n.adminNeedExpire);
       return;
     }
     int? userId;
     if (!_editing) {
       userId = int.tryParse(_userIdCtrl.text.trim());
       if (userId == null || userId <= 0) {
-        showLiveSnack(context, '请输入用户 ID');
+        showLiveSnack(context, context.l10n.adminNeedUserId);
         return;
       }
     }
@@ -2336,6 +2393,7 @@ class _MembershipFormSheetState extends State<_MembershipFormSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -2363,7 +2421,7 @@ class _MembershipFormSheetState extends State<_MembershipFormSheet> {
               ),
               const SizedBox(height: 14),
               Text(
-                _editing ? '编辑会员' : '开通会员',
+                _editing ? l10n.adminEditMember : l10n.adminOpenMember,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -2373,18 +2431,22 @@ class _MembershipFormSheetState extends State<_MembershipFormSheet> {
               const SizedBox(height: 16),
               if (!_editing) ...[
                 _FormField(
-                  label: '用户 ID',
-                  hint: '输入用户 ID 直接开通',
+                  label: l10n.adminUserIdLabel,
+                  hint: l10n.adminUserIdHint,
                   controller: _userIdCtrl,
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 12),
               ],
-              _FormField(label: '会员等级', hint: '手作会员', controller: _levelCtrl),
+              _FormField(
+                label: l10n.adminMemberLevel,
+                hint: l10n.adminLevelDefault,
+                controller: _levelCtrl,
+              ),
               const SizedBox(height: 12),
               _FormField(
-                label: '有效期至',
-                hint: _expireAt == null ? '选择时间' : _fmtDateTime(_expireAt!),
+                label: l10n.memberValidUntil,
+                hint: _expireAt == null ? l10n.adminSelectTime : _fmtDateTime(_expireAt!),
                 readOnly: true,
                 onTap: _pickExpireAt,
                 trailing: const Icon(
@@ -2396,8 +2458,8 @@ class _MembershipFormSheetState extends State<_MembershipFormSheet> {
               if (!_editing && _plans.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 _FormField(
-                  label: '按套餐快捷填充',
-                  hint: '不按套餐，手动选择有效期',
+                  label: l10n.adminFillByPlan,
+                  hint: l10n.adminNoPlanHint,
                   planDropdown: _planId,
                   plans: _plans,
                   onPlanChanged: _fillExpireFromPlan,
@@ -2408,7 +2470,7 @@ class _MembershipFormSheetState extends State<_MembershipFormSheet> {
                 children: [
                   Expanded(
                     child: OutlineButton(
-                      label: '取消',
+                      label: l10n.commonCancel,
                       height: 44,
                       onTap: () => Navigator.of(context).pop(),
                     ),
@@ -2416,7 +2478,7 @@ class _MembershipFormSheetState extends State<_MembershipFormSheet> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: PrimaryButton(
-                      label: '保存',
+                      label: l10n.commonSave,
                       height: 44,
                       loading: _saving,
                       onTap: _saving ? null : _save,
@@ -2456,7 +2518,10 @@ class _PlansTabState extends State<_PlansTab> {
     try {
       await AdminMemberService.instance.togglePlan(plan.id, enabled);
       if (!mounted) return;
-      showLiveSnack(context, enabled ? '已上架套餐' : '已下架套餐');
+      showLiveSnack(
+        context,
+        enabled ? context.l10n.adminPlanEnabled : context.l10n.adminPlanDisabled,
+      );
       _retry();
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -2472,7 +2537,7 @@ class _PlansTabState extends State<_PlansTab> {
       builder: (_) => const _PlanFormSheet(),
     );
     if (saved == true && mounted) {
-      showLiveSnack(context, '已保存套餐');
+      showLiveSnack(context, context.l10n.adminPlanSaved);
       _retry();
     }
   }
@@ -2485,29 +2550,30 @@ class _PlansTabState extends State<_PlansTab> {
       builder: (_) => _PlanFormSheet(plan: plan),
     );
     if (saved == true && mounted) {
-      showLiveSnack(context, '已保存套餐');
+      showLiveSnack(context, context.l10n.adminPlanSaved);
       _retry();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 10, 18, 2),
           child: Row(
             children: [
-              const Text(
-                '套餐管理',
-                style: TextStyle(
+              Text(
+                l10n.adminPlansManage,
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: LiveColors.textPrimary,
                 ),
               ),
               const Spacer(),
-              _ActionChip(label: '新增套餐', onTap: _openCreate),
+              _ActionChip(label: l10n.adminAddPlan, onTap: _openCreate),
             ],
           ),
         ),
@@ -2520,7 +2586,7 @@ class _PlansTabState extends State<_PlansTab> {
                   child: ErrorView(
                     message: snap.error is ApiException
                         ? (snap.error as ApiException).message
-                        : '加载失败',
+                        : l10n.commonLoadFailed,
                     onRetry: _retry,
                   ),
                 );
@@ -2530,8 +2596,8 @@ class _PlansTabState extends State<_PlansTab> {
               }
               final plans = snap.data!;
               if (plans.isEmpty) {
-                return const EmptyView(
-                  text: '暂无套餐',
+                return EmptyView(
+                  text: l10n.adminNoPlans,
                   icon: Icons.card_membership_outlined,
                 );
               }
@@ -2571,6 +2637,7 @@ class _PlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = plan;
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -2594,10 +2661,13 @@ class _PlanCard extends StatelessWidget {
                 ),
               ),
               if (p.badge.isNotEmpty)
-                TagChip(label: p.badge, color: LiveColors.blue),
+                TagChip(
+                  label: context.memberName(p.badge),
+                  color: LiveColors.blue,
+                ),
               if (p.recommended) ...[
                 const SizedBox(width: 6),
-                const TagChip(label: '推荐', color: LiveColors.success),
+                TagChip(label: l10n.memberRecommended, color: LiveColors.success),
               ],
               const SizedBox(width: 6),
               Switch(
@@ -2609,8 +2679,8 @@ class _PlanCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '${p.durationDays} 天 · \$${fmtPrice(p.price)}'
-            '${p.originalPrice > 0 ? '（原价 \$${fmtPrice(p.originalPrice)}）' : ''}',
+            '${l10n.adminPlanDurationPrice(p.durationDays, '\$${fmtPrice(p.price)}')}'
+            '${p.originalPrice > 0 ? l10n.adminPlanOriginalPrice('\$${fmtPrice(p.originalPrice)}') : ''}',
             style: const TextStyle(
               fontSize: 13,
               color: LiveColors.textSecondary,
@@ -2619,7 +2689,9 @@ class _PlanCard extends StatelessWidget {
           if (p.benefits.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              p.benefits.join(' · '),
+              p.benefits
+                  .map((b) => context.memberBenefit(b))
+                  .join(' · '),
               style: const TextStyle(
                 fontSize: 11.6,
                 color: LiveColors.textTertiary,
@@ -2629,7 +2701,7 @@ class _PlanCard extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
-            children: [_ActionChip(label: '编辑', onTap: onEdit)],
+            children: [_ActionChip(label: l10n.commonEdit, onTap: onEdit)],
           ),
         ],
       ),
@@ -2693,15 +2765,15 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
     final price = double.tryParse(_priceCtrl.text.trim());
     final original = double.tryParse(_originalCtrl.text.trim());
     if (name.isEmpty) {
-      showLiveSnack(context, '请输入套餐名称');
+      showLiveSnack(context, context.l10n.adminNeedPlanName);
       return;
     }
     if (days == null || days <= 0) {
-      showLiveSnack(context, '请输入正确的时长（天）');
+      showLiveSnack(context, context.l10n.adminNeedPlanDays);
       return;
     }
     if (price == null || price < 0 || original == null || original < 0) {
-      showLiveSnack(context, '请输入正确的价格');
+      showLiveSnack(context, context.l10n.adminNeedPlanPrice);
       return;
     }
     final body = <String, dynamic>{
@@ -2735,6 +2807,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -2762,7 +2835,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
               ),
               const SizedBox(height: 14),
               Text(
-                _editing ? '编辑套餐' : '新增套餐',
+                _editing ? l10n.adminEditPlan : l10n.adminAddPlan,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -2771,13 +2844,13 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
               ),
               const SizedBox(height: 16),
               _FormField(
-                label: '套餐名称',
-                hint: '月卡 / 季卡 / 年卡',
+                label: l10n.adminPlanName,
+                hint: l10n.adminPlanNameHint,
                 controller: _nameCtrl,
               ),
               const SizedBox(height: 12),
               _FormField(
-                label: '时长（天）',
+                label: l10n.adminDurationDays,
                 hint: '30',
                 controller: _daysCtrl,
                 keyboardType: TextInputType.number,
@@ -2787,7 +2860,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
                 children: [
                   Expanded(
                     child: _FormField(
-                      label: '售价',
+                      label: l10n.adminPrice,
                       hint: '199',
                       controller: _priceCtrl,
                       keyboardType: TextInputType.number,
@@ -2796,7 +2869,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: _FormField(
-                      label: '原价',
+                      label: l10n.appointmentOriginalPrice,
                       hint: '299',
                       controller: _originalCtrl,
                       keyboardType: TextInputType.number,
@@ -2805,11 +2878,15 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
                 ],
               ),
               const SizedBox(height: 12),
-              _FormField(label: '角标', hint: '推荐 / 最划算', controller: _badgeCtrl),
+              _FormField(
+                label: l10n.adminBadge,
+                hint: l10n.adminBadgeHint,
+                controller: _badgeCtrl,
+              ),
               const SizedBox(height: 12),
               _FormField(
-                label: '权益列表（一行一条）',
-                hint: '全场消费8折专属优惠',
+                label: l10n.adminBenefitsLabel,
+                hint: l10n.adminBenefitsHint,
                 controller: _benefitsCtrl,
                 maxLines: 4,
               ),
@@ -2818,7 +2895,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
                 children: [
                   Expanded(
                     child: _SwitchRow(
-                      label: '推荐套餐',
+                      label: l10n.adminRecommendedPlan,
                       value: _recommended,
                       onChanged: (v) => setState(() => _recommended = v),
                     ),
@@ -2826,7 +2903,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: _SwitchRow(
-                      label: '立即上架',
+                      label: l10n.adminPublishNow,
                       value: _enabled,
                       onChanged: (v) => setState(() => _enabled = v),
                     ),
@@ -2838,7 +2915,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
                 children: [
                   Expanded(
                     child: OutlineButton(
-                      label: '取消',
+                      label: l10n.commonCancel,
                       height: 44,
                       onTap: () => Navigator.of(context).pop(),
                     ),
@@ -2846,7 +2923,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: PrimaryButton(
-                      label: '保存',
+                      label: l10n.commonSave,
                       height: 44,
                       loading: _saving,
                       onTap: _saving ? null : _save,
@@ -2886,7 +2963,10 @@ class _CouponsTabState extends State<_CouponsTab> {
     try {
       await AdminMemberService.instance.toggleCoupon(coupon.id, enabled);
       if (!mounted) return;
-      showLiveSnack(context, enabled ? '已启用优惠券' : '已停用优惠券');
+      showLiveSnack(
+        context,
+        enabled ? context.l10n.adminCouponEnabled : context.l10n.adminCouponDisabled,
+      );
       _retry();
     } on ApiException catch (e) {
       if (mounted) showLiveSnack(context, e.message);
@@ -2902,7 +2982,7 @@ class _CouponsTabState extends State<_CouponsTab> {
       builder: (_) => const _CouponFormSheet(),
     );
     if (saved == true && mounted) {
-      showLiveSnack(context, '已保存优惠券');
+      showLiveSnack(context, context.l10n.adminCouponSaved);
       _retry();
     }
   }
@@ -2915,13 +2995,14 @@ class _CouponsTabState extends State<_CouponsTab> {
       builder: (_) => _CouponFormSheet(coupon: coupon),
     );
     if (saved == true && mounted) {
-      showLiveSnack(context, '已保存优惠券');
+      showLiveSnack(context, context.l10n.adminCouponSaved);
       _retry();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -2929,9 +3010,9 @@ class _CouponsTabState extends State<_CouponsTab> {
         children: [
           Row(
             children: [
-              const Text(
-                '优惠券管理',
-                style: TextStyle(
+              Text(
+                l10n.adminCouponsManage,
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: LiveColors.textPrimary,
@@ -2939,12 +3020,12 @@ class _CouponsTabState extends State<_CouponsTab> {
               ),
               const Spacer(),
               _ActionChip(
-                label: '核销',
+                label: l10n.adminRedeemAction,
                 color: LiveColors.success,
                 onTap: () => LiveRoutes.push(context, RoutePaths.adminRedeem),
               ),
               const SizedBox(width: 6),
-              _ActionChip(label: '新增优惠券', onTap: _openCreate),
+              _ActionChip(label: l10n.adminAddCoupon, onTap: _openCreate),
             ],
           ),
           const SizedBox(height: 4),
@@ -2954,11 +3035,11 @@ class _CouponsTabState extends State<_CouponsTab> {
               builder: (context, snap) {
                 if (snap.hasError) {
                   return Center(
-                    child: ErrorView(
-                      message: snap.error is ApiException
-                          ? (snap.error as ApiException).message
-                          : '加载失败',
-                      onRetry: _retry,
+                  child: ErrorView(
+                    message: snap.error is ApiException
+                        ? (snap.error as ApiException).message
+                        : l10n.commonLoadFailed,
+                    onRetry: _retry,
                     ),
                   );
                 }
@@ -2967,8 +3048,8 @@ class _CouponsTabState extends State<_CouponsTab> {
                 }
                 final coupons = snap.data!;
                 if (coupons.isEmpty) {
-                  return const EmptyView(
-                    text: '暂无优惠券',
+                  return EmptyView(
+                    text: l10n.adminNoCoupons,
                     icon: Icons.confirmation_number_outlined,
                   );
                 }
@@ -3009,6 +3090,7 @@ class _CouponCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = coupon;
+    final l10n = context.l10n;
     final expire = c.expireAt == null ? '—' : _fmtDate(c.expireAt!);
     return Container(
       padding: const EdgeInsets.all(16),
@@ -3043,7 +3125,11 @@ class _CouponCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '\$${fmtPrice(c.amount)} · ${c.threshold} · 剩余 ${c.stock}',
+            l10n.adminCouponStockLine(
+              '\$${fmtPrice(c.amount)}',
+              _couponThresholdLabel(l10n, c.threshold),
+              c.stock,
+            ),
             style: const TextStyle(
               fontSize: 13,
               color: LiveColors.textSecondary,
@@ -3051,7 +3137,8 @@ class _CouponCard extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            '有效期至 $expire · ${c.membersOnly ? '仅会员' : '全员可领'}',
+            '${l10n.memberValidUntil} $expire · '
+            '${c.membersOnly ? l10n.adminMembersOnly : l10n.adminAllCanClaim}',
             style: const TextStyle(
               fontSize: 11.6,
               color: LiveColors.textTertiary,
@@ -3060,7 +3147,7 @@ class _CouponCard extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
-            children: [_ActionChip(label: '编辑', onTap: onEdit)],
+            children: [_ActionChip(label: l10n.commonEdit, onTap: onEdit)],
           ),
         ],
       ),
@@ -3158,20 +3245,20 @@ class _CouponFormSheetState extends State<_CouponFormSheet> {
     final stock = int.tryParse(_stockCtrl.text.trim());
     final expire = _expireAt;
     if (title.isEmpty || amount.isEmpty || threshold.isEmpty) {
-      showLiveSnack(context, '请填写名称、面额和门槛');
+      showLiveSnack(context, context.l10n.adminNeedCouponFields);
       return;
     }
     final thresholdValue = double.tryParse(threshold);
     if (thresholdValue == null || thresholdValue < 0) {
-      showLiveSnack(context, '门槛请填写数字（0 表示无门槛）');
+      showLiveSnack(context, context.l10n.adminNeedThresholdNumber);
       return;
     }
     if (stock == null || stock < 0) {
-      showLiveSnack(context, '请输入正确的库存');
+      showLiveSnack(context, context.l10n.adminNeedStock);
       return;
     }
     if (expire == null) {
-      showLiveSnack(context, '请选择到期时间');
+      showLiveSnack(context, context.l10n.adminNeedExpireTime);
       return;
     }
     final body = <String, dynamic>{
@@ -3200,6 +3287,7 @@ class _CouponFormSheetState extends State<_CouponFormSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -3227,7 +3315,7 @@ class _CouponFormSheetState extends State<_CouponFormSheet> {
               ),
               const SizedBox(height: 14),
               Text(
-                _editing ? '编辑优惠券' : '新增优惠券',
+                _editing ? l10n.adminEditCoupon : l10n.adminAddCoupon,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -3236,8 +3324,8 @@ class _CouponFormSheetState extends State<_CouponFormSheet> {
               ),
               const SizedBox(height: 16),
               _FormField(
-                label: '优惠券名称',
-                hint: '全场 8 折券',
+                label: l10n.adminCouponName,
+                hint: l10n.adminCouponNameHint,
                 controller: _titleCtrl,
               ),
               const SizedBox(height: 12),
@@ -3245,16 +3333,16 @@ class _CouponFormSheetState extends State<_CouponFormSheet> {
                 children: [
                   Expanded(
                     child: _FormField(
-                      label: '面额文案',
-                      hint: '20 / 8.8 折',
+                      label: l10n.adminAmountText,
+                      hint: l10n.adminAmountHint,
                       controller: _amountCtrl,
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: _FormField(
-                      label: '使用门槛',
-                      hint: '0 表示无门槛',
+                      label: l10n.adminThreshold,
+                      hint: l10n.adminThresholdHint,
                       controller: _thresholdCtrl,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
@@ -3265,15 +3353,15 @@ class _CouponFormSheetState extends State<_CouponFormSheet> {
               ),
               const SizedBox(height: 12),
               _FormField(
-                label: '库存',
+                label: l10n.adminStock,
                 hint: '0',
                 controller: _stockCtrl,
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 12),
               _FormField(
-                label: '到期时间',
-                hint: _expireAt == null ? '选择时间' : _fmtDateTime(_expireAt!),
+                label: l10n.adminExpireTime,
+                hint: _expireAt == null ? l10n.adminSelectTime : _fmtDateTime(_expireAt!),
                 readOnly: true,
                 onTap: _pickExpireAt,
                 trailing: const Icon(
@@ -3287,7 +3375,7 @@ class _CouponFormSheetState extends State<_CouponFormSheet> {
                 children: [
                   Expanded(
                     child: _SwitchRow(
-                      label: '仅会员可领',
+                      label: l10n.adminMembersOnlyClaim,
                       value: _membersOnly,
                       onChanged: (v) => setState(() => _membersOnly = v),
                     ),
@@ -3295,7 +3383,7 @@ class _CouponFormSheetState extends State<_CouponFormSheet> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: _SwitchRow(
-                      label: '立即上架',
+                      label: l10n.adminPublishNow,
                       value: _enabled,
                       onChanged: (v) => setState(() => _enabled = v),
                     ),
@@ -3307,7 +3395,7 @@ class _CouponFormSheetState extends State<_CouponFormSheet> {
                 children: [
                   Expanded(
                     child: OutlineButton(
-                      label: '取消',
+                      label: l10n.commonCancel,
                       height: 44,
                       onTap: () => Navigator.of(context).pop(),
                     ),
@@ -3315,7 +3403,7 @@ class _CouponFormSheetState extends State<_CouponFormSheet> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: PrimaryButton(
-                      label: '保存',
+                      label: l10n.commonSave,
                       height: 44,
                       loading: _saving,
                       onTap: _saving ? null : _save,
@@ -3401,7 +3489,7 @@ class _FormField extends StatelessWidget {
                   DropdownMenuItem(
                     value: null,
                     child: Text(
-                      hint ?? '不按套餐',
+                      hint ?? context.l10n.adminNoPlanShort,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -3410,7 +3498,10 @@ class _FormField extends StatelessWidget {
                     DropdownMenuItem(
                       value: p.id,
                       child: Text(
-                        '${p.name}（${p.durationDays} 天）',
+                        context.l10n.adminPlanOption(
+                          context.memberName(p.name),
+                          p.durationDays,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -3694,16 +3785,19 @@ Future<bool> _confirmDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text(
-            '取消',
-            style: TextStyle(fontSize: 14, color: LiveColors.textSecondary),
+          child: Text(
+            context.l10n.commonCancel,
+            style: const TextStyle(
+              fontSize: 14,
+              color: LiveColors.textSecondary,
+            ),
           ),
         ),
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text(
-            '确认',
-            style: TextStyle(
+          child: Text(
+            context.l10n.commonConfirm,
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: LiveColors.danger,
@@ -3716,12 +3810,48 @@ Future<bool> _confirmDialog(
   return ok == true;
 }
 
-String _couponStatusLabel(String status) => switch (status) {
-  'unused' => '未核销',
-  'used' => '已核销',
-  'expired' => '已过期',
-  _ => status,
-};
+/// 预约状态展示名（跟随语言）。
+String _appointmentStatusLabel(AppLocalizations l10n, String status) =>
+    switch (status) {
+      'pending' => l10n.appointmentStatusPending,
+      'booked' => l10n.appointmentStatusBooked,
+      'checked_in' => l10n.appointmentStatusCheckedIn,
+      'in_service' => l10n.appointmentStatusInService,
+      'completed' => l10n.appointmentStatusCompleted,
+      'cancelled' => l10n.appointmentStatusCancelled,
+      _ => status,
+    };
+
+String _memberOrderStatusLabel(AppLocalizations l10n, String status) =>
+    switch (status) {
+      'pending' => l10n.appointmentStatusPending,
+      'confirmed' => l10n.adminMemberStatusConfirmed,
+      'cancelled' => l10n.appointmentStatusCancelled,
+      _ => status,
+    };
+
+String _membershipStatusLabel(AppLocalizations l10n, String status) =>
+    switch (status) {
+      'active' => l10n.adminMemberStatusConfirmed,
+      'expired' => l10n.memberExpired,
+      _ => status,
+    };
+
+String _couponStatusLabel(AppLocalizations l10n, String status) =>
+    switch (status) {
+      'unused' => l10n.adminCouponStatusUnused,
+      'used' => l10n.adminCouponStatusUsed,
+      'expired' => l10n.memberExpired,
+      _ => status,
+    };
+
+/// 服务端优惠券门槛（无门槛 / 满 $X 可用）转成跟随语言的展示文本。
+String _couponThresholdLabel(AppLocalizations l10n, String raw) {
+  if (raw == '无门槛') return l10n.adminThresholdNone;
+  final m = RegExp(r'^满 \$(\d+(?:\.\d+)?) 可用$').firstMatch(raw);
+  if (m != null) return l10n.adminThresholdMin('\$${m.group(1)}');
+  return raw;
+}
 
 Color _appointmentStatusColor(String status) => switch (status) {
   'pending' => LiveColors.warning,
