@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import 'api_client.dart';
@@ -17,6 +19,8 @@ class AuthService {
     required String email,
     required String password,
     String? deviceId,
+    String? captchaId,
+    String? captchaText,
   }) async {
     final data =
         await ApiClient.instance.post(
@@ -27,6 +31,10 @@ class AuthService {
                 'password': password,
                 if (deviceId != null && deviceId.isNotEmpty)
                   'deviceId': deviceId,
+                if (captchaId != null && captchaId.isNotEmpty)
+                  'captchaId': captchaId,
+                if (captchaText != null && captchaText.isNotEmpty)
+                  'captchaText': captchaText,
               },
             )
             as Map<String, dynamic>;
@@ -42,11 +50,22 @@ class AuthService {
   Future<({int userId, String accessToken, String refreshToken})> login(
     String account,
     String password,
+    {
+    String? captchaId,
+    String? captchaText,
+  }
   ) async {
     final data =
         await ApiClient.instance.post(
               '/auth/login',
-              body: {'account': account, 'password': password},
+              body: {
+                'account': account,
+                'password': password,
+                if (captchaId != null && captchaId.isNotEmpty)
+                  'captchaId': captchaId,
+                if (captchaText != null && captchaText.isNotEmpty)
+                  'captchaText': captchaText,
+              },
             )
             as Map<String, dynamic>;
     return (
@@ -54,6 +73,17 @@ class AuthService {
       accessToken: data['accessToken'] as String,
       refreshToken: data['refreshToken'] as String,
     );
+  }
+
+  /// 获取图形验证码：返回 id 与 SVG 图片字节（data URI 解码）
+  Future<({String id, Uint8List image})> captcha() async {
+    final data =
+        await ApiClient.instance.get('/captcha') as Map<String, dynamic>;
+    final id = data['id'] as String;
+    final uri = data['image'] as String;
+    final comma = uri.indexOf(',');
+    final base64 = comma >= 0 ? uri.substring(comma + 1) : uri;
+    return (id: id, image: base64Decode(base64));
   }
 
   /// 修改登录密码（登录态下，需校验原密码）

@@ -38,7 +38,13 @@ export class AuthController {
   @Post('login')
   @Throttle({ auth: { limit: 5, ttl: 60000, blockDuration: 300000 } })
   login(@Req() req: Request, @Body() dto: LoginDto) {
-    return this.auth.login(dto.account, dto.password, dto.captchaToken);
+    return this.auth.login(
+      dto.account,
+      dto.password,
+      dto.captchaToken,
+      dto.captchaId,
+      dto.captchaText,
+    );
   }
 
   /** 修改登录密码（登录态下）：原密码 + 新密码 */

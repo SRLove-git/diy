@@ -18,6 +18,8 @@ const SENSITIVE_KEYS = new Set([
   'refreshToken',
   'accessToken',
   'captchaToken',
+  'captchaId',
+  'captchaText',
   'secret',
   'token',
   'credential',

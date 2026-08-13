@@ -51,11 +51,20 @@ export class AuthService {
     password: string;
     deviceId?: string;
     captchaToken?: string;
+    captchaId?: string;
+    captchaText?: string;
   }) {
     const username = dto.username.trim();
     const email = dto.email.trim().toLowerCase();
 
-    if (!(await this.captcha.verify(dto.captchaToken))) {
+    if (
+      !(await this.captcha.verify(
+        dto.captchaToken,
+        undefined,
+        dto.captchaId,
+        dto.captchaText,
+      ))
+    ) {
       throw new BadRequestException('请完成人机验证');
     }
     if (await this.users.findByUsername(username)) {
@@ -119,8 +128,21 @@ export class AuthService {
   }
 
   /** 用户名 / 邮箱 + 密码登录 */
-  async login(account: string, password: string, captchaToken?: string) {
-    if (!(await this.captcha.verify(captchaToken))) {
+  async login(
+    account: string,
+    password: string,
+    captchaToken?: string,
+    captchaId?: string,
+    captchaText?: string,
+  ) {
+    if (
+      !(await this.captcha.verify(
+        captchaToken,
+        undefined,
+        captchaId,
+        captchaText,
+      ))
+    ) {
       throw new BadRequestException('请完成人机验证');
     }
     const normalized = account.trim();

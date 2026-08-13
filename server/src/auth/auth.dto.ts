@@ -28,6 +28,18 @@ export class RegisterDto {
   @MaxLength(1024, { message: '验证参数过长' })
   captchaToken?: string;
 
+  /** 图形验证码 ID（CAPTCHA_PROVIDER=image 时与 captchaText 一起必填） */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64, { message: '验证参数过长' })
+  captchaId?: string;
+
+  /** 图形验证码输入（CAPTCHA_PROVIDER=image 时必填） */
+  @IsOptional()
+  @IsString()
+  @MaxLength(8, { message: '验证码格式不正确' })
+  captchaText?: string;
+
   /** 设备标识（MAC/安装ID）：同一设备最多注册 3 个账号，App 端安装后生成并持久化 */
   @IsOptional()
   @Transform(trim)
@@ -68,6 +80,18 @@ export class LoginDto {
   @IsString()
   @MaxLength(1024, { message: '验证参数过长' })
   captchaToken?: string;
+
+  /** 图形验证码 ID（CAPTCHA_PROVIDER=image 时与 captchaText 一起必填） */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64, { message: '验证参数过长' })
+  captchaId?: string;
+
+  /** 图形验证码输入（CAPTCHA_PROVIDER=image 时必填） */
+  @IsOptional()
+  @IsString()
+  @MaxLength(8, { message: '验证码格式不正确' })
+  captchaText?: string;
 }
 
 /** 修改登录密码（登录态下）：需校验原密码 */

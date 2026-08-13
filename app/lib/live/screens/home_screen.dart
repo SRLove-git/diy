@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _future = _loadBase();
     _loadOrders();
-    _refreshRole();
+    _maybeRefreshRole();
     AuthStore.instance.addListener(_onAuthChanged);
     // 预约成功 / 核销 / 下钟结束后自动刷新订单，无需手动下拉
     HomeOrdersRefresh.instance.addListener(_onOrdersChanged);
@@ -55,11 +55,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int? _roleCheckedUserId;
 
   void _onAuthChanged() {
-    final uid = AuthStore.instance.userId;
     final isAdmin = AuthStore.instance.isAdmin;
     if (_isAdmin != isAdmin) setState(() => _isAdmin = isAdmin);
     // 切换账号 / 重新登录后拉取新账号角色；同一账号的通知（applyMe）不再重复拉取
-    if (uid != null && uid != _roleCheckedUserId) {
+    _maybeRefreshRole();
+  }
+
+  /// 账号变化或角色尚未拉取成功时（重新）拉取 /auth/me 的角色信息。
+  void _maybeRefreshRole() {
+    final uid = AuthStore.instance.userId;
+    if (uid == null) return;
+    if (uid != _roleCheckedUserId || _isAdmin == null) {
       _refreshRole();
     }
   }
@@ -82,9 +88,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // 从后台回到前台：重新拉取订单与未读数，感知后台期间的核销/上钟/新通知
+    // 从后台回到前台：重新拉取订单、未读数与角色，
+    // 感知后台期间的核销/上钟/新通知，以及管理员角色未拉取成功时的自愈
     if (state == AppLifecycleState.resumed) {
       _loadOrders();
+      _maybeRefreshRole();
       unawaited(
         NotificationService.instance.unreadCount().catchError((_) => 0),
       );
@@ -92,6 +100,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _onOrdersChanged() {
+    // 切回首页 Tab 时顺带自愈角色状态（首次拉取失败后自动重试）
+    _maybeRefreshRole();
     final p = HomeOrdersRefresh.instance.pending;
     if (p != null) {
       setState(() => _pendingOrders[p.id] = p);

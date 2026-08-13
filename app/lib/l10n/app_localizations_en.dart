@@ -102,6 +102,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginRecentAccounts => 'Recent accounts';
 
   @override
+  String get loginCaptchaHint => 'Captcha';
+
+  @override
+  String get loginCaptchaRefresh => 'Tap to refresh captcha';
+
+  @override
+  String get loginCaptchaError => 'Enter the captcha code';
+
+  @override
+  String get loginCaptchaExpired => 'Captcha expired, please refresh and retry';
+
+  @override
   String get registerTitle => 'Sign Up';
 
   @override

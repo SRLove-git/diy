@@ -92,7 +92,8 @@ npm run migration:revert                                # 回滚最近一次迁�
 | `THROTTLE_LIMIT/TTL_MS/BLOCK_MS` | API 全局限流：每 IP 每分钟请求数（默认 300）、窗口（默认 60s）、超限封锁时长（默认 300s） |
 | `AUTH_THROTTLE_LIMIT` | 认证接口限流上限（默认 10 次/分钟，注册/登录路由再收紧到 5 次/分钟） |
 | `BLOCK_BOT_UA` | 置 `true` 启用爬虫 UA 拦截（注册/登录/上传接口拒绝 python-requests、curl、Scrapy 等已知脚本 UA） |
-| `CAPTCHA_PROVIDER` | 人机验证：`turnstile`（Cloudflare）或 `hcaptcha`；留空关闭。开启后注册/登录需携带 `captchaToken` |
+| `CAPTCHA_PROVIDER` | 人机验证：`image`（自托管 SVG 图形验证码，无需第三方密钥）、`turnstile`（Cloudflare）或 `hcaptcha`；留空关闭。`image` 时注册/登录需携带 `captchaId + captchaText`；`turnstile/hcaptcha` 需携带 `captchaToken` |
+| `CAPTCHA_TTL / CAPTCHA_MAX_ATTEMPTS` | 图形验证码有效期（默认 300s）与最大尝试次数（默认 3，超限需刷新） |
 | `TURNSTILE_SECRET / HCAPTCHA_SECRET` | 对应人机验证提供商的站点密钥 |
 | `REGISTER_IP_MAX / REGISTER_IP_WINDOW_H` | 同一 IP 在窗口内（默认 24h）最大注册数（默认 5） |
 

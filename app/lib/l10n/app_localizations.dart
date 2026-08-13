@@ -278,6 +278,30 @@ abstract class AppLocalizations {
   /// **'最近登录账号'**
   String get loginRecentAccounts;
 
+  /// No description provided for @loginCaptchaHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'图形验证码'**
+  String get loginCaptchaHint;
+
+  /// No description provided for @loginCaptchaRefresh.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击刷新验证码'**
+  String get loginCaptchaRefresh;
+
+  /// No description provided for @loginCaptchaError.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入图形验证码'**
+  String get loginCaptchaError;
+
+  /// No description provided for @loginCaptchaExpired.
+  ///
+  /// In zh, this message translates to:
+  /// **'验证码已失效，请刷新后重试'**
+  String get loginCaptchaExpired;
+
   /// No description provided for @registerTitle.
   ///
   /// In zh, this message translates to:

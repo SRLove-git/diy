@@ -279,6 +279,25 @@ class _ProfileHeader extends StatelessWidget {
             color: LiveColors.textPrimary,
           ),
         ),
+        // 管理员标识：与首页管理模块共用同一份角色数据，便于确认角色已加载
+        if (user.role == 'admin') ...[
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              gradient: LiveGradients.brand,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: const Text(
+              '管理员',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 6),
         Text(
           '@${user.username ?? ''}${user.bio.isEmpty ? '' : ' · ${user.bio}'}',

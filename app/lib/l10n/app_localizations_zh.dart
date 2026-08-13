@@ -101,6 +101,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loginRecentAccounts => '最近登录账号';
 
   @override
+  String get loginCaptchaHint => '图形验证码';
+
+  @override
+  String get loginCaptchaRefresh => '点击刷新验证码';
+
+  @override
+  String get loginCaptchaError => '请输入图形验证码';
+
+  @override
+  String get loginCaptchaExpired => '验证码已失效，请刷新后重试';
+
+  @override
   String get registerTitle => '注册';
 
   @override

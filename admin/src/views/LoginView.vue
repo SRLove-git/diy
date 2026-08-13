@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import http from '../api/http'
 import { auth } from '../stores/auth'
@@ -10,6 +10,25 @@ const account = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
+const captchaId = ref('')
+const captchaImage = ref('')
+const captchaText = ref('')
+const captchaLoading = ref(false)
+
+async function loadCaptcha() {
+  captchaLoading.value = true
+  captchaText.value = ''
+  try {
+    const { data } = await http.get('/captcha')
+    captchaId.value = data.id
+    captchaImage.value = data.image
+  } catch {
+    captchaId.value = ''
+    captchaImage.value = ''
+  } finally {
+    captchaLoading.value = false
+  }
+}
 
 async function login() {
   if (!account.value.trim()) {
@@ -20,12 +39,18 @@ async function login() {
     error.value = t('密码至少 6 位', 'Password must be at least 6 characters')
     return
   }
+  if (!captchaId.value || !captchaText.value.trim()) {
+    error.value = t('请输入图形验证码', 'Enter the captcha code')
+    return
+  }
   loading.value = true
   error.value = ''
   try {
     const { data } = await http.post('/auth/login', {
       account: account.value.trim(),
       password: password.value,
+      captchaId: captchaId.value,
+      captchaText: captchaText.value.trim(),
     })
     auth.setToken(data.accessToken)
     const me = await auth.refreshMe()
@@ -38,10 +63,13 @@ async function login() {
   } catch (e: any) {
     error.value =
       e.response?.data?.message || t('登录失败', 'Login failed')
+    await loadCaptcha()
   } finally {
     loading.value = false
   }
 }
+
+onMounted(loadCaptcha)
 </script>
 
 <template>
@@ -65,6 +93,30 @@ async function login() {
         maxlength="32"
         autocomplete="current-password"
       />
+      <div class="captcha-row">
+        <input
+          v-model="captchaText"
+          type="text"
+          :placeholder="$t('图形验证码', 'Captcha')"
+          maxlength="4"
+          autocomplete="off"
+          @keyup.enter="login"
+        />
+        <button
+          type="button"
+          class="captcha-img-btn"
+          :disabled="captchaLoading"
+          :title="$t('点击刷新', 'Click to refresh')"
+          @click="loadCaptcha"
+        >
+          <img
+            v-if="captchaImage"
+            :src="captchaImage"
+            :alt="$t('图形验证码', 'Captcha')"
+          />
+          <span v-else>{{ captchaLoading ? '…' : $t('加载', 'Load') }}</span>
+        </button>
+      </div>
       <p v-if="error" class="error">{{ error }}</p>
       <button type="submit" :disabled="loading">
         {{ loading ? $t('登录中…', 'Logging in…') : $t('登录', 'Log In') }}
@@ -196,6 +248,42 @@ button:disabled {
   padding: 8px 12px;
   font-size: 13px;
   margin: 0;
+}
+.captcha-row {
+  display: flex;
+  gap: 10px;
+}
+.captcha-row input {
+  flex: 1;
+  min-width: 0;
+}
+.captcha-img-btn {
+  width: 118px;
+  height: 46px;
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-muted);
+  box-shadow: none;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.captcha-img-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.captcha-img-btn:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+  background: var(--surface-muted);
+  border-color: var(--primary);
 }
 .hint {
   color: var(--text-muted);

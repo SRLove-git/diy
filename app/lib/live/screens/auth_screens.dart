@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
@@ -25,6 +26,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _accountCtrl = TextEditingController();
   final _pwdCtrl = TextEditingController();
+  final _captchaCtrl = TextEditingController();
+  final _captchaKey = GlobalKey<CaptchaFieldState>();
   late final TapGestureRecognizer _agreementRecognizer;
   late final TapGestureRecognizer _privacyRecognizer;
   bool _loading = false;
@@ -49,6 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _accountCtrl.dispose();
     _pwdCtrl.dispose();
+    _captchaCtrl.dispose();
     _agreementRecognizer.dispose();
     _privacyRecognizer.dispose();
     super.dispose();
@@ -116,9 +120,20 @@ class _LoginScreenState extends State<LoginScreen> {
       showLiveSnack(context, context.l10n.passwordMin6);
       return;
     }
+    final captchaText = _captchaCtrl.text.trim();
+    if (_captchaKey.currentState == null || captchaText.isEmpty) {
+      showLiveSnack(context, context.l10n.loginCaptchaError);
+      return;
+    }
+    final captchaId = _captchaKey.currentState!.id;
     setState(() => _loading = true);
     try {
-      final r = await AuthService.instance.login(account, _pwdCtrl.text);
+      final r = await AuthService.instance.login(
+        account,
+        _pwdCtrl.text,
+        captchaId: captchaId,
+        captchaText: captchaText,
+      );
       await AuthStore.instance.save(
         accessToken: r.accessToken,
         refreshToken: r.refreshToken,
@@ -131,7 +146,17 @@ class _LoginScreenState extends State<LoginScreen> {
       // save() 触发 AuthStore notifyListeners -> 路由 redirect 自动跳转首页；
       // 这里不再显式 goHome，避免与 redirect 竞态导致重复 page key 断言。
     } on ApiException catch (e) {
-      if (mounted) showLiveSnack(context, e.message);
+      if (mounted) {
+        showLiveSnack(
+          context,
+          e.message.contains('人机验证') ||
+              e.message.toLowerCase().contains('captcha')
+              ? context.l10n.loginCaptchaExpired
+              : e.message,
+        );
+        // 验证码失败后自动刷新，避免同一张图反复输错
+        _captchaKey.currentState?.reload();
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -246,6 +271,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     onSubmitted: (_) => _login(),
                   ),
+                  const SizedBox(height: 12),
+                  CaptchaField(
+                    key: _captchaKey,
+                    controller: _captchaCtrl,
+                    hint: l10n.loginCaptchaHint,
+                    refreshLabel: l10n.loginCaptchaRefresh,
+                    onSubmitted: (_) => _login(),
+                  ),
                   const SizedBox(height: 8),
                   PrimaryButton(
                     label: l10n.loginButton,
@@ -284,6 +317,135 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 图形验证码输入组件：图片 + 输入框，点击图片刷新。
+/// 登录/注册共用，避免两处重复实现。
+class CaptchaField extends StatefulWidget {
+  const CaptchaField({
+    super.key,
+    required this.controller,
+    required this.hint,
+    required this.refreshLabel,
+    this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final String hint;
+  final String refreshLabel;
+  final ValueChanged<String>? onSubmitted;
+
+  @override
+  State<CaptchaField> createState() => CaptchaFieldState();
+}
+
+class CaptchaFieldState extends State<CaptchaField> {
+  String? _id;
+  Uint8List? _image;
+  bool _loading = false;
+
+  String? get id => _id;
+
+  @override
+  void initState() {
+    super.initState();
+    reload();
+  }
+
+  Future<void> reload() async {
+    setState(() => _loading = true);
+    try {
+      final captcha = await AuthService.instance.captcha();
+      if (!mounted) return;
+      setState(() {
+        _id = captcha.id;
+        _image = captcha.image;
+        widget.controller.clear();
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _id = null;
+          _image = null;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: widget.controller,
+            maxLength: 4,
+            textCapitalization: TextCapitalization.characters,
+            decoration: InputDecoration(
+              hintText: widget.hint,
+              counterText: '',
+            ),
+            onSubmitted: widget.onSubmitted,
+          ),
+        ),
+        const SizedBox(width: 10),
+        GestureDetector(
+          onTap: _loading ? null : reload,
+          child: Semantics(
+            label: widget.refreshLabel,
+            button: true,
+            child: Container(
+              width: 116,
+              height: 50,
+              decoration: BoxDecoration(
+                color: LiveColors.inputBg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: LiveColors.cardBorder),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: _loading
+                  ? const Center(
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : _image != null
+                  ? Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.memory(
+                          _image!,
+                          fit: BoxFit.cover,
+                          gaplessPlayback: true,
+                        ),
+                        Positioned(
+                          right: 4,
+                          bottom: 4,
+                          child: Icon(
+                            Icons.refresh,
+                            size: 14,
+                            color: LiveColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Center(
+                      child: Icon(
+                        Icons.refresh,
+                        size: 20,
+                        color: LiveColors.textTertiary,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -340,6 +502,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailCtrl = TextEditingController();
   final _pwdCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
+  final _captchaCtrl = TextEditingController();
+  final _captchaKey = GlobalKey<CaptchaFieldState>();
   bool _loading = false;
   bool _obscure = true;
 
@@ -350,6 +514,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _emailCtrl,
       _pwdCtrl,
       _confirmCtrl,
+      _captchaCtrl,
     ]) {
       c.dispose();
     }
@@ -377,6 +542,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       showLiveSnack(context, context.l10n.passwordMismatch);
       return;
     }
+    final captchaText = _captchaCtrl.text.trim();
+    if (_captchaKey.currentState == null || captchaText.isEmpty) {
+      showLiveSnack(context, context.l10n.loginCaptchaError);
+      return;
+    }
+    final captchaId = _captchaKey.currentState!.id;
     setState(() => _loading = true);
     try {
       final r = await AuthService.instance.register(
@@ -384,6 +555,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         email: email,
         password: _pwdCtrl.text,
         deviceId: await DeviceIdProvider.instance.id(),
+        captchaId: captchaId,
+        captchaText: captchaText,
       );
       await AuthStore.instance.save(
         accessToken: r.accessToken,
@@ -395,7 +568,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       showLiveSnack(context, context.l10n.registerSuccess);
       // save() 触发 AuthStore notifyListeners -> 路由 redirect 自动跳转首页
     } on ApiException catch (e) {
-      if (mounted) showLiveSnack(context, e.message);
+      if (mounted) {
+        showLiveSnack(context, e.message);
+        _captchaKey.currentState?.reload();
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -464,6 +640,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
               obscureText: true,
               maxLength: 32,
               decoration: InputDecoration(hintText: l10n.registerConfirmHint, counterText: ''),
+            ),
+            const SizedBox(height: 12),
+            CaptchaField(
+              key: _captchaKey,
+              controller: _captchaCtrl,
+              hint: l10n.loginCaptchaHint,
+              refreshLabel: l10n.loginCaptchaRefresh,
+              onSubmitted: (_) => _register(),
             ),
             const SizedBox(height: 24),
             PrimaryButton(
