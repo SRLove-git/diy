@@ -31,7 +31,7 @@ function charSvg(
   cls = '',
 ): string {
   const clsAttr = cls ? ` class="${cls}"` : '';
-  return `<text${clsAttr} x="${x}" y="${baseline}" font-size="${fontSize}" font-family="Arial, Helvetica, sans-serif" font-weight="bold" fill="${fill}" transform="rotate(${rotate} ${x} ${baseline})" text-anchor="middle">${ch}</text>`;
+  return `<text${clsAttr} x="${x}" y="${baseline}" font-size="${fontSize}" font-family="sans-serif" font-weight="bold" fill="${fill}" transform="rotate(${rotate} ${x} ${baseline})" text-anchor="middle">${ch}</text>`;
 }
 
 /** 生成 4 位图形验证码 SVG（噪线 + 噪点 + 干扰字符，随机配色） */

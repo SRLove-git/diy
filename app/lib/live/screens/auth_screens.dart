@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../api/api_client.dart';
 import '../../api/auth_store.dart';
@@ -419,10 +420,10 @@ class CaptchaFieldState extends State<CaptchaField> {
                   ? Stack(
                       fit: StackFit.expand,
                       children: [
-                        Image.memory(
+                        SvgPicture.memory(
                           _image!,
                           fit: BoxFit.cover,
-                          gaplessPlayback: true,
+                          placeholderBuilder: (_) => const SizedBox.shrink(),
                         ),
                         Positioned(
                           right: 4,
