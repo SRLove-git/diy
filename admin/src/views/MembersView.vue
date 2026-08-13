@@ -99,11 +99,18 @@ function resetCouponForm() {
   editingCouponId.value = null
   couponForm.title = ''
   couponForm.amount = ''
-  couponForm.threshold = ''
+  couponForm.threshold = '0'
   couponForm.expireAt = ''
   couponForm.stock = 0
   couponForm.membersOnly = true
   couponForm.enabled = true
+}
+
+/** 旧数据门槛换算为数字：无门槛 → 0；`满 $100 可用` → 100 */
+function thresholdPrefill(raw: string): string {
+  if (!raw || /无门槛/.test(raw)) return '0'
+  const m = String(raw).match(/-?\d+(?:\.\d+)?/)
+  return m ? String(Number(m[0])) : '0'
 }
 
 async function loadMembers() {
@@ -381,7 +388,7 @@ function openEditCoupon(coupon: Coupon) {
   editingCouponId.value = coupon.id
   couponForm.title = coupon.title
   couponForm.amount = coupon.amount
-  couponForm.threshold = coupon.threshold
+  couponForm.threshold = thresholdPrefill(coupon.threshold)
   couponForm.expireAt = coupon.expireAt.slice(0, 16)
   couponForm.stock = coupon.stock
   couponForm.membersOnly = coupon.membersOnly
@@ -1012,7 +1019,7 @@ onUnmounted(() => {
           </label>
           <label>
             <span>{{ $t('使用门槛', 'Threshold') }}</span>
-            <input v-model="couponForm.threshold" type="text" :placeholder="$t('满 $100 可用', 'Min. spend $100')" />
+            <input v-model="couponForm.threshold" type="number" min="0" step="any" :placeholder="$t('0 表示无门槛', '0 = no threshold')" />
           </label>
           <label>
             <span>{{ $t('库存', 'Stock') }}</span>

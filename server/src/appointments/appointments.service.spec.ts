@@ -300,7 +300,7 @@ describe('AppointmentsService', () => {
       m.couponRepo.findOneBy.mockResolvedValue({
         id: 5,
         title: '满100减20',
-        amount: '¥20',
+        amount: '$20',
         threshold: '无门槛',
         enabled: true,
         expireAt: new Date(Date.now() + 86400_000),
@@ -372,7 +372,7 @@ describe('AppointmentsService', () => {
       m.couponRepo.findOneBy.mockResolvedValue({
         id: 5,
         title: '满100减20',
-        amount: '¥20',
+        amount: '$20',
         threshold: '无门槛',
         enabled: true,
         expireAt: new Date(Date.now() + 86400_000),

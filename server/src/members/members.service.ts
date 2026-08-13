@@ -532,12 +532,25 @@ export class MembersService implements OnModuleInit {
     return this.coupons.save(
       this.coupons.create({
         ...dto,
+        threshold: this.normalizeCouponThreshold(dto.threshold),
         id,
         expireAt: new Date(dto.expireAt),
         membersOnly: dto.membersOnly ?? true,
         enabled: dto.enabled ?? true,
       }),
     );
+  }
+
+  /** 使用门槛：管理端只需填数字，0 表示无门槛；非数字输入直接拒绝。 */
+  private normalizeCouponThreshold(raw: string): string {
+    const text = (raw ?? '').trim();
+    if (!/^\d+(?:\.\d+)?$/.test(text)) {
+      throw new BadRequestException('使用门槛请填写数字（0 表示无门槛）');
+    }
+    const value = parseFloat(text);
+    if (value <= 0) return '无门槛';
+    const shown = value % 1 === 0 ? String(Math.round(value)) : String(value);
+    return `满 $${shown} 可用`;
   }
 
   async toggleCoupon(id: number, enabled: boolean) {

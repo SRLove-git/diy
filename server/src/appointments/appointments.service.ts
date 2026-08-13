@@ -908,7 +908,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     }));
   }
 
-  /** 解析券额：`¥20` → 现金 20；`8.8 折` → 88% 支付 */
+  /** 解析券额：`$20` → 现金 20；`8.8 折` → 88% 支付 */
   private parseCouponAmount(raw: string): {
     kind: 'cash' | 'percent';
     value: number;
@@ -919,7 +919,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
     return { kind: 'cash', value: cash ? parseFloat(cash[1]) : 0 };
   }
 
-  /** 解析使用门槛：`无门槛` → 0；`满 ¥100 可用` → 100 */
+  /** 解析使用门槛：`无门槛` → 0；`满 $100 可用` → 100 */
   private parseCouponThreshold(raw: string): number {
     if (/无门槛/.test(raw)) return 0;
     const m = raw.match(/(\d+(?:\.\d+)?)/);

@@ -124,6 +124,8 @@ class _AdminRedeemScreenState extends State<AdminRedeemScreen> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return LivePage(
+      // 键盘覆盖页面而不是压缩页面，保持布局稳定
+      resizeToAvoidBottomInset: false,
       child: Column(
         children: [
           LiveAppBar(title: l10n.adminRedeem),
@@ -337,9 +339,9 @@ class _RedeemAppointmentCard extends StatelessWidget {
       lines: [
         '${a.date} ${a.startTime}-${a.endTime} · ${a.peopleCount} 人$table',
         '预约码 ${a.code} · ${a.statusLabel}',
-        if (a.amount > 0) '金额 ¥${fmtPrice(a.amount)}',
+        if (a.amount > 0) '金额 \$${fmtPrice(a.amount)}',
         if (a.couponTitle.isNotEmpty)
-          '优惠券 ${a.couponTitle}（-¥${fmtPrice(a.couponDiscount)}）',
+          '优惠券 ${a.couponTitle}（-\$${fmtPrice(a.couponDiscount)}）',
       ],
       action: switch (a.status) {
         'booked' => _CardAction(
@@ -383,7 +385,7 @@ class _RedeemCouponCard extends StatelessWidget {
       lines: [
         if (c.userNickname.isNotEmpty) '用户 ${c.userNickname}',
         if (c.userEmail != null && c.userEmail!.isNotEmpty) '邮箱 ${c.userEmail}',
-        '优惠券 ¥${fmtPrice(c.amount)} · ${c.threshold}',
+        '优惠券 \$${fmtPrice(c.amount)} · ${c.threshold}',
         '核销码 ${c.code} · ${_couponStatusLabel(c.status)}',
         if (expire.isNotEmpty) expire,
       ],
@@ -684,6 +686,8 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return LivePage(
+      // 键盘覆盖页面而不是压缩页面，保持布局稳定
+      resizeToAvoidBottomInset: false,
       child: Column(
         children: [
           LiveAppBar(title: l10n.adminOrders),
@@ -1321,7 +1325,7 @@ class _AppointmentOrderCard extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  '¥${fmtPrice(a.amount)}',
+                  '\$${fmtPrice(a.amount)}',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -1445,11 +1449,11 @@ class _OrderDetailSheet extends StatelessWidget {
               '$booking · ${a.date} ${a.startTime}-${a.endTime}',
             ),
             _detailRow('人数', '${a.peopleCount} 人'),
-            _detailRow('金额', '¥${fmtPrice(a.amount)}'),
+            _detailRow('金额', '\$${fmtPrice(a.amount)}'),
             if (a.couponTitle.isNotEmpty)
               _detailRow(
                 '优惠券',
-                '${a.couponTitle}（-¥${fmtPrice(a.couponDiscount)}）',
+                '${a.couponTitle}（-\$${fmtPrice(a.couponDiscount)}）',
               ),
             _detailRow('备注', a.note.isEmpty ? '—' : a.note),
             _detailRow('状态', a.statusLabel),
@@ -1596,7 +1600,7 @@ class _MemberOrdersTabState extends State<_MemberOrdersTab> {
       context,
       title: '确认开通会员',
       desc:
-          '确认开通 $user 的会员（${o.planName}，${o.durationDays} 天，¥${fmtPrice(o.amount)}）？请先确认已收取到店支付费用。',
+          '确认开通 $user 的会员（${o.planName}，${o.durationDays} 天，\$${fmtPrice(o.amount)}）？请先确认已收取到店支付费用。',
     );
     if (ok == true && mounted) {
       await _runAction(o, AdminMemberService.instance.confirmOrder, '已确认开通');
@@ -1798,7 +1802,7 @@ class _MemberOrderCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                '¥${fmtPrice(o.amount)}',
+                '\$${fmtPrice(o.amount)}',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -1838,6 +1842,8 @@ class _AdminMembersScreenState extends State<AdminMembersScreen> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return LivePage(
+      // 键盘覆盖页面而不是压缩页面，保持布局稳定
+      resizeToAvoidBottomInset: false,
       child: Column(
         children: [
           LiveAppBar(title: l10n.adminMembers),
@@ -2603,8 +2609,8 @@ class _PlanCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '${p.durationDays} 天 · ¥${fmtPrice(p.price)}'
-            '${p.originalPrice > 0 ? '（原价 ¥${fmtPrice(p.originalPrice)}）' : ''}',
+            '${p.durationDays} 天 · \$${fmtPrice(p.price)}'
+            '${p.originalPrice > 0 ? '（原价 \$${fmtPrice(p.originalPrice)}）' : ''}',
             style: const TextStyle(
               fontSize: 13,
               color: LiveColors.textSecondary,
@@ -3037,7 +3043,7 @@ class _CouponCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '¥${fmtPrice(c.amount)} · ${c.threshold} · 剩余 ${c.stock}',
+            '\$${fmtPrice(c.amount)} · ${c.threshold} · 剩余 ${c.stock}',
             style: const TextStyle(
               fontSize: 13,
               color: LiveColors.textSecondary,
@@ -3093,14 +3099,22 @@ class _CouponFormSheetState extends State<_CouponFormSheet> {
       _amountCtrl.text = c.amountRaw.isNotEmpty
           ? c.amountRaw
           : fmtPrice(c.amount);
-      _thresholdCtrl.text = c.threshold;
+      _thresholdCtrl.text = _thresholdPrefill(c.threshold);
       _stockCtrl.text = '${c.stock}';
       _expireAt = c.expireAt;
       _membersOnly = c.membersOnly;
       _enabled = c.enabled;
     } else {
+      _thresholdCtrl.text = '0';
       _expireAt = DateTime.now().add(const Duration(days: 30));
     }
+  }
+
+  /// 旧数据门槛换算为数字：无门槛 → 0；`满 $100 可用` → 100。
+  String _thresholdPrefill(String raw) {
+    if (raw == '无门槛') return '0';
+    final m = RegExp(r'\d+(?:\.\d+)?').firstMatch(raw);
+    return m?.group(0) ?? '0';
   }
 
   @override
@@ -3145,6 +3159,11 @@ class _CouponFormSheetState extends State<_CouponFormSheet> {
     final expire = _expireAt;
     if (title.isEmpty || amount.isEmpty || threshold.isEmpty) {
       showLiveSnack(context, '请填写名称、面额和门槛');
+      return;
+    }
+    final thresholdValue = double.tryParse(threshold);
+    if (thresholdValue == null || thresholdValue < 0) {
+      showLiveSnack(context, '门槛请填写数字（0 表示无门槛）');
       return;
     }
     if (stock == null || stock < 0) {
@@ -3235,8 +3254,11 @@ class _CouponFormSheetState extends State<_CouponFormSheet> {
                   Expanded(
                     child: _FormField(
                       label: '使用门槛',
-                      hint: '满 100 可用',
+                      hint: '0 表示无门槛',
                       controller: _thresholdCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                     ),
                   ),
                 ],

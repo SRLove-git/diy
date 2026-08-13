@@ -211,6 +211,8 @@ describe('MembersService', () => {
       const coupons = {
         findOneBy: jest.fn(),
         findOne: jest.fn(),
+        create: jest.fn((x: unknown) => x),
+        save: jest.fn((x: unknown) => Promise.resolve(x)),
       };
       const userCoupons = {
         findOneBy: jest.fn(),
@@ -359,6 +361,43 @@ describe('MembersService', () => {
 
       expect(result.status).toBe('used');
       expect(result.redeemedBy).toBe(5);
+    });
+
+    it('保存优惠券：门槛填纯数字，0 表示无门槛', async () => {
+      const m = buildCouponService();
+      const base = {
+        title: '满100减20',
+        amount: '$20',
+        expireAt: new Date(Date.now() + 86400000).toISOString(),
+        stock: 10,
+        membersOnly: true,
+        enabled: true,
+      };
+
+      const none = await m.svc.saveCoupon({ ...base, threshold: '0' });
+      expect(none.threshold).toBe('无门槛');
+
+      const hundred = await m.svc.saveCoupon({ ...base, threshold: '100' });
+      expect(hundred.threshold).toBe('满 $100 可用');
+    });
+
+    it('保存优惠券：非数字门槛直接拒绝', async () => {
+      const m = buildCouponService();
+      const base = {
+        title: '满100减20',
+        amount: '$20',
+        expireAt: new Date(Date.now() + 86400000).toISOString(),
+        stock: 10,
+        membersOnly: true,
+        enabled: true,
+      };
+
+      await expect(async () => {
+        m.svc.saveCoupon({ ...base, threshold: '满 $100 可用' });
+      }).rejects.toThrow(BadRequestException);
+      await expect(async () => {
+        m.svc.saveCoupon({ ...base, threshold: '无门槛' });
+      }).rejects.toThrow(BadRequestException);
     });
   });
 });

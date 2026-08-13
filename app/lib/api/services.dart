@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import 'api_client.dart';
+import 'auth_store.dart';
 import 'models.dart';
 
 /// 认证 / 用户 / 门店 / 预约 / 活动 / 会员 / 曲库 / 关注 / 上传
@@ -700,6 +701,13 @@ class HomeOrdersRefresh extends ChangeNotifier {
   Appointment? get pending => _pending;
 
   void refresh([Appointment? appointment]) {
+    // 仅接受当前账号自己的订单：管理员代顾客核销/上钟时，服务端会把变更
+    // 实时推送给顾客本人（WebSocket），管理员端不应把顾客订单合入本地
+    // 乐观状态，否则管理员首页会错误展示其他用户的「服务中」订单。
+    final uid = AuthStore.instance.userId;
+    if (appointment != null && uid != null && appointment.userId != uid) {
+      return;
+    }
     _pending = appointment;
     notifyListeners();
   }

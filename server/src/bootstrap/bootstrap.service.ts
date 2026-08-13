@@ -272,10 +272,10 @@ export class BootstrapService implements OnApplicationBootstrap {
     if (count > 0) return;
     await this.notifications.createAndSend({
       title: '欢迎来到 IDOL BEADS 拼豆乐园',
-      content: '新用户专享体验价 ¥39.9/次起，快去预约你的第一次拼豆体验吧！',
+      content: '新用户专享体验价 $39.9/次起，快去预约你的第一次拼豆体验吧！',
       titleEn: 'Welcome to IDOL BEADS Bead Art Studio',
       contentEn:
-        'New users enjoy an exclusive trial from ¥39.9/session. Book your first bead art experience now!',
+        'New users enjoy an exclusive trial from $39.9/session. Book your first bead art experience now!',
       category: 'system',
       targetType: 'all',
       channels: 'push',

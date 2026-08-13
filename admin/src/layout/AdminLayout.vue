@@ -97,6 +97,7 @@ watch(() => route.path, refreshPending)
 .layout {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 aside {
   width: 216px;
@@ -104,6 +105,7 @@ aside {
   position: sticky;
   top: 0;
   height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
   background: linear-gradient(180deg, #28221e 0%, #211c18 100%);
   color: #fff;
