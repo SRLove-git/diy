@@ -732,7 +732,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Threshold must be a number (0 = no minimum)';
 
   @override
-  String get adminNeedUserId => 'Enter a user ID';
+  String get adminNeedUsername => 'Enter a username';
 
   @override
   String get adminNoCoupons => 'No coupons';
@@ -883,10 +883,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminUser => 'User';
 
   @override
-  String get adminUserIdHint => 'Enter a user ID to activate directly';
+  String get adminUsernameHint => 'Enter a username to activate';
 
   @override
-  String get adminUserIdLabel => 'User ID';
+  String get adminUsernameLabel => 'Username';
 
   @override
   String get homeComingSoon => 'Coming Soon';

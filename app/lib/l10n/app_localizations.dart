@@ -1453,11 +1453,11 @@ abstract class AppLocalizations {
   /// **'门槛请填写数字（0 表示无门槛）'**
   String get adminNeedThresholdNumber;
 
-  /// No description provided for @adminNeedUserId.
+  /// No description provided for @adminNeedUsername.
   ///
   /// In zh, this message translates to:
-  /// **'请输入用户 ID'**
-  String get adminNeedUserId;
+  /// **'请输入用户名'**
+  String get adminNeedUsername;
 
   /// No description provided for @adminNoCoupons.
   ///
@@ -1729,17 +1729,17 @@ abstract class AppLocalizations {
   /// **'用户'**
   String get adminUser;
 
-  /// No description provided for @adminUserIdHint.
+  /// No description provided for @adminUsernameHint.
   ///
   /// In zh, this message translates to:
-  /// **'输入用户 ID 直接开通'**
-  String get adminUserIdHint;
+  /// **'输入用户名查询开通'**
+  String get adminUsernameHint;
 
-  /// No description provided for @adminUserIdLabel.
+  /// No description provided for @adminUsernameLabel.
   ///
   /// In zh, this message translates to:
-  /// **'用户 ID'**
-  String get adminUserIdLabel;
+  /// **'用户名'**
+  String get adminUsernameLabel;
 
   /// No description provided for @homeComingSoon.
   ///

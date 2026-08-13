@@ -479,9 +479,9 @@ export class MembersService implements OnModuleInit {
       return this.memberships.save(current);
     }
     const create = dto as SaveMembershipDto;
-    if (!(await this.users.findById(create.userId)))
-      throw new NotFoundException('用户不存在');
-    if (await this.memberships.existsBy({ userId: create.userId }))
+    const user = await this.users.findByUsername(create.username.trim());
+    if (!user) throw new NotFoundException('用户不存在');
+    if (await this.memberships.existsBy({ userId: user.id }))
       throw new BadRequestException('该用户已是会员，请直接编辑该记录');
     const expireAt = new Date(create.expireAt);
     if (Number.isNaN(expireAt.getTime()))
@@ -490,8 +490,8 @@ export class MembersService implements OnModuleInit {
       throw new BadRequestException('有效期需晚于当前时间');
     return this.memberships.save(
       this.memberships.create({
-        userId: create.userId,
-        memberNo: `M${String(create.userId).padStart(8, '0')}`,
+        userId: user.id,
+        memberNo: `M${String(user.id).padStart(8, '0')}`,
         levelName: create.levelName || '手作会员',
         expireAt,
       }),

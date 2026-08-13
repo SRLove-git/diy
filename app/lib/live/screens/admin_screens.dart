@@ -2272,7 +2272,7 @@ class _MembershipCard extends StatelessWidget {
   }
 }
 
-/// 开通 / 编辑会员底部表单（对齐网页管理端：用户 ID + 等级 + 有效期，可按套餐快捷填充）。
+/// 开通 / 编辑会员底部表单（对齐网页管理端：用户名 + 等级 + 有效期，可按套餐快捷填充）。
 class _MembershipFormSheet extends StatefulWidget {
   const _MembershipFormSheet({this.membership, this.defaultLevel});
 
@@ -2284,7 +2284,7 @@ class _MembershipFormSheet extends StatefulWidget {
 }
 
 class _MembershipFormSheetState extends State<_MembershipFormSheet> {
-  final _userIdCtrl = TextEditingController();
+  final _usernameCtrl = TextEditingController();
   final _levelCtrl = TextEditingController();
   DateTime? _expireAt;
   int? _planId;
@@ -2304,7 +2304,7 @@ class _MembershipFormSheetState extends State<_MembershipFormSheet> {
 
   @override
   void dispose() {
-    _userIdCtrl.dispose();
+    _usernameCtrl.dispose();
     _levelCtrl.dispose();
     super.dispose();
   }
@@ -2361,11 +2361,9 @@ class _MembershipFormSheetState extends State<_MembershipFormSheet> {
       showLiveSnack(context, context.l10n.adminNeedExpire);
       return;
     }
-    int? userId;
     if (!_editing) {
-      userId = int.tryParse(_userIdCtrl.text.trim());
-      if (userId == null || userId <= 0) {
-        showLiveSnack(context, context.l10n.adminNeedUserId);
+      if (_usernameCtrl.text.trim().isEmpty) {
+        showLiveSnack(context, context.l10n.adminNeedUsername);
         return;
       }
     }
@@ -2380,7 +2378,7 @@ class _MembershipFormSheetState extends State<_MembershipFormSheet> {
         );
       } else {
         await AdminMemberService.instance.createMembership(
-          userId: userId!,
+          username: _usernameCtrl.text.trim(),
           levelName: levelName,
           expireAt: expire,
         );
@@ -2433,10 +2431,9 @@ class _MembershipFormSheetState extends State<_MembershipFormSheet> {
               const SizedBox(height: 16),
               if (!_editing) ...[
                 _FormField(
-                  label: l10n.adminUserIdLabel,
-                  hint: l10n.adminUserIdHint,
-                  controller: _userIdCtrl,
-                  keyboardType: TextInputType.number,
+                  label: l10n.adminUsernameLabel,
+                  hint: l10n.adminUsernameHint,
+                  controller: _usernameCtrl,
                 ),
                 const SizedBox(height: 12),
               ],

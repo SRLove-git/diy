@@ -576,16 +576,16 @@ class AdminMemberService {
     );
   }
 
-  /// 后台开通会员（按用户 ID 直接开通）。
+  /// 后台开通会员（按用户名查询开通）。
   Future<void> createMembership({
-    required int userId,
+    required String username,
     String? levelName,
     required DateTime expireAt,
   }) {
     return ApiClient.instance.post(
       '/admin/members',
       body: {
-        'userId': userId,
+        'username': username,
         if (levelName != null && levelName.isNotEmpty) 'levelName': levelName,
         'expireAt': expireAt.toIso8601String(),
       },

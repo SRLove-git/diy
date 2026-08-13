@@ -38,9 +38,9 @@ export class RedeemCouponDto {
   code: string;
 }
 
-/** 后台开通会员：按用户 ID 直接开通 */
+/** 后台开通会员：按用户名查询开通 */
 export class SaveMembershipDto {
-  @IsInt() @Min(1) userId: number;
+  @IsString() @IsNotEmpty() @MaxLength(30) username: string;
   @IsOptional() @IsString() @MaxLength(30) levelName?: string;
   @IsString() @IsNotEmpty() expireAt: string;
 }

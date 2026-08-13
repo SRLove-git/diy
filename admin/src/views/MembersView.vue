@@ -11,6 +11,7 @@ import {
   type SavePlanPayload,
   type UserCoupon,
 } from '../api/members'
+import { userApi, type User } from '../api/users'
 import { i18n, t } from '../i18n'
 import { refreshPending } from '../stores/pending'
 
@@ -36,10 +37,14 @@ const memberDialogOpen = ref(false)
 const editingMemberId = ref<number | null>(null)
 const memberPlanId = ref(0)
 const memberForm = reactive({
-  userId: 0,
+  username: '',
   levelName: '',
   expireAt: '',
 })
+const matchedUser = ref<User | null>(null)
+const userQuerying = ref(false)
+const userQueryError = ref('')
+const editingUserLabel = ref('')
 const deleteTarget = ref<Membership | null>(null)
 const deleting = ref(false)
 
@@ -143,24 +148,60 @@ function defaultExpireAt() {
 function openCreateMember() {
   editingMemberId.value = null
   memberPlanId.value = 0
-  memberForm.userId = 0
+  memberForm.username = ''
   memberForm.levelName = i18n.lang === 'en' ? 'Craft Member' : '手作会员'
   memberForm.expireAt = defaultExpireAt()
+  matchedUser.value = null
+  userQueryError.value = ''
+  editingUserLabel.value = ''
   memberDialogOpen.value = true
 }
 
 function openEditMember(item: Membership) {
   editingMemberId.value = item.id
   memberPlanId.value = 0
-  memberForm.userId = item.userId
+  memberForm.username = ''
   memberForm.levelName = item.levelName
   memberForm.expireAt = item.expireAt.slice(0, 16)
+  matchedUser.value = null
+  userQueryError.value = ''
+  editingUserLabel.value =
+    item.userName || t('用户 #{id}', 'User #{id}', { id: item.userId })
   memberDialogOpen.value = true
 }
 
 function closeMemberDialog() {
   memberDialogOpen.value = false
   editingMemberId.value = null
+}
+
+function onUsernameInput() {
+  matchedUser.value = null
+  userQueryError.value = ''
+}
+
+async function searchMemberUser() {
+  const username = memberForm.username.trim()
+  if (!username) return
+  userQuerying.value = true
+  userQueryError.value = ''
+  matchedUser.value = null
+  try {
+    const [users] = await userApi.list({ search: username, page: 1 })
+    const hit = users.find(
+      (u) => u.username?.toLowerCase() === username.toLowerCase(),
+    )
+    if (!hit) {
+      userQueryError.value = t('未找到该用户名', 'Username not found')
+      return
+    }
+    matchedUser.value = hit
+  } catch (e: any) {
+    userQueryError.value =
+      e?.response?.data?.message ?? t('查询失败', 'Query failed')
+  } finally {
+    userQuerying.value = false
+  }
 }
 
 function fillExpireFromPlan(planId: number) {
@@ -172,9 +213,15 @@ function fillExpireFromPlan(planId: number) {
 }
 
 async function saveMember() {
-  if (!editingMemberId.value && !memberForm.userId) {
-    alert(t('请输入用户ID', 'Please enter the user ID'))
-    return
+  if (!editingMemberId.value) {
+    if (!memberForm.username.trim()) {
+      alert(t('请输入用户名', 'Please enter the username'))
+      return
+    }
+    if (!matchedUser.value) {
+      alert(t('请先查询并确认用户', 'Please search and confirm the user'))
+      return
+    }
   }
   if (!memberForm.expireAt) {
     alert(t('请选择有效期', 'Please choose an expiry date'))
@@ -190,7 +237,7 @@ async function saveMember() {
       })
     } else {
       await memberApi.createMembership({
-        userId: memberForm.userId,
+        username: memberForm.username.trim(),
         levelName: memberForm.levelName || undefined,
         expireAt,
       })
@@ -909,15 +956,50 @@ onUnmounted(() => {
       <div class="modal">
         <h3>{{ editingMemberId ? $t('编辑会员', 'Edit member') : $t('开通会员', 'Add member') }}</h3>
         <div class="form-grid">
-          <label>
-            <span>{{ $t('用户ID', 'User ID') }}</span>
-            <input
-              v-model.number="memberForm.userId"
-              type="number"
-              min="1"
-              :disabled="!!editingMemberId"
-            />
+          <label v-if="editingMemberId">
+            <span>{{ $t('用户', 'User') }}</span>
+            <input :value="editingUserLabel" type="text" disabled />
           </label>
+          <template v-else>
+            <label>
+              <span>{{ $t('用户名', 'Username') }}</span>
+              <div class="user-query-row">
+                <input
+                  v-model="memberForm.username"
+                  type="text"
+                  maxlength="30"
+                  :placeholder="$t('输入用户名查询开通', 'Enter username to search')"
+                  @keyup.enter="searchMemberUser"
+                  @input="onUsernameInput"
+                />
+                <button
+                  class="btn btn-sm"
+                  :disabled="userQuerying || !memberForm.username.trim()"
+                  @click="searchMemberUser"
+                >
+                  {{ userQuerying ? $t('查询中…', 'Searching…') : $t('查询', 'Search') }}
+                </button>
+              </div>
+            </label>
+            <div v-if="matchedUser" class="matched-user">
+              <img
+                v-if="matchedUser.avatar"
+                class="avatar"
+                :src="matchedUser.avatar"
+                :alt="$t('头像', 'Avatar')"
+              />
+              <span v-else class="matched-user-avatar-placeholder">
+                {{ (matchedUser.nickname || matchedUser.username || '?').slice(0, 1) }}
+              </span>
+              <div class="matched-user-info">
+                <span class="matched-user-name">
+                  {{ matchedUser.nickname || matchedUser.username }}
+                </span>
+                <span class="matched-user-username">@{{ matchedUser.username }}</span>
+              </div>
+            </div>
+            <p v-if="userQueryError" class="form-error">{{ userQueryError }}</p>
+          </template>
           <label>
             <span>{{ $t('会员等级', 'Membership level') }}</span>
             <input v-model="memberForm.levelName" type="text" :placeholder="$t('手作会员', 'Craft Member')" />
@@ -1261,6 +1343,50 @@ onUnmounted(() => {
 }
 .full-row select { background: #fff; }
 .full-row input:disabled { background: #f7f5f2; color: #8a8a8a; }
+.user-query-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.user-query-row input { flex: 1; min-width: 0; }
+.matched-user, .form-error { grid-column: 1 / -1; }
+.matched-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #f7f5f2;
+  border: 1px solid #eceae6;
+  border-radius: 10px;
+}
+.matched-user .avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #eceae6;
+}
+.matched-user-avatar-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e8633a;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+}
+.matched-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+.matched-user-name { font-weight: 600; color: #2b2b2b; }
+.matched-user-username { color: #8a8a8a; }
+.form-error { color: #d9453e; font-size: 13px; }
 .modal-desc { font-size: 13px; color: #8a8a8a; margin: 0 0 16px; line-height: 1.6; }
 .check-row {
   display: flex;

@@ -721,7 +721,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get adminNeedThresholdNumber => '门槛请填写数字（0 表示无门槛）';
 
   @override
-  String get adminNeedUserId => '请输入用户 ID';
+  String get adminNeedUsername => '请输入用户名';
 
   @override
   String get adminNoCoupons => '暂无优惠券';
@@ -871,10 +871,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get adminUser => '用户';
 
   @override
-  String get adminUserIdHint => '输入用户 ID 直接开通';
+  String get adminUsernameHint => '输入用户名查询开通';
 
   @override
-  String get adminUserIdLabel => '用户 ID';
+  String get adminUsernameLabel => '用户名';
 
   @override
   String get homeComingSoon => '敬请期待';

@@ -88,7 +88,7 @@ export interface SaveCouponPayload {
 }
 
 export interface SaveMembershipPayload {
-  userId: number
+  username: string
   levelName?: string
   expireAt: string
 }
