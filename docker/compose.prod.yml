@@ -155,13 +155,16 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    # 负载均衡入口：外部 3000 → server 各副本（含 /api、/ws WebSocket、/uploads、/assets/music）
+    # 负载均衡入口：外部 443（HTTPS）/ 3000（兼容旧 HTTP）→ server 各副本
+    # （含 /api、/ws WebSocket、/uploads、/assets/music）
     depends_on:
       - server
     ports:
+      - "443:443"
       - "3000:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
 
   admin:
     image: ${ADMIN_IMAGE:-diy-admin:latest}

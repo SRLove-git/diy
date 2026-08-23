@@ -28,6 +28,8 @@ __pycache__/
 # ===== Docker =====
 docker/data/
 docker/backups/
+# SSL 私钥与证书（私钥绝不能提交到仓库）
+docker/nginx/certs/
 
 # ===== 运行期数据 =====
 # 聊天图片等用户上传文件（生产以 Docker 卷挂载，不入库）
