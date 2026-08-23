@@ -8,12 +8,7 @@ function buildService(overrides: Record<string, unknown> = {}) {
       return Promise.resolve('OK');
     }),
     eval: jest.fn(
-      async (
-        _script: string,
-        _count: number,
-        key: string,
-        answer: string,
-      ) => {
+      (_script: string, _count: number, key: string, answer: string) => {
         const entry = store.get(key);
         if (!entry) return 0;
         const data = JSON.parse(entry.payload) as {
@@ -36,8 +31,7 @@ function buildService(overrides: Record<string, unknown> = {}) {
   };
   const config = {
     get: jest.fn(
-      (key: string, fallback: unknown) =>
-        (overrides[key] as unknown) ?? fallback,
+      (key: string, fallback: unknown) => overrides[key] ?? fallback,
     ),
   };
   return {
@@ -64,11 +58,16 @@ describe('CaptchaService（图形验证码）', () => {
     ].map((m) => m[1]);
     expect(chars).toHaveLength(4);
 
-    await expect(m.svc.verify(undefined, undefined, captcha.id, '')).resolves.toBe(
-      false,
-    );
     await expect(
-      m.svc.verify(undefined, undefined, captcha.id, chars.join('').toLowerCase()),
+      m.svc.verify(undefined, undefined, captcha.id, ''),
+    ).resolves.toBe(false);
+    await expect(
+      m.svc.verify(
+        undefined,
+        undefined,
+        captcha.id,
+        chars.join('').toLowerCase(),
+      ),
     ).resolves.toBe(true);
     // 一次性：再次使用同一验证码失败
     await expect(

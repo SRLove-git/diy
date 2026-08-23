@@ -392,12 +392,12 @@ describe('MembersService', () => {
         enabled: true,
       };
 
-      await expect(async () => {
-        m.svc.saveCoupon({ ...base, threshold: '满 $100 可用' });
-      }).rejects.toThrow(BadRequestException);
-      await expect(async () => {
-        m.svc.saveCoupon({ ...base, threshold: '无门槛' });
-      }).rejects.toThrow(BadRequestException);
+      await expect(
+        m.svc.saveCoupon({ ...base, threshold: '满 $100 可用' }),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        m.svc.saveCoupon({ ...base, threshold: '无门槛' }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });
