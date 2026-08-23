@@ -41,7 +41,14 @@ export function buildCaptchaSvg(code: string): string {
   const width = 150;
   const height = 50;
   const noiseColors = ['#c8c8c8', '#d8d0c8', '#c8d8d0', '#d0c8d8'];
-  const textColors = ['#1f2937', '#9a3412', '#166534', '#1e40af', '#6b21a8', '#9f1239'];
+  const textColors = [
+    '#1f2937',
+    '#9a3412',
+    '#166534',
+    '#1e40af',
+    '#6b21a8',
+    '#9f1239',
+  ];
 
   const bg = randomInt(240, 252);
   const parts: string[] = [
@@ -173,7 +180,12 @@ export class CaptchaService {
       left: Math.max(1, Math.min(10, maxAttempts)),
     });
     try {
-      await this.redis.set(`imgcaptcha:${id}`, payload, 'EX', Math.max(60, ttl));
+      await this.redis.set(
+        `imgcaptcha:${id}`,
+        payload,
+        'EX',
+        Math.max(60, ttl),
+      );
     } catch {
       // Redis 不可用时生成失败，避免客户端拿到无法校验的验证码
       throw new Error('captcha storage unavailable');

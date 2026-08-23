@@ -889,9 +889,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
   ): Promise<Array<Appointment & { couponCode: string | null }>> {
     const ids = Array.from(
       new Set(
-        items
-          .map((a) => a.userCouponId)
-          .filter((x): x is number => x != null),
+        items.map((a) => a.userCouponId).filter((x): x is number => x != null),
       ),
     );
     if (!ids.length) {
@@ -903,7 +901,7 @@ export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
       ...a,
       couponCode:
         a.userCouponId != null && map.get(a.userCouponId)?.status === 'unused'
-          ? map.get(a.userCouponId)?.code ?? null
+          ? (map.get(a.userCouponId)?.code ?? null)
           : null,
     }));
   }
