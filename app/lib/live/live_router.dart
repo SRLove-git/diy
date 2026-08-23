@@ -519,7 +519,9 @@ final GoRouter appRouter = GoRouter(
       builder: (context, _) => LiveHost(
         child: LegalDocScreen(
           title: context.l10n.settingsUserAgreement,
-          body: legalUserAgreementText,
+          body: context.l10n.localeName == 'en'
+              ? legalUserAgreementTextEn
+              : legalUserAgreementText,
         ),
       ),
     ),

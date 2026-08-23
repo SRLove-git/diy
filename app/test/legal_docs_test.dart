@@ -22,25 +22,18 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('用户协议'), findsOneWidget);
-    expect(find.text('Think Origin 手作工坊用户协议'), findsOneWidget);
-    expect(find.text('一、协议的确认与接受'), findsOneWidget);
-    expect(find.textContaining('客服邮箱'), findsNothing);
+    // 页面标题与正文一级标题均为「用户协议」。
+    expect(find.text('用户协议'), findsNWidgets(2));
+    expect(find.text('5. 退款规则'), findsOneWidget);
+    expect(find.textContaining('客服邮箱'), findsWidgets);
 
     // 文档较长：滚动到末尾确认完整内容可展示。
     await tester.scrollUntilVisible(
-      find.text('三、账号注册与使用'),
+      find.text('14. 用户确认'),
       400,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('三、账号注册与使用'), findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      find.textContaining('客服邮箱'),
-      400,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.textContaining('客服邮箱'), findsWidgets);
+    expect(find.text('14. 用户确认'), findsOneWidget);
   });
 
   testWidgets('隐私政策页渲染标题与正文', (tester) async {
@@ -75,7 +68,7 @@ void main() {
 
     appRouter.go(RoutePaths.profileUserAgreement);
     await tester.pumpAndSettle();
-    expect(find.text('Think Origin 手作工坊用户协议'), findsOneWidget);
+    expect(find.text('5. 退款规则'), findsOneWidget);
 
     appRouter.go(RoutePaths.profilePrivacyPolicy);
     await tester.pumpAndSettle();
