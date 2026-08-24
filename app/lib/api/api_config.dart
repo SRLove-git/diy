@@ -3,7 +3,7 @@
 /// 优先读取编译期参数：
 ///   flutter run --dart-define=API_BASE_URL=http://192.168.1.10:3000
 /// 未指定时默认使用生产 API 地址：
-///   https://diy.medical-sg.com:8443
+///   https://diy.medical-sg.com
 class ApiConfig {
   ApiConfig._();
 
@@ -11,7 +11,7 @@ class ApiConfig {
 
   static String get baseUrl {
     if (_defined.isNotEmpty) return _defined;
-    return 'https://diy.medical-sg.com:8443';
+    return 'https://diy.medical-sg.com';
   }
 
   /// REST 前缀：/api
