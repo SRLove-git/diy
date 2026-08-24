@@ -155,13 +155,12 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    # 负载均衡入口：外部 8443（HTTPS，映射容器内 443）/ 3000（兼容旧 HTTP）→ server 各副本
+    # 负载均衡入口：外部 443（HTTPS）/ 3000（兼容旧 HTTP）→ server 各副本
     # （含 /api、/ws WebSocket、/uploads、/assets/music）。
-    # 注意：宿主 443 被 OpenVPN 占用，故 HTTPS 对外走 8443；如 443 空闲可改回 "443:443"
     depends_on:
       - server
     ports:
-      - "8443:443"
+      - "443:443"
       - "3000:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro

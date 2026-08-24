@@ -205,7 +205,7 @@ docker compose -f docker/compose.prod.yml up -d --build --scale server=3
 
 ```bash
 docker compose -f docker/compose.prod.yml up -d --build
-# 管理后台 http://<host>:8080 ｜ 后端 https://diy.medical-sg.com:8443/api（旧 http://<host>:3000 保留）
+# 管理后台 http://<host>:8080 ｜ 后端 https://diy.medical-sg.com/api（旧 http://<host>:3000 保留）
 # 生产密码/密钥通过环境变量注入：DB_PASSWORD / JWT_SECRET / JWT_REFRESH_SECRET
 # 首次部署需在 docker/.env 设 DB_SYNC=true 自动建表，建表完成后改回 false 并重启
 ```
@@ -213,13 +213,13 @@ docker compose -f docker/compose.prod.yml up -d --build
 ### HTTPS 与域名
 
 - `nginx-lb` 已配置 `diy.medical-sg.com` 的 SSL 终止（`TLSv1.2/1.3`），
-  对外端口 **8443**（映射容器内 443；宿主 443 被 OpenVPN 占用，如空闲可改回 `443:443`）。
+  对外标准端口 **443**。
   证书与私钥放在 `docker/nginx/certs/`（已加入 `.gitignore`）。
 - 证书文件：`diy.medical-sg.com.pem`（含完整链）与 `diy.medical-sg.com.key`，
   到期前需替换这两个文件并 `docker compose -f docker/compose.prod.yml up -d --force-recreate nginx-lb` 生效。
 - 私有密钥严禁提交到 Git；服务器上如需更换证书，直接覆盖 `docker/nginx/certs/` 下同名文件即可。
 - App 生产包需用
-  `flutter build ipa --release --dart-define=API_BASE_URL=https://diy.medical-sg.com:8443` 指向该域名。
+  `flutter build ipa --release --dart-define=API_BASE_URL=https://diy.medical-sg.com` 指向该域名。
 
 ### 密钥与数据库密码轮换
 
