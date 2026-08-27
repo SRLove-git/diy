@@ -381,7 +381,7 @@ describe('MembersService', () => {
       expect(hundred.threshold).toBe('满 $100 可用');
     });
 
-    it('保存优惠券：非数字门槛直接拒绝', async () => {
+    it('保存优惠券：非数字门槛直接拒绝', () => {
       const m = buildCouponService();
       const base = {
         title: '满100减20',
@@ -392,12 +392,14 @@ describe('MembersService', () => {
         enabled: true,
       };
 
-      await expect(
+      // saveCoupon 在 normalizeCouponThreshold 内同步抛错（非 Promise），
+      // 因此用 expect(fn).toThrow 而非 rejects
+      expect(() =>
         m.svc.saveCoupon({ ...base, threshold: '满 $100 可用' }),
-      ).rejects.toThrow(BadRequestException);
-      await expect(
+      ).toThrow(BadRequestException);
+      expect(() =>
         m.svc.saveCoupon({ ...base, threshold: '无门槛' }),
-      ).rejects.toThrow(BadRequestException);
+      ).toThrow(BadRequestException);
     });
   });
 });
