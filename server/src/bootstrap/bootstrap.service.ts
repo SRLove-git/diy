@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { hashPassword } from '../auth/password.util';
+import { MembersService } from '../members/members.service';
 import { MusicService } from '../music/music.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StoresService } from '../stores/stores.service';
@@ -157,6 +158,7 @@ export class BootstrapService implements OnApplicationBootstrap {
     private readonly music: MusicService,
     private readonly notifications: NotificationsService,
     private readonly stores: StoresService,
+    private readonly members: MembersService,
   ) {}
 
   async onApplicationBootstrap() {
@@ -166,6 +168,7 @@ export class BootstrapService implements OnApplicationBootstrap {
     }
     if (this.REVIEW_DEMO_ENABLED) {
       await this.seedReviewDemo();
+      await this.ensureReviewPlans();
       this.logger.log(
         `REVIEW_DEMO_ENABLED=true：已确保审核演示账号 ${this.REVIEW_DEMO_USERNAME} 与门店数据就绪`,
       );
@@ -247,6 +250,56 @@ export class BootstrapService implements OnApplicationBootstrap {
       });
       this.logger.log('已为 IDOL BEADS 预置 6 小时畅玩套餐');
     }
+  }
+
+  /**
+   * 审核演示会员套餐（幂等）：把会员计划同步为新加坡区营销文案价格
+   * （S$19.90 月卡 / S$49 季卡 / S$149 年卡），避免审核员看到的
+   * App 内价格与 App Store 描述/Notes 不一致。仅 REVIEW_DEMO_ENABLED=true 时执行。
+   */
+  private async ensureReviewPlans() {
+    const targets = [
+      {
+        name: '月卡',
+        durationDays: 30,
+        price: 19.9,
+        originalPrice: 29.9,
+        benefits: ['全场 8 折', '每月专属优惠券'],
+        badge: '',
+        recommended: false,
+      },
+      {
+        name: '季卡',
+        durationDays: 90,
+        price: 49,
+        originalPrice: 87,
+        benefits: ['全场 8 折', '每月专属优惠券', '专属活动优先报名'],
+        badge: '推荐',
+        recommended: true,
+      },
+      {
+        name: '年卡',
+        durationDays: 365,
+        price: 149,
+        originalPrice: 298,
+        benefits: [
+          '全场 8 折',
+          '每月专属优惠券',
+          '专属活动优先报名',
+          '生日当月免费体验一次',
+        ],
+        badge: '最划算',
+        recommended: false,
+      },
+    ];
+    const existing = await this.members.listPlans(true);
+    for (const t of targets) {
+      const plan = existing.find((p) => p.name === t.name);
+      await this.members.savePlan({ ...t, enabled: true }, plan?.id);
+    }
+    this.logger.log(
+      '已同步审核演示会员套餐为新加坡区价格（月卡 S$19.9 / 年卡 S$149）',
+    );
   }
 
   private async ensureAdmin() {
