@@ -659,8 +659,62 @@ abstract class AppLocalizations {
   /// No description provided for @settingsScrollHint.
   ///
   /// In zh, this message translates to:
-  /// **'下拉查看关于与退出登录'**
+  /// **'下拉查看关于、退出登录与注销账号'**
   String get settingsScrollHint;
+
+  /// No description provided for @settingsDeleteAccount.
+  ///
+  /// In zh, this message translates to:
+  /// **'注销账号'**
+  String get settingsDeleteAccount;
+
+  /// No description provided for @settingsDeleteAccountSub.
+  ///
+  /// In zh, this message translates to:
+  /// **'永久删除账号及作品、预约、聊天等全部数据'**
+  String get settingsDeleteAccountSub;
+
+  /// No description provided for @settingsDeleteConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'注销账号'**
+  String get settingsDeleteConfirmTitle;
+
+  /// No description provided for @settingsDeleteConfirmDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'注销后，您的账号及作品、预约、聊天等全部数据将被永久删除，且无法恢复。确定注销吗？'**
+  String get settingsDeleteConfirmDesc;
+
+  /// No description provided for @settingsDeletePasswordTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入登录密码确认注销'**
+  String get settingsDeletePasswordTitle;
+
+  /// No description provided for @settingsDeletePasswordHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'登录密码'**
+  String get settingsDeletePasswordHint;
+
+  /// No description provided for @settingsDeleteAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认注销'**
+  String get settingsDeleteAction;
+
+  /// No description provided for @settingsDeleteSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号已注销'**
+  String get settingsDeleteSuccess;
+
+  /// No description provided for @settingsDeleteFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'注销失败，请稍后重试'**
+  String get settingsDeleteFailed;
 
   /// No description provided for @profileTitle.
   ///

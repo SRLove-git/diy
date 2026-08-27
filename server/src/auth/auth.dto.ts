@@ -106,6 +106,14 @@ export class ChangePasswordDto {
   newPassword: string;
 }
 
+/** 注销账号（登录态下）：需校验登录密码 */
+export class DeactivateAccountDto {
+  @IsString()
+  @MinLength(6, { message: '密码至少 6 位' })
+  @MaxLength(32, { message: '密码最多 32 位' })
+  password: string;
+}
+
 export class RefreshDto {
   @IsString()
   refreshToken: string;

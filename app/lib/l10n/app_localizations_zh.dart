@@ -290,7 +290,35 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsLogoutAction => '退出登录';
 
   @override
-  String get settingsScrollHint => '下拉查看关于与退出登录';
+  String get settingsScrollHint => '下拉查看关于、退出登录与注销账号';
+
+  @override
+  String get settingsDeleteAccount => '注销账号';
+
+  @override
+  String get settingsDeleteAccountSub => '永久删除账号及作品、预约、聊天等全部数据';
+
+  @override
+  String get settingsDeleteConfirmTitle => '注销账号';
+
+  @override
+  String get settingsDeleteConfirmDesc =>
+      '注销后，您的账号及作品、预约、聊天等全部数据将被永久删除，且无法恢复。确定注销吗？';
+
+  @override
+  String get settingsDeletePasswordTitle => '请输入登录密码确认注销';
+
+  @override
+  String get settingsDeletePasswordHint => '登录密码';
+
+  @override
+  String get settingsDeleteAction => '确认注销';
+
+  @override
+  String get settingsDeleteSuccess => '账号已注销';
+
+  @override
+  String get settingsDeleteFailed => '注销失败，请稍后重试';
 
   @override
   String get profileTitle => '我的';

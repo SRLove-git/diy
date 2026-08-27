@@ -2155,6 +2155,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   User? _user;
   bool _notify = true;
+  final _deletePasswordCtrl = TextEditingController();
   // bool _darkMode = false; // 深色模式前期暂不开放，已隐藏
 
   @override
@@ -2169,6 +2170,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         .catchError((_) {});
   }
 
+  @override
+  void dispose() {
+    _deletePasswordCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _logout() async {
     // 对齐 Pixso 39-弹窗-退出登录确认：
     // 遮罩 + 居中白色圆角 22 对话框 + 灰底取消 / 红底退出登录。
@@ -2178,6 +2185,110 @@ class _SettingsScreenState extends State<SettingsScreen> {
       actionLabel: context.l10n.settingsLogoutAction,
     );
     if (ok == true && mounted) await LiveRoutes.logout(context);
+  }
+
+  /// 注销账号：确认弹窗 → 输入登录密码 → 服务端删除账号及全部数据。
+  Future<void> _deleteAccount() async {
+    final l10n = context.l10n;
+    final ok = await _showConfirmDialog(
+      title: l10n.settingsDeleteConfirmTitle,
+      desc: l10n.settingsDeleteConfirmDesc,
+      actionLabel: l10n.settingsDeleteAction,
+    );
+    if (ok != true || !mounted) return;
+
+    final password = await _askDeletePassword();
+    if (password == null || password.isEmpty || !mounted) return;
+
+    try {
+      await AuthService.instance.deactivateAccount(password);
+    } on ApiException catch (e) {
+      if (mounted) showLiveSnack(context, e.message);
+      return;
+    } catch (_) {
+      if (mounted) showLiveSnack(context, l10n.settingsDeleteFailed);
+      return;
+    }
+    if (!mounted) return;
+    // 先展示成功提示（overlay 为应用级，导航到登录页后仍可见），再清除登录态
+    showLiveSnack(context, l10n.settingsDeleteSuccess);
+    await LiveRoutes.logout(context);
+  }
+
+  /// 注销确认第二步：输入登录密码（服务端再次校验）。
+  Future<String?> _askDeletePassword() {
+    final l10n = context.l10n;
+    _deletePasswordCtrl.clear();
+    return showDialog<String>(
+      context: context,
+      barrierColor: const Color(0x6B141414),
+      builder: (dialogContext) => Center(
+        child: Container(
+          width: 312,
+          padding: const EdgeInsets.fromLTRB(25, 29, 25, 22),
+          decoration: BoxDecoration(
+            color: LiveColors.bg,
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n.settingsDeletePasswordTitle,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: LiveColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 18),
+              TextField(
+                controller: _deletePasswordCtrl,
+                obscureText: true,
+                autofocus: true,
+                style: const TextStyle(fontSize: 15),
+                decoration: InputDecoration(
+                  hintText: l10n.settingsDeletePasswordHint,
+                  hintStyle: const TextStyle(
+                    fontSize: 14,
+                    color: LiveColors.textTertiary,
+                  ),
+                  filled: true,
+                  fillColor: LiveColors.card,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: _DialogButton(
+                      label: l10n.commonCancel,
+                      backgroundColor: LiveColors.card,
+                      textColor: LiveColors.textPrimary,
+                      onTap: () => Navigator.pop(dialogContext, null),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _DialogButton(
+                      label: l10n.settingsDeleteAction,
+                      backgroundColor: const Color(0xFFFF3B30),
+                      textColor: Colors.white,
+                      onTap: () =>
+                          Navigator.pop(dialogContext, _deletePasswordCtrl.text),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   /// 切换账号：进入账号切换页，保留各账号登录态、可免密快速切回。
@@ -2419,6 +2530,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
                 ),
+                // 注销账号：危险操作，红字入口
+                _SettingsTitle(l10n.settingsDeleteAccount),
+                _SettingsCard(
+                  children: [
+                    _SettingsInfoRow(
+                      title: l10n.settingsDeleteAccount,
+                      subtitle: l10n.settingsDeleteAccountSub,
+                      chevron: true,
+                      danger: true,
+                      onTap: _deleteAccount,
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 24),
                 // 退出登录：浅灰底红字整宽按钮（对齐设计稿 btn-ghost + danger）
                 SizedBox(
@@ -2542,12 +2666,14 @@ class _SettingsInfoRow extends StatelessWidget {
     this.subtitle,
     this.onTap,
     this.chevron = false,
+    this.danger = false,
   });
 
   final String title;
   final String? subtitle;
   final VoidCallback? onTap;
   final bool chevron;
+  final bool danger;
 
   @override
   Widget build(BuildContext context) {
@@ -2563,10 +2689,12 @@ class _SettingsInfoRow extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: LiveColors.textPrimary,
+                      color: danger
+                          ? LiveColors.danger
+                          : LiveColors.textPrimary,
                     ),
                   ),
                   if (subtitle != null) ...[
@@ -2583,10 +2711,12 @@ class _SettingsInfoRow extends StatelessWidget {
               ),
             ),
             if (chevron)
-              const Icon(
+              Icon(
                 Icons.chevron_right,
                 size: 18,
-                color: LiveColors.textTertiary,
+                color: danger
+                    ? LiveColors.danger
+                    : LiveColors.textTertiary,
               ),
           ],
         ),

@@ -5,8 +5,10 @@ import { BotGuard } from '../common/bot.guard';
 import { requestFingerprint } from '../common/security.util';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
+import { Audit } from '../audit/audit.decorator';
 import {
   ChangePasswordDto,
+  DeactivateAccountDto,
   LoginDto,
   RefreshDto,
   RegisterDto,
@@ -55,6 +57,18 @@ export class AuthController {
     @Body() dto: ChangePasswordDto,
   ) {
     return this.auth.changePassword(user.id, dto.oldPassword, dto.newPassword);
+  }
+
+  /** 注销账号（登录态下）：校验登录密码后删除账号及全部关联数据 */
+  @Post('deactivate-account')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ auth: { limit: 5, ttl: 60000, blockDuration: 300000 } })
+  @Audit('user.self_delete', 'user')
+  deactivateAccount(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: DeactivateAccountDto,
+  ) {
+    return this.auth.deactivateAccount(user.id, dto.password);
   }
 
   /** 刷新令牌（轮换制） */

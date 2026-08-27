@@ -82,6 +82,7 @@ npm run migration:revert                                # 回滚最近一次迁�
 | `SMTP_HOST/PORT/USER/PASS/FROM` | 邮件发送（验证码）。**生产必须配置**，未配置时验证码只打印在服务端日志 |
 | `CORS_ORIGINS` | 跨域白名单（逗号分隔）；生产未配置默认禁止跨域（原生 App 不受影响） |
 | `CONTENT_KEYWORDS` | 内容机审默认关键词（逗号分隔），管理端 `/api/admin/moderation/keywords` 可运行时增删 |
+| `REVIEW_DEMO_ENABLED` | App Store 审核演示种子：置 `true` 时启动自动创建 `reviewdemo` 账号 + IDOL BEADS 门店（桌位/时段/套餐）并预置演示内容（幂等）；审核结束后建议改回 `false` |
 | `UPLOAD_PROVIDER=s3` | 对象存储（阿里云 OSS 等 S3 兼容服务），需配 `S3_BUCKET/S3_ACCESS_KEY/S3_SECRET_KEY` 等；默认 `local` 本地磁盘 |
 | `S3_PUBLIC_URL_BASE` | 对象存储对外访问域名/CDN（如 `https://cdn.example.com`），未配置时回退 bucket 默认域名 |
 | `CDN_PROVIDER` | CDN 缓存刷新：`none`（默认，不刷新）/ `aliyun`；删除或替换媒体后自动 purge |

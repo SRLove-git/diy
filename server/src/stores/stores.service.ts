@@ -39,6 +39,11 @@ export class StoresService {
     return this.stores.find({ where: { enabled: true }, order: { id: 'ASC' } });
   }
 
+  /** 按名称查门店（审核演示/种子幂等用；不含关联数据） */
+  findByName(name: string): Promise<Store | null> {
+    return this.stores.findOneBy({ name });
+  }
+
   async detail(id: number): Promise<Store | null> {
     const store = await this.stores.findOne({
       where: { id, enabled: true },

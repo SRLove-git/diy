@@ -216,6 +216,26 @@ export class AuthService {
     return { sent: true };
   }
 
+  /**
+   * 注销账号（登录态下）：校验登录密码后删除账号及全部关联数据。
+   * 管理员账号不走自助注销，避免误删运营账号（管理端另有删除流程）。
+   */
+  async deactivateAccount(userId: number, password: string) {
+    const user = await this.users.findById(userId);
+    if (!user) throw new NotFoundException('用户不存在');
+    if (user.role === 'admin') {
+      throw new ForbiddenException('管理员账号请通过运营渠道处理');
+    }
+    if (user.passwordHash) {
+      if (!(await verifyPassword(password, user.passwordHash))) {
+        throw new BadRequestException('登录密码不正确');
+      }
+    }
+    // remove() 会先踢线（旧 access/refresh token 立即失效），再删除全部关联数据
+    await this.users.remove(userId);
+    return { deleted: true };
+  }
+
   /** 密码登录锁检查：锁定期间直接拒绝 */
   private async checkLoginLock(key: string) {
     if (await this.redis.exists(`login:lock:${key}`)) {

@@ -109,6 +109,9 @@ services:
       BLOCK_BOT_UA: ${BLOCK_BOT_UA:-false}
       REGISTER_IP_MAX: ${REGISTER_IP_MAX:-5}
       REGISTER_IP_WINDOW_H: ${REGISTER_IP_WINDOW_H:-24}
+      # App Store 审核演示种子：提审前置 true（幂等，创建 reviewdemo + IDOL BEADS 门店），
+      # 审核结束后改回 false 并重启，避免演示账号长期在线
+      REVIEW_DEMO_ENABLED: ${REVIEW_DEMO_ENABLED:-false}
       # SMTP 邮件（验证码）：未配置时开发模式会打印到日志，生产必须配置
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-465}

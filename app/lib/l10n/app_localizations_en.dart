@@ -296,7 +296,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLogoutAction => 'Log Out';
 
   @override
-  String get settingsScrollHint => 'Scroll down for About and Log Out';
+  String get settingsScrollHint =>
+      'Scroll down for About, Log Out and Delete Account';
+
+  @override
+  String get settingsDeleteAccount => 'Delete Account';
+
+  @override
+  String get settingsDeleteAccountSub =>
+      'Permanently delete your account and all data, including posts, bookings and chats';
+
+  @override
+  String get settingsDeleteConfirmTitle => 'Delete Account';
+
+  @override
+  String get settingsDeleteConfirmDesc =>
+      'Your account and all related data (posts, bookings, chats, etc.) will be permanently deleted and cannot be recovered. Continue?';
+
+  @override
+  String get settingsDeletePasswordTitle => 'Enter your password to confirm';
+
+  @override
+  String get settingsDeletePasswordHint => 'Password';
+
+  @override
+  String get settingsDeleteAction => 'Delete Account';
+
+  @override
+  String get settingsDeleteSuccess => 'Account deleted';
+
+  @override
+  String get settingsDeleteFailed => 'Delete failed. Please try again later.';
 
   @override
   String get profileTitle => 'Me';

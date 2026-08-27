@@ -2,6 +2,7 @@ import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { hashPassword } from '../auth/password.util';
 import { MusicService } from '../music/music.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
 import { VideosService } from '../videos/videos.service';
 
@@ -140,20 +141,112 @@ export class BootstrapService implements OnApplicationBootstrap {
   private readonly ADMIN_PASSWORD =
     process.env.ADMIN_INITIAL_PASSWORD ||
     (process.env.NODE_ENV === 'production' ? '' : 'admin123456');
+  /** 审核演示种子：仅 REVIEW_DEMO_ENABLED=true 时创建（提交 App Store 审核前开启） */
+  private readonly REVIEW_DEMO_ENABLED =
+    process.env.REVIEW_DEMO_ENABLED === 'true';
+  private readonly REVIEW_DEMO_USERNAME =
+    process.env.REVIEW_DEMO_USERNAME || 'reviewdemo';
+  private readonly REVIEW_DEMO_PASSWORD =
+    process.env.REVIEW_DEMO_PASSWORD || 'ThinkOrigin#2026';
+  private readonly REVIEW_DEMO_EMAIL =
+    process.env.REVIEW_DEMO_EMAIL || 'reviewdemo@thinkorigin.example';
 
   constructor(
     private readonly users: UsersService,
     private readonly videos: VideosService,
     private readonly music: MusicService,
     private readonly notifications: NotificationsService,
+    private readonly stores: StoresService,
   ) {}
 
   async onApplicationBootstrap() {
     await this.ensureAdmin();
-    if (process.env.NODE_ENV === 'production') return;
+    if (process.env.NODE_ENV === 'production' && !this.REVIEW_DEMO_ENABLED) {
+      return;
+    }
+    if (this.REVIEW_DEMO_ENABLED) {
+      await this.seedReviewDemo();
+      this.logger.log(
+        `REVIEW_DEMO_ENABLED=true：已确保审核演示账号 ${this.REVIEW_DEMO_USERNAME} 与门店数据就绪`,
+      );
+    }
     await this.seedDemoVideos();
     await this.seedDemoMusic();
     await this.seedDemoNotifications();
+  }
+
+  /**
+   * 审核演示种子（幂等）：创建 reviewdemo 账号并确保 IDOL BEADS 门店
+   * 具备桌位、时段与时长套餐，供 App Store 审核员直接体验完整预约流程。
+   */
+  private async seedReviewDemo() {
+    let user = await this.users.findByUsername(this.REVIEW_DEMO_USERNAME);
+    if (!user) {
+      user = await this.users.create({
+        username: this.REVIEW_DEMO_USERNAME,
+        email: this.REVIEW_DEMO_EMAIL,
+        passwordHash: await hashPassword(this.REVIEW_DEMO_PASSWORD),
+        nickname: '审核演示账号',
+      });
+      this.logger.log(
+        `已创建审核演示账号：${this.REVIEW_DEMO_USERNAME} / ${this.REVIEW_DEMO_PASSWORD}`,
+      );
+    } else if (!user.passwordHash) {
+      await this.users.setPasswordHash(
+        user.id,
+        await hashPassword(this.REVIEW_DEMO_PASSWORD),
+      );
+      this.logger.log(`审核演示账号 ${this.REVIEW_DEMO_USERNAME} 已补全密码`);
+    }
+
+    let store = await this.stores.findByName('IDOL BEADS');
+    if (!store) {
+      store = await this.stores.create({
+        name: 'IDOL BEADS',
+        address: '18A, Sago Street, Singapore 059017',
+        price: 9.9,
+        memberPrice: 7.92,
+        groupPrice: 8.5,
+        allDayPrice: 39.9,
+        allDayMemberPrice: 31.92,
+        allDayGroupPrice: 34,
+        businessHours: '10:00-21:00',
+        phone: '+65 8381 1666',
+        rating: 5,
+        images: [],
+      });
+      this.logger.log('已创建审核演示门店：IDOL BEADS（18A Sago Street）');
+    }
+
+    const detail = await this.stores.adminDetail(store.id);
+    if (!detail.tables.length) {
+      await this.stores.addTable(store.id, { capacity: 1 });
+      await this.stores.addTable(store.id, { capacity: 2 });
+      await this.stores.addTable(store.id, { capacity: 2 });
+      await this.stores.addTable(store.id, { capacity: 4 });
+      this.logger.log('已为 IDOL BEADS 预置 4 张桌位（A1/B1/B2/C1）');
+    }
+    if (!detail.slots.length) {
+      for (const [startTime, endTime] of [
+        ['10:00', '12:00'],
+        ['13:00', '15:00'],
+        ['15:00', '17:00'],
+        ['19:00', '21:00'],
+      ]) {
+        await this.stores.addSlot(store.id, { startTime, endTime });
+      }
+      this.logger.log('已为 IDOL BEADS 预置 4 个可约时段');
+    }
+    if (!detail.packages.length) {
+      await this.stores.addPackage(store.id, {
+        name: '6 小时畅玩套餐',
+        hours: 6,
+        price: 49.9,
+        memberPrice: 39.9,
+        groupPrice: 45,
+      });
+      this.logger.log('已为 IDOL BEADS 预置 6 小时畅玩套餐');
+    }
   }
 
   private async ensureAdmin() {

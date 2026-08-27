@@ -1,4 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { hashPassword } from './password.util';
 
@@ -7,6 +11,7 @@ function buildService() {
   const users = {
     findById: jest.fn(),
     setPasswordHash: jest.fn(),
+    remove: jest.fn().mockResolvedValue({ posts: 0, videos: 0 }),
   };
   const jwt = {};
   const config = {};
@@ -167,5 +172,58 @@ describe('AuthService.register（设备账号数限制）', () => {
         deviceId: 'dev-1',
       }),
     ).rejects.toThrow('注册请求过于频繁');
+  });
+});
+
+describe('AuthService.deactivateAccount', () => {
+  it('密码正确时删除账号并返回 deleted', async () => {
+    const m = buildService();
+    m.users.findById.mockResolvedValue({
+      id: 7,
+      role: 'user',
+      passwordHash: await hashPassword('correct-pass'),
+    });
+
+    const result = await m.svc.deactivateAccount(7, 'correct-pass');
+
+    expect(result).toEqual({ deleted: true });
+    expect(m.users.remove).toHaveBeenCalledWith(7);
+  });
+
+  it('密码错误时拒绝注销且不删除账号', async () => {
+    const m = buildService();
+    m.users.findById.mockResolvedValue({
+      id: 7,
+      role: 'user',
+      passwordHash: await hashPassword('real-pass'),
+    });
+
+    await expect(m.svc.deactivateAccount(7, 'wrong-pass')).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(m.users.remove).not.toHaveBeenCalled();
+  });
+
+  it('管理员账号不允许自助注销', async () => {
+    const m = buildService();
+    m.users.findById.mockResolvedValue({
+      id: 1,
+      role: 'admin',
+      passwordHash: await hashPassword('admin-pass'),
+    });
+
+    await expect(m.svc.deactivateAccount(1, 'admin-pass')).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(m.users.remove).not.toHaveBeenCalled();
+  });
+
+  it('用户不存在时返回 404', async () => {
+    const m = buildService();
+    m.users.findById.mockResolvedValue(null);
+
+    await expect(m.svc.deactivateAccount(999, 'whatever-pass')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 });

@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './user.entity';
 import { History } from './history.entity';
 import { Appointment } from '../appointments/appointment.entity';
+import { AppointmentTable } from '../appointments/appointment-table.entity';
 import { Conversation } from '../chat/conversation.entity';
 import { Group } from '../chat/group.entity';
 import { GroupMember } from '../chat/group-member.entity';
@@ -18,6 +19,7 @@ import { Comment } from '../community/comment.entity';
 import { Collection } from '../community/collection.entity';
 import { Follow } from '../follows/follow.entity';
 import { Membership } from '../members/membership.entity';
+import { MemberOrder } from '../members/member-order.entity';
 import { UserCoupon } from '../members/coupon.entity';
 import { NotificationRead } from '../notifications/notification-read.entity';
 import { Video } from '../videos/video.entity';
@@ -43,8 +45,10 @@ import { AdminUsersController } from './admin-users.controller';
       Follow,
       NotificationRead,
       Membership,
+      MemberOrder,
       UserCoupon,
       Appointment,
+      AppointmentTable,
       Conversation,
       Message,
       MessageStatus,

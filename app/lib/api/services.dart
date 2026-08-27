@@ -121,6 +121,14 @@ class AuthService {
     );
   }
 
+  /// 注销账号（登录态下）：服务端校验登录密码后删除账号及全部关联数据，
+  /// 成功后本端需清除本地登录态（调用方负责 logout）。
+  Future<void> deactivateAccount(String password) {
+    return ApiClient.instance.post('/auth/deactivate-account', body: {
+      'password': password,
+    });
+  }
+
   Future<User> me() async {
     final data =
         await ApiClient.instance.get('/auth/me') as Map<String, dynamic>;

@@ -22,6 +22,7 @@ function buildService() {
     {} as never, // memberships
     {} as never, // userCoupons
     {} as never, // appointments
+    {} as never, // appointmentTables
     {} as never, // conversations
     {} as never, // messages
     {} as never, // messageStatuses
@@ -30,6 +31,7 @@ function buildService() {
     {} as never, // groupMessages
     {} as never, // groupReads
     {} as never, // groupMessageDeletions
+    {} as never, // memberOrders
     {} as never, // mediaCleanup
   );
   return { svc, users };

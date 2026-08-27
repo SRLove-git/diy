@@ -105,15 +105,17 @@ bead art,perler beads,DIY,crafts,studio,booking,workshop,community,art,拼豆,�
 > **演示账号**（登录后可直接体验全部功能）：
 > - 用户名：`reviewdemo`
 > - 密码：`ThinkOrigin#2026`
-> - 注意：该账号**需在提交审核前于服务器预创建**（当前 bootstrap 仅预置开发演示作者，尚无此登录账号），创建方式见第 8 节。
+> - 注意：该账号由 `REVIEW_DEMO_ENABLED=true` 种子自动创建（见第 8 节），提交审核前需在服务器上开启该开关并重启。
 >
-> **登录说明**：App 使用「用户名 + 密码」登录；如审核员使用「注册」流程，需通过邮箱收取验证码（依赖 SMTP 邮件服务），因此请优先使用上述演示账号。
+> **登录说明**：App 使用「用户名 + 密码」登录；注册流程为「用户名 + 邮箱 + 密码」（当前不强制邮箱验证码），审核员可直接注册，但建议优先使用演示账号以直接体验预置数据。
 >
 > **支付说明**：本 App 不包含应用内购买，所有费用（预约、会员）均在到店核销后线下支付，界面中「到店支付」为线下结算提示。
 >
 > **会员说明**：会员开通申请需门店工作人员到店确认后生效，属正常业务流程。
 >
 > **内容审核**：社区与聊天内容经过关键词机器审核与人工复核，管理员可在管理后台处理违规内容。
+>
+> **注销说明**：应用内「我的 → 设置 → 注销账号」支持自助注销（输入登录密码确认），账号及全部关联数据将删除/匿名化处理。
 >
 > **无广告、无第三方统计 SDK**，不采集精确位置。
 
@@ -126,11 +128,12 @@ bead art,perler beads,DIY,crafts,studio,booking,workshop,community,art,拼豆,�
 | 用户名 | `reviewdemo` |
 | 密码 | `ThinkOrigin#2026` |
 | 邮箱 | `reviewdemo@thinkorigin.example`（预创建账号，无需真实收件） |
-| 预置数据 | IDOL BEADS 门店 + 桌位 + 6 小时套餐 + 会员套餐 + 演示活动/短视频/通知（需人工录入或种子脚本生成；当前 bootstrap 仅开发环境预置演示作者/短视频） |
+| 预置数据 | IDOL BEADS 门店 + 桌位 + 时段 + 6 小时套餐 + 会员套餐（members 模块自动种子）+ 演示活动/短视频/通知（`REVIEW_DEMO_ENABLED=true` 时自动预置） |
 
-创建方式建议（任选其一）：
-1. 管理后台「用户管理」创建普通用户，再人工录入门店预约/会员申请等演示数据；
-2. 或在 `server` 增加一段一次性种子（建议放 `bootstrap.service.ts` 生产分支，仅当 `REVIEW_DEMO_ENABLED=true` 时创建），避免默认弱口令上线。
+创建方式（已实现）：
+1. 在生产 .env 设置 `REVIEW_DEMO_ENABLED=true`（可选覆盖 `REVIEW_DEMO_USERNAME/PASSWORD/EMAIL`），重启 server；
+2. `bootstrap.service.ts` 幂等种子自动创建 `reviewdemo` 账号、IDOL BEADS 门店（桌位/时段/6 小时套餐），并预置演示短视频/配乐/通知；
+3. 审核结束后将 `REVIEW_DEMO_ENABLED` 改回 `false` 并重启，避免演示账号长期在线。
 
 注意：现有 `admin/admin123456` 仅开发环境生效；演示作者（zhuzhu 等）无密码，**不可**作为审核登录账号。
 
@@ -165,4 +168,4 @@ bead art,perler beads,DIY,crafts,studio,booking,workshop,community,art,拼豆,�
 - [ ] 用户协议公网 **HTTPS URL**（将 `USER_AGREEMENT.md` 挂出；新加坡区非强制但建议，**中国区上架强制**）
 - [x] **App 图标**：已就绪，`app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png`（1024×1024，可直接上传 App Store Connect）；源文件 `app/assets/think_origin_icon.png`（1254×1254）
 - [ ] **截图**（6.7/6.5/5.5 英寸 iPhone + iPad）与预览视频（需真机/模拟器截图）
-- [ ] 审核演示账号在**生产/审核服务器**预创建（见第 8 节；当前代码未实现 `REVIEW_DEMO_ENABLED` 种子）
+- [x] 审核演示账号种子 `REVIEW_DEMO_ENABLED`（见第 8 节；**提交前需在生产 .env 开启并重启**）

@@ -14,6 +14,7 @@ import { maskEmail } from '../common/security.util';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { MediaCleanupService } from '../uploads/media-cleanup.service';
 import { Appointment } from '../appointments/appointment.entity';
+import { AppointmentTable } from '../appointments/appointment-table.entity';
 import { Conversation } from '../chat/conversation.entity';
 import { Group } from '../chat/group.entity';
 import { GroupMember } from '../chat/group-member.entity';
@@ -28,6 +29,7 @@ import { Like as PostLike } from '../community/like.entity';
 import { Post } from '../community/post.entity';
 import { Follow } from '../follows/follow.entity';
 import { Membership } from '../members/membership.entity';
+import { MemberOrder } from '../members/member-order.entity';
 import { UserCoupon } from '../members/coupon.entity';
 import { NotificationRead } from '../notifications/notification-read.entity';
 import { Video } from '../videos/video.entity';
@@ -73,6 +75,8 @@ export class UsersService {
     private readonly userCoupons: Repository<UserCoupon>,
     @InjectRepository(Appointment)
     private readonly appointments: Repository<Appointment>,
+    @InjectRepository(AppointmentTable)
+    private readonly appointmentTables: Repository<AppointmentTable>,
     @InjectRepository(Conversation)
     private readonly conversations: Repository<Conversation>,
     @InjectRepository(Message) private readonly messages: Repository<Message>,
@@ -87,6 +91,8 @@ export class UsersService {
     private readonly groupReads: Repository<GroupRead>,
     @InjectRepository(GroupMessageDeletion)
     private readonly groupMessageDeletions: Repository<GroupMessageDeletion>,
+    @InjectRepository(MemberOrder)
+    private readonly memberOrders: Repository<MemberOrder>,
     private readonly mediaCleanup: MediaCleanupService,
   ) {}
 
@@ -452,7 +458,15 @@ export class UsersService {
     // 1. 先删除该用户发布的全部作品及互动数据
     const { posts, videos } = await this.deleteWorks(userId);
 
-    // 2. 用户产生的互动/浏览/预约/会员/关注等记录
+    // 2. 预约桌位关联（一单多桌）需先取预约单 ID，避免删预约后留孤儿行
+    const appointmentIds = (
+      await this.appointments.find({
+        where: { userId },
+        select: { id: true },
+      })
+    ).map((a) => a.id);
+
+    // 3. 用户产生的互动/浏览/预约/会员/关注等记录
     await Promise.all([
       this.postLikes.delete({ userId }),
       this.postComments.delete({ userId }),
@@ -462,8 +476,16 @@ export class UsersService {
       this.videoComments.delete({ userId }),
       this.follows.delete([{ followerId: userId }, { followeeId: userId }]),
       this.memberships.delete({ userId }),
+      this.memberOrders.delete({ userId }),
       this.userCoupons.delete({ userId }),
       this.notificationReads.delete({ userId }),
+      ...(appointmentIds.length
+        ? [
+            this.appointmentTables.delete({
+              appointmentId: In(appointmentIds),
+            }),
+          ]
+        : []),
       this.appointments.delete({ userId }),
     ]);
 
