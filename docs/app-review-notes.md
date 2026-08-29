@@ -73,7 +73,7 @@
 ## 提交前检查清单（本轮驳回要求的硬性项）
 
 - [ ] **预创建审核演示账号** `reviewdemo`（密码 `ThinkOrigin#2026`）：已实现 `REVIEW_DEMO_ENABLED` 幂等种子（自动创建账号 + IDOL BEADS 门店/桌位/时段/6 小时套餐，并预置演示短视频/配乐/通知）。提交前在生产 .env 设置 b`REVIEW_DEMO_ENABLED=true` 并重启 server；审核结束后改回 `false` 重启。
-- [ ] **真机录屏**：按上方脚本录制（最新 iOS 物理设备），上传附件。
+- [x] **真机录屏**：已录制（iPhone 17 Pro Max，iOS 26.6；`~/Downloads/ScreenRecording_08-29-2026 18-04-22_1.mp4`，213MB，约 1 分 53 秒），提交前上传 App Store Connect 附件。
 - [x] **设备清单**：iPhone 17 Pro Max / iPhone 14 Pro Max（均 iOS 26.6）。
 - [ ] **SMTP 服务商**：补全第 5 点中邮件服务商名称（如未配置邮件，注明「暂未使用邮件功能」，与代码一致：注册不强制邮箱验证码）。
 - [ ] 复查「App 隐私」营养标签与 `PRIVACY_POLICY.md` 一致（`docs/app-store-submission.md` 第 9 节表格已整理）。
