@@ -17,10 +17,8 @@
 >
 > **2. 测试设备与操作系统列表**
 > 提交审核前，本 App 已在以下物理设备上完成测试：
-> - 【待补全】例如：iPhone 15 Pro – iOS 18.5（最新版）
-> - 【待补全】例如：iPhone 14 – iOS 18.4
-> - 【待补全】例如：iPad – iPadOS 18.x（如提交 iPad 版本）
-> - 【待补全】Android：例如 Pixel 8 – Android 15（Android 版本）
+> - iPhone 17 Pro Max – iOS 26.6
+> - iPhone 14 Pro Max – iOS 26.6
 > 本次送审版本还已在物理真机上以最新公开版 iOS 完成冒烟测试。
 >
 > **3. 应用功能与目标用户**

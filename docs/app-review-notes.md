@@ -17,10 +17,8 @@
 >
 > **2. 测试设备与操作系统列表**
 > 提交审核前，本 App 已在以下物理设备上完成测试：
-> - [待补全] 例如 iPhone 15 Pro – iOS 18.5（最新版）
-> - [待补全] 例如 iPhone 14 – iOS 18.4
-> - [待补全] 例如 iPad（如提交 iPad 版本）– iPadOS 18.x
-> - [待补全] Android：例如 Pixel 8 – Android 15（Android 版本）
+> - iPhone 17 Pro Max – iOS 26.6
+> - iPhone 14 Pro Max – iOS 26.6
 > 本次送审版本还已在物理真机上以最新公开版 iOS 完成冒烟测试。
 >
 > **3. 应用功能与目标用户**
@@ -74,9 +72,9 @@
 
 ## 提交前检查清单（本轮驳回要求的硬性项）
 
-- [ ] **预创建审核演示账号** `reviewdemo`（密码 `ThinkOrigin#2026`）：已实现 `REVIEW_DEMO_ENABLED` 幂等种子（自动创建账号 + IDOL BEADS 门店/桌位/时段/6 小时套餐，并预置演示短视频/配乐/通知）。提交前在生产 .env 设置 `REVIEW_DEMO_ENABLED=true` 并重启 server；审核结束后改回 `false` 重启。
+- [ ] **预创建审核演示账号** `reviewdemo`（密码 `ThinkOrigin#2026`）：已实现 `REVIEW_DEMO_ENABLED` 幂等种子（自动创建账号 + IDOL BEADS 门店/桌位/时段/6 小时套餐，并预置演示短视频/配乐/通知）。提交前在生产 .env 设置 b`REVIEW_DEMO_ENABLED=true` 并重启 server；审核结束后改回 `false` 重启。
 - [ ] **真机录屏**：按上方脚本录制（最新 iOS 物理设备），上传附件。
-- [ ] **设备清单**：补全上面第 2 点的实际测试机型与系统版本。
+- [x] **设备清单**：iPhone 17 Pro Max / iPhone 14 Pro Max（均 iOS 26.6）。
 - [ ] **SMTP 服务商**：补全第 5 点中邮件服务商名称（如未配置邮件，注明「暂未使用邮件功能」，与代码一致：注册不强制邮箱验证码）。
 - [ ] 复查「App 隐私」营养标签与 `PRIVACY_POLICY.md` 一致（`docs/app-store-submission.md` 第 9 节表格已整理）。
 - [ ] 确认生产环境已配置 HTTPS 域名 `diy.medical-sg.com`，且隐私政策/用户协议的公网 HTTPS 地址已挂出并填写在 App Store Connect。
