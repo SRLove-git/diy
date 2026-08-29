@@ -35,7 +35,7 @@
 > **5. 实现核心功能所使用的外部服务**
 > - 阿里云对象存储 OSS（新加坡区域）：存储用户上传的图片、视频与音频。
 > - 阿里云 CDN：媒体文件加速分发。
-> - SMTP 邮件服务（服务商：[待补全]）：用于服务类邮件；当前注册流程不强制邮箱验证码。
+> - 邮件服务：当前未接入 SMTP，未使用邮件发送功能；注册流程不强制邮箱验证码。
 > - 可选人机验证：默认自托管图形验证码；可启用 Cloudflare Turnstile 或 hCaptcha（均为可配置项，生产环境仅启用其一）。
 > - 自建基础设施：MySQL 8（数据）、Redis 7（会话/缓存/限流）、WebSocket（实时聊天与通知）。
 > - 未接入支付服务商、广告 SDK、统计分析 SDK、社交登录或第三方推送服务。
@@ -75,7 +75,7 @@
 - [ ] **预创建审核演示账号** `reviewdemo`（密码 `ThinkOrigin#2026`）：已实现 `REVIEW_DEMO_ENABLED` 幂等种子（自动创建账号 + IDOL BEADS 门店/桌位/时段/6 小时套餐，并预置演示短视频/配乐/通知）。提交前在生产 .env 设置 b`REVIEW_DEMO_ENABLED=true` 并重启 server；审核结束后改回 `false` 重启。
 - [x] **真机录屏**：已录制（iPhone 17 Pro Max，iOS 26.6；`~/Downloads/ScreenRecording_08-29-2026 18-04-22_1.mp4`，213MB，约 1 分 53 秒），提交前上传 App Store Connect 附件。
 - [x] **设备清单**：iPhone 17 Pro Max / iPhone 14 Pro Max（均 iOS 26.6）。
-- [ ] **SMTP 服务商**：补全第 5 点中邮件服务商名称（如未配置邮件，注明「暂未使用邮件功能」，与代码一致：注册不强制邮箱验证码）。
+- [x] **SMTP 服务商**：已确认暂未接入 SMTP，Notes 中注明「当前未使用邮件功能」（与代码一致：注册不强制邮箱验证码）。
 - [ ] 复查「App 隐私」营养标签与 `PRIVACY_POLICY.md` 一致（`docs/app-store-submission.md` 第 9 节表格已整理）。
 - [ ] 确认生产环境已配置 HTTPS 域名 `diy.medical-sg.com`，且隐私政策/用户协议的公网 HTTPS 地址已挂出并填写在 App Store Connect。
 
