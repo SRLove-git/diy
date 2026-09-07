@@ -31,11 +31,29 @@ import 'screens/video_screens.dart';
 /// 底部 Tab 快速连续切换的防抖时间戳。
 DateTime? _lastTabTap;
 
+/// 公开浏览页：游客放行（活动 / 门店的列表、详情、搜索）。
+/// 预约/核销/下单等账号操作仍走登录页，页面内再引导登录。
+bool _isGuestBrowsable(String loc) {
+  if (loc == RoutePaths.activityList ||
+      loc == RoutePaths.storeList ||
+      loc == RoutePaths.storeSearch) {
+    return true;
+  }
+  // 动态详情路由：/activity/<id>、/store/<id>
+  if (RegExp(r'^/activity/\d+$').hasMatch(loc)) return true;
+  if (RegExp(r'^/store/\d+$').hasMatch(loc)) return true;
+  return false;
+}
+
 /// Think Origin 路由表。
 /// - 底部 5 Tab 使用 StatefulShellRoute.indexedStack，切换时保留各分支状态（Tab 保活）；
 /// - 其余页面为顶层路由，覆盖在 Tab 壳之上；
 /// - redirect 负责登录态跳转：启动先进 Splash，等待 AuthStore 恢复完成
 ///   （AuthStore 为 ChangeNotifier，登录态变化会触发 redirect 重算）。
+///
+/// 5.1.1(v) 合规策略：游客（未登录）可自由浏览 Home Tab（公开活动、敬请期待等
+/// 非账号基础内容）；账号基础功能（Profile、预约、订单、会员、管理、设置等）
+/// 仍要求登录。Home Tab 内部根据登录态渲染门禁卡片。
 final GoRouter appRouter = GoRouter(
   initialLocation: RoutePaths.splash,
   refreshListenable: AuthStore.instance,
@@ -48,15 +66,24 @@ final GoRouter appRouter = GoRouter(
     }
     final loggedIn = auth.isLoggedIn;
     final onLogin = loc.startsWith(RoutePaths.login);
-    // 用户协议 / 隐私政策在未登录时也可访问（应用商店审核要求）。
+    // 用户协议 / 隐私政策对游客和登录用户都开放（应用商店审核要求）。
     final onLegal = loc == RoutePaths.profileUserAgreement ||
         loc == RoutePaths.profilePrivacyPolicy;
-    // 恢复完成：Splash 收敛到对应首页
-    if (loc == RoutePaths.splash) {
-      return loggedIn ? RoutePaths.home : RoutePaths.login;
-    }
-    if (!loggedIn && !onLogin && !onLegal) return RoutePaths.login;
+    // 恢复完成：Splash 收敛到 Home（游客可浏览；登录用户也先到 Home）
+    if (loc == RoutePaths.splash) return RoutePaths.home;
+    // 法律页永远放行
+    if (onLegal) return null;
+    // 已登录：不允许停留在登录注册页
     if (loggedIn && onLogin) return RoutePaths.home;
+    if (!loggedIn) {
+      // 游客可访问：Home / 登录 / 注册 / Splash / 法律页，以及公开内容页
+      // （活动列表/详情、门店列表/详情/搜索——非账号基础内容，5.1.1(v) 要求自由浏览）。
+      // 账号基础功能（预约提交、订单、会员、Profile、管理端等）仍要求登录。
+      if (loc == RoutePaths.home) return null;
+      if (onLogin) return null;
+      if (_isGuestBrowsable(loc)) return null;
+      return RoutePaths.login;
+    }
     return null;
   },
   routes: [

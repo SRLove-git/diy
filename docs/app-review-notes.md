@@ -72,6 +72,7 @@
 
 ## 提交前检查清单（本轮驳回要求的硬性项）
 
+- [ ] **年龄分级「应用内控件」修正（2.3.6 驳回项）**：App Store Connect → 我的 App → App 信息 → 年龄分级，将「家长控制（Parental Controls）」与「年龄保证（Age Assurance）」均设为 **None**（本 App 无相关功能，无需改代码；改完保存后回复审核消息并重新提交同一构建）。
 - [ ] **预创建审核演示账号** `reviewdemo`（密码 `ThinkOrigin#2026`）：已实现 `REVIEW_DEMO_ENABLED` 幂等种子（自动创建账号 + IDOL BEADS 门店/桌位/时段/6 小时套餐，并预置演示短视频/配乐/通知）。提交前在生产 .env 设置 b`REVIEW_DEMO_ENABLED=true` 并重启 server；审核结束后改回 `false` 重启。
 - [x] **真机录屏**：已录制（iPhone 17 Pro Max，iOS 26.6；`~/Downloads/ScreenRecording_08-29-2026 18-04-22_1.mp4`，213MB，约 1 分 53 秒），提交前上传 App Store Connect 附件。
 - [x] **设备清单**：iPhone 17 Pro Max / iPhone 14 Pro Max（均 iOS 26.6）。
@@ -83,3 +84,14 @@
 
 - **应用内注销账号**：已完成（后端 `POST /auth/deactivate-account` + 设置页「注销账号」入口，含登录密码确认；管理员账号不允许自助注销）。录屏需覆盖该流程。
 - **内容举报入口**：隐私政策写的是「意见反馈（规划中）」。若审核员问 UGC 举报机制，当前回复口径为「通过客服邮箱/电话举报」，后续建议在社区帖子/评论上直接提供举报按钮。
+
+## 2026-09-07 驳回轮（Submission 58c9d0f7-4d3b-4f26-9f50-f2b484565219）
+
+- [x] **5.1.1(v) 游客可浏览公开内容**：`live_router.dart` 放开游客对公开内容页
+  （活动列表/详情、门店列表/详情/搜索）的访问——非账号基础内容不再强制注册；
+  预约提交、订单、会员、Profile、管理端等账号功能仍要求登录。**需重新构建 App 提交。**
+- [x] **2.1 演示账号登录失败修复**：根因是 `reviewdemo` 账号曾随数据清理被删、
+  未再触发种子；已在生产重启 server（`REVIEW_DEMO_ENABLED=true` 幂等种子重建账号与门店数据）
+  并实测登录通过（`reviewdemo / ThinkOrigin#2026`）。
+- [ ] 重新构建提交 App（版本号 +1），并在 App Store Connect 的审核信息里确认演示账号
+  `reviewdemo / ThinkOrigin#2026`。
