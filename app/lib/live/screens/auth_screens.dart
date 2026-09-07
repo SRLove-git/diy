@@ -303,7 +303,31 @@ class _LoginScreenState extends State<LoginScreen> {
                     onTap: _loading ? null : _login,
                     loading: _loading,
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 12),
+                  // 游客入口：未注册用户可先浏览首页的公开内容（活动 / 敬请期待等），
+                  // 符合 App Store 5.1.1(v) 「非账号基础功能不得强制注册」的要求。
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => LiveRoutes.replace(
+                            context,
+                            RoutePaths.home,
+                          ),
+                          child: Text(
+                            l10n.loginBrowseAsGuest,
+                            style: const TextStyle(
+                              color: LiveColors.textSecondary,
+                              fontSize: 14,
+                              decoration: TextDecoration.underline,
+                              decorationColor: LiveColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
                       Expanded(

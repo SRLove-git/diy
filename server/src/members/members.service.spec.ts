@@ -397,9 +397,9 @@ describe('MembersService', () => {
       expect(() =>
         m.svc.saveCoupon({ ...base, threshold: '满 $100 可用' }),
       ).toThrow(BadRequestException);
-      expect(() =>
-        m.svc.saveCoupon({ ...base, threshold: '无门槛' }),
-      ).toThrow(BadRequestException);
+      expect(() => m.svc.saveCoupon({ ...base, threshold: '无门槛' })).toThrow(
+        BadRequestException,
+      );
     });
   });
 });

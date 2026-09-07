@@ -254,6 +254,24 @@ abstract class AppLocalizations {
   /// **'注册新账号'**
   String get loginRegisterLink;
 
+  /// No description provided for @loginBrowseAsGuest.
+  ///
+  /// In zh, this message translates to:
+  /// **'先逛逛'**
+  String get loginBrowseAsGuest;
+
+  /// No description provided for @homeGuestSignInTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'登录后享受完整功能'**
+  String get homeGuestSignInTitle;
+
+  /// No description provided for @homeGuestSignInDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'解锁预约、订单、会员等专属服务'**
+  String get homeGuestSignInDesc;
+
   /// No description provided for @loginNeedAccount.
   ///
   /// In zh, this message translates to:

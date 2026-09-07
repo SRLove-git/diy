@@ -63,6 +63,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// 账号变化或角色尚未拉取成功时（重新）拉取 /auth/me 的角色信息。
   void _maybeRefreshRole() {
+    // 游客态跳过：/auth/me 需要鉴权，没有 token 时一定 401。
+    if (!AuthStore.instance.isLoggedIn) return;
     final uid = AuthStore.instance.userId;
     if (uid == null) return;
     if (uid != _roleCheckedUserId || _isAdmin == null) {
@@ -121,6 +123,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _loadOrders() async {
+    // 游客态跳过：/appointment/my 等接口需要鉴权，
+    // 这里静默失败会让订单卡永不出现，但调用本身仍然在重复触发，故直接短路。
+    if (!AuthStore.instance.isLoggedIn) return;
     if (_loadingOrders) return;
     _loadingOrders = true;
     try {
@@ -253,6 +258,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 // 已失效订单（超过预约结束时间）不在首页展示，
                 // 仅保留在“我的预约”中；到点后由 _scheduleExpiryRefresh 触发消失。
                 final showOrders = active.isNotEmpty || upcoming.isNotEmpty;
+                final isGuest = !AuthStore.instance.isLoggedIn;
                 return RefreshIndicator(
                   onRefresh: () async => _retry(),
                   color: const Color(0xFF5B21B6),
@@ -261,54 +267,59 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     // 底部悬浮 Tab 覆盖在内容之上，预留滚动空间避免最后内容被遮挡
                     padding: const EdgeInsets.only(bottom: 96),
                     children: [
-                      const _TopBar(),
-                      // 门店板块：普通用户三入口（预约 / 到店 / 会员套餐），
-                      // 管理员替换为管理端三入口（扫码核销 / 订单管理 / 会员运营）
-                      _SectionHeader(
-                        title: _isAdmin == true
-                            ? l10n.adminStoreSection
-                            : l10n.homeStoreSection,
-                        badge: _isAdmin == true
-                            ? l10n.adminStoreBadge
-                            : l10n.homeStoreSectionBadge,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        child: _EntryCardsRow(
-                          admin: _isAdmin == true,
-                          onTap: (key) {
-                            switch (key) {
-                              case 'appoint':
-                                LiveRoutes.push(context, RoutePaths.storeList);
-                              case 'checkin':
-                                LiveRoutes.push(
-                                  context,
-                                  RoutePaths.storeCheckin,
-                                );
-                              case 'member':
-                                LiveRoutes.push(
-                                  context,
-                                  RoutePaths.memberCenter,
-                                );
-                              case 'redeem':
-                                LiveRoutes.push(
-                                  context,
-                                  RoutePaths.adminRedeem,
-                                );
-                              case 'orders':
-                                LiveRoutes.push(
-                                  context,
-                                  RoutePaths.adminOrders,
-                                );
-                              case 'members':
-                                LiveRoutes.push(
-                                  context,
-                                  RoutePaths.adminMembers,
-                                );
-                            }
-                          },
+                      _TopBar(isGuest: isGuest),
+                      // 游客态：用门禁卡占位，公开内容（活动 / 敬请期待）正常展示。
+                      if (isGuest) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 18, vertical: 4),
+                          child: _GuestSignInCard(
+                            onTap: () => LiveRoutes.replace(
+                              context,
+                              RoutePaths.login,
+                            ),
+                          ),
                         ),
-                      ),
+                      ] else ...[
+                        // 门店板块：普通用户三入口（预约 / 到店 / 会员套餐），
+                        // 管理员替换为管理端三入口（扫码核销 / 订单管理 / 会员运营）
+                        _SectionHeader(
+                          title: _isAdmin == true
+                              ? l10n.adminStoreSection
+                              : l10n.homeStoreSection,
+                          badge: _isAdmin == true
+                              ? l10n.adminStoreBadge
+                              : l10n.homeStoreSectionBadge,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          child: _EntryCardsRow(
+                            admin: _isAdmin == true,
+                            onTap: (key) {
+                              switch (key) {
+                                case 'appoint':
+                                  LiveRoutes.push(
+                                      context, RoutePaths.storeList);
+                                case 'checkin':
+                                  LiveRoutes.push(
+                                      context, RoutePaths.storeCheckin);
+                                case 'member':
+                                  LiveRoutes.push(
+                                      context, RoutePaths.memberCenter);
+                                case 'redeem':
+                                  LiveRoutes.push(
+                                      context, RoutePaths.adminRedeem);
+                                case 'orders':
+                                  LiveRoutes.push(
+                                      context, RoutePaths.adminOrders);
+                                case 'members':
+                                  LiveRoutes.push(
+                                      context, RoutePaths.adminMembers);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
                       // 「我的订单」：服务中实时计时 + 未来可核销的待核销订单
                       if (showOrders) ...[
                         Padding(
@@ -502,9 +513,15 @@ class _GlowCircle extends StatelessWidget {
   }
 }
 
-/// 顶部：Think Origin 渐变流光 Logo 字 + 通知铃铛（角标）。
+/// 顶部：Think Origin 渐变流光 Logo 字。
+/// - 登录态：右侧显示「我的订单」+「通知铃铛」入口；
+/// - 游客态：仅显示 Logo，账号基础入口隐藏（避免出现无法点击的图标）。
 class _TopBar extends StatefulWidget {
-  const _TopBar();
+  /// 是否游客态：游客态下隐藏右侧"我的订单 / 通知"两个图标，
+  /// 因为它们跳转到需要登录的页面，避免 UI 上出现无法使用的入口。
+  const _TopBar({this.isGuest = false});
+
+  final bool isGuest;
 
   @override
   State<_TopBar> createState() => _TopBarState();
@@ -585,56 +602,59 @@ class _TopBarState extends State<_TopBar> with SingleTickerProviderStateMixin {
           //   icon: const Icon(Icons.search, color: LiveColors.textPrimary, size: 24),
           //   onPressed: () => LiveRoutes.push(context, RoutePaths.search),
           // ),
-          IconButton(
-            icon: const Icon(
-              Icons.receipt_long_outlined,
-              color: LiveColors.textPrimary,
-              size: 24,
+          // 游客态下隐藏右侧两个账号基础入口（订单/通知），避免出现无法点击的图标。
+          if (!widget.isGuest) ...[
+            IconButton(
+              icon: const Icon(
+                Icons.receipt_long_outlined,
+                color: LiveColors.textPrimary,
+                size: 24,
+              ),
+              onPressed: () => LiveRoutes.push(context, RoutePaths.appointmentMy),
             ),
-            onPressed: () => LiveRoutes.push(context, RoutePaths.appointmentMy),
-          ),
-          IconButton(
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(
-                  Icons.notifications_none,
-                  color: LiveColors.textPrimary,
-                  size: 24,
-                ),
-                ValueListenableBuilder<int>(
-                  valueListenable: NotificationService.instance.unread,
-                  builder: (context, unread, _) {
-                    if (unread <= 0) return const SizedBox.shrink();
-                    return Positioned(
-                      right: -2,
-                      top: -2,
-                      child: Container(
-                        padding: const EdgeInsets.all(3),
-                        constraints: const BoxConstraints(
-                          minWidth: 15,
-                          minHeight: 15,
-                        ),
-                        decoration: const BoxDecoration(
-                          color: LiveColors.danger,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          unread > 99 ? '99+' : '$unread',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 8,
+            IconButton(
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(
+                    Icons.notifications_none,
+                    color: LiveColors.textPrimary,
+                    size: 24,
+                  ),
+                  ValueListenableBuilder<int>(
+                    valueListenable: NotificationService.instance.unread,
+                    builder: (context, unread, _) {
+                      if (unread <= 0) return const SizedBox.shrink();
+                      return Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          constraints: const BoxConstraints(
+                            minWidth: 15,
+                            minHeight: 15,
                           ),
-                          textAlign: TextAlign.center,
+                          decoration: const BoxDecoration(
+                            color: LiveColors.danger,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            unread > 99 ? '99+' : '$unread',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+              onPressed: () => LiveRoutes.push(context, RoutePaths.notifications),
             ),
-            onPressed: () => LiveRoutes.push(context, RoutePaths.notifications),
-          ),
+          ],
         ],
       ),
     );
@@ -1241,6 +1261,82 @@ class _ActivityCard extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF5B21B6),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+/// 游客态门禁卡：替换首页的"门店三入口"区块，
+/// 引导用户登录以使用账号基础功能（预约 / 订单 / 会员等）。
+/// 公开内容（活动 / 敬请期待）仍在下方正常展示，符合 5.1.1(v) 审核要求。
+class _GuestSignInCard extends StatelessWidget {
+  const _GuestSignInCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+        decoration: BoxDecoration(
+          gradient: LiveGradients.brandSoft,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE4DEF9)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                gradient: LiveGradients.brand,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.lock_open_outlined,
+                size: 20,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.homeGuestSignInTitle,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: LiveColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.homeGuestSignInDesc,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: LiveColors.textTertiary,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 14,
+              color: Color(0xFF5B21B6),
             ),
           ],
         ),

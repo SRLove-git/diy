@@ -89,6 +89,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loginRegisterLink => '注册新账号';
 
   @override
+  String get loginBrowseAsGuest => '先逛逛';
+
+  @override
+  String get homeGuestSignInTitle => '登录后享受完整功能';
+
+  @override
+  String get homeGuestSignInDesc => '解锁预约、订单、会员等专属服务';
+
+  @override
   String get loginNeedAccount => '请输入用户名或邮箱';
 
   @override

@@ -90,6 +90,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginRegisterLink => 'Create account';
 
   @override
+  String get loginBrowseAsGuest => 'Browse as guest';
+
+  @override
+  String get homeGuestSignInTitle => 'Sign in for the full experience';
+
+  @override
+  String get homeGuestSignInDesc =>
+      'Unlock bookings, orders, member perks & more';
+
+  @override
   String get loginNeedAccount => 'Enter username or email';
 
   @override
