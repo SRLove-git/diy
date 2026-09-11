@@ -47,7 +47,15 @@ export function configureApp(app: INestApplication): void {
   // 验证码防刷等按 IP 限流的逻辑依赖 req.ip，未配置时所有请求都取自代理地址，
   // 会导致全站共享同一个限流配额。仅在生产经 nginx 暴露时开启（TRUST_PROXY=true）。
   if (process.env.TRUST_PROXY === 'true') {
-    (app.getHttpAdapter().getInstance() as Express).set('trust proxy', 1);
+    // 按「内网网段」信任而非固定跳数：客户端流量可能经过 1 层（nginx-lb）
+    // 或 2 层（admin nginx → nginx-lb）容器代理，固定跳数会取到内网容器 IP，
+    // 导致所有用户共享同一限流配额（后台登录被误锁）。信任 loopback/linklocal/
+    // 私有网段后，Express 从右往左剥离受信代理，取到第一个公网地址即真实客户端 IP。
+    (app.getHttpAdapter().getInstance() as Express).set('trust proxy', [
+      'loopback',
+      'linklocal',
+      'uniquelocal',
+    ]);
   }
 
   const origins = corsOrigins();
