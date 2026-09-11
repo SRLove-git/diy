@@ -2,7 +2,8 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AppThrottlerGuard } from './common/throttler.guard';
 import { join } from 'path';
 import type Redis from 'ioredis';
 import { AppController } from './app.controller';
@@ -126,7 +127,7 @@ import { REDIS_CLIENT } from './redis/redis.module';
     BootstrapService,
     MigrationsService,
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: AppThrottlerGuard },
   ],
 })
 export class AppModule {}

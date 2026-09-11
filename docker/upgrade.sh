@@ -73,6 +73,10 @@ ssh "$SERVER" \
    docker tag diy-admin:${TAG} diy-admin:latest && \
    docker tag diy-backup:${TAG} diy-backup:latest"
 
+log "重建 nginx-lb / admin（挂载的 nginx 配置、静态资源变更需重建才生效）"
+ssh "$SERVER" \
+  "cd ${REMOTE_DIR} && ${COMPOSE} up -d --force-recreate --no-build nginx-lb admin 2>&1 | tail -3"
+
 log "等待健康检查（最多 150s）"
 ssh "$SERVER" \
   "for i in \$(seq 1 30); do
