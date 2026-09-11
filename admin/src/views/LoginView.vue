@@ -121,9 +121,6 @@ onMounted(loadCaptcha)
       <button type="submit" :disabled="loading">
         {{ loading ? $t('登录中…', 'Logging in…') : $t('登录', 'Log In') }}
       </button>
-      <p class="hint">
-        {{ $t('开发环境管理员：admin / admin123456', 'Dev admin: admin / admin123456') }}
-      </p>
     </form>
   </div>
 </template>
@@ -285,11 +282,5 @@ button:disabled {
   box-shadow: none;
   background: var(--surface-muted);
   border-color: var(--primary);
-}
-.hint {
-  color: var(--text-muted);
-  font-size: 12px;
-  text-align: center;
-  margin: 2px 0 0;
 }
 </style>
