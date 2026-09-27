@@ -155,8 +155,11 @@ function AppointmentRow({
   item: Appointment;
   onAction: (item: Appointment, action: string) => void;
 }) {
+  // 核销为门店/后台操作，仅管理员账号可见（服务端亦已限制为管理员）
+  const { me } = useAuth();
+  const isAdmin = me?.role === 'admin';
   const canCancel = ['pending', 'booked'].includes(item.status);
-  const canCheckIn = item.status === 'booked';
+  const canCheckIn = isAdmin && item.status === 'booked';
   const canClockOut = ['checked_in', 'in_service'].includes(item.status);
   return (
     <article>
@@ -367,6 +370,9 @@ function H5Bead({ navigate }: { navigate: Navigate }) {
 
 function H5Reservation({ navigate }: { navigate: Navigate }) {
   const toast = useToast();
+  // 核销入口仅管理员可见（服务端亦已限制为管理员）
+  const { me } = useAuth();
+  const isAdmin = me?.role === 'admin';
   const stores = useApi(() => storesApi.list(), []);
   const [storeId, setStoreId] = useState<number | null>(null);
   const [day, setDay] = useState(0);
@@ -510,9 +516,11 @@ function H5Reservation({ navigate }: { navigate: Navigate }) {
           <a className="btn" onClick={() => navigate('seat')}>
             查看座位
           </a>
-          <a className="btn" onClick={() => navigate('verify')}>
-            一键核销
-          </a>
+          {isAdmin && (
+            <a className="btn" onClick={() => navigate('verify')}>
+              一键核销
+            </a>
+          )}
         </Actions>
       </section>
 
@@ -615,6 +623,8 @@ function H5Seat({ navigate }: { navigate: Navigate }) {
 
 function H5Verify() {
   const toast = useToast();
+  // 核销页仅管理员可用（服务端接口同样限制为管理员）
+  const { me, ready } = useAuth();
   const [code, setCode] = useState('');
   const [preview, setPreview] = useState<Appointment | null>(null);
   const [busy, setBusy] = useState(false);
@@ -657,6 +667,12 @@ function H5Verify() {
         title="一键核销"
         subtitle="支持抖音团购码、站内订单码、扫码核销和人工确认。"
       />
+      {ready && me?.role !== 'admin' ? (
+        <section className="panel-card">
+          <p>核销是门店/后台操作，请使用管理员账号登录后在管理端完成核销。</p>
+        </section>
+      ) : (
+        <>
       <section className="panel-card">
         <div className="composer-card">
           <ScanIcon size={24} />
@@ -694,6 +710,8 @@ function H5Verify() {
       <Panel title="预约核销流程">
         <FlowSteps steps={reservationSteps} />
       </Panel>
+        </>
+      )}
     </>
   );
 }

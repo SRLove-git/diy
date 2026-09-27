@@ -185,7 +185,7 @@ function PCHome({ navigate }: { navigate: Navigate }) {
         <aside>
           <strong>账户状态</strong>
           <span>已登录 · 已实名认证</span>
-          <b>预约订单可在线核销</b>
+          <b>预约到店后由门店核销</b>
           <small>订单、消息和预约统一管理</small>
         </aside>
       </section>
@@ -591,7 +591,8 @@ function PCAccount() {
                     {appointmentStatusLabel[o.status] ?? o.status}
                   </Badge>
                   <div className="row-actions">
-                    {o.status === 'booked' && (
+                    {/* 核销为门店/后台操作，仅管理员账号可见（服务端亦已限制为管理员） */}
+                    {me?.role === 'admin' && o.status === 'booked' && (
                       <a onClick={() => void act(o.id, o.code, 'checkin')}>核销</a>
                     )}
                     {['checked_in', 'in_service'].includes(o.status) && (

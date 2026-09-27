@@ -446,13 +446,8 @@ final GoRouter appRouter = GoRouter(
         child: CheckinQrScreen(appointment: s.extra as Appointment),
       ),
     ),
-    GoRoute(
-      path: RoutePaths.appointmentCheckinCode,
-      builder: (_, _) => LiveHost(
-        resizeToAvoidBottomInset: false,
-        child: const VerifyCodeScreen(),
-      ),
-    ),
+    // 输码核销已下线：核销属门店/后台操作，仅管理端（管理员账号）可用，
+    // 服务端 /appointments/checkin 亦已限制为管理员，故不再暴露用户端路由。
     GoRoute(
       path: RoutePaths.appointmentServiceEnd,
       builder: (_, s) => LiveHost(

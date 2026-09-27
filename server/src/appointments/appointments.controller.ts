@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminGuard } from '../stores/admin.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { CreateAppointmentDto, CheckInDto } from './appointment.dto';
@@ -58,8 +59,9 @@ export class AppointmentsController {
     return this.appointments.activitySessions(activityId);
   }
 
-  /** 按预约码查询（公开，用于核销前确认） */
+  /** 按预约码查询（仅管理员：核销前确认，属门店核销操作） */
   @Get('code/:code')
+  @UseGuards(JwtAuthGuard, AdminGuard)
   findByCode(@Param('code') code: string) {
     return this.appointments.findByCode(code);
   }
@@ -78,9 +80,9 @@ export class AppointmentsController {
     return this.appointments.cancel(user.id, id);
   }
 
-  /** 输码核销：用户或店员通过预约码核销 */
+  /** 输码核销：仅管理员（店员/后台）操作；用户端不提供核销能力 */
   @Post('checkin')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   checkIn(@CurrentUser() user: AuthUser, @Body() dto: CheckInDto) {
     return this.appointments.checkIn(dto.code, user.id);
   }

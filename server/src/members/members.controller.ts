@@ -10,6 +10,7 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminGuard } from '../stores/admin.guard';
 import { RedeemCouponDto } from './member.dto';
 import { MembersService } from './members.service';
 
@@ -63,15 +64,16 @@ export class MembersController {
     return this.members.wallet(user.id);
   }
 
-  /** 按核销码查询（公开，用于核销前确认） */
+  /** 按核销码查询（仅管理员：核销前确认，属门店核销操作） */
   @Get('coupons/code/:code')
+  @UseGuards(JwtAuthGuard, AdminGuard)
   findByCouponCode(@Param('code') code: string) {
     return this.members.findCouponByCode(code);
   }
 
-  /** 输码核销：用户或店员通过核销码核销 */
+  /** 输码核销：仅管理员（店员/后台）操作；用户端不提供核销能力 */
   @Post('coupons/redeem')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   redeem(@CurrentUser() user: AuthUser, @Body() dto: RedeemCouponDto) {
     return this.members.redeemByCode(dto.code, user.id);
   }
