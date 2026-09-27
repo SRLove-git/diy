@@ -103,4 +103,4 @@ rm -f "$PKG"
 log "完成：${TAG} 已上线。当前镜像列表："
 ssh "$SERVER" \
   "docker images --format '{{.Repository}}:{{.Tag}} {{.Size}} {{.CreatedAt}}' \
-   | grep -E '^(diy-server|diy-admin|diy-backup):' | sort"
+   | grep -E '^(diy-server|diy-admin|diy-backup|diy-web):' | sort"
