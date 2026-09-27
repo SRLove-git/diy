@@ -162,8 +162,8 @@ export class Appointment {
   @Column()
   peopleCount: number;
 
-  /** 预约码：到店核销凭证（6 位数字+字母） */
-  @Column({ length: 10, unique: true })
+  /** 预约码：到店核销凭证（6 位数字+字母）。唯一约束由类上的 @Index(['code'], { unique: true }) 声明，此处不再重复，否则 synchronize 会生成同名索引导致建表失败 */
+  @Column({ length: 10 })
   code: string;
 
   /** 应付金额（会员折扣后） */
