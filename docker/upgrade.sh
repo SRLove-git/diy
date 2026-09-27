@@ -65,17 +65,19 @@ log "7/8 升级前备份 + 构建部署（tag=${TAG}）"
 ssh "$SERVER" \
   "cd ${REMOTE_DIR} && ${COMPOSE} exec backup /backup.sh | tail -1 && \
    SERVER_IMAGE=diy-server:${TAG} ADMIN_IMAGE=diy-admin:${TAG} \
-   BACKUP_IMAGE=diy-backup:${TAG} ${COMPOSE} up -d --build"
+   BACKUP_IMAGE=diy-backup:${TAG} WEB_IMAGE=diy-web:${TAG} \
+   ${COMPOSE} up -d --build"
 
 log "同步 :latest 标签（保持 compose 默认可用）"
 ssh "$SERVER" \
   "docker tag diy-server:${TAG} diy-server:latest && \
    docker tag diy-admin:${TAG} diy-admin:latest && \
-   docker tag diy-backup:${TAG} diy-backup:latest"
+   docker tag diy-backup:${TAG} diy-backup:latest && \
+   docker tag diy-web:${TAG} diy-web:latest"
 
-log "重建 nginx-lb / admin（挂载的 nginx 配置、静态资源变更需重建才生效）"
+log "重建 nginx-lb / admin / web（挂载的 nginx 配置、静态资源变更需重建才生效）"
 ssh "$SERVER" \
-  "cd ${REMOTE_DIR} && ${COMPOSE} up -d --force-recreate --no-build nginx-lb admin 2>&1 | tail -3"
+  "cd ${REMOTE_DIR} && ${COMPOSE} up -d --force-recreate --no-build nginx-lb admin web 2>&1 | tail -3"
 
 log "等待健康检查（最多 150s）"
 ssh "$SERVER" \
@@ -86,7 +88,7 @@ ssh "$SERVER" \
 
 log "8/8 清理旧镜像（保留最近 ${KEEP_TAGS} 个 tag）"
 ssh "$SERVER" \
-  "for repo in diy-server diy-admin diy-backup; do
+  "for repo in diy-server diy-admin diy-backup diy-web; do
      docker images --format '{{.Repository}}:{{.Tag}}|{{.CreatedAt}}' \
        | grep -E \"^\${repo}:\" \
        | grep -v ':latest' \

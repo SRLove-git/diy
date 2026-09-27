@@ -190,6 +190,26 @@ services:
     ports:
       - "8080:80"
 
+  # Web 端（拼豆系统 H5/PC）：idol-sg.com 入口，由 nginx-lb 443 反代
+  web:
+    image: ${WEB_IMAGE:-diy-web:latest}
+    build:
+      context: ../pindou-macaron
+    container_name: diy-web-prod
+    restart: unless-stopped
+    mem_limit: 128m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      TZ: Asia/Shanghai
+    depends_on:
+      - nginx-lb
+    ports:
+      - "8081:80"
+
   # 每日数据库备份：cron 定时导出 MySQL（mysqldump）+ Redis（RDB 快照），
   # 产物落在独立数据盘 /data/diy-backups/（与数据卷/系统盘分离，卷损坏不影响备份）
   backup:
