@@ -48,7 +48,13 @@ async function rawRequest(path: string, init: RequestInit): Promise<Response> {
   }
   const token = getAccessToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
-  return fetch(`/api${path}`, { ...init, headers });
+  try {
+    return await fetch(`/api${path}`, { ...init, headers });
+  } catch {
+    // 浏览器 fetch 在网络中断/被拦截时抛 TypeError("Failed to fetch")，
+    // 直接展示给用户体验很差，这里统一转换为可读提示（页面可点击重试）。
+    throw new Error('网络连接失败，请检查网络后重试');
+  }
 }
 
 async function parseResponse<T>(res: Response): Promise<T> {

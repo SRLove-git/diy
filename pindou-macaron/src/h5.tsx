@@ -280,7 +280,13 @@ function H5Home({ navigate }: { navigate: Navigate }) {
         {hot.loading ? (
           <div className="load-state">加载中…</div>
         ) : hot.error ? (
-          <div className="error-state">{hot.error}</div>
+          <div
+            className="error-state"
+            onClick={() => hot.reload()}
+            role="button"
+          >
+            {hot.error} · 点击重试
+          </div>
         ) : (
           <FeedGrid posts={hot.data ?? []} />
         )}
